@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  HR
+  HIRING_MANAGER
+  INTERVIEWER
+  VIEWER
+}
+
+model Organization {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  industry  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users User[]
+
+  @@map("organizations")
+}
+
+model User {
+  id        String   @id @default(uuid()) @db.Uuid
+  orgId     String   @db.Uuid
+  email     String   @unique
+  auth0Sub  String   @unique @map("auth0_sub")
+  name      String
+  role      Role     @default(VIEWER)
+  avatarUrl String?  @map("avatar_url")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@index([orgId])
+  @@index([auth0Sub])
+  @@map("users")
+}

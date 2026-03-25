@@ -1,4 +1,4 @@
-# HireFlow — HR Tech Platform (MVP)
+# Work Nucleus — HR Tech Platform (MVP)
 
 ## Technical & Project Documentation
 
@@ -8,7 +8,7 @@
 
 ## 1. Executive Summary
 
-HireFlow is an AI-powered hiring management platform that enables organizations to create structured hiring plans, generate job descriptions with AI, manage interview pipelines via Kanban boards, collect and score candidate feedback with AI agents, and visualize recruitment performance through comprehensive dashboards.
+Work Nucleus is an AI-powered hiring management platform that enables organizations to create structured hiring plans, generate job descriptions with AI, manage interview pipelines via Kanban boards, collect and score candidate feedback with AI agents, and visualize recruitment performance through comprehensive dashboards.
 
 The platform targets mid-to-large organizations that need end-to-end recruitment workflow management across multiple positions, industries, and quarters — with AI automation at every step.
 
@@ -469,9 +469,9 @@ Each sprint is **2 weeks**. Total MVP: **8 sprints (16 weeks)**.
 **Claude Code Instruction:**
 
 ```
-Set up a full-stack monorepo for an HR tech platform called "HireFlow" with the following structure:
+Set up a full-stack monorepo for an HR tech platform called "Work Nucleus" with the following structure:
 
-/hireflow
+/work-nucleus
 ├── /backend           # NestJS 10 backend (TypeScript)
 ├── /ai-service        # Python FastAPI AI agent service
 ├── /frontend          # Next.js 14 App Router + TypeScript + Tailwind CSS + shadcn/ui
@@ -537,7 +537,7 @@ FRONTEND (Next.js 14):
 7. Create /admin/users page: data table with columns (Name, Email, Role, Status, Actions), create/edit user dialogs
 
 DOCKER COMPOSE (docker-compose.yml):
-1. postgres:16 with volume mount, POSTGRES_DB=hireflow, POSTGRES_USER, POSTGRES_PASSWORD
+1. postgres:16 with volume mount, POSTGRES_DB=work_nucleus, POSTGRES_USER, POSTGRES_PASSWORD
 2. redis:7 with volume mount
 3. backend service: build from ./backend, port 3000, depends_on postgres+redis, env vars for DB, Redis, JWT_SECRET, AI_SERVICE_URL=http://ai-service:8000
 4. ai-service: build from ./ai-service, port 8000, depends_on postgres, env vars for ANTHROPIC_API_KEY, DATABASE_URL, INTERNAL_API_KEY
@@ -564,7 +564,7 @@ Create Makefile with targets: dev (docker-compose up), build, prisma-migrate, pr
 **Claude Code Instruction:**
 
 ```
-Build the Hiring Plan module for HireFlow. This is the core entity that everything else connects to.
+Build the Hiring Plan module for Work Nucleus. This is the core entity that everything else connects to.
 
 BACKEND (NestJS — src/modules/hiring-plans/):
 1. Add Prisma schema models:
@@ -638,7 +638,7 @@ FRONTEND:
 **Claude Code Instruction:**
 
 ```
-Build the AI Job Description Generator module for HireFlow. NestJS handles the API; Python service generates JDs via Claude.
+Build the AI Job Description Generator module for Work Nucleus. NestJS handles the API; Python service generates JDs via Claude.
 
 BACKEND (NestJS — src/modules/job-descriptions/):
 1. Add Prisma schema models:
@@ -726,7 +726,7 @@ FRONTEND:
 **Claude Code Instruction:**
 
 ```
-Build the Kanban Interview Pipeline for HireFlow. This is the central workflow tracking system.
+Build the Kanban Interview Pipeline for Work Nucleus. This is the central workflow tracking system.
 
 BACKEND (NestJS):
 1. Add Prisma schema models:
@@ -821,7 +821,7 @@ FRONTEND:
 **Claude Code Instruction:**
 
 ```
-Build the Feedback Collection and AI Scoring system for HireFlow.
+Build the Feedback Collection and AI Scoring system for Work Nucleus.
 
 BACKEND (NestJS — src/modules/feedback/):
 1. Add Prisma schema models:
@@ -951,7 +951,7 @@ FRONTEND:
 **Claude Code Instruction:**
 
 ```
-Build the Selection/Rejection workflow, AI Communication drafting, and Interviewer Training module for HireFlow.
+Build the Selection/Rejection workflow, AI Communication drafting, and Interviewer Training module for Work Nucleus.
 
 BACKEND (NestJS):
 1. Add Prisma schema models:
@@ -983,7 +983,7 @@ BACKEND (NestJS):
      1. "Understanding Job Descriptions" — How to read JD fitment mapping, using evaluation parameters
      2. "Effective Interviewing Skills" — STAR method, structured questioning, bias awareness
      3. "How to Give and Record Feedback" — Using the feedback form, rating calibration, writing actionable notes
-     4. "HireFlow Hiring Process Overview" — Platform walkthrough, roles, workflow stages
+     4. "Work Nucleus Hiring Process Overview" — Platform walkthrough, roles, workflow stages
    - Service: CRUD for modules (admin/HR), list available for current user, markComplete, getProgress
    - Controller: /api/v1/training-modules
 
@@ -1054,7 +1054,7 @@ FRONTEND:
 **Claude Code Instruction:**
 
 ```
-Build the comprehensive Analytics Dashboard for HireFlow.
+Build the comprehensive Analytics Dashboard for Work Nucleus.
 
 BACKEND (NestJS — src/modules/analytics/):
 1. Create AnalyticsModule with AnalyticsService:
@@ -1170,7 +1170,7 @@ Make all chart components responsive. Use consistent color scheme from shadcn th
 **Claude Code Instruction:**
 
 ```
-Build the Admin Panel, notification system, and finalize HireFlow for MVP launch.
+Build the Admin Panel, notification system, and finalize Work Nucleus for MVP launch.
 
 BACKEND (NestJS):
 1. Notification System (src/modules/notifications/):
