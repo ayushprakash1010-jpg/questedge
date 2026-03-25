@@ -44,13 +44,13 @@ export function LandingHeader() {
         {/* CTA Buttons */}
         <div className="hidden items-center gap-3 md:flex">
           <Link
-            href="/api/auth/login"
+            href="/auth/login"
             className="text-sm font-medium text-slate-700 transition-colors hover:text-indigo-600"
           >
             Log in
           </Link>
           <Link
-            href="/api/auth/login"
+            href="/auth/login"
             className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md"
           >
             Start Free Trial
@@ -86,13 +86,13 @@ export function LandingHeader() {
             ))}
             <hr className="my-2" />
             <Link
-              href="/api/auth/login"
+              href="/auth/login"
               className="text-sm font-medium text-slate-700"
             >
               Log in
             </Link>
             <Link
-              href="/api/auth/login"
+              href="/auth/login"
               className="rounded-lg bg-indigo-600 px-4 py-2 text-center text-sm font-medium text-white"
             >
               Start Free Trial

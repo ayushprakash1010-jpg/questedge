@@ -76,7 +76,7 @@ export function TopBar() {
               </a>
               <hr className="my-1" />
               <a
-                href="/api/auth/logout"
+                href="/auth/logout"
                 className="flex items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-accent"
               >
                 <LogOut className="h-4 w-4" /> Logout

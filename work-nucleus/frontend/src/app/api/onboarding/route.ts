@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
+import { getApiUrl } from "@/lib/api-url";
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,7 +11,7 @@ export async function POST(req: NextRequest) {
 
     const { token: accessToken } = await auth0.getAccessToken();
     const body = await req.json();
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+    const apiUrl = getApiUrl();
 
     const res = await fetch(`${apiUrl}/api/v1/auth/provision`, {
       method: "POST",

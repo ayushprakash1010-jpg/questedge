@@ -68,7 +68,7 @@ export function Hero() {
             transition={{ duration: 0.5, delay: 0.3 }}
           >
             <Link
-              href="/api/auth/login"
+              href="/auth/login"
               className="group flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-500/30"
             >
               Start Free Trial

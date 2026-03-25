@@ -118,7 +118,7 @@ export function Pricing() {
               </ul>
 
               <Link
-                href={plan.name === "Enterprise" ? "/contact" : "/api/auth/login"}
+                href={plan.name === "Enterprise" ? "/contact" : "/auth/login"}
                 className={`mt-8 block rounded-xl px-4 py-3 text-center text-sm font-semibold transition-all ${
                   plan.popular
                     ? "bg-indigo-600 text-white shadow-sm hover:bg-indigo-700"

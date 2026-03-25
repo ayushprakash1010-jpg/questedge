@@ -18,7 +18,7 @@ export function CTABanner() {
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link
-            href="/api/auth/login"
+            href="/auth/login"
             className="group flex items-center gap-2 rounded-xl bg-white px-6 py-3.5 text-sm font-semibold text-indigo-700 shadow-sm transition-all hover:bg-indigo-50"
           >
             Start Free Trial

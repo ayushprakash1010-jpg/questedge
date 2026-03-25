@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
+import { getApiUrl } from "@/lib/api-url";
 
 export async function GET() {
   try {
@@ -9,7 +10,7 @@ export async function GET() {
     }
 
     const { token: accessToken } = await auth0.getAccessToken();
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+    const apiUrl = getApiUrl();
 
     const res = await fetch(`${apiUrl}/api/v1/auth/me`, {
       headers: { Authorization: `Bearer ${accessToken}` },

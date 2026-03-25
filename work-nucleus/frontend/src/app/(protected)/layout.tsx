@@ -21,7 +21,7 @@ export default function ProtectedLayout({
 
     // Not logged in — redirect to Auth0 login
     if (!user) {
-      router.push("/api/auth/login");
+      router.push("/auth/login");
       return;
     }
 

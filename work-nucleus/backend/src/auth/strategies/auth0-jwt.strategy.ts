@@ -10,6 +10,9 @@ interface Auth0JwtPayload {
   email?: string;
   name?: string;
   picture?: string;
+  // Namespaced custom claims added via Auth0 Login Action
+  'https://api.work-nucleus.com/email'?: string;
+  'https://api.work-nucleus.com/name'?: string;
 }
 
 @Injectable()
@@ -48,11 +51,12 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
 
     // User not provisioned yet — return minimal info for /auth/provision
+    // Email comes from namespaced custom claim (Auth0 Login Action) or standard claim
     if (!user) {
       return {
         auth0Sub,
-        email: payload.email,
-        name: payload.name,
+        email: payload['https://api.work-nucleus.com/email'] || payload.email,
+        name: payload['https://api.work-nucleus.com/name'] || payload.name,
         isProvisioned: false,
       };
     }
