@@ -1,0 +1,146 @@
+-- Seed script: Insert all skills into the "skills" table
+-- Generated from seed.ts
+
+-- Clear existing data to avoid duplicates on re-seed
+DELETE FROM "hiring_plan_skills";
+DELETE FROM "skills";
+
+INSERT INTO "skills" (id, name, category, industry, is_global, "createdAt") VALUES
+-- TECHNICAL — Software Engineering
+(gen_random_uuid(), 'JavaScript', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'TypeScript', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'Python', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'Java', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'Go', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'Rust', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'C++', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'React', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'Next.js', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'Angular', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'Vue.js', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'Node.js', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'NestJS', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'Django', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'FastAPI', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'Spring Boot', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'PostgreSQL', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'MongoDB', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'Redis', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'Docker', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'Kubernetes', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'AWS', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'Azure', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'GCP', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'CI/CD', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'GraphQL', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'REST API Design', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'Microservices Architecture', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'System Design', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'Data Structures & Algorithms', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'Machine Learning', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'DevOps', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'Terraform', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'Git', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+(gen_random_uuid(), 'Agile/Scrum', 'TECHNICAL'::"SkillCategory", 'Software Engineering', true, now()),
+
+-- TECHNICAL — Finance
+(gen_random_uuid(), 'Financial Modeling', 'TECHNICAL'::"SkillCategory", 'Finance', false, now()),
+(gen_random_uuid(), 'Risk Assessment', 'TECHNICAL'::"SkillCategory", 'Finance', false, now()),
+(gen_random_uuid(), 'Regulatory Compliance', 'TECHNICAL'::"SkillCategory", 'Finance', false, now()),
+(gen_random_uuid(), 'Bloomberg Terminal', 'TECHNICAL'::"SkillCategory", 'Finance', false, now()),
+(gen_random_uuid(), 'Quantitative Analysis', 'TECHNICAL'::"SkillCategory", 'Finance', false, now()),
+(gen_random_uuid(), 'Portfolio Management', 'TECHNICAL'::"SkillCategory", 'Finance', false, now()),
+(gen_random_uuid(), 'Derivatives Pricing', 'TECHNICAL'::"SkillCategory", 'Finance', false, now()),
+(gen_random_uuid(), 'AML/KYC', 'TECHNICAL'::"SkillCategory", 'Finance', false, now()),
+(gen_random_uuid(), 'Tax Planning', 'TECHNICAL'::"SkillCategory", 'Finance', false, now()),
+(gen_random_uuid(), 'Audit & Assurance', 'TECHNICAL'::"SkillCategory", 'Finance', false, now()),
+
+-- TECHNICAL — Healthcare
+(gen_random_uuid(), 'Clinical Research', 'TECHNICAL'::"SkillCategory", 'Healthcare', false, now()),
+(gen_random_uuid(), 'HIPAA Compliance', 'TECHNICAL'::"SkillCategory", 'Healthcare', false, now()),
+(gen_random_uuid(), 'Electronic Health Records (EHR)', 'TECHNICAL'::"SkillCategory", 'Healthcare', false, now()),
+(gen_random_uuid(), 'Medical Coding (ICD-10)', 'TECHNICAL'::"SkillCategory", 'Healthcare', false, now()),
+(gen_random_uuid(), 'Pharmacovigilance', 'TECHNICAL'::"SkillCategory", 'Healthcare', false, now()),
+(gen_random_uuid(), 'Clinical Trials Management', 'TECHNICAL'::"SkillCategory", 'Healthcare', false, now()),
+(gen_random_uuid(), 'FDA Regulations', 'TECHNICAL'::"SkillCategory", 'Healthcare', false, now()),
+(gen_random_uuid(), 'Patient Safety', 'TECHNICAL'::"SkillCategory", 'Healthcare', false, now()),
+
+-- TECHNICAL — Manufacturing
+(gen_random_uuid(), 'Lean Manufacturing', 'TECHNICAL'::"SkillCategory", 'Manufacturing', false, now()),
+(gen_random_uuid(), 'Six Sigma', 'TECHNICAL'::"SkillCategory", 'Manufacturing', false, now()),
+(gen_random_uuid(), 'Supply Chain Management', 'TECHNICAL'::"SkillCategory", 'Manufacturing', false, now()),
+(gen_random_uuid(), 'Quality Control', 'TECHNICAL'::"SkillCategory", 'Manufacturing', false, now()),
+(gen_random_uuid(), 'CAD/CAM', 'TECHNICAL'::"SkillCategory", 'Manufacturing', false, now()),
+(gen_random_uuid(), 'ISO 9001', 'TECHNICAL'::"SkillCategory", 'Manufacturing', false, now()),
+(gen_random_uuid(), 'Production Planning', 'TECHNICAL'::"SkillCategory", 'Manufacturing', false, now()),
+(gen_random_uuid(), 'ERP Systems (SAP)', 'TECHNICAL'::"SkillCategory", 'Manufacturing', false, now()),
+
+-- TECHNICAL — Retail
+(gen_random_uuid(), 'Merchandising', 'TECHNICAL'::"SkillCategory", 'Retail', false, now()),
+(gen_random_uuid(), 'Inventory Management', 'TECHNICAL'::"SkillCategory", 'Retail', false, now()),
+(gen_random_uuid(), 'Point of Sale Systems', 'TECHNICAL'::"SkillCategory", 'Retail', false, now()),
+(gen_random_uuid(), 'E-Commerce Platforms', 'TECHNICAL'::"SkillCategory", 'Retail', false, now()),
+(gen_random_uuid(), 'Customer Analytics', 'TECHNICAL'::"SkillCategory", 'Retail', false, now()),
+(gen_random_uuid(), 'Visual Merchandising', 'TECHNICAL'::"SkillCategory", 'Retail', false, now()),
+
+-- TECHNICAL — Marketing
+(gen_random_uuid(), 'SEO/SEM', 'TECHNICAL'::"SkillCategory", 'Marketing', false, now()),
+(gen_random_uuid(), 'Google Analytics', 'TECHNICAL'::"SkillCategory", 'Marketing', false, now()),
+(gen_random_uuid(), 'Content Marketing', 'TECHNICAL'::"SkillCategory", 'Marketing', false, now()),
+(gen_random_uuid(), 'Social Media Marketing', 'TECHNICAL'::"SkillCategory", 'Marketing', false, now()),
+(gen_random_uuid(), 'Marketing Automation (HubSpot)', 'TECHNICAL'::"SkillCategory", 'Marketing', false, now()),
+(gen_random_uuid(), 'A/B Testing', 'TECHNICAL'::"SkillCategory", 'Marketing', false, now()),
+(gen_random_uuid(), 'Brand Strategy', 'TECHNICAL'::"SkillCategory", 'Marketing', false, now()),
+(gen_random_uuid(), 'Copywriting', 'TECHNICAL'::"SkillCategory", 'Marketing', false, now()),
+
+-- LEADERSHIP (global)
+(gen_random_uuid(), 'Strategic Thinking', 'LEADERSHIP'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Team Building', 'LEADERSHIP'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Decision Making', 'LEADERSHIP'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Mentoring & Coaching', 'LEADERSHIP'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Change Management', 'LEADERSHIP'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Conflict Resolution', 'LEADERSHIP'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Stakeholder Management', 'LEADERSHIP'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Vision & Goal Setting', 'LEADERSHIP'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Delegation', 'LEADERSHIP'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Executive Presence', 'LEADERSHIP'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Cross-Functional Collaboration', 'LEADERSHIP'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Performance Management', 'LEADERSHIP'::"SkillCategory", NULL, true, now()),
+
+-- BEHAVIOURAL (global)
+(gen_random_uuid(), 'Problem Solving', 'BEHAVIOURAL'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Adaptability', 'BEHAVIOURAL'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Ownership & Accountability', 'BEHAVIOURAL'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Attention to Detail', 'BEHAVIOURAL'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Time Management', 'BEHAVIOURAL'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Critical Thinking', 'BEHAVIOURAL'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Emotional Intelligence', 'BEHAVIOURAL'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Resilience', 'BEHAVIOURAL'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Growth Mindset', 'BEHAVIOURAL'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Initiative', 'BEHAVIOURAL'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Integrity & Ethics', 'BEHAVIOURAL'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Work-Life Balance', 'BEHAVIOURAL'::"SkillCategory", NULL, true, now()),
+
+-- COMMUNICATION (global)
+(gen_random_uuid(), 'Written Communication', 'COMMUNICATION'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Verbal Communication', 'COMMUNICATION'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Presentation Skills', 'COMMUNICATION'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Active Listening', 'COMMUNICATION'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Negotiation', 'COMMUNICATION'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Persuasion & Influence', 'COMMUNICATION'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Storytelling', 'COMMUNICATION'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Technical Writing', 'COMMUNICATION'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Public Speaking', 'COMMUNICATION'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Cross-Cultural Communication', 'COMMUNICATION'::"SkillCategory", NULL, true, now()),
+
+-- DOMAIN (global)
+(gen_random_uuid(), 'Project Management', 'DOMAIN'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Product Management', 'DOMAIN'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Business Analysis', 'DOMAIN'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Data Analysis', 'DOMAIN'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'UX/UI Design', 'DOMAIN'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Sales', 'DOMAIN'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Customer Success', 'DOMAIN'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Human Resources', 'DOMAIN'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Operations Management', 'DOMAIN'::"SkillCategory", NULL, true, now()),
+(gen_random_uuid(), 'Legal & Contracts', 'DOMAIN'::"SkillCategory", NULL, true, now());

@@ -15,6 +15,26 @@ enum Role {
   VIEWER
 }
 
+enum SkillCategory {
+  TECHNICAL
+  LEADERSHIP
+  BEHAVIOURAL
+  COMMUNICATION
+  DOMAIN
+}
+
+enum HiringPlanStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum SkillPriority {
+  MUST_HAVE
+  NICE_TO_HAVE
+}
+
 model Organization {
   id        String   @id @default(uuid()) @db.Uuid
   name      String
@@ -22,7 +42,8 @@ model Organization {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users User[]
+  users       User[]
+  hiringPlans HiringPlan[]
 
   @@map("organizations")
 }
@@ -41,7 +62,74 @@ model User {
 
   organization Organization @relation(fields: [orgId], references: [id])
 
+  managedHiringPlans HiringPlan[] @relation("HiringManager")
+  createdHiringPlans HiringPlan[] @relation("PlanCreator")
+
   @@index([orgId])
   @@index([auth0Sub])
   @@map("users")
+}
+
+model Skill {
+  id        String        @id @default(uuid()) @db.Uuid
+  name      String
+  category  SkillCategory
+  industry  String?
+  isGlobal  Boolean       @default(false) @map("is_global")
+  createdAt DateTime      @default(now())
+
+  hiringPlanSkills HiringPlanSkill[]
+
+  @@map("skills")
+}
+
+model HiringPlan {
+  id                   String           @id @default(uuid()) @db.Uuid
+  orgId                String           @db.Uuid
+  title                String
+  industry             String
+  department           String
+  quarter              Int
+  year                 Int
+  totalRoles           Int              @map("total_roles")
+  filledRoles          Int              @default(0) @map("filled_roles")
+  status               HiringPlanStatus @default(DRAFT)
+  budgetMin            Decimal          @map("budget_min") @db.Decimal(12, 2)
+  budgetMax            Decimal          @map("budget_max") @db.Decimal(12, 2)
+  currency             String           @default("INR")
+  benefits             Json             @default("[]")
+  hiringManagerId      String           @map("hiring_manager_id") @db.Uuid
+  reportingManagerName String           @map("reporting_manager_name")
+  hodName              String           @map("hod_name")
+  teamSize             Int?             @map("team_size")
+  teamLevels           String?          @map("team_levels")
+  designation          String
+  notes                String?
+  createdById          String           @map("created_by_id") @db.Uuid
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  organization   Organization      @relation(fields: [orgId], references: [id])
+  hiringManager  User              @relation("HiringManager", fields: [hiringManagerId], references: [id])
+  createdBy      User              @relation("PlanCreator", fields: [createdById], references: [id])
+  skills         HiringPlanSkill[]
+
+  @@index([orgId])
+  @@index([status])
+  @@index([hiringManagerId])
+  @@map("hiring_plans")
+}
+
+model HiringPlanSkill {
+  id             String        @id @default(uuid()) @db.Uuid
+  hiringPlanId   String        @map("hiring_plan_id") @db.Uuid
+  skillId        String        @map("skill_id") @db.Uuid
+  priority       SkillPriority
+  minProficiency Int           @map("min_proficiency")
+
+  hiringPlan HiringPlan @relation(fields: [hiringPlanId], references: [id], onDelete: Cascade)
+  skill      Skill      @relation(fields: [skillId], references: [id])
+
+  @@unique([hiringPlanId, skillId])
+  @@map("hiring_plan_skills")
 }
