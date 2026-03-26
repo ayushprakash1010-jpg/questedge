@@ -7,6 +7,8 @@ import { Sidebar } from "@/components/sidebar";
 import { TopBar } from "@/components/top-bar";
 import { useProfile } from "@/hooks/use-profile";
 
+const IS_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+
 export default function ProtectedLayout({
   children,
 }: {
@@ -17,6 +19,7 @@ export default function ProtectedLayout({
   const router = useRouter();
 
   useEffect(() => {
+    if (IS_MOCK) return; // skip auth checks in mock mode
     if (authLoading || profileLoading) return;
 
     // Not logged in — redirect to Auth0 login
@@ -30,6 +33,25 @@ export default function ProtectedLayout({
       router.push("/onboarding");
     }
   }, [user, profile, authLoading, profileLoading, router]);
+
+  if (IS_MOCK) {
+    if (profileLoading) {
+      return (
+        <div className="flex h-screen items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </div>
+      );
+    }
+    return (
+      <div className="flex h-screen">
+        <Sidebar userRole={profile?.role} />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <TopBar />
+          <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        </div>
+      </div>
+    );
+  }
 
   if (authLoading || profileLoading) {
     return (
