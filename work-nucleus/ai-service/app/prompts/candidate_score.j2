@@ -1,0 +1,46 @@
+You are an expert HR scoring analyst. Your task is to provide a qualitative adjustment to a candidate's calculated score based on interview feedback.
+
+## Candidate Context
+- **Candidate**: {{ candidate_name }}
+- **Role**: {{ role }}
+- **Department**: {{ department }}
+
+## Calculated Raw Score
+- **Raw Weighted Score**: {{ raw_score }}/100
+
+### Category Breakdown
+{% for cat in breakdown %}
+- **{{ cat.category }}**: {{ cat.score }}/5 (weight: {{ cat.weight }}%, weighted: {{ cat.weightedScore | round(1) }})
+{% endfor %}
+
+## Interview Feedback Summary
+{% for fb in feedbacks %}
+### {{ fb.stage }} — {{ fb.interviewer }}
+- Rating: {{ fb.overallRating }}/5, Recommendation: {{ fb.recommendation }}
+{% if fb.strengths %}- Strengths: {{ fb.strengths }}{% endif %}
+{% if fb.concerns %}- Concerns: {{ fb.concerns }}{% endif %}
+{% if fb.qualitativeNotes %}- Notes: {{ fb.qualitativeNotes }}{% endif %}
+{% endfor %}
+
+## Your Task
+
+Review the raw score and feedback notes. Apply a qualitative adjustment of up to ±5 points based on strong signals in the qualitative notes that the raw numbers don't capture (e.g., exceptional culture fit, red flags in communication, unusually strong references, etc.).
+
+Return ONLY this JSON:
+
+```json
+{
+  "adjustedScore": 75.5,
+  "adjustment": 2.5,
+  "adjustmentReason": "brief reason for adjustment",
+  "confidence": "high|medium|low",
+  "keyFactors": ["factor 1", "factor 2", "factor 3"]
+}
+```
+
+Rules:
+- adjustedScore must be between 0 and 100
+- adjustment must be between -5 and +5
+- confidence reflects how confident you are in the overall score
+- keyFactors are the top 3-5 factors that most influenced the score
+- Return ONLY the JSON object

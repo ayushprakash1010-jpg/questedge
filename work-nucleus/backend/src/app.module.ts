@@ -11,6 +11,14 @@ import { JobDescriptionsModule } from './modules/job-descriptions/job-descriptio
 import { PipelineModule } from './modules/pipeline/pipeline.module';
 import { CandidatesModule } from './modules/candidates/candidates.module';
 import { ApplicationsModule } from './modules/applications/applications.module';
+import { FeedbackModule } from './modules/feedback/feedback.module';
+import { DecisionsModule } from './modules/decisions/decisions.module';
+import { TrainingModule } from './modules/training/training.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { AuditModule } from './modules/audit/audit.module';
+import { SettingsModule } from './modules/settings/settings.module';
+import { SearchModule } from './modules/search/search.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 
@@ -28,6 +36,14 @@ import { RolesGuard } from './auth/guards/roles.guard';
     PipelineModule,
     CandidatesModule,
     ApplicationsModule,
+    FeedbackModule,
+    DecisionsModule,
+    TrainingModule,
+    AnalyticsModule,
+    NotificationsModule,
+    AuditModule,
+    SettingsModule,
+    SearchModule,
     HealthModule,
   ],
   providers: [

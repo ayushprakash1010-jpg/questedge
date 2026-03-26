@@ -6,12 +6,26 @@ from app.config import settings
 from app.services.db import init_db
 from app.middleware.api_key_auth import verify_internal_api_key
 from app.schemas.jd import GenerateJdRequest, GenerateJdResponse
+from app.schemas.feedback import (
+    SummarizeFeedbackRequest, FeedbackSummaryResponse,
+    ScoreCandidateRequest, ScoreCandidateResponse,
+)
 from app.agents.jd_generator import JdGeneratorAgent
+from app.agents.feedback_summarizer import FeedbackSummarizerAgent
+from app.agents.candidate_scorer import CandidateScorerAgent
+from app.schemas.communication import DraftCommunicationRequest, DraftCommunicationResponse
+from app.agents.communication_drafter import CommunicationDrafterAgent
+from app.schemas.insights import InsightsRequest, InsightsResponse
+from app.agents.insights_agent import InsightsAgent
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 jd_agent = JdGeneratorAgent()
+feedback_summarizer = FeedbackSummarizerAgent()
+candidate_scorer = CandidateScorerAgent()
+communication_drafter = CommunicationDrafterAgent()
+insights_agent = InsightsAgent()
 
 
 @asynccontextmanager
@@ -45,4 +59,52 @@ async def generate_jd(
     logger.info(f"Generating JD for: {request.hiringPlan.title}")
     result = await jd_agent.generate(request)
     logger.info(f"JD generated successfully for: {request.hiringPlan.title}")
+    return result
+
+
+@app.post("/ai/summarize-feedback", response_model=FeedbackSummaryResponse)
+async def summarize_feedback(
+    request: SummarizeFeedbackRequest,
+    _api_key: str = Depends(verify_internal_api_key),
+):
+    """Summarize interview feedback using AI."""
+    logger.info(f"Summarizing feedback for: {request.applicationContext.candidateName}")
+    result = await feedback_summarizer.summarize(request)
+    logger.info(f"Feedback summary generated for: {request.applicationContext.candidateName}")
+    return result
+
+
+@app.post("/ai/score-candidate", response_model=ScoreCandidateResponse)
+async def score_candidate(
+    request: ScoreCandidateRequest,
+    _api_key: str = Depends(verify_internal_api_key),
+):
+    """Score a candidate using weighted feedback analysis and AI adjustment."""
+    logger.info(f"Scoring candidate: {request.applicationContext.candidateName}")
+    result = await candidate_scorer.score(request)
+    logger.info(f"Score generated for: {request.applicationContext.candidateName} — {result.score}")
+    return result
+
+
+@app.post("/ai/draft-communication", response_model=DraftCommunicationResponse)
+async def draft_communication(
+    request: DraftCommunicationRequest,
+    _api_key: str = Depends(verify_internal_api_key),
+):
+    """Draft a selection or rejection communication email."""
+    logger.info(f"Drafting {request.decision} communication for: {request.candidate.name}")
+    result = await communication_drafter.draft(request)
+    logger.info(f"Communication drafted for: {request.candidate.name}")
+    return result
+
+
+@app.post("/ai/dashboard-insights", response_model=InsightsResponse)
+async def dashboard_insights(
+    request: InsightsRequest,
+    _api_key: str = Depends(verify_internal_api_key),
+):
+    """Generate AI-powered hiring insights from analytics data."""
+    logger.info(f"Generating insights for: {request.companyName}")
+    result = await insights_agent.analyze(request)
+    logger.info(f"Generated {len(result.insights)} insights for: {request.companyName}")
     return result

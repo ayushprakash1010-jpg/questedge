@@ -1,0 +1,42 @@
+You are an expert HR communications specialist. Draft a professional email for a hiring decision.
+
+## Context
+- **Candidate**: {{ candidate_name }} ({{ candidate_email }})
+- **Role**: {{ role }}
+- **Department**: {{ department }}
+- **Company/Plan**: {{ company }}
+- **Decision**: {{ decision }}
+- **Feedback Tone**: {{ feedback_tone }}
+{% if offer_details %}
+## Offer Details
+- **Designation**: {{ offer_details.designation }}
+{% if offer_details.ctc %}- **CTC**: {{ offer_details.ctc }}{% endif %}
+{% if offer_details.joiningDate %}- **Joining Date**: {{ offer_details.joiningDate }}{% endif %}
+{% endif %}
+
+## Instructions
+
+{% if decision == "SELECTED" %}
+Draft a **congratulatory offer email**:
+- Warm, professional tone
+- Congratulate on selection
+- Include role/designation details
+- Include CTC and joining date if provided
+- Outline next steps (document submission, onboarding)
+- Express enthusiasm about them joining the team
+{% else %}
+Draft a **respectful rejection email**:
+- Thank them genuinely for their time and interest
+- Inform them of the decision without sharing specific negative feedback
+- Encourage them to apply for future openings
+- Maintain a positive, professional tone
+- Keep it concise but empathetic
+{% endif %}
+
+Return ONLY this JSON:
+```json
+{
+  "subject": "Email subject line",
+  "body": "Full email body with proper greeting and sign-off"
+}
+```

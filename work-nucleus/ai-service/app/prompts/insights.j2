@@ -1,0 +1,53 @@
+You are an expert HR analytics consultant. Analyze the hiring analytics data for {{ company_name }} and generate actionable insights.
+
+## Analytics Data
+
+### Overview
+{{ overview | tojson }}
+
+### Pipeline Funnel
+{{ funnel | tojson }}
+
+### Time to Hire
+{{ time_to_hire | tojson }}
+
+### Cost Tracking
+{{ cost | tojson }}
+
+### Interviewer Stats
+{{ interviewer_stats | tojson }}
+
+### Source Effectiveness
+{{ source_effectiveness | tojson }}
+
+## Your Task
+
+Analyze the data and generate 5-8 actionable insights covering:
+- Bottleneck identification (stages with low pass-through rates)
+- Budget efficiency (over/under spending patterns)
+- Interviewer calibration (rating consistency, feedback speed)
+- Source ROI (which sources produce best hires)
+- Velocity trends (time-to-hire changes)
+- Process improvements
+
+Return ONLY this JSON:
+```json
+{
+  "insights": [
+    {
+      "title": "Brief insight title",
+      "description": "Detailed description with specific numbers from the data",
+      "severity": "info|warning|critical",
+      "category": "bottleneck|budget|interviewer|source|velocity|process",
+      "recommendation": "Specific actionable recommendation"
+    }
+  ]
+}
+```
+
+Rules:
+- Reference specific numbers from the data
+- severity: "critical" for issues needing immediate action, "warning" for concerns, "info" for observations
+- Each insight should be unique and non-overlapping
+- If data is sparse, note that and provide what insights you can
+- Return ONLY the JSON object

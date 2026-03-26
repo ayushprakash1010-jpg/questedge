@@ -1,10 +1,11 @@
 "use client";
 
 import { useUser } from "@auth0/nextjs-auth0/client";
-import { Bell, Search, LogOut, User, Settings } from "lucide-react";
+import { LogOut, User, Settings } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect } from "react";
+import { NotificationBell } from "@/components/notification-bell";
+import { GlobalSearch } from "@/components/global-search";
 
 export function TopBar() {
   const { user } = useUser();
@@ -32,19 +33,10 @@ export function TopBar() {
 
   return (
     <header className="flex h-16 items-center justify-between border-b bg-card px-6">
-      <div className="flex items-center gap-2">
-        <Search className="h-4 w-4 text-muted-foreground" />
-        <input
-          type="text"
-          placeholder="Search..."
-          className="bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-        />
-      </div>
+      <GlobalSearch />
 
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon">
-          <Bell className="h-5 w-5" />
-        </Button>
+      <div className="flex items-center gap-3">
+        <NotificationBell />
 
         <div className="relative" ref={menuRef}>
           <button
@@ -69,10 +61,10 @@ export function TopBar() {
                 <User className="h-4 w-4" /> Profile
               </a>
               <a
-                href="/settings"
+                href="/admin"
                 className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-accent"
               >
-                <Settings className="h-4 w-4" /> Settings
+                <Settings className="h-4 w-4" /> Admin
               </a>
               <hr className="my-1" />
               <a

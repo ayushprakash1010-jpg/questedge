@@ -74,6 +74,26 @@ enum StageOutcome {
   SKIPPED
 }
 
+enum Recommendation {
+  STRONG_YES
+  YES
+  NEUTRAL
+  NO
+  STRONG_NO
+}
+
+enum DecisionType {
+  SELECTED
+  REJECTED
+}
+
+enum TrainingCategory {
+  JD_FORMAT
+  INTERVIEWING_SKILLS
+  FEEDBACK_GUIDELINES
+  HIRING_PROCESS
+}
+
 model Organization {
   id        String   @id @default(uuid()) @db.Uuid
   name      String
@@ -81,9 +101,13 @@ model Organization {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users       User[]
-  hiringPlans HiringPlan[]
-  candidates  Candidate[]
+  users            User[]
+  hiringPlans      HiringPlan[]
+  candidates       Candidate[]
+  trainingModules  TrainingModule[]
+  notifications    Notification[]
+  auditLogs        AuditLog[]
+  settings         OrgSettings?
 
   @@map("organizations")
 }
@@ -107,6 +131,12 @@ model User {
   createdJobDescriptions  JobDescription[] @relation("JdCreator")
   approvedJobDescriptions JobDescription[] @relation("JdApprover")
   stageAssignments        PipelineStageInterviewer[]
+  interviewFeedbacks      InterviewFeedback[]
+  decisionsDecided        SelectionDecision[]  @relation("DecisionDecider")
+  decisionsApproved       SelectionDecision[]  @relation("DecisionApprover")
+  trainingCompletions     TrainingCompletion[]
+  notifications           Notification[]
+  auditLogs               AuditLog[]
 
   @@index([orgId])
   @@index([auth0Sub])
@@ -121,7 +151,8 @@ model Skill {
   isGlobal  Boolean       @default(false) @map("is_global")
   createdAt DateTime      @default(now())
 
-  hiringPlanSkills HiringPlanSkill[]
+  hiringPlanSkills    HiringPlanSkill[]
+  feedbackRatings     FeedbackSkillRating[]
 
   @@map("skills")
 }
@@ -221,6 +252,7 @@ model PipelineStage {
   interviewers PipelineStageInterviewer[]
   applications CandidateApplication[]    @relation("CurrentStage")
   stageHistory CandidateStageHistory[]
+  feedbacks    InterviewFeedback[]
 
   @@index([hiringPlanId])
   @@map("pipeline_stages")
@@ -282,6 +314,8 @@ model CandidateApplication {
   hiringPlan   HiringPlan              @relation(fields: [hiringPlanId], references: [id], onDelete: Cascade)
   currentStage PipelineStage?          @relation("CurrentStage", fields: [currentStageId], references: [id])
   stageHistory CandidateStageHistory[]
+  feedbacks    InterviewFeedback[]
+  decision     SelectionDecision?
 
   @@unique([candidateId, hiringPlanId])
   @@index([hiringPlanId])
@@ -302,4 +336,154 @@ model CandidateStageHistory {
 
   @@index([applicationId])
   @@map("candidate_stage_history")
+}
+
+model InterviewFeedback {
+  id               String         @id @default(uuid()) @db.Uuid
+  applicationId    String         @map("application_id") @db.Uuid
+  stageId          String         @map("stage_id") @db.Uuid
+  interviewerId    String         @map("interviewer_id") @db.Uuid
+  overallRating    Int            @map("overall_rating")
+  recommendation   Recommendation
+  qualitativeNotes String?        @map("qualitative_notes")
+  strengths        String?
+  concerns         String?
+  durationMinutes  Int?           @map("duration_minutes")
+  isSubmitted      Boolean        @default(false) @map("is_submitted")
+  submittedAt      DateTime?      @map("submitted_at")
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  application  CandidateApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  stage        PipelineStage        @relation(fields: [stageId], references: [id])
+  interviewer  User                 @relation(fields: [interviewerId], references: [id])
+  skillRatings FeedbackSkillRating[]
+
+  @@unique([applicationId, stageId, interviewerId])
+  @@index([applicationId])
+  @@index([interviewerId])
+  @@map("interview_feedbacks")
+}
+
+model FeedbackSkillRating {
+  id         String  @id @default(uuid()) @db.Uuid
+  feedbackId String  @map("feedback_id") @db.Uuid
+  skillId    String  @map("skill_id") @db.Uuid
+  rating     Int
+  notes      String?
+
+  feedback InterviewFeedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  skill    Skill             @relation(fields: [skillId], references: [id])
+
+  @@unique([feedbackId, skillId])
+  @@map("feedback_skill_ratings")
+}
+
+model SelectionDecision {
+  id                  String       @id @default(uuid()) @db.Uuid
+  applicationId       String       @unique @map("application_id") @db.Uuid
+  decision            DecisionType
+  decidedById         String       @map("decided_by_id") @db.Uuid
+  decisionNotes       String?      @map("decision_notes")
+  approvedById        String?      @map("approved_by_id") @db.Uuid
+  approvedAt          DateTime?    @map("approved_at")
+  offerCtc            Decimal?     @map("offer_ctc") @db.Decimal(12, 2)
+  offerDesignation    String?      @map("offer_designation")
+  joiningDate         DateTime?    @map("joining_date")
+  communicationDraft  Json?        @map("communication_draft")
+  communicationSent   Boolean      @default(false) @map("communication_sent")
+  communicationSentAt DateTime?    @map("communication_sent_at")
+  createdAt           DateTime     @default(now())
+
+  application CandidateApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  decidedBy   User                 @relation("DecisionDecider", fields: [decidedById], references: [id])
+  approvedBy  User?                @relation("DecisionApprover", fields: [approvedById], references: [id])
+
+  @@index([applicationId])
+  @@map("selection_decisions")
+}
+
+model TrainingModule {
+  id               String           @id @default(uuid()) @db.Uuid
+  orgId            String           @db.Uuid
+  title            String
+  contentMarkdown  String           @map("content_markdown")
+  category         TrainingCategory
+  isDefault        Boolean          @default(false) @map("is_default")
+  estimatedMinutes Int?             @map("estimated_minutes")
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  organization Organization         @relation(fields: [orgId], references: [id])
+  completions  TrainingCompletion[]
+
+  @@index([orgId])
+  @@map("training_modules")
+}
+
+model TrainingCompletion {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  moduleId    String   @map("module_id") @db.Uuid
+  completedAt DateTime @default(now()) @map("completed_at")
+
+  user   User           @relation(fields: [userId], references: [id])
+  module TrainingModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, moduleId])
+  @@map("training_completions")
+}
+
+model Notification {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  orgId      String   @db.Uuid
+  type       String
+  title      String
+  body       String
+  read       Boolean  @default(false)
+  entityType String?  @map("entity_type")
+  entityId   String?  @map("entity_id")
+  actionUrl  String?  @map("action_url")
+  createdAt  DateTime @default(now())
+
+  user         User         @relation(fields: [userId], references: [id])
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@index([userId, read])
+  @@index([orgId])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  orgId      String   @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String?  @map("entity_id")
+  changes    Json?
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now())
+
+  user         User         @relation(fields: [userId], references: [id])
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@index([orgId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model OrgSettings {
+  id       String   @id @default(uuid()) @db.Uuid
+  orgId    String   @unique @db.Uuid
+  settings Json     @default("{}")
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@map("org_settings")
 }

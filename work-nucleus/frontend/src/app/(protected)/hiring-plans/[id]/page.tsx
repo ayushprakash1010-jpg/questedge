@@ -19,6 +19,9 @@ import {
   Kanban,
   MessageSquare,
   BarChart3,
+  Award,
+  Mail,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { JdTab } from "@/components/hiring-plans/jd-tab";
@@ -195,6 +198,10 @@ export default function HiringPlanDetailPage() {
           <TabsTrigger value="feedback">
             <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
             Feedback
+          </TabsTrigger>
+          <TabsTrigger value="decisions">
+            <Award className="mr-1.5 h-3.5 w-3.5" />
+            Decisions
           </TabsTrigger>
           <TabsTrigger value="analytics">
             <BarChart3 className="mr-1.5 h-3.5 w-3.5" />
@@ -417,16 +424,25 @@ export default function HiringPlanDetailPage() {
 
         <TabsContent value="feedback">
           <Card className="border-slate-200">
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <MessageSquare className="h-12 w-12 text-slate-300" />
-              <h3 className="mt-4 text-lg font-semibold text-slate-900">
-                Feedback
-              </h3>
-              <p className="mt-1 text-sm text-slate-500">
-                Coming soon — Interview feedback and scoring
-              </p>
+            <CardContent className="py-8">
+              <div className="flex flex-col items-center justify-center">
+                <MessageSquare className="h-10 w-10 text-indigo-300" />
+                <h3 className="mt-3 text-base font-semibold text-slate-900">
+                  Interview Feedback
+                </h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Select a candidate from the Pipeline tab to view or submit feedback.
+                </p>
+                <p className="mt-2 text-xs text-slate-400">
+                  Feedback can be submitted per-candidate via the candidate detail sheet.
+                </p>
+              </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="decisions">
+          <DecisionsTab planId={plan.id} filledRoles={plan.filledRoles} totalRoles={plan.totalRoles} />
         </TabsContent>
 
         <TabsContent value="analytics">
@@ -452,6 +468,138 @@ function DetailField({ label, value }: { label: string; value?: string | null })
     <div>
       <p className="text-sm text-slate-500">{label}</p>
       <p className="text-sm font-medium text-slate-900">{value || "N/A"}</p>
+    </div>
+  );
+}
+
+function DecisionsTab({
+  planId,
+  filledRoles,
+  totalRoles,
+}: {
+  planId: string;
+  filledRoles: number;
+  totalRoles: number;
+}) {
+  const [decisions, setDecisions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetch_() {
+      try {
+        const res = await fetch(`/api/hiring-plans/${planId}/decisions`);
+        if (res.ok) {
+          const data = await res.json();
+          setDecisions(Array.isArray(data) ? data : []);
+        }
+      } catch {
+        // ignore
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetch_();
+  }, [planId]);
+
+  if (loading) {
+    return (
+      <div className="flex h-32 items-center justify-center">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Progress Header */}
+      <Card className="border-slate-200">
+        <CardContent className="py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-slate-700">Roles Filled</p>
+              <p className="text-xs text-slate-500">
+                {filledRoles} of {totalRoles} roles filled
+              </p>
+            </div>
+            <span className="text-2xl font-bold text-indigo-600">
+              {filledRoles}/{totalRoles}
+            </span>
+          </div>
+          <Progress value={filledRoles} max={totalRoles} className="mt-3" />
+        </CardContent>
+      </Card>
+
+      {/* Decisions Table */}
+      <Card className="border-slate-200">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Award className="h-4 w-4 text-indigo-600" />
+            Decisions ({decisions.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {decisions.length === 0 ? (
+            <p className="text-sm text-slate-400">No decisions made yet</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 text-left text-xs text-slate-500">
+                    <th className="pb-2 font-medium">Candidate</th>
+                    <th className="pb-2 font-medium">Decision</th>
+                    <th className="pb-2 font-medium">By</th>
+                    <th className="pb-2 font-medium">Date</th>
+                    <th className="pb-2 font-medium">Offer CTC</th>
+                    <th className="pb-2 font-medium">Communication</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {decisions.map((d: any) => (
+                    <tr key={d.id} className="border-b border-slate-50">
+                      <td className="py-2.5 font-medium text-slate-900">
+                        {d.application?.candidate?.name || "—"}
+                      </td>
+                      <td className="py-2.5">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-xs",
+                            d.decision === "SELECTED"
+                              ? "bg-green-50 text-green-700 border-green-200"
+                              : "bg-red-50 text-red-700 border-red-200"
+                          )}
+                        >
+                          {d.decision}
+                        </Badge>
+                      </td>
+                      <td className="py-2.5 text-slate-600">{d.decidedBy?.name || "—"}</td>
+                      <td className="py-2.5 text-slate-600">
+                        {new Date(d.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-2.5 text-slate-600">
+                        {d.offerCtc ? `₹${Number(d.offerCtc).toLocaleString()}` : "—"}
+                      </td>
+                      <td className="py-2.5">
+                        {d.communicationSent ? (
+                          <span className="flex items-center gap-1 text-xs text-green-600">
+                            <Check className="h-3 w-3" /> Sent
+                          </span>
+                        ) : d.communicationDraft ? (
+                          <span className="flex items-center gap-1 text-xs text-amber-600">
+                            <Mail className="h-3 w-3" /> Draft
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-400">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
