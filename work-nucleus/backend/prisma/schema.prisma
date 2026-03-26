@@ -13,6 +13,8 @@ enum Role {
   HIRING_MANAGER
   INTERVIEWER
   VIEWER
+  SUPPORT_REP
+  SUPPORT_ADMIN
 }
 
 enum SkillCategory {
@@ -94,6 +96,47 @@ enum TrainingCategory {
   HIRING_PROCESS
 }
 
+// ── Support Portal Enums ────────────────────────────────────────
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_ON_CLIENT
+  ESCALATED
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TicketCategory {
+  TECHNICAL
+  BILLING
+  FEATURE_REQUEST
+  BUG_REPORT
+  ONBOARDING
+  GENERAL
+}
+
+enum EscalationLevel {
+  L1
+  L2
+  L3
+  MANAGEMENT
+}
+
+enum SessionType {
+  SHADOW
+  IMPERSONATE
+}
+
+// ── Core Models ─────────────────────────────────────────────────
+
 model Organization {
   id        String   @id @default(uuid()) @db.Uuid
   name      String
@@ -108,6 +151,9 @@ model Organization {
   notifications    Notification[]
   auditLogs        AuditLog[]
   settings         OrgSettings?
+  healthMetrics    OrgHealthMetric[]
+  supportTickets   SupportTicket[]
+  supportSessions  SupportSession[]
 
   @@map("organizations")
 }
@@ -137,6 +183,11 @@ model User {
   trainingCompletions     TrainingCompletion[]
   notifications           Notification[]
   auditLogs               AuditLog[]
+  assignedTickets         SupportTicket[]      @relation("TicketAssignee")
+  supportNotes            SupportNote[]        @relation("NoteAuthor")
+  escalationsCreated      SupportEscalation[]  @relation("EscalationCreator")
+  supportSessions         SupportSession[]     @relation("SupportSessionUser")
+  targetedBySessions      SupportSession[]     @relation("SupportSessionTarget")
 
   @@index([orgId])
   @@index([auth0Sub])
@@ -486,4 +537,111 @@ model OrgSettings {
   organization Organization @relation(fields: [orgId], references: [id])
 
   @@map("org_settings")
+}
+
+// ── Support Portal Models ───────────────────────────────────────
+
+model OrgHealthMetric {
+  id              String   @id @default(uuid()) @db.Uuid
+  orgId           String   @db.Uuid
+  metricDate      DateTime @map("metric_date")
+  activeUsers     Int      @map("active_users")
+  hiringPlanCount Int      @map("hiring_plan_count")
+  openRoles       Int      @map("open_roles")
+  fillRate        Decimal  @map("fill_rate") @db.Decimal(5, 2)
+  avgTimeToHire   Int?     @map("avg_time_to_hire")
+  healthScore     Int      @map("health_score")
+  riskFlags       Json     @default("[]") @map("risk_flags")
+  createdAt       DateTime @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, metricDate])
+  @@index([orgId])
+  @@index([metricDate])
+  @@map("org_health_metrics")
+}
+
+model SupportTicket {
+  id              String         @id @default(uuid()) @db.Uuid
+  orgId           String         @db.Uuid
+  title           String
+  description     String
+  status          TicketStatus   @default(OPEN)
+  priority        TicketPriority @default(MEDIUM)
+  category        TicketCategory @default(GENERAL)
+  assigneeId      String?        @map("assignee_id") @db.Uuid
+  reportedBy      String         @map("reported_by")
+  slaDeadline     DateTime?      @map("sla_deadline")
+  firstResponseAt DateTime?      @map("first_response_at")
+  resolvedAt      DateTime?      @map("resolved_at")
+  closedAt        DateTime?      @map("closed_at")
+  tags            Json           @default("[]")
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  organization Organization      @relation(fields: [orgId], references: [id])
+  assignee     User?             @relation("TicketAssignee", fields: [assigneeId], references: [id])
+  notes        SupportNote[]
+  escalations  SupportEscalation[]
+
+  @@index([orgId])
+  @@index([status])
+  @@index([assigneeId])
+  @@index([priority])
+  @@index([slaDeadline])
+  @@map("support_tickets")
+}
+
+model SupportNote {
+  id         String   @id @default(uuid()) @db.Uuid
+  ticketId   String   @map("ticket_id") @db.Uuid
+  authorId   String   @map("author_id") @db.Uuid
+  content    String
+  isInternal Boolean  @default(true) @map("is_internal")
+  createdAt  DateTime @default(now())
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User          @relation("NoteAuthor", fields: [authorId], references: [id])
+
+  @@index([ticketId])
+  @@map("support_notes")
+}
+
+model SupportEscalation {
+  id            String          @id @default(uuid()) @db.Uuid
+  ticketId      String          @map("ticket_id") @db.Uuid
+  level         EscalationLevel
+  reason        String
+  escalatedById String          @map("escalated_by_id") @db.Uuid
+  resolvedAt    DateTime?       @map("resolved_at")
+  createdAt     DateTime        @default(now())
+
+  ticket      SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  escalatedBy User          @relation("EscalationCreator", fields: [escalatedById], references: [id])
+
+  @@index([ticketId])
+  @@map("support_escalations")
+}
+
+model SupportSession {
+  id            String      @id @default(uuid()) @db.Uuid
+  supportUserId String      @map("support_user_id") @db.Uuid
+  targetOrgId   String      @map("target_org_id") @db.Uuid
+  targetUserId  String?     @map("target_user_id") @db.Uuid
+  sessionType   SessionType @map("session_type")
+  reason        String
+  startedAt     DateTime    @default(now()) @map("started_at")
+  endedAt       DateTime?   @map("ended_at")
+  actionsLog    Json        @default("[]") @map("actions_log")
+  ipAddress     String?     @map("ip_address")
+
+  supportUser User         @relation("SupportSessionUser", fields: [supportUserId], references: [id])
+  targetOrg   Organization @relation(fields: [targetOrgId], references: [id])
+  targetUser  User?        @relation("SupportSessionTarget", fields: [targetUserId], references: [id])
+
+  @@index([supportUserId])
+  @@index([targetOrgId])
+  @@index([startedAt])
+  @@map("support_sessions")
 }

@@ -19,6 +19,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { AuditModule } from './modules/audit/audit.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { SearchModule } from './modules/search/search.module';
+import { SupportModule } from './modules/support/support.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 
@@ -44,6 +45,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
     AuditModule,
     SettingsModule,
     SearchModule,
+    SupportModule,
     HealthModule,
   ],
   providers: [
