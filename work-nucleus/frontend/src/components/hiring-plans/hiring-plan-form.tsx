@@ -127,9 +127,28 @@ export function HiringPlanForm({ initialData, planId }: HiringPlanFormProps) {
   const [userSearch, setUserSearch] = useState("");
   const [userResults, setUserResults] = useState<User[]>([]);
   const [selectedManager, setSelectedManager] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   // Benefits tag input
   const [benefitInput, setBenefitInput] = useState("");
+
+  // Fetch current user profile for "Assign to me" option
+  useEffect(() => {
+    async function fetchProfile() {
+      try {
+        const res = await fetch("/api/profile");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.isProvisioned && data.id) {
+            setCurrentUser({ id: data.id, name: data.name || "Me", email: data.email });
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+    fetchProfile();
+  }, []);
 
   const updateField = <K extends keyof HiringPlanFormData>(
     key: K,
@@ -502,6 +521,20 @@ export function HiringPlanForm({ initialData, planId }: HiringPlanFormProps) {
                           </button>
                         ))}
                       </div>
+                    )}
+                    {currentUser && (
+                      <button
+                        type="button"
+                        className="mt-2 text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                        onClick={() => {
+                          setSelectedManager(currentUser);
+                          updateField("hiringManagerId", currentUser.id);
+                          setUserSearch("");
+                          setUserResults([]);
+                        }}
+                      >
+                        Assign to me ({currentUser.name})
+                      </button>
                     )}
                   </>
                 )}

@@ -35,6 +35,45 @@ enum SkillPriority {
   NICE_TO_HAVE
 }
 
+enum JdStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  PUBLISHED
+}
+
+enum StageType {
+  SCREENING
+  TECHNICAL
+  HR
+  LEADERSHIP
+  CULTURAL
+  OFFER
+  CUSTOM
+}
+
+enum CandidateSource {
+  REFERRAL
+  JOB_BOARD
+  DIRECT
+  AGENCY
+  INTERNAL
+}
+
+enum ApplicationStatus {
+  ACTIVE
+  SELECTED
+  REJECTED
+  ON_HOLD
+  WITHDRAWN
+}
+
+enum StageOutcome {
+  PASSED
+  REJECTED
+  SKIPPED
+}
+
 model Organization {
   id        String   @id @default(uuid()) @db.Uuid
   name      String
@@ -44,6 +83,7 @@ model Organization {
 
   users       User[]
   hiringPlans HiringPlan[]
+  candidates  Candidate[]
 
   @@map("organizations")
 }
@@ -64,6 +104,9 @@ model User {
 
   managedHiringPlans HiringPlan[] @relation("HiringManager")
   createdHiringPlans HiringPlan[] @relation("PlanCreator")
+  createdJobDescriptions  JobDescription[] @relation("JdCreator")
+  approvedJobDescriptions JobDescription[] @relation("JdApprover")
+  stageAssignments        PipelineStageInterviewer[]
 
   @@index([orgId])
   @@index([auth0Sub])
@@ -112,7 +155,10 @@ model HiringPlan {
   organization   Organization      @relation(fields: [orgId], references: [id])
   hiringManager  User              @relation("HiringManager", fields: [hiringManagerId], references: [id])
   createdBy      User              @relation("PlanCreator", fields: [createdById], references: [id])
-  skills         HiringPlanSkill[]
+  skills           HiringPlanSkill[]
+  jobDescriptions  JobDescription[]
+  pipelineStages   PipelineStage[]
+  applications     CandidateApplication[]
 
   @@index([orgId])
   @@index([status])
@@ -132,4 +178,128 @@ model HiringPlanSkill {
 
   @@unique([hiringPlanId, skillId])
   @@map("hiring_plan_skills")
+}
+
+model JobDescription {
+  id                   String   @id @default(uuid()) @db.Uuid
+  hiringPlanId         String   @map("hiring_plan_id") @db.Uuid
+  version              Int      @default(1)
+  content              Json     @default("{}")
+  fitmentMapping       Json     @default("{}") @map("fitment_mapping")
+  evaluationParameters Json     @default("{}") @map("evaluation_parameters")
+  generatedByAi        Boolean  @default(true) @map("generated_by_ai")
+  aiPromptUsed         String?  @map("ai_prompt_used")
+  status               JdStatus @default(DRAFT)
+  createdById          String   @map("created_by_id") @db.Uuid
+  approvedById         String?  @map("approved_by_id") @db.Uuid
+  approvedAt           DateTime? @map("approved_at")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  hiringPlan HiringPlan @relation(fields: [hiringPlanId], references: [id], onDelete: Cascade)
+  createdBy  User       @relation("JdCreator", fields: [createdById], references: [id])
+  approvedBy User?      @relation("JdApprover", fields: [approvedById], references: [id])
+
+  @@index([hiringPlanId])
+  @@index([status])
+  @@map("job_descriptions")
+}
+
+model PipelineStage {
+  id               String    @id @default(uuid()) @db.Uuid
+  hiringPlanId     String    @map("hiring_plan_id") @db.Uuid
+  name             String
+  stageOrder       Int       @map("stage_order")
+  stageType        StageType @map("stage_type")
+  maxDurationDays  Int?      @map("max_duration_days")
+  skillsToEvaluate Json      @default("[]") @map("skills_to_evaluate")
+  description      String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  hiringPlan   HiringPlan                @relation(fields: [hiringPlanId], references: [id], onDelete: Cascade)
+  interviewers PipelineStageInterviewer[]
+  applications CandidateApplication[]    @relation("CurrentStage")
+  stageHistory CandidateStageHistory[]
+
+  @@index([hiringPlanId])
+  @@map("pipeline_stages")
+}
+
+model PipelineStageInterviewer {
+  id          String  @id @default(uuid()) @db.Uuid
+  stageId     String  @map("stage_id") @db.Uuid
+  userId      String  @map("user_id") @db.Uuid
+  isMandatory Boolean @default(false) @map("is_mandatory")
+
+  stage PipelineStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  user  User          @relation(fields: [userId], references: [id])
+
+  @@unique([stageId, userId])
+  @@map("pipeline_stage_interviewers")
+}
+
+model Candidate {
+  id              String          @id @default(uuid()) @db.Uuid
+  orgId           String          @db.Uuid
+  name            String
+  email           String
+  phone           String?
+  resumeUrl       String?         @map("resume_url")
+  source          CandidateSource
+  currentCompany  String?         @map("current_company")
+  currentRole     String?         @map("current_role")
+  experienceYears Decimal?        @map("experience_years") @db.Decimal(4, 1)
+  expectedCtc     Decimal?        @map("expected_ctc") @db.Decimal(12, 2)
+  noticePeriodDays Int?           @map("notice_period_days")
+  notes           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  organization Organization           @relation(fields: [orgId], references: [id])
+  applications CandidateApplication[]
+
+  @@unique([orgId, email])
+  @@index([orgId])
+  @@map("candidates")
+}
+
+model CandidateApplication {
+  id              String            @id @default(uuid()) @db.Uuid
+  candidateId     String            @map("candidate_id") @db.Uuid
+  hiringPlanId    String            @map("hiring_plan_id") @db.Uuid
+  currentStageId  String?           @map("current_stage_id") @db.Uuid
+  status          ApplicationStatus @default(ACTIVE)
+  appliedAt       DateTime          @default(now()) @map("applied_at")
+  stageEnteredAt  DateTime          @default(now()) @map("stage_entered_at")
+  completedAt     DateTime?         @map("completed_at")
+  rejectionReason String?           @map("rejection_reason")
+  selectionNotes  String?           @map("selection_notes")
+  totalScore      Decimal?          @map("total_score") @db.Decimal(5, 2)
+  aiSummary       String?           @map("ai_summary")
+
+  candidate    Candidate               @relation(fields: [candidateId], references: [id])
+  hiringPlan   HiringPlan              @relation(fields: [hiringPlanId], references: [id], onDelete: Cascade)
+  currentStage PipelineStage?          @relation("CurrentStage", fields: [currentStageId], references: [id])
+  stageHistory CandidateStageHistory[]
+
+  @@unique([candidateId, hiringPlanId])
+  @@index([hiringPlanId])
+  @@index([currentStageId])
+  @@map("candidate_applications")
+}
+
+model CandidateStageHistory {
+  id            String        @id @default(uuid()) @db.Uuid
+  applicationId String        @map("application_id") @db.Uuid
+  stageId       String        @map("stage_id") @db.Uuid
+  enteredAt     DateTime      @default(now()) @map("entered_at")
+  exitedAt      DateTime?     @map("exited_at")
+  outcome       StageOutcome?
+
+  application CandidateApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  stage       PipelineStage        @relation(fields: [stageId], references: [id])
+
+  @@index([applicationId])
+  @@map("candidate_stage_history")
 }

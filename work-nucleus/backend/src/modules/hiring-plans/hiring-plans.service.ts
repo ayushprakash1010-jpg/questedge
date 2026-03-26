@@ -12,8 +12,8 @@ export class HiringPlansService {
   async create(orgId: string, userId: string, dto: CreateHiringPlanDto) {
     const { skills, ...planData } = dto;
 
-    return this.prisma.$transaction(async (tx) => {
-      const plan = await tx.hiringPlan.create({
+    const plan = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.hiringPlan.create({
         data: {
           ...planData,
           budgetMin: new Prisma.Decimal(planData.budgetMin),
@@ -27,7 +27,7 @@ export class HiringPlansService {
       if (skills?.length) {
         await tx.hiringPlanSkill.createMany({
           data: skills.map((s) => ({
-            hiringPlanId: plan.id,
+            hiringPlanId: created.id,
             skillId: s.skillId,
             priority: s.priority,
             minProficiency: s.minProficiency,
@@ -35,8 +35,10 @@ export class HiringPlansService {
         });
       }
 
-      return this.findOne(orgId, plan.id);
+      return created;
     });
+
+    return this.findOne(orgId, plan.id);
   }
 
   async findAll(orgId: string, query: QueryHiringPlansDto) {
@@ -94,10 +96,9 @@ export class HiringPlansService {
     await this.findOne(orgId, id);
     const { skills, ...planData } = dto;
 
-    return this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx) => {
       const updateData: Prisma.HiringPlanUpdateInput = {};
 
-      // Only set fields that are present in the DTO
       if (planData.title !== undefined) updateData.title = planData.title;
       if (planData.industry !== undefined) updateData.industry = planData.industry;
       if (planData.department !== undefined) updateData.department = planData.department;
@@ -136,9 +137,9 @@ export class HiringPlansService {
           });
         }
       }
-
-      return this.findOne(orgId, id);
     });
+
+    return this.findOne(orgId, id);
   }
 
   async remove(orgId: string, id: string) {
@@ -152,8 +153,8 @@ export class HiringPlansService {
   async clone(orgId: string, id: string, userId: string) {
     const plan = await this.findOne(orgId, id);
 
-    return this.prisma.$transaction(async (tx) => {
-      const newPlan = await tx.hiringPlan.create({
+    const newPlan = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.hiringPlan.create({
         data: {
           orgId,
           title: `${plan.title} (Copy)`,
@@ -182,7 +183,7 @@ export class HiringPlansService {
       if (plan.skills.length) {
         await tx.hiringPlanSkill.createMany({
           data: plan.skills.map((s) => ({
-            hiringPlanId: newPlan.id,
+            hiringPlanId: created.id,
             skillId: s.skillId,
             priority: s.priority,
             minProficiency: s.minProficiency,
@@ -190,8 +191,10 @@ export class HiringPlansService {
         });
       }
 
-      return this.findOne(orgId, newPlan.id);
+      return created;
     });
+
+    return this.findOne(orgId, newPlan.id);
   }
 
   async getStats(orgId: string) {

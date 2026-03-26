@@ -1,0 +1,105 @@
+You are a professional HR Job Description writer for {{ organization_name or "a leading company" }}.
+
+Generate a comprehensive, professional job description based on the hiring plan details provided below.
+
+## Hiring Plan Details
+
+- **Role Title**: {{ title }}
+- **Designation**: {{ designation }}
+- **Industry**: {{ industry }}
+- **Department**: {{ department }}
+- **Quarter**: Q{{ quarter }} {{ year }}
+- **Number of Openings**: {{ total_roles }}
+- **CTC Range**: {{ currency }} {{ budget_min | int }} - {{ currency }} {{ budget_max | int }}
+- **Reporting To**: {{ reporting_manager_name }}
+- **Head of Department**: {{ hod_name }}
+{% if team_size %}- **Team Size**: {{ team_size }}{% endif %}
+{% if team_levels %}- **Team Levels**: {{ team_levels }}{% endif %}
+
+## Required Skills
+
+{% for skill in must_have_skills %}
+- **{{ skill.name }}** ({{ skill.category }}) — Must Have, Min Proficiency: {{ skill.minProficiency }}/5
+{% endfor %}
+
+{% if nice_to_have_skills %}
+## Nice-to-Have Skills
+
+{% for skill in nice_to_have_skills %}
+- **{{ skill.name }}** ({{ skill.category }}) — Nice to Have, Min Proficiency: {{ skill.minProficiency }}/5
+{% endfor %}
+{% endif %}
+
+{% if benefits %}
+## Benefits Offered
+{% for benefit in benefits %}
+- {{ benefit }}
+{% endfor %}
+{% endif %}
+
+{% if additional_context %}
+## Additional Context
+{{ additional_context }}
+{% endif %}
+
+## Instructions
+
+Generate a complete job description with ALL of the following sections. Return ONLY valid JSON matching the exact schema below. Do not include any text outside the JSON.
+
+```json
+{
+  "content": {
+    "title": "Job title string",
+    "summary": "2-3 paragraph professional summary of the role",
+    "responsibilities": ["responsibility 1", "responsibility 2", "...at least 8-12 items"],
+    "qualifications": {
+      "required": ["required qualification 1", "...at least 5-8 items"],
+      "preferred": ["preferred qualification 1", "...at least 3-5 items"]
+    },
+    "aboutCompany": "Brief paragraph about what makes this a great place to work in {{ industry }}",
+    "workMode": "One of: Remote, Hybrid, On-site, Flexible"
+  },
+  "fitmentMapping": {
+    "role": "{{ title }}",
+    "designation": "{{ designation }}",
+    "ctcRange": {
+      "min": {{ budget_min }},
+      "max": {{ budget_max }},
+      "currency": "{{ currency }}"
+    },
+    "reportingTo": "{{ reporting_manager_name }}",
+    "hod": "{{ hod_name }}",
+    "teamSize": {{ team_size or "null" }},
+    "teamLevels": {{ ('"' + team_levels + '"') if team_levels else "null" }},
+    "industry": "{{ industry }}"
+  },
+  "evaluationParameters": {
+    "technicalSkills": [
+      {
+        "name": "Skill name",
+        "proficiencyExpected": 4,
+        "assessmentCriteria": "Specific criteria to evaluate this skill during interviews"
+      }
+    ],
+    "leadershipSkills": [
+      {
+        "name": "Leadership skill name",
+        "indicators": ["Observable indicator 1", "Observable indicator 2"]
+      }
+    ],
+    "behaviouralSkills": [
+      {
+        "name": "Behavioural skill name",
+        "assessmentCriteria": "Specific criteria to assess this behaviour"
+      }
+    ]
+  }
+}
+```
+
+**Important rules:**
+- Generate evaluation parameters based on the skills listed above, categorized into technical, leadership, and behavioural
+- Make responsibilities specific to the {{ industry }} industry and {{ department }} department
+- Qualifications should be realistic for the {{ designation }} level
+- Write in a professional, inclusive tone
+- Do NOT include any markdown, comments, or text outside the JSON object

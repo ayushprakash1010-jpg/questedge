@@ -7,6 +7,10 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { HiringPlansModule } from './modules/hiring-plans/hiring-plans.module';
 import { SkillsModule } from './modules/skills/skills.module';
+import { JobDescriptionsModule } from './modules/job-descriptions/job-descriptions.module';
+import { PipelineModule } from './modules/pipeline/pipeline.module';
+import { CandidatesModule } from './modules/candidates/candidates.module';
+import { ApplicationsModule } from './modules/applications/applications.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 
@@ -20,6 +24,10 @@ import { RolesGuard } from './auth/guards/roles.guard';
     UsersModule,
     HiringPlansModule,
     SkillsModule,
+    JobDescriptionsModule,
+    PipelineModule,
+    CandidatesModule,
+    ApplicationsModule,
     HealthModule,
   ],
   providers: [

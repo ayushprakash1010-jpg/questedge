@@ -21,6 +21,10 @@ import {
   BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { JdTab } from "@/components/hiring-plans/jd-tab";
+import { PipelineSetup } from "@/components/hiring-plans/pipeline-setup";
+import { KanbanBoard } from "@/components/hiring-plans/kanban-board";
+import { CandidateSheet } from "@/components/hiring-plans/candidate-sheet";
 
 interface Skill {
   id: string;
@@ -78,6 +82,8 @@ export default function HiringPlanDetailPage() {
   const id = params.id as string;
   const [plan, setPlan] = useState<HiringPlan | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
+  const [pipelineView, setPipelineView] = useState<"board" | "setup">("board");
 
   useEffect(() => {
     async function fetchPlan() {
@@ -352,33 +358,61 @@ export default function HiringPlanDetailPage() {
           </Card>
         </TabsContent>
 
-        {/* Placeholder tabs */}
+        {/* JD Tab */}
         <TabsContent value="jd">
-          <Card className="border-slate-200">
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <FileText className="h-12 w-12 text-slate-300" />
-              <h3 className="mt-4 text-lg font-semibold text-slate-900">
-                Job Description
-              </h3>
-              <p className="mt-1 text-sm text-slate-500">
-                Coming soon — AI-powered job description generation
-              </p>
-            </CardContent>
-          </Card>
+          <JdTab planId={plan.id} />
         </TabsContent>
 
         <TabsContent value="pipeline">
-          <Card className="border-slate-200">
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <Kanban className="h-12 w-12 text-slate-300" />
-              <h3 className="mt-4 text-lg font-semibold text-slate-900">
-                Interview Pipeline
-              </h3>
-              <p className="mt-1 text-sm text-slate-500">
-                Coming soon — Kanban-style candidate pipeline
-              </p>
-            </CardContent>
-          </Card>
+          <div className="space-y-4">
+            {/* Sub-nav: Board / Setup */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPipelineView("board")}
+                className={cn(
+                  "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+                  pipelineView === "board"
+                    ? "bg-indigo-50 text-indigo-700"
+                    : "text-slate-500 hover:text-slate-700"
+                )}
+              >
+                <Kanban className="mr-1.5 inline h-3.5 w-3.5" />
+                Board
+              </button>
+              <button
+                onClick={() => setPipelineView("setup")}
+                className={cn(
+                  "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+                  pipelineView === "setup"
+                    ? "bg-indigo-50 text-indigo-700"
+                    : "text-slate-500 hover:text-slate-700"
+                )}
+              >
+                Setup
+              </button>
+            </div>
+
+            {pipelineView === "board" ? (
+              <KanbanBoard
+                planId={plan.id}
+                onCandidateClick={(appId) => setSelectedAppId(appId)}
+              />
+            ) : (
+              <PipelineSetup planId={plan.id} />
+            )}
+          </div>
+
+          {/* Candidate Detail Sheet */}
+          {selectedAppId && (
+            <CandidateSheet
+              applicationId={selectedAppId}
+              planId={plan.id}
+              onClose={() => setSelectedAppId(null)}
+              onUpdated={() => {
+                // The board will refetch on its own when tab is re-rendered
+              }}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="feedback">

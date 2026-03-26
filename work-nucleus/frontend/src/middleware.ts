@@ -3,16 +3,23 @@ import { NextResponse } from "next/server";
 import { auth0 } from "./lib/auth0";
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Skip Auth0 middleware for non-auth API routes — they handle auth themselves
+  if (pathname.startsWith("/api/") && !pathname.startsWith("/api/auth") && !pathname.startsWith("/auth")) {
+    return NextResponse.next();
+  }
+
   // Let Auth0 handle auth routes (/auth/login, /auth/callback, /auth/logout)
   const authResponse = await auth0.middleware(request);
 
   // For auth routes, return the Auth0 response directly
-  if (request.nextUrl.pathname.startsWith("/auth")) {
+  if (pathname.startsWith("/auth")) {
     return authResponse;
   }
 
   // For the landing page, redirect authenticated users to dashboard
-  if (request.nextUrl.pathname === "/") {
+  if (pathname === "/") {
     const session = await auth0.getSession();
     if (session) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
