@@ -90,9 +90,9 @@ export function Hero() {
             transition={{ duration: 0.5, delay: 0.4 }}
           >
             {[
-              { value: "6", label: "AI Agents" },
-              { value: "80%", label: "Faster Hiring" },
-              { value: "10x", label: "Better Matches" },
+              { value: "4", label: "AI Agents" },
+              { value: "60%", label: "Faster Hiring*" },
+              { value: "3x", label: "Better Matches*" },
             ].map((stat) => (
               <div key={stat.label}>
                 <div className="text-2xl font-bold text-indigo-600 sm:text-3xl">
@@ -101,6 +101,9 @@ export function Hero() {
                 <div className="mt-1 text-sm text-slate-500">{stat.label}</div>
               </div>
             ))}
+            <p className="col-span-3 mt-2 text-xs text-slate-400">
+              *Based on early adopter feedback
+            </p>
           </motion.div>
         </div>
       </div>

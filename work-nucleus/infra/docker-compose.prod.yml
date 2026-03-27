@@ -113,6 +113,35 @@ services:
     networks:
       - app
 
+  support-admin:
+    build:
+      context: ../support-admin
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      API_URL_INTERNAL: http://backend:3000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000}
+      AUTH0_SECRET: ${AUTH0_SECRET}
+      AUTH0_DOMAIN: ${AUTH0_DOMAIN}
+      AUTH0_CLIENT_ID: ${AUTH0_SUPPORT_CLIENT_ID}
+      AUTH0_CLIENT_SECRET: ${AUTH0_SUPPORT_CLIENT_SECRET}
+      AUTH0_AUDIENCE: ${AUTH0_AUDIENCE}
+      AUTH0_CONNECTION: ${AUTH0_SUPPORT_CONNECTION}
+      APP_BASE_URL: ${AUTH0_SUPPORT_BASE_URL:-http://localhost:3002}
+      NEXT_PUBLIC_MAIN_APP_URL: ${AUTH0_BASE_URL:-http://localhost:3001}
+      NODE_ENV: production
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3002 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - app
+
   nginx:
     image: nginx:alpine
     restart: unless-stopped
@@ -124,6 +153,8 @@ services:
       backend:
         condition: service_healthy
       frontend:
+        condition: service_healthy
+      support-admin:
         condition: service_healthy
     networks:
       - app

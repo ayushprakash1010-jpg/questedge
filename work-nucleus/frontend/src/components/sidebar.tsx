@@ -8,7 +8,6 @@ import {
   Users,
   GraduationCap,
   Shield,
-  Headset,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -25,7 +24,6 @@ const navItems: NavItem[] = [
   { label: "Candidates", href: "/candidates", icon: Users },
   { label: "Training", href: "/training", icon: GraduationCap },
   { label: "Admin", href: "/admin/users", icon: Shield, roles: ["ADMIN"] },
-  { label: "Support Portal", href: "/support-admin", icon: Headset, roles: ["SUPPORT_REP", "SUPPORT_ADMIN"] },
 ];
 
 interface SidebarProps {

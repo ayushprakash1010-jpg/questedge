@@ -9,6 +9,7 @@ import {
   BarChart3,
   GraduationCap,
   Mail,
+  ShieldCheck,
 } from "lucide-react";
 
 const features = [
@@ -42,9 +43,9 @@ const features = [
   },
   {
     icon: Mail,
-    title: "Smart Communications",
+    title: "AI-Drafted Communications",
     description:
-      "AI-drafted offer letters, rejection emails, and follow-ups. Professional, personalized, and on-brand — every time.",
+      "Generate offer letters and rejection emails with AI. Professional, personalized, and on-brand — saving hours of manual drafting.",
     color: "from-indigo-600 to-indigo-700",
   },
   {
@@ -60,6 +61,13 @@ const features = [
     description:
       "Built-in training modules on structured interviewing, bias reduction, and legal compliance. Track completion and scores.",
     color: "from-indigo-400 to-cyan-400",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Admin Panel & Audit Logging",
+    description:
+      "Full admin dashboard with user management, organization settings, role-based access control, and detailed audit logs for compliance.",
+    color: "from-slate-600 to-slate-700",
   },
 ];
 
@@ -87,7 +95,7 @@ export function Features() {
             <span className="text-indigo-600">better</span>
           </h2>
           <p className="mt-4 text-lg text-slate-600">
-            Seven powerful modules working together to streamline your entire
+            Eight powerful modules working together to streamline your entire
             hiring process from planning to onboarding.
           </p>
         </div>

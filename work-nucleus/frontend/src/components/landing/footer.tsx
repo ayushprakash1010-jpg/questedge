@@ -17,10 +17,10 @@ const companyLinks = [
 ];
 
 const legalLinks = [
-  { label: "Privacy Policy", href: "#" },
-  { label: "Terms of Service", href: "#" },
-  { label: "Cookie Policy", href: "#" },
-  { label: "GDPR", href: "#" },
+  { label: "Privacy Policy", href: "/privacy-policy" },
+  { label: "Terms of Service", href: "/terms-of-service" },
+  { label: "Cookie Policy", href: "/cookie-policy" },
+  { label: "GDPR", href: "/gdpr" },
 ];
 
 export function LandingFooter() {
@@ -107,6 +107,8 @@ export function LandingFooter() {
                 <li key={link.label}>
                   <Link
                     href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="text-sm text-slate-400 transition-colors hover:text-cyan-400"
                   >
                     {link.label}

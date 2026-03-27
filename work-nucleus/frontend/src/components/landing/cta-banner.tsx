@@ -13,8 +13,8 @@ export function CTABanner() {
           Ready to transform your hiring?
         </h2>
         <p className="mt-4 text-lg text-indigo-100">
-          Join hundreds of teams using AI to hire smarter, faster, and fairer.
-          Start free — no credit card required.
+          Start using AI to hire smarter, faster, and fairer.
+          Free to get started — no credit card required.
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link

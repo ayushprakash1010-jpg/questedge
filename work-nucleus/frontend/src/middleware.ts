@@ -7,7 +7,6 @@ export async function middleware(request: NextRequest) {
 
   // ── Mock mode: intercept API routes and bypass auth ────────
   if (isMockMode()) {
-    // Intercept /api/* with mock data
     if (pathname.startsWith("/api/") && !pathname.startsWith("/api/auth")) {
       let body: unknown = undefined;
       if (request.method !== "GET" && request.method !== "HEAD") {
@@ -39,7 +38,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // ── Normal mode: original Auth0 middleware ─────────────────
+  // ── Normal mode: Auth0 middleware ───────────────────────────
   const { auth0 } = await import("./lib/auth0");
 
   // Skip Auth0 middleware for non-auth API routes — they handle auth themselves
@@ -50,7 +49,6 @@ export async function middleware(request: NextRequest) {
   // Let Auth0 handle auth routes (/auth/login, /auth/callback, /auth/logout)
   const authResponse = await auth0.middleware(request);
 
-  // For auth routes, return the Auth0 response directly
   if (pathname.startsWith("/auth")) {
     return authResponse;
   }

@@ -28,18 +28,6 @@ const agents = [
       "Generates personalized offer letters, rejection emails, and follow-ups that maintain your employer brand voice.",
     tag: "Communication",
   },
-  {
-    name: "Insights Agent",
-    description:
-      "Surfaces hiring bottlenecks, predicts time-to-fill, and recommends process improvements from your pipeline data.",
-    tag: "Intelligence",
-  },
-  {
-    name: "Skill Suggester",
-    description:
-      "Recommends relevant skills and competencies for roles based on industry trends, job level, and your hiring history.",
-    tag: "Recommendation",
-  },
 ];
 
 export function AIAgents() {
@@ -59,16 +47,17 @@ export function AIAgents() {
             Powered by Claude
           </span>
           <h2 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-            6 AI agents working for you
+            4 AI agents working for you
           </h2>
           <p className="mt-4 text-lg text-slate-400">
             Each agent is purpose-built for a specific hiring task, delivering
-            expert-level results in seconds instead of hours.
+            expert-level results in seconds instead of hours. More agents coming
+            soon.
           </p>
         </div>
 
         {/* Agent Grid */}
-        <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-2 lg:max-w-3xl lg:mx-auto">
           {agents.map((agent, i) => (
             <motion.div
               key={agent.name}

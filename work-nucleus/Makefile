@@ -32,6 +32,7 @@ test-ai:
 lint:
 	cd backend && npm run lint
 	cd frontend && npm run lint
+	cd support-admin && npm run lint
 
 # Start only infrastructure (postgres + redis)
 infra:

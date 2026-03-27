@@ -8,32 +8,32 @@ const faqs = [
   {
     question: "What AI model does Work Nucleus use?",
     answer:
-      "Work Nucleus is powered by Anthropic's Claude, one of the most capable and safe AI models available. All six of our AI agents use Claude for tasks like JD generation, feedback summarization, candidate scoring, and communication drafting.",
+      "Work Nucleus is powered by Anthropic's Claude, one of the most capable and safe AI models available. Our four AI agents use Claude for JD generation, feedback summarization, candidate scoring, and communication drafting — with more agents on the roadmap.",
   },
   {
     question: "How secure is my hiring data?",
     answer:
-      "We take security seriously. All data is encrypted at rest and in transit. We use Auth0 for enterprise-grade authentication with MFA support. Your data is never used to train AI models, and we are SOC 2 compliant.",
+      "We take security seriously. All data is encrypted at rest and in transit. We use Auth0 for enterprise-grade authentication. Your data is never used to train AI models. Full audit logging is available for compliance and oversight.",
   },
   {
     question: "Can I try Work Nucleus before committing?",
     answer:
-      "Absolutely! Our Starter plan is free and includes 5 users, 3 hiring plans, and 50 AI credits per month. No credit card required. You can upgrade to Professional anytime.",
+      "Absolutely! Our Starter plan is free and includes 5 users, 3 hiring plans, and AI-powered job description generation. No credit card required. You can upgrade to Professional anytime.",
   },
   {
-    question: "Does Work Nucleus integrate with my existing ATS?",
+    question: "Does Work Nucleus replace my existing ATS?",
     answer:
-      "Work Nucleus is designed as a complete hiring platform, but we offer API-based integrations for popular tools. Enterprise customers get custom integration support for their existing tech stack.",
+      "Work Nucleus is designed as a complete hiring platform that covers the full workflow from planning to decisions. We are actively building integrations — Enterprise customers can work with us on custom onboarding for their existing tech stack.",
   },
   {
-    question: "What are AI credits?",
+    question: "How does the AI assist in hiring?",
     answer:
-      "AI credits are consumed when you use our AI agents — generating JDs, scoring candidates, summarizing feedback, etc. Each operation uses 1 credit. Starter gets 50/month, Professional gets 500/month, and Enterprise gets unlimited.",
+      "Our AI agents handle time-consuming tasks: generating inclusive job descriptions, summarizing multi-interviewer feedback into structured highlights, scoring candidates across skill dimensions, and drafting personalized offer letters and rejection emails.",
   },
   {
     question: "Can I customize the hiring pipeline stages?",
     answer:
-      "Yes! The Kanban pipeline is fully customizable. You can define your own stages, add custom fields, and configure automation rules for each stage transition.",
+      "Yes! The Kanban pipeline is fully customizable. You can define your own stages and configure the workflow to match your team's process.",
   },
   {
     question: "Do you support multiple organizations or departments?",
