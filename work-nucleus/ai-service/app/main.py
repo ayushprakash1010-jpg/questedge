@@ -1,5 +1,5 @@
 import logging
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, File, UploadFile
 from contextlib import asynccontextmanager
 
 from app.config import settings
@@ -17,6 +17,9 @@ from app.schemas.communication import DraftCommunicationRequest, DraftCommunicat
 from app.agents.communication_drafter import CommunicationDrafterAgent
 from app.schemas.insights import InsightsRequest, InsightsResponse
 from app.agents.insights_agent import InsightsAgent
+from app.schemas.resume_match import ResumeMatchRequest, ResumeMatchResponse
+from app.agents.resume_matcher import ResumeMatcherAgent
+from app.services.resume_parser import extract_text
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,6 +29,7 @@ feedback_summarizer = FeedbackSummarizerAgent()
 candidate_scorer = CandidateScorerAgent()
 communication_drafter = CommunicationDrafterAgent()
 insights_agent = InsightsAgent()
+resume_matcher = ResumeMatcherAgent()
 
 
 @asynccontextmanager
@@ -107,4 +111,30 @@ async def dashboard_insights(
     logger.info(f"Generating insights for: {request.companyName}")
     result = await insights_agent.analyze(request)
     logger.info(f"Generated {len(result.insights)} insights for: {request.companyName}")
+    return result
+
+
+@app.post("/ai/extract-resume-text")
+async def extract_resume_text(
+    file: UploadFile = File(...),
+    _api_key: str = Depends(verify_internal_api_key),
+):
+    """Extract plain text from a resume file (PDF or DOCX)."""
+    file_bytes = await file.read()
+    content_type = file.content_type or ""
+    logger.info(f"Extracting text from resume: {file.filename} ({content_type})")
+    text = extract_text(file_bytes, content_type)
+    logger.info(f"Extracted {len(text)} characters from resume")
+    return {"text": text}
+
+
+@app.post("/ai/match-resume", response_model=ResumeMatchResponse)
+async def match_resume(
+    request: ResumeMatchRequest,
+    _api_key: str = Depends(verify_internal_api_key),
+):
+    """Match a candidate's resume against a job description using AI."""
+    logger.info(f"Matching resume for: {request.candidateName}")
+    result = await resume_matcher.match(request)
+    logger.info(f"Resume match complete for {request.candidateName}: score={result.matchScore}")
     return result

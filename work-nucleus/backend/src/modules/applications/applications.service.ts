@@ -85,6 +85,7 @@ export class ApplicationsService {
           currentCompany: app.candidate.currentCompany,
           experienceYears: app.candidate.experienceYears ? Number(app.candidate.experienceYears) : null,
           totalScore: app.totalScore ? Number(app.totalScore) : null,
+          aiMatchScore: app.aiMatchScore ? Number(app.aiMatchScore) : null,
           daysInStage,
           stageEnteredAt: app.stageEnteredAt,
         };

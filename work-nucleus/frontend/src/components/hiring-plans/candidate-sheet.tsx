@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
   X, Mail, Phone, Briefcase, Building2, Clock, Award,
-  ChevronRight, Ban, Pause, Check, ArrowRight, MessageSquare, ClipboardEdit,
+  ChevronRight, Ban, Pause, Check, ArrowRight, MessageSquare, ClipboardEdit, Sparkles,
 } from "lucide-react";
 import { FeedbackDisplay } from "./feedback-display";
 import { FeedbackForm } from "./feedback-form";
@@ -32,6 +32,9 @@ interface ApplicationDetail {
   selectionNotes: string | null;
   totalScore: string | null;
   aiSummary: string | null;
+  aiMatchScore: string | null;
+  aiMatchSummary: string | null;
+  coverLetter: string | null;
   candidate: {
     id: string;
     name: string;
@@ -356,6 +359,37 @@ export function CandidateSheet({
                     })}
                   </div>
                 </div>
+
+                {/* AI Resume Match Score */}
+                {app.aiMatchScore && (
+                  <div className="mt-6 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="flex items-center gap-1.5 text-sm font-semibold text-indigo-800">
+                        <Sparkles className="h-4 w-4" />
+                        AI Resume Match
+                      </h3>
+                      <span className={cn(
+                        "rounded-full px-2.5 py-0.5 text-sm font-bold",
+                        Number(app.aiMatchScore) >= 80 ? "bg-green-100 text-green-700" :
+                        Number(app.aiMatchScore) >= 60 ? "bg-amber-100 text-amber-700" :
+                        "bg-red-100 text-red-700"
+                      )}>
+                        {app.aiMatchScore}%
+                      </span>
+                    </div>
+                    {app.aiMatchSummary && (
+                      <p className="mt-2 text-sm text-indigo-700">{app.aiMatchSummary}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Cover Letter */}
+                {app.coverLetter && (
+                  <div className="mt-4">
+                    <h3 className="text-sm font-semibold text-slate-700">Cover Letter</h3>
+                    <p className="mt-2 whitespace-pre-wrap text-sm text-slate-600">{app.coverLetter}</p>
+                  </div>
+                )}
 
                 <p className="mt-4 text-xs text-slate-400">
                   Applied {new Date(app.appliedAt).toLocaleDateString()} · Plan: {app.hiringPlan.title}

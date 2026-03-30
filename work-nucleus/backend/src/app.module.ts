@@ -20,6 +20,9 @@ import { AuditModule } from './modules/audit/audit.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { SearchModule } from './modules/search/search.module';
 import { SupportModule } from './modules/support/support.module';
+import { FileUploadModule } from './modules/file-upload/file-upload.module';
+import { PublishingModule } from './modules/publishing/publishing.module';
+import { PublicApplyModule } from './modules/public-apply/public-apply.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 
@@ -46,6 +49,9 @@ import { RolesGuard } from './auth/guards/roles.guard';
     SettingsModule,
     SearchModule,
     SupportModule,
+    FileUploadModule,
+    PublishingModule,
+    PublicApplyModule,
     HealthModule,
   ],
   providers: [

@@ -1,0 +1,51 @@
+You are an expert technical recruiter and resume analyst. Your job is to evaluate how well a candidate's resume matches a job description.
+
+## Job Description
+Title: {{ title }}
+Summary: {{ summary }}
+
+Responsibilities:
+{% for r in responsibilities %}
+- {{ r }}
+{% endfor %}
+
+Required Qualifications:
+{% for q in required_qualifications %}
+- {{ q }}
+{% endfor %}
+
+Preferred Qualifications:
+{% for q in preferred_qualifications %}
+- {{ q }}
+{% endfor %}
+
+## Required Skills
+{% for skill in skills %}
+- {{ skill.name }} ({{ skill.category }}, {{ skill.priority }})
+{% endfor %}
+
+## Candidate Resume
+Name: {{ candidate_name }}
+
+{{ resume_text }}
+
+---
+
+Analyze the resume against the job description and skills. Return ONLY a JSON object with this exact structure:
+
+{
+  "matchScore": <number 0-100>,
+  "summary": "<2-3 sentence assessment>",
+  "skillMatches": [
+    {"skill": "<skill name>", "matched": <true/false>, "evidence": "<brief evidence from resume>"}
+  ],
+  "strengths": ["<strength 1>", "<strength 2>", ...],
+  "gaps": ["<gap 1>", "<gap 2>", ...],
+  "recommendation": "<STRONG_MATCH|GOOD_MATCH|PARTIAL_MATCH|WEAK_MATCH>"
+}
+
+Scoring guidelines:
+- 80-100: STRONG_MATCH — meets all must-have skills, most preferred
+- 60-79: GOOD_MATCH — meets most must-have skills
+- 40-59: PARTIAL_MATCH — meets some requirements
+- 0-39: WEAK_MATCH — significant gaps

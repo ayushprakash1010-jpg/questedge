@@ -15,6 +15,9 @@ import {
   RefreshCw,
   Shield,
   Clock,
+  Globe,
+  Link2,
+  ExternalLink,
 } from "lucide-react";
 
 interface JdData {
@@ -69,6 +72,9 @@ export function JdTab({ planId }: { planId: string }) {
   const [showVersions, setShowVersions] = useState(false);
   const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [publicUrl, setPublicUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const fetchJd = useCallback(async () => {
     try {
@@ -162,6 +168,49 @@ export function JdTab({ planId }: { planId: string }) {
     }
   };
 
+  const handlePublish = async () => {
+    if (!jd) return;
+    setPublishing(true);
+    try {
+      const res = await fetch(`/api/hiring-plans/${planId}/publish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel: "LINKEDIN" }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPublicUrl(data.publicUrl);
+        setJd((prev) => (prev ? { ...prev, status: "PUBLISHED" } : prev));
+      }
+    } catch {
+      // ignore
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const handleCopyLink = () => {
+    if (publicUrl) {
+      navigator.clipboard.writeText(publicUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  // Fetch publish status if JD is already published
+  useEffect(() => {
+    if (jd?.status === "PUBLISHED") {
+      fetch(`/api/hiring-plans/${planId}/publish`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data) && data.length > 0) {
+            setPublicUrl(data[0].publicUrl);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [jd?.status, planId]);
+
   const startEdit = () => {
     if (!jd) return;
     setEditContent(JSON.parse(JSON.stringify(jd.content)));
@@ -251,13 +300,42 @@ export function JdTab({ planId }: { planId: string }) {
   return (
     <div className="space-y-6">
       {/* Approval Banner */}
-      {jd.status === "APPROVED" && jd.approvedBy && jd.approvedAt && (
+      {(jd.status === "APPROVED" || jd.status === "PUBLISHED") && jd.approvedBy && jd.approvedAt && (
         <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3">
           <Shield className="h-4 w-4 text-green-600" />
           <span className="text-sm text-green-700">
             Approved by {jd.approvedBy.name} on{" "}
             {new Date(jd.approvedAt).toLocaleDateString()}
           </span>
+        </div>
+      )}
+
+      {/* Published Banner */}
+      {jd.status === "PUBLISHED" && publicUrl && (
+        <div className="flex items-center justify-between rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <Globe className="h-4 w-4 text-indigo-600" />
+            <span className="text-sm font-medium text-indigo-700">Published</span>
+            <span className="text-sm text-indigo-600">&mdash;</span>
+            <a
+              href={publicUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-sm text-indigo-600 underline hover:text-indigo-800"
+            >
+              {publicUrl}
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCopyLink}
+            className="border-indigo-200 text-indigo-700 hover:bg-indigo-100"
+          >
+            <Link2 className="mr-1 h-3 w-3" />
+            {copied ? "Copied!" : "Copy Link"}
+          </Button>
         </div>
       )}
 
@@ -348,6 +426,19 @@ export function JdTab({ planId }: { planId: string }) {
             <Button size="sm" onClick={handleApprove} disabled={approving}>
               <Shield className="mr-1 h-3 w-3" />
               {approving ? "Approving..." : "Approve"}
+            </Button>
+          )}
+
+          {/* Publish */}
+          {jd.status === "APPROVED" && !editing && (
+            <Button
+              size="sm"
+              onClick={handlePublish}
+              disabled={publishing}
+              className="bg-indigo-600 hover:bg-indigo-700"
+            >
+              <Globe className="mr-1 h-3 w-3" />
+              {publishing ? "Publishing..." : "Publish Job"}
             </Button>
           )}
 

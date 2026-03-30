@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,8 @@ export default function HiringPlansPage() {
   const [meta, setMeta] = useState({ total: 0, page: 1, totalPages: 1 });
   const [loading, setLoading] = useState(true);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const menuBtnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   // Filters
   const [statusFilter, setStatusFilter] = useState("");
@@ -98,6 +101,14 @@ export default function HiringPlansPage() {
   useEffect(() => {
     fetchPlans();
   }, [fetchPlans]);
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!openMenu) return;
+    const handleClick = () => setOpenMenu(null);
+    document.addEventListener("click", handleClick);
+    return () => document.removeEventListener("click", handleClick);
+  }, [openMenu]);
 
   const handleClone = async (id: string) => {
     setOpenMenu(null);
@@ -286,58 +297,23 @@ export default function HiringPlansPage() {
                   <td className="px-4 py-3 text-slate-600">
                     {plan.hiringManager?.name}
                   </td>
-                  <td className="relative px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right">
                     <button
+                      ref={(el) => { menuBtnRefs.current[plan.id] = el; }}
                       className="rounded p-1 hover:bg-slate-100"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setOpenMenu(openMenu === plan.id ? null : plan.id);
+                        if (openMenu === plan.id) {
+                          setOpenMenu(null);
+                        } else {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setMenuPos({ top: rect.bottom + 4, left: rect.right - 160 });
+                          setOpenMenu(plan.id);
+                        }
                       }}
                     >
                       <MoreHorizontal className="h-4 w-4 text-slate-500" />
                     </button>
-                    {openMenu === plan.id && (
-                      <div className="absolute right-4 top-12 z-10 w-40 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
-                        <button
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenMenu(null);
-                            router.push(`/hiring-plans/${plan.id}`);
-                          }}
-                        >
-                          <Eye className="h-4 w-4" /> View
-                        </button>
-                        <button
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenMenu(null);
-                            router.push(`/hiring-plans/${plan.id}/edit`);
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" /> Edit
-                        </button>
-                        <button
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleClone(plan.id);
-                          }}
-                        >
-                          <Copy className="h-4 w-4" /> Clone
-                        </button>
-                        <button
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(plan.id);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" /> Cancel
-                        </button>
-                      </div>
-                    )}
                   </td>
                 </tr>
               ))}
@@ -373,6 +349,56 @@ export default function HiringPlansPage() {
           )}
         </div>
       )}
+      {/* Portal dropdown menu */}
+      {openMenu &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="fixed z-50 w-40 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+            style={{ top: menuPos.top, left: menuPos.left }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50"
+              onClick={() => {
+                setOpenMenu(null);
+                router.push(`/hiring-plans/${openMenu}`);
+              }}
+            >
+              <Eye className="h-4 w-4" /> View
+            </button>
+            <button
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50"
+              onClick={() => {
+                setOpenMenu(null);
+                router.push(`/hiring-plans/${openMenu}/edit`);
+              }}
+            >
+              <Pencil className="h-4 w-4" /> Edit
+            </button>
+            <button
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50"
+              onClick={() => {
+                const id = openMenu;
+                setOpenMenu(null);
+                handleClone(id);
+              }}
+            >
+              <Copy className="h-4 w-4" /> Clone
+            </button>
+            <button
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+              onClick={() => {
+                const id = openMenu;
+                setOpenMenu(null);
+                handleDelete(id);
+              }}
+            >
+              <Trash2 className="h-4 w-4" /> Cancel
+            </button>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

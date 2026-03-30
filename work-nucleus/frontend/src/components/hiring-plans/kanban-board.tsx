@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import {
-  Plus, Users, Clock, Award, X, Search, UserPlus,
+  Plus, Users, Clock, Award, X, Search, UserPlus, Sparkles,
 } from "lucide-react";
 
 interface KanbanCandidate {
@@ -20,6 +20,7 @@ interface KanbanCandidate {
   currentCompany: string | null;
   experienceYears: number | null;
   totalScore: number | null;
+  aiMatchScore: number | null;
   daysInStage: number;
   stageEnteredAt: string;
 }
@@ -286,6 +287,18 @@ export function KanbanBoard({
                       <Clock className="h-3 w-3" />
                       {candidate.daysInStage}d
                     </span>
+                    {candidate.aiMatchScore !== null && (
+                      <span
+                        className={cn(
+                          "flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs",
+                          getScoreColor(candidate.aiMatchScore)
+                        )}
+                        title="AI Resume Match Score"
+                      >
+                        <Sparkles className="h-3 w-3" />
+                        {candidate.aiMatchScore}
+                      </span>
+                    )}
                     {candidate.totalScore !== null && (
                       <span
                         className={cn(

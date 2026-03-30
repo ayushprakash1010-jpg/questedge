@@ -96,6 +96,22 @@ enum TrainingCategory {
   HIRING_PROCESS
 }
 
+// ── Job Publishing Enums ────────────────────────────────────────
+
+enum PublishChannel {
+  LINKEDIN
+  INDEED
+  NAUKRI
+  CUSTOM
+}
+
+enum PublishStatus {
+  PENDING
+  PUBLISHED
+  FAILED
+  REMOVED
+}
+
 // ── Support Portal Enums ────────────────────────────────────────
 
 enum TicketStatus {
@@ -152,6 +168,7 @@ model Organization {
   auditLogs        AuditLog[]
   settings         OrgSettings?
   healthMetrics    OrgHealthMetric[]
+  jobPublishings   JobPublishing[]
   supportTickets   SupportTicket[]
   supportSessions  SupportSession[]
 
@@ -241,6 +258,7 @@ model HiringPlan {
   jobDescriptions  JobDescription[]
   pipelineStages   PipelineStage[]
   applications     CandidateApplication[]
+  publishings      JobPublishing[]
 
   @@index([orgId])
   @@index([status])
@@ -278,9 +296,10 @@ model JobDescription {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
-  hiringPlan HiringPlan @relation(fields: [hiringPlanId], references: [id], onDelete: Cascade)
-  createdBy  User       @relation("JdCreator", fields: [createdById], references: [id])
-  approvedBy User?      @relation("JdApprover", fields: [approvedById], references: [id])
+  hiringPlan  HiringPlan      @relation(fields: [hiringPlanId], references: [id], onDelete: Cascade)
+  createdBy   User            @relation("JdCreator", fields: [createdById], references: [id])
+  approvedBy  User?           @relation("JdApprover", fields: [approvedById], references: [id])
+  publishings JobPublishing[]
 
   @@index([hiringPlanId])
   @@index([status])
@@ -358,8 +377,11 @@ model CandidateApplication {
   completedAt     DateTime?         @map("completed_at")
   rejectionReason String?           @map("rejection_reason")
   selectionNotes  String?           @map("selection_notes")
+  coverLetter     String?           @map("cover_letter")
   totalScore      Decimal?          @map("total_score") @db.Decimal(5, 2)
   aiSummary       String?           @map("ai_summary")
+  aiMatchScore    Decimal?          @map("ai_match_score") @db.Decimal(5, 2)
+  aiMatchSummary  String?           @map("ai_match_summary")
 
   candidate    Candidate               @relation(fields: [candidateId], references: [id])
   hiringPlan   HiringPlan              @relation(fields: [hiringPlanId], references: [id], onDelete: Cascade)
@@ -537,6 +559,32 @@ model OrgSettings {
   organization Organization @relation(fields: [orgId], references: [id])
 
   @@map("org_settings")
+}
+
+// ── Job Publishing Models ───────────────────────────────────────
+
+model JobPublishing {
+  id               String         @id @default(uuid()) @db.Uuid
+  jobDescriptionId String         @map("job_description_id") @db.Uuid
+  hiringPlanId     String         @map("hiring_plan_id") @db.Uuid
+  orgId            String         @db.Uuid
+  channel          PublishChannel
+  status           PublishStatus  @default(PENDING)
+  externalJobId    String?        @map("external_job_id")
+  externalUrl      String?        @map("external_url")
+  publicSlug       String         @unique @map("public_slug")
+  publishedAt      DateTime?      @map("published_at")
+  errorMessage     String?        @map("error_message")
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  jobDescription JobDescription @relation(fields: [jobDescriptionId], references: [id])
+  hiringPlan     HiringPlan     @relation(fields: [hiringPlanId], references: [id])
+  organization   Organization   @relation(fields: [orgId], references: [id])
+
+  @@index([hiringPlanId])
+  @@index([publicSlug])
+  @@map("job_publishings")
 }
 
 // ── Support Portal Models ───────────────────────────────────────
