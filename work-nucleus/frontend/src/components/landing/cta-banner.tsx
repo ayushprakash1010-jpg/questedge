@@ -10,10 +10,10 @@ export function CTABanner() {
 
       <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
         <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-          Ready to transform your hiring?
+          Ready to transform your HR?
         </h2>
         <p className="mt-4 text-lg text-indigo-100">
-          Start using AI to hire smarter, faster, and fairer.
+          Start with AI-powered hiring today. More HR modules coming soon.
           Free to get started — no credit card required.
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">

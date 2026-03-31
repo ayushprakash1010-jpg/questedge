@@ -9,7 +9,7 @@ const plans = [
     name: "Starter",
     price: "Free",
     period: "",
-    description: "Perfect for small teams getting started with structured hiring.",
+    description: "Perfect for small teams getting started with AI-powered HR.",
     features: [
       "Up to 5 users",
       "3 active hiring plans",
@@ -24,7 +24,7 @@ const plans = [
     name: "Professional",
     price: "$99",
     period: "/mo",
-    description: "For growing teams that need the full AI-powered hiring suite.",
+    description: "For growing teams that need the full AI-powered HR platform.",
     features: [
       "Up to 25 users",
       "Unlimited hiring plans",
@@ -41,10 +41,11 @@ const plans = [
     name: "Enterprise",
     price: "Custom",
     period: "",
-    description: "For organizations with advanced security, compliance, and scale needs.",
+    description: "For organizations with advanced security, compliance, and scale needs. Access all current and future modules.",
     features: [
       "Unlimited users",
       "Unlimited hiring plans",
+      "All current & future modules",
       "Admin panel & audit logging",
       "Role-based access control",
       "Dedicated success manager",

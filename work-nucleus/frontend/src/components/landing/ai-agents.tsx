@@ -47,12 +47,12 @@ export function AIAgents() {
             Powered by Claude
           </span>
           <h2 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-            4 AI agents working for you
+            AI agents that work for you
           </h2>
           <p className="mt-4 text-lg text-slate-400">
-            Each agent is purpose-built for a specific hiring task, delivering
-            expert-level results in seconds instead of hours. More agents coming
-            soon.
+            Purpose-built AI agents handle time-consuming HR tasks in seconds.
+            Starting with 4 hiring agents — with more agents for every HR
+            module on the roadmap.
           </p>
         </div>
 

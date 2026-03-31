@@ -35,7 +35,7 @@ export function Testimonials() {
             Testimonials
           </span>
           <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Loved by hiring teams
+            Loved by HR teams
           </h2>
         </div>
 

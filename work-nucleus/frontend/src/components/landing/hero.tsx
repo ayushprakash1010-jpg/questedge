@@ -30,7 +30,7 @@ export function Hero() {
           >
             <span className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-1.5 text-sm font-medium text-indigo-700">
               <Sparkles className="h-3.5 w-3.5" />
-              Powered by Claude AI
+              AI-Powered HR Tech Platform
             </span>
           </motion.div>
 
@@ -41,11 +41,11 @@ export function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            Hire smarter with{" "}
+            The{" "}
             <span className="bg-gradient-to-r from-indigo-600 to-cyan-500 bg-clip-text text-transparent">
               AI-powered
             </span>{" "}
-            hiring intelligence
+            platform for modern HR teams
           </motion.h1>
 
           {/* Subheadline */}
@@ -55,9 +55,10 @@ export function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            From structured hiring plans to AI-generated job descriptions,
-            automated candidate scoring, and real-time analytics — Work Nucleus
-            transforms how teams attract, evaluate, and hire top talent.
+            Work Nucleus brings AI intelligence to every corner of HR — starting
+            with hiring. Build structured plans, generate job descriptions,
+            score candidates automatically, and make data-driven decisions.
+            More HR modules coming soon.
           </motion.p>
 
           {/* CTAs */}
@@ -102,7 +103,7 @@ export function Hero() {
               </div>
             ))}
             <p className="col-span-3 mt-2 text-xs text-slate-400">
-              *Based on early adopter feedback
+              *Based on early adopter feedback. Hiring module available now — more modules coming soon.
             </p>
           </motion.div>
         </div>

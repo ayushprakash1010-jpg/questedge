@@ -10,9 +10,13 @@ import {
   GraduationCap,
   Mail,
   ShieldCheck,
+  Users,
+  Calendar,
+  Target,
+  Briefcase,
 } from "lucide-react";
 
-const features = [
+const hiringFeatures = [
   {
     icon: ClipboardList,
     title: "Hiring Plan Builder",
@@ -71,6 +75,37 @@ const features = [
   },
 ];
 
+const upcomingModules = [
+  {
+    icon: Users,
+    title: "Employee Onboarding",
+    description:
+      "Streamline new hire onboarding with automated workflows, document collection, and task tracking.",
+    color: "from-emerald-500 to-emerald-600",
+  },
+  {
+    icon: Target,
+    title: "Performance Management",
+    description:
+      "Set goals, track OKRs, conduct reviews, and provide continuous feedback — all powered by AI insights.",
+    color: "from-violet-500 to-violet-600",
+  },
+  {
+    icon: Calendar,
+    title: "Leave & Attendance",
+    description:
+      "Manage time-off requests, track attendance, and automate leave policies across your organization.",
+    color: "from-rose-500 to-rose-600",
+  },
+  {
+    icon: Briefcase,
+    title: "Employee Engagement",
+    description:
+      "Pulse surveys, sentiment analysis, and AI-driven insights to keep your team motivated and aligned.",
+    color: "from-amber-500 to-orange-500",
+  },
+];
+
 const container = {
   hidden: {},
   show: { transition: { staggerChildren: 0.08 } },
@@ -88,46 +123,96 @@ export function Features() {
         {/* Section Header */}
         <div className="mx-auto max-w-2xl text-center">
           <span className="text-sm font-semibold uppercase tracking-wider text-indigo-600">
-            Platform Features
+            Platform Modules
           </span>
           <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Everything you need to hire{" "}
-            <span className="text-indigo-600">better</span>
+            One platform for{" "}
+            <span className="text-indigo-600">all of HR</span>
           </h2>
           <p className="mt-4 text-lg text-slate-600">
-            Eight powerful modules working together to streamline your entire
-            hiring process from planning to onboarding.
+            Work Nucleus is a modular HR platform. Start with AI-powered hiring
+            today — with more modules launching soon to cover your entire
+            people operations.
           </p>
         </div>
 
-        {/* Feature Grid */}
-        <motion.div
-          className="mt-16 grid gap-6 md:grid-cols-2 lg:grid-cols-3"
-          variants={container}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: "-100px" }}
-        >
-          {features.map((feature) => (
-            <motion.div
-              key={feature.title}
-              variants={item}
-              className="group relative rounded-2xl border border-slate-200 bg-white p-8 shadow-sm transition-all hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-100/50"
-            >
-              <div
-                className={`inline-flex rounded-xl bg-gradient-to-br ${feature.color} p-3 shadow-sm`}
+        {/* Hiring Module */}
+        <div className="mt-16">
+          <div className="flex items-center gap-3 mb-8">
+            <span className="rounded-full bg-indigo-100 px-4 py-1.5 text-sm font-semibold text-indigo-700">
+              Available Now
+            </span>
+            <h3 className="text-xl font-bold text-slate-900">
+              Hiring & Recruitment
+            </h3>
+          </div>
+          <motion.div
+            className="grid gap-6 md:grid-cols-2 lg:grid-cols-4"
+            variants={container}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: "-100px" }}
+          >
+            {hiringFeatures.map((feature) => (
+              <motion.div
+                key={feature.title}
+                variants={item}
+                className="group relative rounded-2xl border border-slate-200 bg-white p-8 shadow-sm transition-all hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-100/50"
               >
-                <feature.icon className="h-5 w-5 text-white" />
-              </div>
-              <h3 className="mt-5 text-lg font-semibold text-slate-900">
-                {feature.title}
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                {feature.description}
-              </p>
-            </motion.div>
-          ))}
-        </motion.div>
+                <div
+                  className={`inline-flex rounded-xl bg-gradient-to-br ${feature.color} p-3 shadow-sm`}
+                >
+                  <feature.icon className="h-5 w-5 text-white" />
+                </div>
+                <h3 className="mt-5 text-lg font-semibold text-slate-900">
+                  {feature.title}
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                  {feature.description}
+                </p>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+
+        {/* Upcoming Modules */}
+        <div className="mt-20">
+          <div className="flex items-center gap-3 mb-8">
+            <span className="rounded-full bg-slate-100 px-4 py-1.5 text-sm font-semibold text-slate-500">
+              Coming Soon
+            </span>
+            <h3 className="text-xl font-bold text-slate-900">
+              More Modules on the Way
+            </h3>
+          </div>
+          <motion.div
+            className="grid gap-6 md:grid-cols-2 lg:grid-cols-4"
+            variants={container}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: "-100px" }}
+          >
+            {upcomingModules.map((feature) => (
+              <motion.div
+                key={feature.title}
+                variants={item}
+                className="group relative rounded-2xl border border-dashed border-slate-300 bg-slate-50/50 p-8 transition-all"
+              >
+                <div
+                  className={`inline-flex rounded-xl bg-gradient-to-br ${feature.color} p-3 shadow-sm opacity-60`}
+                >
+                  <feature.icon className="h-5 w-5 text-white" />
+                </div>
+                <h3 className="mt-5 text-lg font-semibold text-slate-700">
+                  {feature.title}
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                  {feature.description}
+                </p>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
       </div>
     </section>
   );

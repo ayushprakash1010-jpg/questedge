@@ -6,12 +6,17 @@ import { ChevronDown } from "lucide-react";
 
 const faqs = [
   {
-    question: "What AI model does Work Nucleus use?",
+    question: "What is Work Nucleus?",
     answer:
-      "Work Nucleus is powered by Anthropic's Claude, one of the most capable and safe AI models available. Our four AI agents use Claude for JD generation, feedback summarization, candidate scoring, and communication drafting — with more agents on the roadmap.",
+      "Work Nucleus is an AI-powered HR tech platform designed to modernize your entire people operations. We're launching with a full-featured Hiring & Recruitment module, with more HR modules — onboarding, performance management, leave & attendance, and employee engagement — on the roadmap.",
   },
   {
-    question: "How secure is my hiring data?",
+    question: "What AI model does Work Nucleus use?",
+    answer:
+      "Work Nucleus is powered by Anthropic's Claude, one of the most capable and safe AI models available. Our AI agents handle JD generation, feedback summarization, candidate scoring, and communication drafting — with more agents planned for every HR module.",
+  },
+  {
+    question: "How secure is my data?",
     answer:
       "We take security seriously. All data is encrypted at rest and in transit. We use Auth0 for enterprise-grade authentication. Your data is never used to train AI models. Full audit logging is available for compliance and oversight.",
   },
@@ -21,14 +26,14 @@ const faqs = [
       "Absolutely! Our Starter plan is free and includes 5 users, 3 hiring plans, and AI-powered job description generation. No credit card required. You can upgrade to Professional anytime.",
   },
   {
-    question: "Does Work Nucleus replace my existing ATS?",
+    question: "Which modules are available right now?",
     answer:
-      "Work Nucleus is designed as a complete hiring platform that covers the full workflow from planning to decisions. We are actively building integrations — Enterprise customers can work with us on custom onboarding for their existing tech stack.",
+      "The Hiring & Recruitment module is available now with features like hiring plan builder, AI job descriptions, Kanban pipelines, AI feedback & scoring, analytics, interviewer training, and more. Additional HR modules are in active development.",
   },
   {
-    question: "How does the AI assist in hiring?",
+    question: "Does Work Nucleus replace my existing HR tools?",
     answer:
-      "Our AI agents handle time-consuming tasks: generating inclusive job descriptions, summarizing multi-interviewer feedback into structured highlights, scoring candidates across skill dimensions, and drafting personalized offer letters and rejection emails.",
+      "Work Nucleus is designed to be a comprehensive HR platform. You can start with hiring and expand as new modules launch. We are actively building integrations — Enterprise customers can work with us on custom onboarding for their existing tech stack.",
   },
   {
     question: "Can I customize the hiring pipeline stages?",

@@ -7,23 +7,23 @@ const steps = [
   {
     step: "01",
     icon: Settings,
-    title: "Set Up Your Plan",
+    title: "Choose Your Module",
     description:
-      "Define your hiring plan with roles, skills, budget, and timelines. Our AI suggests skills and helps structure your requirements.",
+      "Start with Hiring — define your workforce plan with roles, skills, budget, and timelines. More HR modules launching soon.",
   },
   {
     step: "02",
     icon: Users,
-    title: "Hire with AI Assistance",
+    title: "Let AI Do the Heavy Lifting",
     description:
-      "Generate JDs, track candidates on Kanban boards, collect structured feedback, and let AI score and rank your pipeline automatically.",
+      "AI agents generate JDs, track candidates, collect structured feedback, score and rank your pipeline — automatically.",
   },
   {
     step: "03",
     icon: TrendingUp,
-    title: "Optimize & Decide",
+    title: "Optimize with Data",
     description:
-      "Use real-time analytics to identify bottlenecks, draft communications with AI, and make data-driven hiring decisions faster.",
+      "Use real-time analytics to identify bottlenecks, draft communications with AI, and make data-driven decisions faster.",
   },
 ];
 

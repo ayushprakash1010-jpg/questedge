@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 const productLinks = [
-  { label: "Features", href: "#features" },
+  { label: "Modules", href: "#features" },
   { label: "AI Agents", href: "#ai-agents" },
   { label: "Pricing", href: "#pricing" },
   { label: "Integrations", href: "#" },
@@ -39,9 +39,9 @@ export function LandingFooter() {
               </span>
             </div>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-slate-400">
-              The AI-powered hiring platform that helps teams build structured
-              hiring plans, generate job descriptions, and make data-driven
-              decisions.
+              The AI-powered HR tech platform that modernizes your entire people
+              operations — starting with intelligent hiring and expanding across
+              all of HR.
             </p>
 
             {/* Social Links */}
