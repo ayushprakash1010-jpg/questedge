@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/analytics — generate AI insights
+// POST /api/analytics — generate and persist AI insights
 export async function POST() {
   try {
     const session = await auth0.getSession();
@@ -44,6 +44,7 @@ export async function POST() {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
     });
     const data = await res.json();
+    // Response shape: { insights, generatedAt, generatedBy }
     return NextResponse.json(data, { status: res.status });
   } catch {
     return NextResponse.json({ error: "Failed" }, { status: 500 });

@@ -180,7 +180,7 @@ export function CandidateSheet({
       <div className="w-full max-w-lg border-l border-slate-200 bg-white shadow-xl overflow-y-auto">
         {loading || !app ? (
           <div className="flex h-full items-center justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
           </div>
         ) : (
           <div className="p-6">

@@ -37,7 +37,7 @@ function TabsList({ className, ...props }: React.HTMLAttributes<HTMLDivElement>)
   return (
     <div
       className={cn(
-        "inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
+        "inline-flex h-11 items-center gap-1 rounded-xl bg-slate-100/80 p-1 text-slate-500",
         className
       )}
       role="tablist"
@@ -59,8 +59,10 @@ function TabsTrigger({ className, value, ...props }: TabsTriggerProps) {
       role="tab"
       aria-selected={isActive}
       className={cn(
-        "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-        isActive && "bg-background text-foreground shadow-sm",
+        "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-3.5 py-1.5 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+        isActive
+          ? "bg-white text-slate-900 shadow-sm"
+          : "text-slate-500 hover:text-slate-700",
         className
       )}
       onClick={() => context.onValueChange(value)}
@@ -80,10 +82,7 @@ function TabsContent({ className, value, ...props }: TabsContentProps) {
   return (
     <div
       role="tabpanel"
-      className={cn(
-        "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-        className
-      )}
+      className={cn("mt-4 animate-in fade-in-0 duration-200", className)}
       {...props}
     />
   );

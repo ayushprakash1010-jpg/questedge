@@ -433,7 +433,23 @@ export class AnalyticsService {
     });
   }
 
-  async getInsights(orgId: string) {
+  async getLatestInsights(orgId: string) {
+    const record = await this.prisma.dashboardInsight.findFirst({
+      where: { orgId },
+      orderBy: { generatedAt: 'desc' },
+      include: { user: { select: { id: true, name: true } } },
+    });
+
+    if (!record) return { insights: [], generatedAt: null, generatedBy: null };
+
+    return {
+      insights: record.insights,
+      generatedAt: record.generatedAt.toISOString(),
+      generatedBy: record.user,
+    };
+  }
+
+  async generateInsights(orgId: string, userId: string) {
     // Gather all analytics
     const [overview, funnel, timeToHire, cost, interviewerStats, sources] = await Promise.all([
       this.getOverview(orgId),
@@ -471,6 +487,23 @@ export class AnalyticsService {
       throw new BadRequestException(`AI insights failed: ${error}`);
     }
 
-    return res.json();
+    const aiResponse = await res.json();
+    const insightsData = aiResponse.insights || aiResponse;
+
+    // Persist to database
+    const record = await this.prisma.dashboardInsight.create({
+      data: {
+        orgId,
+        generatedBy: userId,
+        insights: insightsData,
+      },
+      include: { user: { select: { id: true, name: true } } },
+    });
+
+    return {
+      insights: record.insights,
+      generatedAt: record.generatedAt.toISOString(),
+      generatedBy: record.user,
+    };
   }
 }

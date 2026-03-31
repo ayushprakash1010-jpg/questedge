@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { TopBar } from "@/components/top-bar";
+import { NovaProvider } from "@/components/nova-provider";
 import { useProfile } from "@/hooks/use-profile";
 
 const IS_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
@@ -38,25 +39,27 @@ export default function ProtectedLayout({
     if (profileLoading) {
       return (
         <div className="flex h-screen items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
         </div>
       );
     }
     return (
-      <div className="flex h-screen">
-        <Sidebar userRole={profile?.role} />
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <TopBar />
-          <main className="flex-1 overflow-y-auto p-6">{children}</main>
+      <NovaProvider>
+        <div className="flex h-screen">
+          <Sidebar userRole={profile?.role} />
+          <div className="flex flex-1 flex-col overflow-hidden">
+            <TopBar />
+            <main className="flex-1 overflow-y-auto bg-background p-6">{children}</main>
+          </div>
         </div>
-      </div>
+      </NovaProvider>
     );
   }
 
   if (authLoading || profileLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
       </div>
     );
   }
@@ -64,12 +67,14 @@ export default function ProtectedLayout({
   if (!user) return null;
 
   return (
-    <div className="flex h-screen">
-      <Sidebar userRole={profile?.role} />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+    <NovaProvider>
+      <div className="flex h-screen">
+        <Sidebar userRole={profile?.role} />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <TopBar />
+          <main className="flex-1 overflow-y-auto bg-background p-6">{children}</main>
+        </div>
       </div>
-    </div>
+    </NovaProvider>
   );
 }

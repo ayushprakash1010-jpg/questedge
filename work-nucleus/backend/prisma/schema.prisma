@@ -166,11 +166,12 @@ model Organization {
   trainingModules  TrainingModule[]
   notifications    Notification[]
   auditLogs        AuditLog[]
-  settings         OrgSettings?
-  healthMetrics    OrgHealthMetric[]
-  jobPublishings   JobPublishing[]
-  supportTickets   SupportTicket[]
-  supportSessions  SupportSession[]
+  settings           OrgSettings?
+  healthMetrics      OrgHealthMetric[]
+  jobPublishings     JobPublishing[]
+  supportTickets     SupportTicket[]
+  supportSessions    SupportSession[]
+  dashboardInsights  DashboardInsight[]
 
   @@map("organizations")
 }
@@ -205,6 +206,7 @@ model User {
   escalationsCreated      SupportEscalation[]  @relation("EscalationCreator")
   supportSessions         SupportSession[]     @relation("SupportSessionUser")
   targetedBySessions      SupportSession[]     @relation("SupportSessionTarget")
+  dashboardInsights       DashboardInsight[]
 
   @@index([orgId])
   @@index([auth0Sub])
@@ -692,4 +694,20 @@ model SupportSession {
   @@index([targetOrgId])
   @@index([startedAt])
   @@map("support_sessions")
+}
+
+// ── AI Dashboard Insights ───────────────────────────────────────
+
+model DashboardInsight {
+  id          String   @id @default(uuid()) @db.Uuid
+  orgId       String   @db.Uuid
+  generatedBy String   @db.Uuid @map("generated_by")
+  insights    Json
+  generatedAt DateTime @default(now()) @map("generated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  user         User         @relation(fields: [generatedBy], references: [id])
+
+  @@index([orgId, generatedAt(sort: Desc)])
+  @@map("dashboard_insights")
 }

@@ -10,7 +10,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, X } from "lucide-react";
+import { NvLoader } from "@nova-design-system/nova-react";
 
 interface User {
   id: string;
@@ -139,7 +140,7 @@ export default function AdminUsersPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-muted-foreground">Loading...</p>
+            <div className="flex h-32 items-center justify-center"><NvLoader /></div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -156,7 +157,7 @@ export default function AdminUsersPage() {
                   {users.map((user) => (
                     <tr key={user.id} className="border-b">
                       <td className="py-3">{user.name}</td>
-                      <td className="py-3 text-muted-foreground">
+                      <td className="py-3 text-slate-500">
                         {user.email}
                       </td>
                       <td className="py-3">
@@ -193,7 +194,7 @@ export default function AdminUsersPage() {
                   ))}
                   {users.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="py-6 text-center text-muted-foreground">
+                      <td colSpan={5} className="py-6 text-center text-slate-500">
                         No users found.
                       </td>
                     </tr>
@@ -224,12 +225,15 @@ export default function AdminUsersPage() {
 
       {/* Create/Edit Dialog */}
       {dialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <Card className="w-full max-w-md">
-            <CardHeader>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <Card className="w-full max-w-md shadow-2xl">
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>
                 {editingUser ? "Edit User" : "Invite User"}
               </CardTitle>
+              <button onClick={() => setDialogOpen(false)} className="rounded-lg p-1 hover:bg-slate-100 transition-colors">
+                <X className="h-4 w-4 text-slate-400" />
+              </button>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -257,7 +261,7 @@ export default function AdminUsersPage() {
                   <select
                     value={formRole}
                     onChange={(e) => setFormRole(e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/20 focus-visible:border-indigo-500"
                   >
                     {ROLES.map((r) => (
                       <option key={r} value={r}>

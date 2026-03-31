@@ -2,18 +2,19 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import {
   ClipboardList, Users, TrendingUp, Clock, Sparkles,
   AlertTriangle, Info, AlertCircle, Download, RefreshCw,
+  ArrowUpRight, ArrowDownRight, CalendarClock,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, LineChart, Line, Area, AreaChart, Cell,
+  ResponsiveContainer, Area, AreaChart,
 } from "recharts";
+import { NvButton, NvAlert, NvLoader } from "@nova-design-system/nova-react";
 
 interface Overview {
   activePlans: number;
@@ -79,12 +80,18 @@ interface Insight {
   recommendation: string;
 }
 
-const COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"];
+const CHART_COLORS = {
+  indigo: "#6366f1",
+  indigoLight: "#e0e7ff",
+  cyan: "#06b6d4",
+  green: "#10b981",
+  amber: "#f59e0b",
+};
 
-const severityConfig: Record<string, { icon: typeof Info; color: string; bg: string }> = {
-  info: { icon: Info, color: "text-blue-600", bg: "bg-blue-50 border-blue-200" },
-  warning: { icon: AlertTriangle, color: "text-amber-600", bg: "bg-amber-50 border-amber-200" },
-  critical: { icon: AlertCircle, color: "text-red-600", bg: "bg-red-50 border-red-200" },
+const severityConfig: Record<string, { icon: typeof Info; color: string; iconBg: string; bg: string; border: string; descColor: string }> = {
+  info: { icon: Info, color: "text-blue-600", iconBg: "bg-blue-100", bg: "bg-blue-50/50", border: "border-blue-200", descColor: "text-blue-900/70" },
+  warning: { icon: AlertTriangle, color: "text-amber-600", iconBg: "bg-amber-100", bg: "bg-amber-50/50", border: "border-amber-200", descColor: "text-amber-900/70" },
+  critical: { icon: AlertCircle, color: "text-red-600", iconBg: "bg-red-100", bg: "bg-red-50/50", border: "border-red-200", descColor: "text-red-900/70" },
 };
 
 function exportCsv(data: any[], filename: string) {
@@ -103,6 +110,20 @@ function exportCsv(data: any[], filename: string) {
   URL.revokeObjectURL(url);
 }
 
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-lg border border-slate-100 bg-white px-3 py-2 shadow-lg">
+      <p className="text-xs font-medium text-slate-500">{label}</p>
+      {payload.map((entry: any, i: number) => (
+        <p key={i} className="text-sm font-semibold" style={{ color: entry.color }}>
+          {entry.name}: {typeof entry.value === "number" ? entry.value.toLocaleString() : entry.value}
+        </p>
+      ))}
+    </div>
+  );
+};
+
 export default function DashboardPage() {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [funnel, setFunnel] = useState<FunnelStage[]>([]);
@@ -112,13 +133,15 @@ export default function DashboardPage() {
   const [sources, setSources] = useState<SourceStat[]>([]);
   const [timeToHire, setTimeToHire] = useState<{ trend: { month: string; avgDays: number }[] }>({ trend: [] });
   const [insights, setInsights] = useState<Insight[]>([]);
+  const [insightsGeneratedAt, setInsightsGeneratedAt] = useState<string | null>(null);
+  const [insightsGeneratedBy, setInsightsGeneratedBy] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [generatingInsights, setGeneratingInsights] = useState(false);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [ov, fn, pr, co, iv, sr, tth] = await Promise.all([
+      const [ov, fn, pr, co, iv, sr, tth, savedInsights] = await Promise.all([
         fetch("/api/analytics?type=overview").then((r) => r.ok ? r.json() : null),
         fetch("/api/analytics?type=funnel").then((r) => r.ok ? r.json() : []),
         fetch("/api/analytics?type=progress").then((r) => r.ok ? r.json() : []),
@@ -126,6 +149,7 @@ export default function DashboardPage() {
         fetch("/api/analytics?type=interviewers").then((r) => r.ok ? r.json() : []),
         fetch("/api/analytics?type=sources").then((r) => r.ok ? r.json() : []),
         fetch("/api/analytics?type=time-to-hire").then((r) => r.ok ? r.json() : { trend: [] }),
+        fetch("/api/analytics?type=insights").then((r) => r.ok ? r.json() : null),
       ]);
       setOverview(ov);
       setFunnel(Array.isArray(fn) ? fn : []);
@@ -134,6 +158,16 @@ export default function DashboardPage() {
       setInterviewers(Array.isArray(iv) ? iv : []);
       setSources(Array.isArray(sr) ? sr : []);
       setTimeToHire(tth || { trend: [] });
+
+      // Load persisted insights from backend
+      if (savedInsights?.insights) {
+        const insightsData = Array.isArray(savedInsights.insights)
+          ? savedInsights.insights
+          : [];
+        setInsights(insightsData);
+        setInsightsGeneratedAt(savedInsights.generatedAt || null);
+        setInsightsGeneratedBy(savedInsights.generatedBy?.name || null);
+      }
     } catch {
       // ignore
     } finally {
@@ -151,7 +185,10 @@ export default function DashboardPage() {
       const res = await fetch("/api/analytics", { method: "POST" });
       if (res.ok) {
         const data = await res.json();
-        setInsights(data.insights || []);
+        const newInsights = Array.isArray(data.insights) ? data.insights : [];
+        setInsights(newInsights);
+        setInsightsGeneratedAt(data.generatedAt || new Date().toISOString());
+        setInsightsGeneratedBy(data.generatedBy?.name || null);
       }
     } catch {
       // ignore
@@ -160,48 +197,114 @@ export default function DashboardPage() {
     }
   };
 
+  const formatGeneratedDate = (iso: string) => {
+    const date = new Date(iso);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 1) return "Yesterday";
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined });
+  };
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <NvLoader />
       </div>
     );
   }
 
   const kpiCards = [
-    { title: "Active Plans", value: overview?.activePlans ?? 0, icon: ClipboardList, color: "text-indigo-600", bg: "bg-indigo-50" },
-    { title: "Open Roles", value: `${overview?.openRoles ?? 0}`, sub: `${overview?.fillRate ?? 0}% filled`, icon: Users, color: "text-cyan-600", bg: "bg-cyan-50" },
-    { title: "Avg Time to Hire", value: `${overview?.avgTimeToHire ?? 0}d`, icon: Clock, color: "text-amber-600", bg: "bg-amber-50" },
-    { title: "In Pipeline", value: overview?.pipelineCandidates ?? 0, icon: TrendingUp, color: "text-green-600", bg: "bg-green-50" },
+    {
+      title: "Active Plans",
+      value: overview?.activePlans ?? 0,
+      icon: ClipboardList,
+      gradient: "from-indigo-500 to-indigo-600",
+      iconBg: "bg-indigo-50",
+      iconColor: "text-indigo-600",
+      trend: "+2 this month",
+      trendUp: true,
+    },
+    {
+      title: "Open Roles",
+      value: `${overview?.openRoles ?? 0}`,
+      sub: `${overview?.fillRate ?? 0}% filled`,
+      icon: Users,
+      gradient: "from-cyan-500 to-cyan-600",
+      iconBg: "bg-cyan-50",
+      iconColor: "text-cyan-600",
+      trend: `${overview?.filledRoles ?? 0} filled`,
+      trendUp: true,
+    },
+    {
+      title: "Avg Time to Hire",
+      value: `${overview?.avgTimeToHire ?? 0}d`,
+      icon: Clock,
+      gradient: "from-amber-500 to-orange-500",
+      iconBg: "bg-amber-50",
+      iconColor: "text-amber-600",
+      trend: "vs 35d avg",
+      trendUp: (overview?.avgTimeToHire ?? 0) < 35,
+    },
+    {
+      title: "In Pipeline",
+      value: overview?.pipelineCandidates ?? 0,
+      icon: TrendingUp,
+      gradient: "from-emerald-500 to-emerald-600",
+      iconBg: "bg-emerald-50",
+      iconColor: "text-emerald-600",
+      trend: `${overview?.selectedCount ?? 0} selected`,
+      trendUp: true,
+    },
   ];
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-          <p className="text-sm text-slate-500">Hiring analytics overview</p>
+          <p className="mt-0.5 text-sm text-slate-500">Hiring analytics overview</p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchAll}>
-          <RefreshCw className="mr-2 h-3.5 w-3.5" /> Refresh
-        </Button>
+        <NvButton emphasis="medium" size="sm" onClick={fetchAll}>
+          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+        </NvButton>
       </div>
 
-      {/* Row 1: KPI Cards */}
+      {/* KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpiCards.map((card) => (
-          <Card key={card.title} className="border-slate-200">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-slate-500">{card.title}</CardTitle>
-              <div className={cn("flex h-9 w-9 items-center justify-center rounded-lg", card.bg)}>
-                <card.icon className={cn("h-4 w-4", card.color)} />
+          <Card key={card.title} className="card-hover overflow-hidden">
+            <div className={cn("h-1 bg-gradient-to-r", card.gradient)} />
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-slate-500">{card.title}</p>
+                  <p className="text-3xl font-bold text-slate-900">{card.value}</p>
+                  {"sub" in card && card.sub && (
+                    <p className="text-xs text-slate-500">{card.sub}</p>
+                  )}
+                </div>
+                <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl", card.iconBg)}>
+                  <card.icon className={cn("h-5 w-5", card.iconColor)} />
+                </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-slate-900">{card.value}</p>
-              {"sub" in card && card.sub && (
-                <p className="text-xs text-slate-500">{card.sub}</p>
-              )}
+              <div className="mt-3 flex items-center gap-1 text-xs">
+                {card.trendUp ? (
+                  <ArrowUpRight className="h-3 w-3 text-emerald-500" />
+                ) : (
+                  <ArrowDownRight className="h-3 w-3 text-red-500" />
+                )}
+                <span className={card.trendUp ? "text-emerald-600" : "text-red-600"}>
+                  {card.trend}
+                </span>
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -209,52 +312,59 @@ export default function DashboardPage() {
 
       {/* Row 2: Pipeline Funnel + Hiring Progress */}
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* Pipeline Funnel */}
-        <Card className="border-slate-200">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base">Pipeline Funnel</CardTitle>
-            <Button variant="ghost" size="sm" onClick={() => exportCsv(funnel, "pipeline-funnel")}>
+            <CardTitle>Pipeline Funnel</CardTitle>
+            <NvButton emphasis="lower" size="xs" onClick={() => exportCsv(funnel, "pipeline-funnel")}>
               <Download className="h-3.5 w-3.5" />
-            </Button>
+            </NvButton>
           </CardHeader>
           <CardContent>
             {funnel.length === 0 ? (
-              <p className="text-sm text-slate-400">No pipeline data yet</p>
+              <div className="flex h-[250px] items-center justify-center">
+                <p className="text-sm text-slate-400">No pipeline data yet</p>
+              </div>
             ) : (
               <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={funnel} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} />
-                  <Tooltip />
-                  <Bar dataKey="entered" fill="#6366f1" name="Entered" />
-                  <Bar dataKey="passed" fill="#22c55e" name="Passed" />
+                <BarChart data={funnel} layout="vertical" barGap={4}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis type="number" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                  <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="entered" fill={CHART_COLORS.indigo} radius={[0, 4, 4, 0]} name="Entered" />
+                  <Bar dataKey="passed" fill={CHART_COLORS.green} radius={[0, 4, 4, 0]} name="Passed" />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
 
-        {/* Hiring Progress */}
-        <Card className="border-slate-200">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base">Hiring Progress</CardTitle>
-            <Button variant="ghost" size="sm" onClick={() => exportCsv(progress, "hiring-progress")}>
+            <CardTitle>Hiring Progress</CardTitle>
+            <NvButton emphasis="lower" size="xs" onClick={() => exportCsv(progress, "hiring-progress")}>
               <Download className="h-3.5 w-3.5" />
-            </Button>
+            </NvButton>
           </CardHeader>
           <CardContent>
             {progress.length === 0 ? (
-              <p className="text-sm text-slate-400">No active plans</p>
+              <div className="flex h-[250px] items-center justify-center">
+                <p className="text-sm text-slate-400">No active plans</p>
+              </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {progress.slice(0, 6).map((p) => (
-                  <div key={p.id}>
+                  <div key={p.id} className="group">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-slate-700 truncate max-w-[200px]">{p.title}</span>
-                      <span className="text-slate-500">{p.filledRoles}/{p.totalRoles}</span>
+                      <span className="font-medium text-slate-700 truncate max-w-[220px]">{p.title}</span>
+                      <span className="text-xs font-semibold text-slate-900">{p.filledRoles}/{p.totalRoles}</span>
                     </div>
-                    <Progress value={p.filledRoles} max={p.totalRoles} className="mt-1" />
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <Progress value={p.filledRoles} max={p.totalRoles} className="flex-1" />
+                      <span className="text-[10px] font-medium text-slate-400 w-8 text-right">
+                        {p.totalRoles > 0 ? Math.round((p.filledRoles / p.totalRoles) * 100) : 0}%
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -265,48 +375,63 @@ export default function DashboardPage() {
 
       {/* Row 3: Time to Hire + Budget */}
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* Time to Hire Trend */}
-        <Card className="border-slate-200">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-base">Time to Hire Trend</CardTitle>
+            <CardTitle>Time to Hire Trend</CardTitle>
           </CardHeader>
           <CardContent>
             {timeToHire.trend.length === 0 || timeToHire.trend.every((t) => t.avgDays === 0) ? (
-              <p className="text-sm text-slate-400">No hiring data yet</p>
+              <div className="flex h-[250px] items-center justify-center">
+                <p className="text-sm text-slate-400">No hiring data yet</p>
+              </div>
             ) : (
               <ResponsiveContainer width="100%" height={250}>
                 <AreaChart data={timeToHire.trend}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Area type="monotone" dataKey="avgDays" stroke="#6366f1" fill="#e0e7ff" name="Avg Days" />
+                  <defs>
+                    <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={CHART_COLORS.indigo} stopOpacity={0.2} />
+                      <stop offset="100%" stopColor={CHART_COLORS.indigo} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="avgDays"
+                    stroke={CHART_COLORS.indigo}
+                    strokeWidth={2}
+                    fill="url(#areaGradient)"
+                    name="Avg Days"
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
 
-        {/* Budget Utilization */}
-        <Card className="border-slate-200">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base">Budget vs Actual</CardTitle>
-            <Button variant="ghost" size="sm" onClick={() => exportCsv(cost, "budget")}>
+            <CardTitle>Budget vs Actual</CardTitle>
+            <NvButton emphasis="lower" size="xs" onClick={() => exportCsv(cost, "budget")}>
               <Download className="h-3.5 w-3.5" />
-            </Button>
+            </NvButton>
           </CardHeader>
           <CardContent>
             {cost.length === 0 ? (
-              <p className="text-sm text-slate-400">No cost data</p>
+              <div className="flex h-[250px] items-center justify-center">
+                <p className="text-sm text-slate-400">No cost data</p>
+              </div>
             ) : (
               <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={cost.slice(0, 6)}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="title" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={60} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v: number) => `₹${v.toLocaleString()}`} />
-                  <Bar dataKey="budgetMax" fill="#e0e7ff" name="Budget Max" />
-                  <Bar dataKey="avgOfferCtc" fill="#6366f1" name="Avg Offer" />
+                <BarChart data={cost.slice(0, 6)} barGap={4}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="title" tick={{ fontSize: 10, fill: "#94a3b8" }} interval={0} angle={-20} textAnchor="end" height={60} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="budgetMax" fill={CHART_COLORS.indigoLight} radius={[4, 4, 0, 0]} name="Budget Max" />
+                  <Bar dataKey="avgOfferCtc" fill={CHART_COLORS.indigo} radius={[4, 4, 0, 0]} name="Avg Offer" />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -316,13 +441,12 @@ export default function DashboardPage() {
 
       {/* Row 4: Interviewers + Sources */}
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* Interviewers */}
-        <Card className="border-slate-200">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base">Interviewer Stats</CardTitle>
-            <Button variant="ghost" size="sm" onClick={() => exportCsv(interviewers, "interviewers")}>
+            <CardTitle>Interviewer Stats</CardTitle>
+            <NvButton emphasis="lower" size="xs" onClick={() => exportCsv(interviewers, "interviewers")}>
               <Download className="h-3.5 w-3.5" />
-            </Button>
+            </NvButton>
           </CardHeader>
           <CardContent>
             {interviewers.length === 0 ? (
@@ -331,20 +455,35 @@ export default function DashboardPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-slate-100 text-left text-xs text-slate-500">
-                      <th className="pb-2 font-medium">Name</th>
-                      <th className="pb-2 font-medium">Interviews</th>
-                      <th className="pb-2 font-medium">Avg Rating</th>
-                      <th className="pb-2 font-medium">Avg Response</th>
+                    <tr className="border-b border-slate-100">
+                      <th className="pb-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Name</th>
+                      <th className="pb-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Interviews</th>
+                      <th className="pb-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Avg Rating</th>
+                      <th className="pb-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Response</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-slate-50">
                     {interviewers.slice(0, 8).map((i) => (
-                      <tr key={i.name} className="border-b border-slate-50">
-                        <td className="py-2 font-medium text-slate-900">{i.name}</td>
-                        <td className="py-2 text-slate-600">{i.totalInterviews}</td>
-                        <td className="py-2 text-slate-600">{i.avgRating}/5</td>
-                        <td className="py-2 text-slate-600">{i.avgFeedbackTimeHours}h</td>
+                      <tr key={i.name} className="transition-colors hover:bg-slate-50/50">
+                        <td className="py-3 font-medium text-slate-900">{i.name}</td>
+                        <td className="py-3 text-slate-600">{i.totalInterviews}</td>
+                        <td className="py-3">
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex">
+                              {Array.from({ length: 5 }).map((_, idx) => (
+                                <div
+                                  key={idx}
+                                  className={cn(
+                                    "h-1.5 w-1.5 rounded-full mr-0.5",
+                                    idx < Math.round(i.avgRating) ? "bg-amber-400" : "bg-slate-200"
+                                  )}
+                                />
+                              ))}
+                            </div>
+                            <span className="text-slate-600">{i.avgRating}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 text-slate-600">{i.avgFeedbackTimeHours}h</td>
                       </tr>
                     ))}
                   </tbody>
@@ -354,13 +493,12 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Sources */}
-        <Card className="border-slate-200">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base">Source Effectiveness</CardTitle>
-            <Button variant="ghost" size="sm" onClick={() => exportCsv(sources, "sources")}>
+            <CardTitle>Source Effectiveness</CardTitle>
+            <NvButton emphasis="lower" size="xs" onClick={() => exportCsv(sources, "sources")}>
               <Download className="h-3.5 w-3.5" />
-            </Button>
+            </NvButton>
           </CardHeader>
           <CardContent>
             {sources.length === 0 ? (
@@ -369,22 +507,26 @@ export default function DashboardPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-slate-100 text-left text-xs text-slate-500">
-                      <th className="pb-2 font-medium">Source</th>
-                      <th className="pb-2 font-medium">Candidates</th>
-                      <th className="pb-2 font-medium">Selected</th>
-                      <th className="pb-2 font-medium">Rate</th>
-                      <th className="pb-2 font-medium">Avg Score</th>
+                    <tr className="border-b border-slate-100">
+                      <th className="pb-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Source</th>
+                      <th className="pb-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Candidates</th>
+                      <th className="pb-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Selected</th>
+                      <th className="pb-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Rate</th>
+                      <th className="pb-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Score</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-slate-50">
                     {sources.map((s) => (
-                      <tr key={s.source} className="border-b border-slate-50">
-                        <td className="py-2 font-medium text-slate-900">{s.source}</td>
-                        <td className="py-2 text-slate-600">{s.candidates}</td>
-                        <td className="py-2 text-slate-600">{s.selected}</td>
-                        <td className="py-2 text-slate-600">{s.selectionRate}%</td>
-                        <td className="py-2 text-slate-600">{s.avgScore || "—"}</td>
+                      <tr key={s.source} className="transition-colors hover:bg-slate-50/50">
+                        <td className="py-3 font-medium text-slate-900">{s.source}</td>
+                        <td className="py-3 text-slate-600">{s.candidates}</td>
+                        <td className="py-3 text-slate-600">{s.selected}</td>
+                        <td className="py-3">
+                          <Badge variant={s.selectionRate > 20 ? "success" : "outline"} className="text-[10px]">
+                            {s.selectionRate}%
+                          </Badge>
+                        </td>
+                        <td className="py-3 text-slate-600">{s.avgScore || "—"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -396,51 +538,85 @@ export default function DashboardPage() {
       </div>
 
       {/* Row 5: AI Insights */}
-      <Card className="border-slate-200">
+      <Card className="overflow-hidden">
+        <div className="h-1 bg-gradient-to-r from-purple-500 via-indigo-500 to-cyan-500" />
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="h-4 w-4 text-purple-600" />
-            AI Insights
-          </CardTitle>
-          <Button
-            variant="outline"
+          <div className="flex items-center gap-3">
+            <CardTitle className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600">
+                <Sparkles className="h-3.5 w-3.5 text-white" />
+              </div>
+              AI Insights
+            </CardTitle>
+            {insightsGeneratedAt && (
+              <span className="flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-500">
+                <CalendarClock className="h-3 w-3" />
+                Generated {formatGeneratedDate(insightsGeneratedAt)}
+                {insightsGeneratedBy && (
+                  <span className="text-slate-400">by {insightsGeneratedBy}</span>
+                )}
+              </span>
+            )}
+          </div>
+          <NvButton
+            emphasis="medium"
             size="sm"
             onClick={handleGenerateInsights}
             disabled={generatingInsights}
+            loading={generatingInsights}
           >
-            <Sparkles className={cn("mr-2 h-3.5 w-3.5", generatingInsights && "animate-spin")} />
+            {!generatingInsights && <Sparkles className="h-3.5 w-3.5" />}
             {generatingInsights ? "Analyzing..." : insights.length > 0 ? "Regenerate" : "Generate Insights"}
-          </Button>
+          </NvButton>
         </CardHeader>
         <CardContent>
           {insights.length === 0 ? (
-            <p className="text-sm text-slate-400">
-              Click &quot;Generate Insights&quot; to get AI-powered hiring recommendations.
-            </p>
+            <div className="flex flex-col items-center justify-center py-8">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100">
+                <Sparkles className="h-6 w-6 text-slate-400" />
+              </div>
+              <p className="mt-3 text-sm text-slate-500">
+                Click &quot;Generate Insights&quot; to get AI-powered hiring recommendations.
+              </p>
+            </div>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               {insights.map((insight, i) => {
                 const config = severityConfig[insight.severity] || severityConfig.info;
                 const Icon = config.icon;
                 return (
                   <div
                     key={i}
-                    className={cn("rounded-lg border p-4", config.bg)}
+                    className={cn(
+                      "rounded-xl border p-5 transition-all duration-200 hover:shadow-md",
+                      config.bg, config.border
+                    )}
                   >
-                    <div className="flex items-start gap-2">
-                      <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", config.color)} />
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">{insight.title}</p>
-                        <p className="mt-1 text-xs text-slate-600">{insight.description}</p>
+                    <div style={{ display: "flex", gap: "12px" }}>
+                      <div className={cn("shrink-0 flex items-center justify-center rounded-lg", config.iconBg)} style={{ width: 32, height: 32 }}>
+                        <Icon className={cn("h-4 w-4", config.color)} />
+                      </div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, lineHeight: 1.4, color: "#0f172a" }}>
+                          {insight.title}
+                        </h4>
+                        <p style={{ margin: "8px 0 0", fontSize: 13, lineHeight: 1.6, color: "#475569" }}>
+                          {insight.description}
+                        </p>
                         {insight.recommendation && (
-                          <p className="mt-2 text-xs font-medium text-slate-700">
-                            → {insight.recommendation}
-                          </p>
+                          <div style={{ margin: "10px 0 0", padding: 12, borderRadius: 8, background: "rgba(255,255,255,0.6)" }}>
+                            <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#4338ca" }}>Recommendation</p>
+                            <p style={{ margin: "4px 0 0", fontSize: 13, lineHeight: 1.6, color: "#334155" }}>
+                              {insight.recommendation}
+                            </p>
+                          </div>
                         )}
                         {insight.category && (
-                          <Badge variant="outline" className="mt-2 text-xs">
-                            {insight.category}
-                          </Badge>
+                          <div style={{ marginTop: 8 }}>
+                            <Badge variant="outline" className="text-[10px] bg-white/50">
+                              {insight.category}
+                            </Badge>
+                          </div>
                         )}
                       </div>
                     </div>

@@ -1,8 +1,8 @@
 @import "tailwindcss";
+@import "@nova-design-system/nova-base/dist/css/spark.css";
 
 @theme {
-  /* Option A — Deep Indigo + Electric Cyan */
-  --color-background: hsl(210 40% 98%);
+  --color-background: hsl(220 20% 97%);
   --color-foreground: hsl(222 47% 11%);
   --color-card: hsl(0 0% 100%);
   --color-card-foreground: hsl(222 47% 11%);
@@ -12,18 +12,18 @@
   --color-primary-foreground: hsl(0 0% 100%);
   --color-secondary: hsl(187 92% 69%);
   --color-secondary-foreground: hsl(222 47% 11%);
-  --color-muted: hsl(210 40% 96%);
+  --color-muted: hsl(220 14% 96%);
   --color-muted-foreground: hsl(215 16% 47%);
   --color-accent: hsl(38 92% 50%);
   --color-accent-foreground: hsl(0 0% 100%);
   --color-destructive: hsl(0 84% 60%);
   --color-destructive-foreground: hsl(0 0% 98%);
-  --color-border: hsl(214 32% 91%);
-  --color-input: hsl(214 32% 91%);
+  --color-border: hsl(220 13% 91%);
+  --color-input: hsl(220 13% 91%);
   --color-ring: hsl(239 84% 67%);
-  --radius: 0.5rem;
+  --radius: 0.75rem;
 
-  /* Brand colors for direct use */
+  /* Brand colors */
   --color-indigo-50: #eef2ff;
   --color-indigo-100: #e0e7ff;
   --color-indigo-500: #6366f1;
@@ -54,5 +54,50 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
+}
+
+/* Nova component overrides for our theme */
+nv-button {
+  --nv-button-radius: var(--radius);
+}
+
+nv-badge {
+  --nv-badge-radius: 9999px;
+}
+
+/* Modern card hover effects */
+.card-hover {
+  transition: all 0.2s ease;
+}
+.card-hover:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+  transform: translateY(-1px);
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glass card effect */
+.glass-card {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+/* Shimmer loading effect */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
 }

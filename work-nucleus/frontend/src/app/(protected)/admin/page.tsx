@@ -20,9 +20,9 @@ export default function AdminPage() {
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {adminLinks.map((link) => (
           <Link key={link.href} href={link.href}>
-            <Card className="border-slate-200 transition-shadow hover:shadow-md cursor-pointer">
+            <Card className="card-hover cursor-pointer">
               <CardContent className="flex items-start gap-4 py-5">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100">
                   <link.icon className="h-5 w-5 text-indigo-600" />
                 </div>
                 <div>

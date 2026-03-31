@@ -61,10 +61,16 @@ export class AnalyticsController {
     return this.analyticsService.getSourceEffectiveness(req.user.orgId);
   }
 
+  @Get('insights')
+  @ApiOperation({ summary: 'Get latest persisted AI insights' })
+  getLatestInsights(@Req() req: any) {
+    return this.analyticsService.getLatestInsights(req.user.orgId);
+  }
+
   @Post('insights')
   @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER)
-  @ApiOperation({ summary: 'Generate AI-powered hiring insights' })
-  getInsights(@Req() req: any) {
-    return this.analyticsService.getInsights(req.user.orgId);
+  @ApiOperation({ summary: 'Generate and persist AI-powered hiring insights' })
+  generateInsights(@Req() req: any) {
+    return this.analyticsService.generateInsights(req.user.orgId, req.user.id);
   }
 }

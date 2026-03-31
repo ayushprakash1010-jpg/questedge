@@ -192,7 +192,7 @@ export default function HiringPlansPage() {
           {Array.from({ length: 5 }).map((_, i) => (
             <div
               key={i}
-              className="h-16 animate-pulse rounded-lg bg-slate-100"
+              className="h-16 rounded-xl shimmer"
             />
           ))}
         </div>
@@ -354,7 +354,7 @@ export default function HiringPlansPage() {
         typeof document !== "undefined" &&
         createPortal(
           <div
-            className="fixed z-50 w-40 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+            className="fixed z-50 w-44 rounded-xl border border-slate-200/60 bg-white py-1.5 shadow-lg"
             style={{ top: menuPos.top, left: menuPos.left }}
             onClick={(e) => e.stopPropagation()}
           >
