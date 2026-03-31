@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateHiringPlanDto } from './dto/create-hiring-plan.dto';
 import { UpdateHiringPlanDto } from './dto/update-hiring-plan.dto';
@@ -195,6 +195,32 @@ export class HiringPlansService {
     });
 
     return this.findOne(orgId, newPlan.id);
+  }
+
+  // Allowed status transitions
+  private static readonly TRANSITIONS: Record<HiringPlanStatus, HiringPlanStatus[]> = {
+    [HiringPlanStatus.DRAFT]: [HiringPlanStatus.ACTIVE, HiringPlanStatus.CANCELLED],
+    [HiringPlanStatus.ACTIVE]: [HiringPlanStatus.COMPLETED, HiringPlanStatus.CANCELLED],
+    [HiringPlanStatus.COMPLETED]: [HiringPlanStatus.ACTIVE], // reopen
+    [HiringPlanStatus.CANCELLED]: [HiringPlanStatus.DRAFT], // reopen as draft
+  };
+
+  async updateStatus(orgId: string, id: string, newStatus: HiringPlanStatus) {
+    const plan = await this.findOne(orgId, id);
+
+    const allowed = HiringPlansService.TRANSITIONS[plan.status as HiringPlanStatus] || [];
+    if (!allowed.includes(newStatus)) {
+      throw new BadRequestException(
+        `Cannot transition from ${plan.status} to ${newStatus}`,
+      );
+    }
+
+    await this.prisma.hiringPlan.update({
+      where: { id },
+      data: { status: newStatus },
+    });
+
+    return this.findOne(orgId, id);
   }
 
   async getStats(orgId: string) {

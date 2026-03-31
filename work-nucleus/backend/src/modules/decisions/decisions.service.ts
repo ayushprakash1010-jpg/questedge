@@ -137,7 +137,7 @@ export class DecisionsService {
     try {
       const res = await fetch(`${aiServiceUrl}/ai/draft-communication`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+        headers: { 'Content-Type': 'application/json', 'X-Internal-API-Key': apiKey },
         body: JSON.stringify(payload),
       });
 

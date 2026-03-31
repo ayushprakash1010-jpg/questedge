@@ -16,7 +16,7 @@ import { UpdateHiringPlanDto } from './dto/update-hiring-plan.dto';
 import { QueryHiringPlansDto } from './dto/query-hiring-plans.dto';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
-import { Role } from '@prisma/client';
+import { Role, HiringPlanStatus } from '@prisma/client';
 
 @ApiTags('Hiring Plans')
 @ApiBearerAuth()
@@ -57,6 +57,16 @@ export class HiringPlansController {
     @Body() dto: UpdateHiringPlanDto,
   ) {
     return this.hiringPlansService.update(user.orgId, id, dto);
+  }
+
+  @Patch(':id/status')
+  @ApiOperation({ summary: 'Update hiring plan status' })
+  updateStatus(
+    @CurrentUser() user: any,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('status') status: HiringPlanStatus,
+  ) {
+    return this.hiringPlansService.updateStatus(user.orgId, id, status);
   }
 
   @Delete(':id')

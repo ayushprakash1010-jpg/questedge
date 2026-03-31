@@ -28,7 +28,16 @@ export class CandidatesService {
   }
 
   async findAll(orgId: string, query: QueryCandidatesDto) {
-    const { page = 1, limit = 20, q, source } = query;
+    const {
+      page = 1,
+      limit = 20,
+      q,
+      source,
+      hiringPlanId,
+      topN,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = query;
 
     const where: Prisma.CandidateWhereInput = { orgId };
     if (q) {
@@ -38,20 +47,47 @@ export class CandidatesService {
       ];
     }
     if (source) where.source = source;
+    if (hiringPlanId) {
+      where.applications = { some: { hiringPlanId } };
+    }
+
+    // For topN by AI score, we need a special query
+    if (topN && hiringPlanId) {
+      return this.findTopByAiScore(orgId, hiringPlanId, topN, where);
+    }
+
+    // Determine orderBy — if sorting by aiMatchScore, sort via applications
+    let orderBy: Prisma.CandidateOrderByWithRelationInput;
+    if (sortBy === 'aiMatchScore') {
+      // Sort candidates by their best AI score across applications
+      orderBy = {
+        applications: { _count: sortOrder },
+      };
+    } else if (sortBy === 'name') {
+      orderBy = { name: sortOrder };
+    } else {
+      orderBy = { createdAt: sortOrder };
+    }
+
+    const effectiveLimit = topN || limit;
+    const skip = topN ? 0 : (page - 1) * effectiveLimit;
 
     const [data, total] = await Promise.all([
       this.prisma.candidate.findMany({
         where,
-        skip: (page - 1) * limit,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
+        skip,
+        take: effectiveLimit,
+        orderBy,
         include: {
           applications: {
             select: {
               id: true,
               hiringPlanId: true,
               status: true,
-              hiringPlan: { select: { title: true } },
+              aiMatchScore: true,
+              aiMatchSummary: true,
+              appliedAt: true,
+              hiringPlan: { select: { id: true, title: true } },
             },
           },
         },
@@ -61,7 +97,57 @@ export class CandidatesService {
 
     return {
       data,
-      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+      meta: {
+        total,
+        page: topN ? 1 : page,
+        limit: effectiveLimit,
+        totalPages: Math.ceil(total / effectiveLimit),
+      },
+    };
+  }
+
+  /**
+   * Get top N candidates for a specific hiring plan, sorted by AI match score desc.
+   */
+  private async findTopByAiScore(
+    orgId: string,
+    hiringPlanId: string,
+    topN: number,
+    baseWhere: Prisma.CandidateWhereInput,
+  ) {
+    // Query applications directly, then map back to candidates
+    const topApps = await this.prisma.candidateApplication.findMany({
+      where: {
+        hiringPlanId,
+        aiMatchScore: { not: null },
+        candidate: baseWhere,
+      },
+      orderBy: { aiMatchScore: 'desc' },
+      take: topN,
+      include: {
+        candidate: true,
+        hiringPlan: { select: { id: true, title: true } },
+      },
+    });
+
+    const data = topApps.map((app) => ({
+      ...app.candidate,
+      applications: [
+        {
+          id: app.id,
+          hiringPlanId: app.hiringPlanId,
+          status: app.status,
+          aiMatchScore: app.aiMatchScore,
+          aiMatchSummary: app.aiMatchSummary,
+          appliedAt: app.appliedAt,
+          hiringPlan: app.hiringPlan,
+        },
+      ],
+    }));
+
+    return {
+      data,
+      meta: { total: data.length, page: 1, limit: topN, totalPages: 1 },
     };
   }
 

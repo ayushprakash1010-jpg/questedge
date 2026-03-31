@@ -22,6 +22,10 @@ import {
   Award,
   Mail,
   Check,
+  Play,
+  CheckCircle2,
+  XCircle,
+  RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { JdTab } from "@/components/hiring-plans/jd-tab";
@@ -87,6 +91,7 @@ export default function HiringPlanDetailPage() {
   const [loading, setLoading] = useState(true);
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
   const [pipelineView, setPipelineView] = useState<"board" | "setup">("board");
+  const [statusUpdating, setStatusUpdating] = useState(false);
 
   useEffect(() => {
     async function fetchPlan() {
@@ -123,6 +128,44 @@ export default function HiringPlanDetailPage() {
       </div>
     );
   }
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!plan) return;
+    setStatusUpdating(true);
+    try {
+      const res = await fetch(`/api/hiring-plans/${plan.id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setPlan(updated);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setStatusUpdating(false);
+    }
+  };
+
+  // Status transition actions available for current status
+  const statusActions: Record<string, { label: string; status: string; icon: typeof Play; variant: "default" | "outline" | "destructive" }[]> = {
+    DRAFT: [
+      { label: "Activate", status: "ACTIVE", icon: Play, variant: "default" },
+      { label: "Cancel", status: "CANCELLED", icon: XCircle, variant: "destructive" },
+    ],
+    ACTIVE: [
+      { label: "Mark Completed", status: "COMPLETED", icon: CheckCircle2, variant: "default" },
+      { label: "Cancel", status: "CANCELLED", icon: XCircle, variant: "destructive" },
+    ],
+    COMPLETED: [
+      { label: "Reopen", status: "ACTIVE", icon: RotateCcw, variant: "outline" },
+    ],
+    CANCELLED: [
+      { label: "Reopen as Draft", status: "DRAFT", icon: RotateCcw, variant: "outline" },
+    ],
+  };
 
   const formatBudget = (min: string, max: string, currency: string) => {
     const fmt = (n: string) =>
@@ -174,12 +217,29 @@ export default function HiringPlanDetailPage() {
               <span>{formatBudget(plan.budgetMin, plan.budgetMax, plan.currency)}</span>
             </div>
           </div>
-          <Link href={`/hiring-plans/${plan.id}/edit`}>
-            <Button variant="outline">
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            {(statusActions[plan.status] || []).map((action) => {
+              const Icon = action.icon;
+              return (
+                <Button
+                  key={action.status}
+                  variant={action.variant}
+                  size="sm"
+                  disabled={statusUpdating}
+                  onClick={() => handleStatusChange(action.status)}
+                >
+                  <Icon className="mr-1.5 h-4 w-4" />
+                  {action.label}
+                </Button>
+              );
+            })}
+            <Link href={`/hiring-plans/${plan.id}/edit`}>
+              <Button variant="outline" size="sm">
+                <Pencil className="mr-1.5 h-4 w-4" />
+                Edit
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
 

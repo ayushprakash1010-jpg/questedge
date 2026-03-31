@@ -9,13 +9,17 @@ import { QueryCandidatesDto } from './dto/query-candidates.dto';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Role } from '@prisma/client';
+import { JobQueueService } from '../job-queue/job-queue.service';
 
 @ApiTags('Candidates')
 @ApiBearerAuth()
 @Controller('api/v1/candidates')
 @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER, Role.INTERVIEWER)
 export class CandidatesController {
-  constructor(private readonly candidatesService: CandidatesService) {}
+  constructor(
+    private readonly candidatesService: CandidatesService,
+    private readonly queue: JobQueueService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a candidate' })
@@ -52,5 +56,13 @@ export class CandidatesController {
     @Body() dto: UpdateCandidateDto,
   ) {
     return this.candidatesService.update(orgId, id, dto);
+  }
+
+  @Post('trigger-scoring')
+  @Roles(Role.ADMIN, Role.HR)
+  @ApiOperation({ summary: 'Manually trigger AI resume scoring for all unscored applications' })
+  async triggerScoring() {
+    const jobId = await this.queue.enqueue('resume-scoring-nightly', {});
+    return { message: 'Resume scoring triggered', jobId };
   }
 }

@@ -114,6 +114,23 @@ services:
       timeout: 5s
       retries: 5
 
+  pgboss-dashboard:
+    image: node:24-alpine
+    working_dir: /app
+    command: sh -c "npm install -g @pg-boss/dashboard && pg-boss-dashboard"
+    restart: unless-stopped
+    ports:
+      - "3003:3003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/work_nucleus
+      PGBOSS_SCHEMA: pgboss
+      PORT: 3003
+      PGBOSS_DASHBOARD_AUTH_USERNAME: admin
+      PGBOSS_DASHBOARD_AUTH_PASSWORD: admin
+
   support-admin:
     build:
       context: ../support-admin

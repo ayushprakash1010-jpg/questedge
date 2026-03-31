@@ -462,7 +462,7 @@ export class AnalyticsService {
 
     const res = await fetch(`${aiServiceUrl}/ai/dashboard-insights`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+      headers: { 'Content-Type': 'application/json', 'X-Internal-API-Key': apiKey },
       body: JSON.stringify(payload),
     });
 

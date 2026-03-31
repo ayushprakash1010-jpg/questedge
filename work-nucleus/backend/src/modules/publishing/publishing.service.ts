@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
-import { PublishChannel, JdStatus } from '@prisma/client';
+import { PublishChannel, JdStatus, HiringPlanStatus } from '@prisma/client';
 import { randomBytes } from 'crypto';
 
 @Injectable()
@@ -76,6 +76,14 @@ export class PublishingService {
       await this.prisma.jobDescription.update({
         where: { id: jd.id },
         data: { status: JdStatus.PUBLISHED },
+      });
+    }
+
+    // Auto-activate hiring plan if still in DRAFT
+    if (plan.status === HiringPlanStatus.DRAFT) {
+      await this.prisma.hiringPlan.update({
+        where: { id: planId },
+        data: { status: HiringPlanStatus.ACTIVE },
       });
     }
 
