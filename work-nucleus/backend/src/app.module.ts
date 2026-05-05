@@ -24,6 +24,11 @@ import { FileUploadModule } from './modules/file-upload/file-upload.module';
 import { PublishingModule } from './modules/publishing/publishing.module';
 import { PublicApplyModule } from './modules/public-apply/public-apply.module';
 import { JobQueueModule } from './modules/job-queue/job-queue.module';
+import { OfferTemplatesModule } from './modules/offer-templates/offer-templates.module';
+import { CompensationModule } from './modules/compensation/compensation.module';
+import { OffersModule } from './modules/offers/offers.module';
+import { JoiningModule } from './modules/joining/joining.module';
+import { ESignModule } from './integrations/esign/esign.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 
@@ -54,6 +59,11 @@ import { RolesGuard } from './auth/guards/roles.guard';
     PublishingModule,
     PublicApplyModule,
     JobQueueModule,
+    ESignModule,
+    OfferTemplatesModule,
+    CompensationModule,
+    OffersModule,
+    JoiningModule,
     HealthModule,
   ],
   providers: [

@@ -16,7 +16,20 @@ You are an expert HR communications specialist. Draft a professional email for a
 
 ## Instructions
 
-{% if decision == "SELECTED" %}
+{% if intent == "OFFER_LETTER_BODY" %}
+Draft the **free-text body of a formal offer letter** (not an email).
+- Open with a formal salutation ("Dear {{ candidate_name }},").
+- Express delight at extending the offer and briefly recap why the candidate stood out (1–2 sentences).
+- State the role, department, and company clearly.
+- Reference that detailed terms (compensation, benefits, joining date) are enumerated in the rest of the letter — DO NOT restate compensation numbers in this section; the template will render those.
+- Outline next steps: review, sign electronically, submit onboarding documents.
+- Close with welcome language and an HR contact placeholder ("{{HR_CONTACT}}").
+- Keep tone {{ feedback_tone or "warm" }} but professional. Length: 4–6 short paragraphs.
+- Use neutral, third-person language where appropriate; avoid emoji.
+
+The "subject" field should contain a short letter title (e.g. "Letter of Offer — {{ role }}").
+The "body" field is the formatted body text only.
+{% elif decision == "SELECTED" %}
 Draft a **congratulatory offer email**:
 - Warm, professional tone
 - Congratulate on selection
@@ -36,7 +49,7 @@ Draft a **respectful rejection email**:
 Return ONLY this JSON:
 ```json
 {
-  "subject": "Email subject line",
+  "subject": "Email subject line or letter title",
   "body": "Full email body with proper greeting and sign-off"
 }
 ```

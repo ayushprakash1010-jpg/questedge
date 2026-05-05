@@ -8,6 +8,7 @@ import {
   Users,
   GraduationCap,
   Shield,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +23,7 @@ const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Hiring Plans", href: "/hiring-plans", icon: ClipboardList },
   { label: "Candidates", href: "/candidates", icon: Users },
+  { label: "Offers", href: "/offers", icon: FileText, roles: ["ADMIN", "HR", "HIRING_MANAGER"] },
   { label: "Training", href: "/training", icon: GraduationCap },
   { label: "Admin", href: "/admin/users", icon: Shield, roles: ["ADMIN"] },
 ];

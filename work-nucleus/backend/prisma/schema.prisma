@@ -151,6 +151,50 @@ enum SessionType {
   IMPERSONATE
 }
 
+// ── Offer Letter Enums (Phase 1) ────────────────────────────────
+
+enum OfferStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  SENT
+  VIEWED
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  REVOKED
+}
+
+enum ESignProvider {
+  DIGIO
+  LEEGALITY
+}
+
+enum ESignStatus {
+  PENDING
+  SENT
+  VIEWED
+  SIGNED
+  EXPIRED
+  FAILED
+}
+
+enum JoiningStatus {
+  PENDING
+  IN_PROGRESS
+  DOCUMENTS_PENDING
+  READY_TO_JOIN
+  JOINED
+  CANCELLED
+}
+
+enum OfferApprovalDecision {
+  PENDING
+  APPROVED
+  CHANGES_REQUESTED
+  REJECTED
+}
+
 // ── Core Models ─────────────────────────────────────────────────
 
 model Organization {
@@ -172,6 +216,9 @@ model Organization {
   supportTickets     SupportTicket[]
   supportSessions    SupportSession[]
   dashboardInsights  DashboardInsight[]
+  offerTemplates     OfferTemplate[]
+  offers             Offer[]
+  joiningChecklists  JoiningChecklist[]
 
   @@map("organizations")
 }
@@ -207,6 +254,10 @@ model User {
   supportSessions         SupportSession[]     @relation("SupportSessionUser")
   targetedBySessions      SupportSession[]     @relation("SupportSessionTarget")
   dashboardInsights       DashboardInsight[]
+  createdOfferTemplates   OfferTemplate[]      @relation("OfferTemplateCreator")
+  createdOffers           Offer[]              @relation("OfferCreator")
+  buddyForJoinings        CandidateJoining[]   @relation("JoiningBuddy")
+  managerForJoinings      CandidateJoining[]   @relation("JoiningReportingManager")
 
   @@index([orgId])
   @@index([auth0Sub])
@@ -391,6 +442,7 @@ model CandidateApplication {
   stageHistory CandidateStageHistory[]
   feedbacks    InterviewFeedback[]
   decision     SelectionDecision?
+  offer        Offer?
 
   @@unique([candidateId, hiringPlanId])
   @@index([hiringPlanId])
@@ -694,6 +746,160 @@ model SupportSession {
   @@index([targetOrgId])
   @@index([startedAt])
   @@map("support_sessions")
+}
+
+// ── Offer Letter Models (Phase 1) ───────────────────────────────
+
+model OfferTemplate {
+  id           String   @id @default(uuid()) @db.Uuid
+  orgId        String   @db.Uuid
+  name         String
+  body         String   @db.Text
+  variables    Json     @default("[]")
+  brandingJson Json?    @map("branding_json")
+  version      Int      @default(1)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdById  String   @map("created_by_id") @db.Uuid
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  createdBy    User         @relation("OfferTemplateCreator", fields: [createdById], references: [id])
+  offers       Offer[]
+
+  @@index([orgId, isActive])
+  @@map("offer_templates")
+}
+
+model Offer {
+  id              String      @id @default(uuid()) @db.Uuid
+  orgId           String      @db.Uuid
+  applicationId   String      @unique @map("application_id") @db.Uuid
+  templateId      String      @map("template_id") @db.Uuid
+  status          OfferStatus @default(DRAFT)
+  compensationId  String?     @unique @map("compensation_id") @db.Uuid
+  generatedDocUrl String?     @map("generated_doc_url")
+  signedDocUrl    String?     @map("signed_doc_url")
+  expiresAt       DateTime?   @map("expires_at")
+  firstViewedAt   DateTime?   @map("first_viewed_at")
+  acceptedAt      DateTime?   @map("accepted_at")
+  declinedAt      DateTime?   @map("declined_at")
+  declineReason   String?     @map("decline_reason")
+  approvalChain   Json        @default("[]") @map("approval_chain")
+  negotiationLog  Json        @default("[]") @map("negotiation_log")
+  candidateToken  String?     @unique @map("candidate_token")
+  createdById     String      @map("created_by_id") @db.Uuid
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  organization     Organization         @relation(fields: [orgId], references: [id])
+  template         OfferTemplate        @relation(fields: [templateId], references: [id])
+  application      CandidateApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  compensation     Compensation?        @relation(fields: [compensationId], references: [id])
+  createdBy        User                 @relation("OfferCreator", fields: [createdById], references: [id])
+  signatureRequest ESignRequest?
+  docVersions      OfferDocVersion[]
+  joining          CandidateJoining?
+
+  @@index([orgId, status])
+  @@map("offers")
+}
+
+model OfferDocVersion {
+  id         String   @id @default(uuid()) @db.Uuid
+  offerId    String   @map("offer_id") @db.Uuid
+  version    Int
+  s3Key      String   @map("s3_key")
+  renderedAt DateTime @default(now()) @map("rendered_at")
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@unique([offerId, version])
+  @@index([offerId])
+  @@map("offer_doc_versions")
+}
+
+model Compensation {
+  id             String   @id @default(uuid()) @db.Uuid
+  orgId          String   @db.Uuid
+  fixedAnnual    Decimal  @map("fixed_annual") @db.Decimal(12, 2)
+  variableAnnual Decimal  @default(0) @map("variable_annual") @db.Decimal(12, 2)
+  joiningBonus   Decimal  @default(0) @map("joining_bonus") @db.Decimal(12, 2)
+  retentionBonus Decimal  @default(0) @map("retention_bonus") @db.Decimal(12, 2)
+  esopUnits      Int?     @default(0) @map("esop_units")
+  esopVesting    Json?    @map("esop_vesting")
+  breakup        Json     @default("{}")
+  currency       String   @default("INR")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  offer Offer?
+
+  @@index([orgId])
+  @@map("compensations")
+}
+
+model ESignRequest {
+  id            String       @id @default(uuid()) @db.Uuid
+  offerId       String       @unique @map("offer_id") @db.Uuid
+  provider      ESignProvider @default(DIGIO)
+  providerReqId String       @unique @map("provider_req_id")
+  signerEmail   String       @map("signer_email")
+  signerPhone   String?      @map("signer_phone")
+  status        ESignStatus  @default(PENDING)
+  sentAt        DateTime?    @map("sent_at")
+  signedAt      DateTime?    @map("signed_at")
+  expiresAt     DateTime?    @map("expires_at")
+  auditTrailUrl String?      @map("audit_trail_url")
+  webhookEvents Json         @default("[]") @map("webhook_events")
+  lastPolledAt  DateTime?    @map("last_polled_at")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("esign_requests")
+}
+
+// ── Joining Models (Phase 1) ────────────────────────────────────
+
+model JoiningChecklist {
+  id        String   @id @default(uuid()) @db.Uuid
+  orgId     String   @db.Uuid
+  name      String
+  items     Json     @default("[]")
+  isDefault Boolean  @default(false) @map("is_default")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization      Organization      @relation(fields: [orgId], references: [id])
+  candidateJoinings CandidateJoining[]
+
+  @@index([orgId, isDefault])
+  @@map("joining_checklists")
+}
+
+model CandidateJoining {
+  id              String        @id @default(uuid()) @db.Uuid
+  offerId         String        @unique @map("offer_id") @db.Uuid
+  checklistId     String        @map("checklist_id") @db.Uuid
+  joinDate        DateTime      @map("join_date")
+  status          JoiningStatus @default(PENDING)
+  submissions     Json          @default("{}")
+  buddyUserId     String?       @map("buddy_user_id") @db.Uuid
+  reportingMgrId  String?       @map("reporting_mgr_id") @db.Uuid
+  candidateToken  String        @unique @map("candidate_token")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  offer            Offer            @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  checklist        JoiningChecklist @relation(fields: [checklistId], references: [id])
+  buddy            User?            @relation("JoiningBuddy", fields: [buddyUserId], references: [id])
+  reportingManager User?            @relation("JoiningReportingManager", fields: [reportingMgrId], references: [id])
+
+  @@index([status])
+  @@map("candidate_joinings")
 }
 
 // ── AI Dashboard Insights ───────────────────────────────────────

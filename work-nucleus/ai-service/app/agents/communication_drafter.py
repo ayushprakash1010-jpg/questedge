@@ -30,8 +30,10 @@ class CommunicationDrafterAgent(BaseAgent):
             department=request.department,
             company=request.company,
             decision=request.decision,
-            feedback_tone=request.feedbackTone,
+            feedback_tone=request.tone or request.feedbackTone,
             offer_details=request.offerDetails.model_dump() if request.offerDetails else None,
+            intent=request.intent,
+            compensation=request.compensation,
         )
 
     def _parse_json_response(self, text: str) -> dict:

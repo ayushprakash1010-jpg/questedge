@@ -18,9 +18,12 @@ class DraftCommunicationRequest(BaseModel):
     role: str
     company: str
     department: str
-    decision: str  # SELECTED or REJECTED
+    decision: str = "SELECTED"  # SELECTED or REJECTED
     feedbackTone: str = "mixed"  # positive, mixed, negative
     offerDetails: Optional[OfferDetails] = None
+    intent: Optional[str] = None  # e.g. "OFFER_LETTER_BODY" — switches prompt path
+    tone: Optional[str] = None  # warm | formal | neutral — used by OFFER_LETTER_BODY
+    compensation: Optional[dict] = None  # advisory only; numbers rendered by template
 
 
 class DraftCommunicationResponse(BaseModel):
