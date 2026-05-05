@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Spinner } from "@/components/ui/spinner";
 import { CheckCircle2, FileText, XCircle, MessageSquare } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -123,7 +124,11 @@ export default function PublicOfferPage() {
   }
 
   if (!offer) {
-    return <div className="min-h-screen flex items-center justify-center text-slate-500">Loading offer…</div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
   }
 
   const accepted = offer.status === "ACCEPTED";

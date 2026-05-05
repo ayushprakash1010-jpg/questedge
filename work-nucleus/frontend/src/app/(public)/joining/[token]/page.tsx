@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Spinner } from "@/components/ui/spinner";
 import { CheckCircle2, Upload, Clock, AlertCircle } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -104,7 +105,13 @@ export default function PublicJoiningPage() {
       </div>
     );
   }
-  if (!data) return <div className="min-h-screen flex items-center justify-center text-slate-500">Loading…</div>;
+  if (!data) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   const items = data.checklist.items.filter((i) => i.owner === "CANDIDATE");
   const submitted = items.filter((i) => data.submissions[i.key]?.status === "SUBMITTED").length;

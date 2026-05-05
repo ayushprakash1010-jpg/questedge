@@ -6,16 +6,7 @@ import { ArrowRight, Sparkles } from "lucide-react";
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-slate-50 via-indigo-50/40 to-cyan-50/30">
-      {/* Background grid pattern */}
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: `radial-gradient(circle, #4f46e5 1px, transparent 1px)`,
-          backgroundSize: "32px 32px",
-        }}
-      />
-
+    <section className="dot-grid relative overflow-hidden bg-gradient-to-br from-slate-50 via-indigo-50/40 to-cyan-50/30">
       {/* Gradient orbs */}
       <div className="absolute -top-40 right-0 h-96 w-96 rounded-full bg-indigo-400/20 blur-3xl" />
       <div className="absolute bottom-0 left-0 h-80 w-80 rounded-full bg-cyan-400/20 blur-3xl" />
@@ -41,11 +32,7 @@ export function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            The{" "}
-            <span className="bg-gradient-to-r from-indigo-600 to-cyan-500 bg-clip-text text-transparent">
-              AI-powered
-            </span>{" "}
-            platform for modern HR teams
+            The <span className="text-gradient">AI-powered</span> platform for modern HR teams
           </motion.h1>
 
           {/* Subheadline */}
