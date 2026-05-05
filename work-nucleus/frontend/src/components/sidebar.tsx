@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Award,
   IndianRupee,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +31,7 @@ const navItems: NavItem[] = [
   { label: "BGV", href: "/bgv", icon: ShieldCheck, roles: ["ADMIN", "HR"] },
   { label: "Appraisal", href: "/appraisal", icon: Award },
   { label: "Compensation", href: "/compensation/team", icon: IndianRupee, roles: ["ADMIN", "HR", "HIRING_MANAGER"] },
+  { label: "Reports", href: "/admin/reports", icon: BarChart3, roles: ["ADMIN", "HR"] },
   { label: "Training", href: "/training", icon: GraduationCap },
   { label: "Admin", href: "/admin/users", icon: Shield, roles: ["ADMIN"] },
 ];

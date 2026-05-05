@@ -356,6 +356,53 @@ enum CompLetterStatus {
   ACKNOWLEDGED
 }
 
+// ── Phase 5 Enums (Hardening) ───────────────────────────────────
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+  IN_APP
+  PUSH
+}
+
+enum NotificationDeliveryStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+  BOUNCED
+}
+
+enum ReportSource {
+  HIRING
+  APPLICATIONS
+  APPRAISAL
+  COMPENSATION
+  BGV
+  ATTRITION
+}
+
+enum ReportVisualization {
+  TABLE
+  BAR
+  LINE
+  FUNNEL
+  HEATMAP
+}
+
+enum SecurityEventType {
+  AUTH_LOGIN
+  AUTH_LOGOUT
+  AUTH_FAILED
+  ACCESS_GRANTED
+  ACCESS_DENIED
+  ROLE_CHANGED
+  SECRET_ACCESSED
+  DATA_EXPORTED
+  CONFIG_CHANGED
+}
+
 // ── Core Models ─────────────────────────────────────────────────
 
 model Organization {
@@ -385,6 +432,10 @@ model Organization {
   orgGoals           OrgGoal[]
   appraisalBudgets   AppraisalBudget[]
   compensationRevisions CompensationRevision[]
+  reportDefinitions  ReportDefinition[]
+  notificationLogs   NotificationLog[]
+  securityLogs       SecurityLog[]
+  aiCallLogs         AiCallLog[]
 
   @@map("organizations")
 }
@@ -435,6 +486,10 @@ model User {
   facilitatedCalibrations CalibrationSession[] @relation("CalibrationFacilitator")
   approvedBudgets         AppraisalBudget[]    @relation("BudgetApprover")
   comprevisionsAsEmployee CompensationRevision[] @relation("RevisionEmployee")
+  pushSubscriptions       PushSubscription[]
+  notificationPrefs       UserNotificationPref[]
+  reportDefinitions       ReportDefinition[]   @relation("ReportCreator")
+  notificationLogs        NotificationLog[]
 
   @@index([orgId])
   @@index([auth0Sub])
@@ -1391,6 +1446,124 @@ model CompensationSnapshot {
 
   @@index([budgetId])
   @@map("compensation_snapshots")
+}
+
+// ── Phase 5: Reports / Notifications / Security / Perf ──────────
+
+model ReportDefinition {
+  id             String              @id @default(uuid()) @db.Uuid
+  orgId          String              @db.Uuid
+  name           String
+  description    String?
+  dataSource     ReportSource        @map("data_source")
+  filters        Json                @default("{}")
+  groupBy        String[]            @default([]) @map("group_by")
+  metrics        Json                @default("[]")
+  visualization  ReportVisualization @default(TABLE)
+  scheduleCron   String?             @map("schedule_cron")
+  scheduleTargets Json               @default("[]") @map("schedule_targets")
+  createdById    String              @map("created_by_id") @db.Uuid
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  lastRunAt      DateTime?           @map("last_run_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  createdBy    User         @relation("ReportCreator", fields: [createdById], references: [id])
+
+  @@index([orgId])
+  @@map("report_definitions")
+}
+
+model UserNotificationPref {
+  id        String              @id @default(uuid()) @db.Uuid
+  userId    String              @map("user_id") @db.Uuid
+  eventType String              @map("event_type")
+  channel   NotificationChannel
+  enabled   Boolean             @default(true)
+  updatedAt DateTime            @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventType, channel])
+  @@map("user_notification_prefs")
+}
+
+model NotificationLog {
+  id          String                     @id @default(uuid()) @db.Uuid
+  orgId       String                     @db.Uuid
+  userId      String?                    @map("user_id") @db.Uuid
+  channel     NotificationChannel
+  templateKey String                     @map("template_key")
+  toAddress   String                     @map("to_address")
+  payload     Json                       @default("{}")
+  status      NotificationDeliveryStatus @default(QUEUED)
+  providerId  String?                    @map("provider_id")
+  costInPaise Int?                       @map("cost_in_paise")
+  sentAt      DateTime?                  @map("sent_at")
+  deliveredAt DateTime?                  @map("delivered_at")
+  errorMessage String?                   @map("error_message")
+  createdAt   DateTime                   @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  user         User?        @relation(fields: [userId], references: [id])
+
+  @@index([orgId, createdAt])
+  @@index([status])
+  @@map("notification_logs")
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
+}
+
+model SecurityLog {
+  id         String            @id @default(uuid()) @db.Uuid
+  orgId      String            @db.Uuid
+  eventType  SecurityEventType @map("event_type")
+  userId     String?           @map("user_id") @db.Uuid
+  ipAddress  String?           @map("ip_address")
+  userAgent  String?           @map("user_agent")
+  payload    Json              @default("{}")
+  prevHash   String?           @map("prev_hash")
+  hash       String
+  createdAt  DateTime          @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@index([orgId, createdAt])
+  @@index([hash])
+  @@map("security_logs")
+}
+
+model AiCallLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  orgId        String?  @db.Uuid
+  agentName    String   @map("agent_name")
+  modelUsed    String   @map("model_used")
+  tokensInput  Int?     @map("tokens_input")
+  tokensOutput Int?     @map("tokens_output")
+  costInPaise  Int?     @map("cost_in_paise")
+  cacheHit     Boolean  @default(false) @map("cache_hit")
+  status       String
+  latencyMs    Int?     @map("latency_ms")
+  createdAt    DateTime @default(now())
+
+  organization Organization? @relation(fields: [orgId], references: [id])
+
+  @@index([orgId, createdAt])
+  @@index([agentName])
+  @@map("ai_call_logs")
 }
 
 // ── AI Dashboard Insights ───────────────────────────────────────

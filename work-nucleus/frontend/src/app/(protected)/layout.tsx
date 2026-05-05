@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/sidebar";
 import { TopBar } from "@/components/top-bar";
 import { NovaProvider } from "@/components/nova-provider";
 import { useProfile } from "@/hooks/use-profile";
+import { registerServiceWorker } from "@/lib/pwa";
 
 const IS_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
 
@@ -18,6 +19,10 @@ export default function ProtectedLayout({
   const { user, isLoading: authLoading } = useUser();
   const { profile, isLoading: profileLoading } = useProfile();
   const router = useRouter();
+
+  useEffect(() => {
+    void registerServiceWorker();
+  }, []);
 
   useEffect(() => {
     if (IS_MOCK) return; // skip auth checks in mock mode

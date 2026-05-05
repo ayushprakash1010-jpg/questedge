@@ -38,6 +38,13 @@ import { PeerFeedbackModule } from './modules/peer-feedback/peer-feedback.module
 import { CalibrationModule } from './modules/calibration/calibration.module';
 import { CompBudgetModule } from './modules/comp-budget/comp-budget.module';
 import { CompRevisionsModule } from './modules/comp-revisions/comp-revisions.module';
+import { Msg91Module } from './integrations/msg91/msg91.module';
+import { CommsModule } from './modules/comms/comms.module';
+import { ReportsModule } from './modules/reports/reports.module';
+import { SecurityModule } from './modules/security/security.module';
+import { HotCacheModule } from './modules/cache/cache.module';
+import { AiCostModule } from './modules/ai-cost/ai-cost.module';
+import { PushModule } from './modules/push/push.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 
@@ -82,6 +89,13 @@ import { RolesGuard } from './auth/guards/roles.guard';
     CalibrationModule,
     CompBudgetModule,
     CompRevisionsModule,
+    Msg91Module,
+    CommsModule,
+    ReportsModule,
+    SecurityModule,
+    HotCacheModule,
+    AiCostModule,
+    PushModule,
     HealthModule,
   ],
   providers: [
