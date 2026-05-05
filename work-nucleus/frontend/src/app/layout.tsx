@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { Auth0Provider } from "@auth0/nextjs-auth0/client";
+import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 const inter = Inter({
@@ -33,6 +34,7 @@ export default function RootLayout({
     <html lang="en" className={inter.variable}>
       <body>
         <Auth0Provider>{children}</Auth0Provider>
+        <Toaster />
       </body>
     </html>
   );
