@@ -3,7 +3,11 @@ import { Inter } from "next/font/google";
 import { Auth0Provider } from "@auth0/nextjs-auth0/client";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Work Nucleus",
@@ -26,8 +30,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" className={inter.variable}>
+      <body>
         <Auth0Provider>{children}</Auth0Provider>
       </body>
     </html>
