@@ -2,10 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "@/components/ui/toaster";
+import { PageHeader } from "@/components/shared/page-header";
+import {
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/shared/data-table";
 
 interface Revision {
   id: string;
@@ -43,12 +53,12 @@ export default function CompTeamPage() {
   async function saveOverride(r: Revision) {
     const e = edits[r.id];
     if (!e || !e.reason || e.reason.length < 5) {
-      alert("Reason required (min 5 chars)");
+      toast.error("Reason required (min 5 chars)");
       return;
     }
     setBusy(r.id);
     try {
-      await fetch(`/api/v2/compensation/revisions/${r.id}/override`, {
+      const res = await fetch(`/api/v2/compensation/revisions/${r.id}/override`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -57,128 +67,137 @@ export default function CompTeamPage() {
           overrideReason: e.reason,
         }),
       });
+      if (!res.ok) throw new Error("Override failed");
       await load();
       setEdits((prev) => {
         const n = { ...prev };
         delete n[r.id];
         return n;
       });
+      toast.success("Override saved");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Override failed");
     } finally {
       setBusy(null);
     }
   }
 
-  const totalProposed = rows.reduce((s, r) => s + Number(edits[r.id]?.hikeINR ?? r.finalHikeINR), 0);
+  const totalProposed = rows.reduce(
+    (s, r) => s + Number(edits[r.id]?.hikeINR ?? r.finalHikeINR),
+    0
+  );
 
   return (
-    <div className="p-6">
-      <header className="mb-4">
-        <h1 className="text-2xl font-semibold">My team's compensation</h1>
-        <p className="text-sm text-slate-500">
-          Override hike/bonus per report (with reason). Total proposed: ₹{totalProposed.toLocaleString("en-IN")}
-        </p>
-      </header>
+    <div>
+      <PageHeader
+        title="My team's compensation"
+        subtitle={
+          <>
+            Override hike/bonus per report (with reason). Total proposed: ₹
+            {totalProposed.toLocaleString("en-IN")}
+          </>
+        }
+      />
 
-      {!cycleId && (
+      {!cycleId ? (
         <Card>
-          <CardContent className="p-6 text-slate-500">
-            Append <code>?cycleId=&lt;uuid&gt;</code> to view revisions for a specific cycle.
+          <CardContent className="p-6 text-sm text-slate-500">
+            Append <code>?cycleId=&lt;uuid&gt;</code> to view revisions for a
+            specific cycle.
           </CardContent>
         </Card>
-      )}
-
-      {cycleId && (
+      ) : rows.length === 0 ? (
         <Card>
-          <CardHeader>
-            <CardTitle>{rows.length} reports</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <table className="w-full text-sm">
-              <thead className="text-left text-xs uppercase tracking-wider text-slate-500 bg-slate-50">
-                <tr>
-                  <th className="px-3 py-2">Employee</th>
-                  <th className="px-3 py-2">Rating</th>
-                  <th className="px-3 py-2">Current</th>
-                  <th className="px-3 py-2">System hike</th>
-                  <th className="px-3 py-2">Override hike (₹)</th>
-                  <th className="px-3 py-2">Bonus (₹)</th>
-                  <th className="px-3 py-2">Reason</th>
-                  <th className="px-3 py-2">Status</th>
-                  <th className="px-3 py-2"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => {
-                  const e = edits[r.id] ?? { reason: "" };
-                  return (
-                    <tr key={r.id} className="border-t">
-                      <td className="px-3 py-2">{r.employee.name}</td>
-                      <td className="px-3 py-2">{r.rating ?? "—"}</td>
-                      <td className="px-3 py-2">₹{Number(r.currentFixed).toLocaleString("en-IN")}</td>
-                      <td className="px-3 py-2">
-                        {Number(r.computedHikePct).toFixed(1)}% (₹
-                        {Number(r.computedHikeINR).toLocaleString("en-IN")})
-                      </td>
-                      <td className="px-3 py-2">
-                        <Input
-                          type="number"
-                          className="w-24"
-                          defaultValue={Number(r.finalHikeINR)}
-                          onChange={(ev) =>
-                            setEdits((prev) => ({
-                              ...prev,
-                              [r.id]: { ...e, hikeINR: Number(ev.target.value) },
-                            }))
-                          }
-                        />
-                      </td>
-                      <td className="px-3 py-2">
-                        <Input
-                          type="number"
-                          className="w-24"
-                          defaultValue={Number(r.finalBonusINR)}
-                          onChange={(ev) =>
-                            setEdits((prev) => ({
-                              ...prev,
-                              [r.id]: { ...e, bonusINR: Number(ev.target.value) },
-                            }))
-                          }
-                        />
-                      </td>
-                      <td className="px-3 py-2">
-                        <Input
-                          placeholder="Why this change?"
-                          value={e.reason}
-                          onChange={(ev) =>
-                            setEdits((prev) => ({
-                              ...prev,
-                              [r.id]: { ...e, reason: ev.target.value },
-                            }))
-                          }
-                        />
-                      </td>
-                      <td className="px-3 py-2">
-                        <Badge>{r.status}</Badge>
-                      </td>
-                      <td className="px-3 py-2">
-                        <Button size="sm" disabled={busy === r.id || !edits[r.id]} onClick={() => saveOverride(r)}>
-                          Save
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {rows.length === 0 && (
-                  <tr>
-                    <td colSpan={9} className="px-4 py-6 text-center text-slate-500">
-                      No revisions for this cycle yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          <CardContent className="p-6 text-center text-sm text-slate-500">
+            No revisions for this cycle yet.
           </CardContent>
         </Card>
+      ) : (
+        <DataTable>
+          <DataTableHeader>
+            <tr>
+              <DataTableHead>Employee</DataTableHead>
+              <DataTableHead>Rating</DataTableHead>
+              <DataTableHead>Current</DataTableHead>
+              <DataTableHead>System hike</DataTableHead>
+              <DataTableHead>Override hike (₹)</DataTableHead>
+              <DataTableHead>Bonus (₹)</DataTableHead>
+              <DataTableHead>Reason</DataTableHead>
+              <DataTableHead>Status</DataTableHead>
+              <DataTableHead></DataTableHead>
+            </tr>
+          </DataTableHeader>
+          <DataTableBody>
+            {rows.map((r) => {
+              const e = edits[r.id] ?? { reason: "" };
+              return (
+                <DataTableRow key={r.id}>
+                  <DataTableCell className="font-medium text-slate-900">
+                    {r.employee.name}
+                  </DataTableCell>
+                  <DataTableCell>{r.rating ?? "—"}</DataTableCell>
+                  <DataTableCell>
+                    ₹{Number(r.currentFixed).toLocaleString("en-IN")}
+                  </DataTableCell>
+                  <DataTableCell>
+                    {Number(r.computedHikePct).toFixed(1)}% (₹
+                    {Number(r.computedHikeINR).toLocaleString("en-IN")})
+                  </DataTableCell>
+                  <DataTableCell>
+                    <Input
+                      type="number"
+                      className="w-24"
+                      defaultValue={Number(r.finalHikeINR)}
+                      onChange={(ev) =>
+                        setEdits((prev) => ({
+                          ...prev,
+                          [r.id]: { ...e, hikeINR: Number(ev.target.value) },
+                        }))
+                      }
+                    />
+                  </DataTableCell>
+                  <DataTableCell>
+                    <Input
+                      type="number"
+                      className="w-24"
+                      defaultValue={Number(r.finalBonusINR)}
+                      onChange={(ev) =>
+                        setEdits((prev) => ({
+                          ...prev,
+                          [r.id]: { ...e, bonusINR: Number(ev.target.value) },
+                        }))
+                      }
+                    />
+                  </DataTableCell>
+                  <DataTableCell>
+                    <Input
+                      placeholder="Why this change?"
+                      value={e.reason}
+                      onChange={(ev) =>
+                        setEdits((prev) => ({
+                          ...prev,
+                          [r.id]: { ...e, reason: ev.target.value },
+                        }))
+                      }
+                    />
+                  </DataTableCell>
+                  <DataTableCell>
+                    <Badge>{r.status}</Badge>
+                  </DataTableCell>
+                  <DataTableCell>
+                    <Button
+                      size="sm"
+                      disabled={busy === r.id || !edits[r.id]}
+                      onClick={() => saveOverride(r)}
+                    >
+                      Save
+                    </Button>
+                  </DataTableCell>
+                </DataTableRow>
+              );
+            })}
+          </DataTableBody>
+        </DataTable>
       )}
     </div>
   );

@@ -3,11 +3,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { Sparkles, Save } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Save } from "lucide-react";
+import { toast } from "@/components/ui/toaster";
+import { PageHeader } from "@/components/shared/page-header";
 
 interface Budget {
   id: string;
@@ -68,7 +71,9 @@ export default function CompCyclePage() {
         matrix,
         bonusMatrix,
       };
-      const url = budget ? `/api/v2/compensation/budgets/${budget.id}` : `/api/v2/compensation/budgets`;
+      const url = budget
+        ? `/api/v2/compensation/budgets/${budget.id}`
+        : `/api/v2/compensation/budgets`;
       const res = await fetch(url, {
         method: budget ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -76,9 +81,12 @@ export default function CompCyclePage() {
       });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
-        alert(e.message ?? "Save failed");
+        throw new Error(e.message ?? "Save failed");
       }
       await load();
+      toast.success(budget ? "Budget updated" : "Budget created");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Save failed");
     } finally {
       setBusy(false);
     }
@@ -95,33 +103,40 @@ export default function CompCyclePage() {
       });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
-        alert(e.message ?? "Allocator failed");
+        throw new Error(e.message ?? "Allocator failed");
       }
       await load();
+      toast.success("Allocator complete");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Allocator failed");
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <header className="mb-4 flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Compensation cycle</h1>
-          <p className="text-sm text-slate-500">{cycleId}</p>
-          {budget && <Badge className="mt-2">{budget.status}</Badge>}
-        </div>
-        <div className="flex gap-2">
-          <Link href={`/admin/compensation/cycles/${cycleId}/simulator`}>
-            <Button variant="outline">
-              <Sparkles className="w-4 h-4 mr-1" /> Simulator
+    <div className="mx-auto max-w-5xl">
+      <PageHeader
+        title="Compensation cycle"
+        subtitle={
+          <span className="flex items-center gap-2">
+            <span className="font-mono text-xs">{cycleId}</span>
+            {budget && <Badge>{budget.status}</Badge>}
+          </span>
+        }
+        actions={
+          <>
+            <Link href={`/admin/compensation/cycles/${cycleId}/simulator`}>
+              <Button variant="outline" size="sm">
+                <Sparkles className="h-4 w-4" /> Simulator
+              </Button>
+            </Link>
+            <Button size="sm" onClick={allocate} disabled={busy || !budget}>
+              Run allocator
             </Button>
-          </Link>
-          <Button onClick={allocate} disabled={busy || !budget}>
-            Run allocator
-          </Button>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       <Card className="mb-4">
         <CardHeader>
@@ -129,48 +144,66 @@ export default function CompCyclePage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-slate-500">Hike pool (₹)</label>
-              <Input type="number" value={hikePool} onChange={(e) => setHikePool(Number(e.target.value))} />
+            <div className="space-y-1.5">
+              <Label htmlFor="hike-pool">Hike pool (₹)</Label>
+              <Input
+                id="hike-pool"
+                type="number"
+                value={hikePool}
+                onChange={(e) => setHikePool(Number(e.target.value))}
+              />
             </div>
-            <div>
-              <label className="text-xs text-slate-500">Bonus pool (₹)</label>
-              <Input type="number" value={bonusPool} onChange={(e) => setBonusPool(Number(e.target.value))} />
+            <div className="space-y-1.5">
+              <Label htmlFor="bonus-pool">Bonus pool (₹)</Label>
+              <Input
+                id="bonus-pool"
+                type="number"
+                value={bonusPool}
+                onChange={(e) => setBonusPool(Number(e.target.value))}
+              />
             </div>
           </div>
           <div>
-            <label className="text-xs text-slate-500 mb-1 block">Rating → hike %</label>
+            <Label className="mb-1 block">Rating → hike %</Label>
             <div className="grid grid-cols-5 gap-2">
               {RATINGS.map((r) => (
                 <div key={r}>
-                  <p className="text-xs">{r}</p>
+                  <p className="text-xs text-slate-500">{r}</p>
                   <Input
                     type="number"
                     value={matrix[String(r)] ?? 0}
-                    onChange={(e) => setMatrix({ ...matrix, [String(r)]: Number(e.target.value) })}
+                    onChange={(e) =>
+                      setMatrix({ ...matrix, [String(r)]: Number(e.target.value) })
+                    }
                   />
                 </div>
               ))}
             </div>
           </div>
           <div>
-            <label className="text-xs text-slate-500 mb-1 block">Rating → bonus months</label>
+            <Label className="mb-1 block">Rating → bonus months</Label>
             <div className="grid grid-cols-5 gap-2">
               {RATINGS.map((r) => (
                 <div key={r}>
-                  <p className="text-xs">{r}</p>
+                  <p className="text-xs text-slate-500">{r}</p>
                   <Input
                     type="number"
                     step="0.5"
                     value={bonusMatrix[String(r)] ?? 0}
-                    onChange={(e) => setBonusMatrix({ ...bonusMatrix, [String(r)]: Number(e.target.value) })}
+                    onChange={(e) =>
+                      setBonusMatrix({
+                        ...bonusMatrix,
+                        [String(r)]: Number(e.target.value),
+                      })
+                    }
                   />
                 </div>
               ))}
             </div>
           </div>
           <Button onClick={saveBudget} disabled={busy}>
-            <Save className="w-4 h-4 mr-1" /> {budget ? "Save changes" : "Create budget"}
+            <Save className="h-4 w-4" />{" "}
+            {budget ? "Save changes" : "Create budget"}
           </Button>
         </CardContent>
       </Card>
@@ -180,28 +213,41 @@ export default function CompCyclePage() {
           <CardHeader>
             <CardTitle>Variance &amp; conformance</CardTitle>
           </CardHeader>
-          <CardContent className="grid sm:grid-cols-2 gap-4 text-sm">
+          <CardContent className="grid gap-4 text-sm sm:grid-cols-2">
             <div>
-              <p className="text-xs text-slate-500">Hike: planned vs final</p>
-              <p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Hike: planned vs final
+              </p>
+              <p className="mt-1 text-slate-700">
                 ₹{variance.totals.computedHike.toLocaleString("en-IN")} → ₹
                 {variance.totals.finalHike.toLocaleString("en-IN")}
               </p>
             </div>
             <div>
-              <p className="text-xs text-slate-500">Bonus: planned vs final</p>
-              <p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Bonus: planned vs final
+              </p>
+              <p className="mt-1 text-slate-700">
                 ₹{variance.totals.computedBonus.toLocaleString("en-IN")} → ₹
                 {variance.totals.finalBonus.toLocaleString("en-IN")}
               </p>
             </div>
             <div>
-              <p className="text-xs text-slate-500">Matrix conformance</p>
-              <p>{variance.conformancePct.toFixed(1)}% of revisions within ±0.5% of matrix</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Matrix conformance
+              </p>
+              <p className="mt-1 text-slate-700">
+                {variance.conformancePct.toFixed(1)}% of revisions within ±0.5%
+                of matrix
+              </p>
             </div>
             <div>
-              <p className="text-xs text-slate-500">Annualised wage-bill increase</p>
-              <p>₹{variance.annualisedWageBillIncrease.toLocaleString("en-IN")}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Annualised wage-bill increase
+              </p>
+              <p className="mt-1 text-slate-700">
+                ₹{variance.annualisedWageBillIncrease.toLocaleString("en-IN")}
+              </p>
             </div>
           </CardContent>
         </Card>
