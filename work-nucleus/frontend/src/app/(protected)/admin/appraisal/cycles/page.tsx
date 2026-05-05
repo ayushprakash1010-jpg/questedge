@@ -1,10 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import Link from "next/link";
+import { toast } from "@/components/ui/toaster";
+import { PageHeader } from "@/components/shared/page-header";
+import {
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/shared/data-table";
 
 interface Cycle {
   id: string;
@@ -34,71 +44,85 @@ export default function AdminAppraisalCyclesPage() {
   async function advance(id: string) {
     setBusy(true);
     try {
-      const res = await fetch(`/api/v2/appraisal/cycles/${id}/advance`, { method: "POST" });
+      const res = await fetch(`/api/v2/appraisal/cycles/${id}/advance`, {
+        method: "POST",
+      });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
-        alert(e.message ?? "Could not advance");
+        throw new Error(e.message ?? "Could not advance");
       }
       await load();
+      toast.success("Stage advanced");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not advance");
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="p-6">
-      <header className="mb-6 flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-semibold">Appraisal cycles</h1>
-          <p className="text-sm text-slate-500">Configure cycles, advance stages, and oversee calibration sessions.</p>
-        </div>
-      </header>
+    <div>
+      <PageHeader
+        title="Appraisal cycles"
+        subtitle="Configure cycles, advance stages, and oversee calibration sessions."
+      />
 
       <Card>
         <CardHeader>
           <CardTitle>{cycles.length} cycles</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          <table className="w-full text-sm">
-            <thead className="text-left text-xs uppercase tracking-wider text-slate-500 bg-slate-50">
-              <tr>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Type</th>
-                <th className="px-4 py-3">Stage</th>
-                <th className="px-4 py-3">Range</th>
-                <th className="px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cycles.map((c) => (
-                <tr key={c.id} className="border-t">
-                  <td className="px-4 py-3 font-medium">{c.name}</td>
-                  <td className="px-4 py-3">{c.type}</td>
-                  <td className="px-4 py-3">
-                    <Badge>{c.status}</Badge>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-500">
-                    {new Date(c.startDate).toLocaleDateString()} – {new Date(c.endDate).toLocaleDateString()}
-                  </td>
-                  <td className="px-4 py-3 flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => advance(c.id)} disabled={busy}>
-                      Advance stage
-                    </Button>
-                    <Link href={`/admin/appraisal/cycles/${c.id}`}>
-                      <Button size="sm" variant="outline">Open</Button>
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-              {cycles.length === 0 && (
+        <CardContent className="px-0 pb-0">
+          {cycles.length === 0 ? (
+            <p className="px-5 pb-5 text-center text-sm text-slate-500">
+              No cycles yet. Create one via POST /api/v2/appraisal/cycles.
+            </p>
+          ) : (
+            <DataTable className="rounded-none border-0 shadow-none">
+              <DataTableHeader>
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-slate-500">
-                    No cycles yet. Create one via POST /api/v2/appraisal/cycles.
-                  </td>
+                  <DataTableHead>Name</DataTableHead>
+                  <DataTableHead>Type</DataTableHead>
+                  <DataTableHead>Stage</DataTableHead>
+                  <DataTableHead>Range</DataTableHead>
+                  <DataTableHead>Actions</DataTableHead>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </DataTableHeader>
+              <DataTableBody>
+                {cycles.map((c) => (
+                  <DataTableRow key={c.id}>
+                    <DataTableCell className="font-medium text-slate-900">
+                      {c.name}
+                    </DataTableCell>
+                    <DataTableCell>{c.type}</DataTableCell>
+                    <DataTableCell>
+                      <Badge>{c.status}</Badge>
+                    </DataTableCell>
+                    <DataTableCell className="text-xs text-slate-500">
+                      {new Date(c.startDate).toLocaleDateString()} –{" "}
+                      {new Date(c.endDate).toLocaleDateString()}
+                    </DataTableCell>
+                    <DataTableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => advance(c.id)}
+                          disabled={busy}
+                        >
+                          Advance stage
+                        </Button>
+                        <Link href={`/admin/appraisal/cycles/${c.id}`}>
+                          <Button size="sm" variant="outline">
+                            Open
+                          </Button>
+                        </Link>
+                      </div>
+                    </DataTableCell>
+                  </DataTableRow>
+                ))}
+              </DataTableBody>
+            </DataTable>
+          )}
         </CardContent>
       </Card>
     </div>

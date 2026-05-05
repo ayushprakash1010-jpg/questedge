@@ -1,13 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Save } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Save, Settings } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
+import { toast } from "@/components/ui/toaster";
+import { PageHeader } from "@/components/shared/page-header";
+
+interface Settings {
+  scoringWeights?: Record<string, number>;
+  maxInterviewRounds?: number;
+  approvalWorkflowEnabled?: boolean;
+}
 
 export default function OrgSettingsPage() {
-  const [settings, setSettings] = useState<any>(null);
+  const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -19,7 +29,9 @@ export default function OrgSettingsPage() {
           const data = await res.json();
           setSettings(data.settings || {});
         }
-      } catch {} finally {
+      } catch {
+        // ignore
+      } finally {
         setLoading(false);
       }
     }
@@ -29,12 +41,16 @@ export default function OrgSettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await fetch("/api/admin/settings", {
+      const res = await fetch("/api/admin/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),
       });
-    } catch {} finally {
+      if (!res.ok) throw new Error("Save failed");
+      toast.success("Settings saved");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Save failed");
+    } finally {
       setSaving(false);
     }
   };
@@ -42,41 +58,43 @@ export default function OrgSettingsPage() {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        <Spinner />
       </div>
     );
   }
 
   const weights = settings?.scoringWeights || {};
+  const totalWeight = Object.values(weights).reduce((s, v) => s + v, 0);
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Organization Settings</h1>
-          <p className="mt-1 text-sm text-slate-500">Configure scoring, pipelines, and preferences.</p>
-        </div>
-        <Button onClick={handleSave} disabled={saving}>
-          <Save className="mr-2 h-4 w-4" />
-          {saving ? "Saving..." : "Save Settings"}
-        </Button>
-      </div>
+      <PageHeader
+        title="Organization Settings"
+        subtitle="Configure scoring, pipelines, and preferences."
+        actions={
+          <Button size="sm" onClick={handleSave} disabled={saving}>
+            <Save className="h-4 w-4" />
+            {saving ? "Saving..." : "Save Settings"}
+          </Button>
+        }
+      />
 
-      <div className="mt-6 space-y-6">
-        {/* Scoring Weights */}
-        <Card className="border-slate-200">
+      <div className="space-y-6">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-base">Scoring Weights (must sum to 100)</CardTitle>
+            <CardTitle className="text-base">
+              Scoring Weights (must sum to 100)
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {Object.entries(weights).map(([key, value]) => (
-                <div key={key}>
-                  <label className="text-sm font-medium text-slate-700 capitalize">{key}</label>
-                  <div className="mt-1 flex items-center gap-1">
+                <div key={key} className="space-y-1.5">
+                  <Label className="capitalize">{key}</Label>
+                  <div className="flex items-center gap-1">
                     <Input
                       type="number"
-                      value={value as number}
+                      value={value}
                       min={0}
                       max={100}
                       onChange={(e) =>
@@ -94,44 +112,50 @@ export default function OrgSettingsPage() {
                 </div>
               ))}
             </div>
-            <p className="mt-2 text-xs text-slate-400">
-              Total: {Object.values(weights).reduce((s: number, v: any) => s + (v as number), 0)}%
-            </p>
+            <p className="mt-3 text-xs text-slate-400">Total: {totalWeight}%</p>
           </CardContent>
         </Card>
 
-        {/* Max Interview Rounds */}
-        <Card className="border-slate-200">
+        <Card>
           <CardHeader>
             <CardTitle className="text-base">General</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-slate-700">Max Interview Rounds</label>
+            <div className="space-y-1.5">
+              <Label htmlFor="max-rounds">Max Interview Rounds</Label>
               <Input
+                id="max-rounds"
                 type="number"
-                className="mt-1 w-32"
+                className="w-32"
                 value={settings?.maxInterviewRounds || 6}
                 min={1}
                 max={10}
                 onChange={(e) =>
-                  setSettings({ ...settings, maxInterviewRounds: parseInt(e.target.value) || 6 })
+                  setSettings({
+                    ...settings,
+                    maxInterviewRounds: parseInt(e.target.value) || 6,
+                  })
                 }
               />
             </div>
             <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+              <Label className="flex items-center gap-2">
                 <input
                   type="checkbox"
                   checked={settings?.approvalWorkflowEnabled || false}
                   onChange={(e) =>
-                    setSettings({ ...settings, approvalWorkflowEnabled: e.target.checked })
+                    setSettings({
+                      ...settings,
+                      approvalWorkflowEnabled: e.target.checked,
+                    })
                   }
-                  className="rounded"
+                  className="rounded border-slate-300"
                 />
                 Enable Approval Workflow
-              </label>
-              <p className="mt-0.5 text-xs text-slate-500">Require approval for decisions before communication is sent</p>
+              </Label>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Require approval for decisions before communication is sent
+              </p>
             </div>
           </CardContent>
         </Card>

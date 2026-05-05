@@ -1,17 +1,26 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { Plus, Pencil, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { toast } from "@/components/ui/toaster";
+import { PageHeader } from "@/components/shared/page-header";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Plus, Pencil, Trash2, X } from "lucide-react";
-import { Spinner } from "@/components/ui/spinner";
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTablePagination,
+  DataTableRow,
+} from "@/components/shared/data-table";
 
 interface User {
   id: string;
@@ -28,6 +37,7 @@ interface UsersResponse {
 }
 
 const ROLES = ["ADMIN", "HR", "HIRING_MANAGER", "INTERVIEWER", "VIEWER"];
+const PAGE_SIZE = 20;
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -36,7 +46,6 @@ export default function AdminUsersPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
-  // Form state
   const [formName, setFormName] = useState("");
   const [formEmail, setFormEmail] = useState("");
   const [formRole, setFormRole] = useState("VIEWER");
@@ -51,7 +60,7 @@ export default function AdminUsersPage() {
       setUsers(data.data);
       setMeta(data.meta);
     } catch {
-      // handle error
+      // ignore
     } finally {
       setLoading(false);
     }
@@ -106,8 +115,9 @@ export default function AdminUsersPage() {
 
       setDialogOpen(false);
       fetchUsers(meta.page);
-    } catch (err: any) {
-      setFormError(err.message);
+      toast.success(editingUser ? "User updated" : "Invite sent");
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Operation failed");
     } finally {
       setFormLoading(false);
     }
@@ -115,140 +125,153 @@ export default function AdminUsersPage() {
 
   async function handleDelete(user: User) {
     if (!confirm(`Deactivate ${user.name}?`)) return;
-    await fetch(`/api/admin/users/${user.id}`, { method: "DELETE" });
-    fetchUsers(meta.page);
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Delete failed");
+      fetchUsers(meta.page);
+      toast.success(`${user.name} deactivated`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Delete failed");
+    }
   }
-
-  const roleBadgeVariant = (role: string) => {
-    if (role === "ADMIN") return "default" as const;
-    if (role === "HR") return "secondary" as const;
-    return "outline" as const;
-  };
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">User Management</h1>
-        <Button onClick={openCreate}>
-          <Plus className="mr-2 h-4 w-4" /> Invite User
-        </Button>
-      </div>
+      <PageHeader
+        title="User Management"
+        actions={
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="h-4 w-4" /> Invite User
+          </Button>
+        }
+      />
 
       <Card>
         <CardHeader>
           <CardTitle>Organization Users ({meta.total})</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-0 pb-0">
           {loading ? (
-            <div className="flex h-32 items-center justify-center"><Spinner /></div>
+            <div className="space-y-3 p-5 pt-0">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} variant="block" className="h-12 w-full" />
+              ))}
+            </div>
+          ) : users.length === 0 ? (
+            <div className="p-5 pt-0">
+              <EmptyState
+                icon={<Plus className="h-6 w-6" />}
+                title="No users yet"
+                description="Invite team members to get started."
+              />
+            </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left">
-                    <th className="pb-3 font-medium">Name</th>
-                    <th className="pb-3 font-medium">Email</th>
-                    <th className="pb-3 font-medium">Role</th>
-                    <th className="pb-3 font-medium">Status</th>
-                    <th className="pb-3 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((user) => (
-                    <tr key={user.id} className="border-b">
-                      <td className="py-3">{user.name}</td>
-                      <td className="py-3 text-slate-500">
-                        {user.email}
-                      </td>
-                      <td className="py-3">
-                        <Badge variant={roleBadgeVariant(user.role)}>
-                          {user.role}
-                        </Badge>
-                      </td>
-                      <td className="py-3">
-                        <Badge
-                          variant={user.isActive ? "default" : "destructive"}
+            <DataTable className="rounded-none border-0 shadow-none">
+              <DataTableHeader>
+                <tr>
+                  <DataTableHead>Name</DataTableHead>
+                  <DataTableHead>Email</DataTableHead>
+                  <DataTableHead>Role</DataTableHead>
+                  <DataTableHead>Status</DataTableHead>
+                  <DataTableHead className="text-right">Actions</DataTableHead>
+                </tr>
+              </DataTableHeader>
+              <DataTableBody>
+                {users.map((user) => (
+                  <DataTableRow key={user.id}>
+                    <DataTableCell className="font-medium text-slate-900">
+                      {user.name}
+                    </DataTableCell>
+                    <DataTableCell className="text-slate-500">
+                      {user.email}
+                    </DataTableCell>
+                    <DataTableCell>
+                      <Badge
+                        variant={
+                          user.role === "ADMIN"
+                            ? "default"
+                            : user.role === "HR"
+                            ? "secondary"
+                            : "outline"
+                        }
+                      >
+                        {user.role}
+                      </Badge>
+                    </DataTableCell>
+                    <DataTableCell>
+                      <Badge variant={user.isActive ? "success" : "destructive"}>
+                        {user.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </DataTableCell>
+                    <DataTableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => openEdit(user)}
                         >
-                          {user.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </td>
-                      <td className="py-3">
-                        <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEdit(user)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(user)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {users.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="py-6 text-center text-slate-500">
-                        No users found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {meta.totalPages > 1 && (
-            <div className="mt-4 flex justify-center gap-2">
-              {Array.from({ length: meta.totalPages }, (_, i) => i + 1).map(
-                (p) => (
-                  <Button
-                    key={p}
-                    variant={p === meta.page ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => fetchUsers(p)}
-                  >
-                    {p}
-                  </Button>
-                )
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => handleDelete(user)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-red-600" />
+                        </Button>
+                      </div>
+                    </DataTableCell>
+                  </DataTableRow>
+                ))}
+              </DataTableBody>
+              {meta.total > PAGE_SIZE && (
+                <tfoot>
+                  <tr>
+                    <td colSpan={5} className="p-0">
+                      <DataTablePagination
+                        page={meta.page}
+                        pageSize={PAGE_SIZE}
+                        total={meta.total}
+                        onPageChange={(p) => fetchUsers(p)}
+                      />
+                    </td>
+                  </tr>
+                </tfoot>
               )}
-            </div>
+            </DataTable>
           )}
         </CardContent>
       </Card>
 
-      {/* Create/Edit Dialog */}
       {dialogOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <Card className="w-full max-w-md shadow-2xl">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>
-                {editingUser ? "Edit User" : "Invite User"}
-              </CardTitle>
-              <button onClick={() => setDialogOpen(false)} className="rounded-lg p-1 hover:bg-slate-100 transition-colors">
-                <X className="h-4 w-4 text-slate-400" />
-              </button>
+              <CardTitle>{editingUser ? "Edit User" : "Invite User"}</CardTitle>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setDialogOpen(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Name</label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="user-name">Name</Label>
                   <Input
+                    id="user-name"
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
                     required
                   />
                 </div>
                 {!editingUser && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Email</label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="user-email">Email</Label>
                     <Input
+                      id="user-email"
                       type="email"
                       value={formEmail}
                       onChange={(e) => setFormEmail(e.target.value)}
@@ -256,24 +279,24 @@ export default function AdminUsersPage() {
                     />
                   </div>
                 )}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Role</label>
-                  <select
+                <div className="space-y-1.5">
+                  <Label htmlFor="user-role">Role</Label>
+                  <Select
+                    id="user-role"
                     value={formRole}
                     onChange={(e) => setFormRole(e.target.value)}
-                    className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/20 focus-visible:border-indigo-500"
                   >
                     {ROLES.map((r) => (
                       <option key={r} value={r}>
                         {r}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
                 {formError && (
-                  <p className="text-sm text-destructive">{formError}</p>
+                  <p className="text-sm text-red-600">{formError}</p>
                 )}
-                <div className="flex gap-2 justify-end">
+                <div className="flex justify-end gap-2">
                   <Button
                     type="button"
                     variant="outline"
