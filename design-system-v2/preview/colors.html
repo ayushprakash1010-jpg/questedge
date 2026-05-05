@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Work Nucleus — Colors v2</title>
+<link rel="stylesheet" href="../tokens.css">
+<style>
+body { padding: 36px; background: #f8fafc; font-family: var(--font-sans); }
+section { margin-bottom: 40px; }
+h2 { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--color-slate-400); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+h2::after { content:''; flex:1; height:1px; background: var(--color-border); }
+
+/* Palette row */
+.scale { display: flex; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-sm); margin-bottom: 8px; }
+.swatch { flex: 1; }
+.swatch-block { height: 52px; }
+.swatch-foot { background: #fff; padding: 5px 7px; }
+.swatch-step { font-size: 9px; font-weight: 700; color: var(--color-slate-400); display: block; }
+.swatch-hex  { font-size: 9px; color: var(--color-slate-400); font-family: monospace; display: block; }
+.swatch-star { font-size: 9px; font-weight: 700; color: var(--color-indigo-600); }
+
+/* Semantic row */
+.semantic-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
+.sem { border-radius: 10px; overflow: hidden; box-shadow: var(--shadow-sm); }
+.sem-body { padding: 16px; display: flex; align-items: center; gap: 10px; }
+.sem-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.sem-foot { background: #fff; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; }
+.sem-name { font-size: 12px; font-weight: 600; }
+.sem-hex  { font-size: 10px; font-family: monospace; color: var(--color-slate-400); }
+
+/* Gradient row */
+.grad-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
+.grad-card { border-radius: 10px; overflow: hidden; box-shadow: var(--shadow-sm); }
+.grad-block { height: 64px; }
+.grad-foot { background: #fff; padding: 8px 10px; }
+.grad-name { font-size: 11px; font-weight: 600; color: var(--color-slate-700); }
+.grad-spec { font-size: 9px; font-family: monospace; color: var(--color-slate-400); margin-top: 2px; display: block; word-break: break-all; }
+
+/* Chart palette */
+.chart-row { display: flex; gap: 8px; }
+.chart-swatch { flex: 1; border-radius: 8px; overflow: hidden; box-shadow: var(--shadow-sm); }
+.chart-block  { height: 40px; }
+.chart-foot   { background: #fff; padding: 4px 7px; font-size: 9px; font-family: monospace; color: var(--color-slate-400); }
+
+/* Token reference */
+.token-ref { background: #fff; border-radius: 10px; border: 1px solid var(--color-border); padding: 16px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; }
+.token-row { display: flex; align-items: center; gap: 8px; }
+.token-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; border: 1px solid rgba(0,0,0,.06); }
+.token-name { font-size: 11px; font-family: monospace; color: var(--color-slate-600); flex: 1; }
+.token-val  { font-size: 10px; color: var(--color-slate-400); font-family: monospace; }
+</style>
+</head>
+<body>
+
+<section>
+  <h2>Primary — Indigo</h2>
+  <div class="scale">
+    <div class="swatch"><div class="swatch-block" style="background:#eef2ff"></div><div class="swatch-foot"><span class="swatch-step">50</span><span class="swatch-hex">#eef2ff</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#e0e7ff"></div><div class="swatch-foot"><span class="swatch-step">100</span><span class="swatch-hex">#e0e7ff</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#c7d2fe"></div><div class="swatch-foot"><span class="swatch-step">200</span><span class="swatch-hex">#c7d2fe</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#a5b4fc"></div><div class="swatch-foot"><span class="swatch-step">300</span><span class="swatch-hex">#a5b4fc</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#818cf8"></div><div class="swatch-foot"><span class="swatch-step">400</span><span class="swatch-hex">#818cf8</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#6366f1"></div><div class="swatch-foot"><span class="swatch-step">500</span><span class="swatch-hex">#6366f1</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#4f46e5"></div><div class="swatch-foot"><span class="swatch-step">600</span><span class="swatch-hex">#4f46e5</span><span class="swatch-star">★ Primary</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#4338ca"></div><div class="swatch-foot"><span class="swatch-step">700</span><span class="swatch-hex">#4338ca</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#3730a3"></div><div class="swatch-foot"><span class="swatch-step">800</span><span class="swatch-hex">#3730a3</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#312e81"></div><div class="swatch-foot"><span class="swatch-step">900</span><span class="swatch-hex">#312e81</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#1e1b4b"></div><div class="swatch-foot"><span class="swatch-step">950</span><span class="swatch-hex">#1e1b4b</span></div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Secondary — Cyan</h2>
+  <div class="scale">
+    <div class="swatch"><div class="swatch-block" style="background:#ecfeff"></div><div class="swatch-foot"><span class="swatch-step">50</span><span class="swatch-hex">#ecfeff</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#cffafe"></div><div class="swatch-foot"><span class="swatch-step">100</span><span class="swatch-hex">#cffafe</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#a5f3fc"></div><div class="swatch-foot"><span class="swatch-step">200</span><span class="swatch-hex">#a5f3fc</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#67e8f9"></div><div class="swatch-foot"><span class="swatch-step">300</span><span class="swatch-hex">#67e8f9</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#22d3ee"></div><div class="swatch-foot"><span class="swatch-step">400</span><span class="swatch-hex">#22d3ee</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#06b6d4"></div><div class="swatch-foot"><span class="swatch-step">500</span><span class="swatch-hex">#06b6d4</span><span class="swatch-star">★ Secondary</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#0891b2"></div><div class="swatch-foot"><span class="swatch-step">600</span><span class="swatch-hex">#0891b2</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#0e7490"></div><div class="swatch-foot"><span class="swatch-step">700</span><span class="swatch-hex">#0e7490</span></div></div>
+  </div>
+</section>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+<section>
+  <h2>Accent — Amber</h2>
+  <div class="scale">
+    <div class="swatch"><div class="swatch-block" style="background:#fffbeb"></div><div class="swatch-foot"><span class="swatch-step">50</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#fef3c7"></div><div class="swatch-foot"><span class="swatch-step">100</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#fde68a"></div><div class="swatch-foot"><span class="swatch-step">200</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#fcd34d"></div><div class="swatch-foot"><span class="swatch-step">300</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#fbbf24"></div><div class="swatch-foot"><span class="swatch-step">400</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#f59e0b"></div><div class="swatch-foot"><span class="swatch-step">500</span><span class="swatch-star">★ Accent</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#d97706"></div><div class="swatch-foot"><span class="swatch-step">600</span></div></div>
+  </div>
+</section>
+<section>
+  <h2>Neutrals — Slate</h2>
+  <div class="scale">
+    <div class="swatch"><div class="swatch-block" style="background:#f8fafc"></div><div class="swatch-foot"><span class="swatch-step">50</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#f1f5f9"></div><div class="swatch-foot"><span class="swatch-step">100</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#e2e8f0"></div><div class="swatch-foot"><span class="swatch-step">200</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#cbd5e1"></div><div class="swatch-foot"><span class="swatch-step">300</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#94a3b8"></div><div class="swatch-foot"><span class="swatch-step">400</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#64748b"></div><div class="swatch-foot"><span class="swatch-step">500</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#475569"></div><div class="swatch-foot"><span class="swatch-step">600</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#334155"></div><div class="swatch-foot"><span class="swatch-step">700</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#1e293b"></div><div class="swatch-foot"><span class="swatch-step">800</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#0f172a"></div><div class="swatch-foot"><span class="swatch-step">900</span></div></div>
+    <div class="swatch"><div class="swatch-block" style="background:#020617"></div><div class="swatch-foot"><span class="swatch-step">950</span></div></div>
+  </div>
+</section>
+</div>
+
+<section>
+  <h2>Semantic States</h2>
+  <div class="semantic-row">
+    <div class="sem">
+      <div class="sem-body" style="background:#ecfdf5">
+        <div class="sem-icon" style="background:#d1fae5">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div><span class="sem-name" style="color:#065f46">Success</span><div style="font-size:11px;color:#059669;margin-top:2px">Active · Selected · Completed</div></div>
+      </div>
+      <div class="sem-foot"><span class="sem-hex">#10b981 / #ecfdf5</span></div>
+    </div>
+    <div class="sem">
+      <div class="sem-body" style="background:#fffbeb">
+        <div class="sem-icon" style="background:#fef3c7">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div><span class="sem-name" style="color:#78350f">Warning</span><div style="font-size:11px;color:#d97706;margin-top:2px">Draft · SLA breach · Hold</div></div>
+      </div>
+      <div class="sem-foot"><span class="sem-hex">#f59e0b / #fffbeb</span></div>
+    </div>
+    <div class="sem">
+      <div class="sem-body" style="background:#fef2f2">
+        <div class="sem-icon" style="background:#fee2e2">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div><span class="sem-name" style="color:#7f1d1d">Danger</span><div style="font-size:11px;color:#dc2626;margin-top:2px">Cancelled · Rejected · Error</div></div>
+      </div>
+      <div class="sem-foot"><span class="sem-hex">#dc2626 / #fef2f2</span></div>
+    </div>
+    <div class="sem">
+      <div class="sem-body" style="background:#eff6ff">
+        <div class="sem-icon" style="background:#dbeafe">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        </div>
+        <div><span class="sem-name" style="color:#1e3a8a">Info</span><div style="font-size:11px;color:#2563eb;margin-top:2px">Insight · Notification · AI</div></div>
+      </div>
+      <div class="sem-foot"><span class="sem-hex">#3b82f6 / #eff6ff</span></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Gradients</h2>
+  <div class="grad-grid">
+    <div class="grad-card"><div class="grad-block" style="background:linear-gradient(135deg,#6366f1,#06b6d4)"></div><div class="grad-foot"><span class="grad-name">Brand</span><span class="grad-spec">135deg #6366f1 → #06b6d4</span></div></div>
+    <div class="grad-card"><div class="grad-block" style="background:linear-gradient(135deg,#4f46e5,#4338ca)"></div><div class="grad-foot"><span class="grad-name">CTA / Primary</span><span class="grad-spec">135deg #4f46e5 → #4338ca</span></div></div>
+    <div class="grad-card"><div class="grad-block" style="background:linear-gradient(135deg,#7c3aed,#4f46e5)"></div><div class="grad-foot"><span class="grad-name">AI</span><span class="grad-spec">135deg #7c3aed → #4f46e5</span></div></div>
+    <div class="grad-card"><div class="grad-block" style="background:linear-gradient(135deg,#6366f1,#4f46e5)"></div><div class="grad-foot"><span class="grad-name">Icon — Indigo</span><span class="grad-spec">135deg #6366f1 → #4f46e5</span></div></div>
+    <div class="grad-card"><div class="grad-block" style="background:linear-gradient(135deg,#06b6d4,#0891b2)"></div><div class="grad-foot"><span class="grad-name">Icon — Cyan</span><span class="grad-spec">135deg #06b6d4 → #0891b2</span></div></div>
+    <div class="grad-card"><div class="grad-block" style="background:linear-gradient(135deg,#f59e0b,#d97706)"></div><div class="grad-foot"><span class="grad-name">Icon — Amber</span><span class="grad-spec">135deg #f59e0b → #d97706</span></div></div>
+    <div class="grad-card"><div class="grad-block" style="background:linear-gradient(135deg,#10b981,#059669)"></div><div class="grad-foot"><span class="grad-name">Icon — Emerald</span><span class="grad-spec">135deg #10b981 → #059669</span></div></div>
+    <div class="grad-card"><div class="grad-block" style="background:linear-gradient(135deg,#f8fafc,rgba(238,242,255,.4),rgba(236,254,255,.3))"></div><div class="grad-foot"><span class="grad-name">Hero BG</span><span class="grad-spec">slate-50 → indigo-50/40 → cyan-50/30</span></div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Data Viz Series</h2>
+  <div class="chart-row">
+    <div class="chart-swatch"><div class="chart-block" style="background:#6366f1"></div><div class="chart-foot">#6366f1</div></div>
+    <div class="chart-swatch"><div class="chart-block" style="background:#06b6d4"></div><div class="chart-foot">#06b6d4</div></div>
+    <div class="chart-swatch"><div class="chart-block" style="background:#10b981"></div><div class="chart-foot">#10b981</div></div>
+    <div class="chart-swatch"><div class="chart-block" style="background:#f59e0b"></div><div class="chart-foot">#f59e0b</div></div>
+    <div class="chart-swatch"><div class="chart-block" style="background:#8b5cf6"></div><div class="chart-foot">#8b5cf6</div></div>
+    <div class="chart-swatch"><div class="chart-block" style="background:#ec4899"></div><div class="chart-foot">#ec4899</div></div>
+    <div class="chart-swatch"><div class="chart-block" style="background:#ef4444"></div><div class="chart-foot">#ef4444</div></div>
+  </div>
+  <div style="margin-top:10px;font-size:11px;color:var(--color-slate-400);font-family:monospace">
+    Grid: #f1f5f9 &nbsp;|&nbsp; Axis text: #94a3b8 11px &nbsp;|&nbsp; Tooltip bg: #fff · border: #e2e8f0 · shadow: 0 4px 12px rgba(0,0,0,.10) &nbsp;|&nbsp; Bar radius: 4px &nbsp;|&nbsp; Area opacity: 0.15
+  </div>
+</section>
+
+<section>
+  <h2>CSS Variable Reference</h2>
+  <div class="token-ref">
+    <div class="token-row"><div class="token-dot" style="background:#4f46e5"></div><span class="token-name">--color-primary</span><span class="token-val">#4f46e5</span></div>
+    <div class="token-row"><div class="token-dot" style="background:#4338ca"></div><span class="token-name">--color-primary-hover</span><span class="token-val">#4338ca</span></div>
+    <div class="token-row"><div class="token-dot" style="background:#eef2ff"></div><span class="token-name">--color-primary-subtle</span><span class="token-val">#eef2ff</span></div>
+    <div class="token-row"><div class="token-dot" style="background:#06b6d4"></div><span class="token-name">--color-secondary</span><span class="token-val">#06b6d4</span></div>
+    <div class="token-row"><div class="token-dot" style="background:#f59e0b"></div><span class="token-name">--color-accent</span><span class="token-val">#f59e0b</span></div>
+    <div class="token-row"><div class="token-dot" style="background:#10b981"></div><span class="token-name">--color-success</span><span class="token-val">#10b981</span></div>
+    <div class="token-row"><div class="token-dot" style="background:#dc2626"></div><span class="token-name">--color-danger</span><span class="token-val">#dc2626</span></div>
+    <div class="token-row"><div class="token-dot" style="background:#3b82f6"></div><span class="token-name">--color-info</span><span class="token-val">#3b82f6</span></div>
+    <div class="token-row"><div class="token-dot" style="background:hsl(220 20% 97%)"></div><span class="token-name">--color-background</span><span class="token-val">hsl(220 20% 97%)</span></div>
+    <div class="token-row"><div class="token-dot" style="background:#ffffff;border:1px solid #e2e8f0"></div><span class="token-name">--color-surface</span><span class="token-val">#ffffff</span></div>
+    <div class="token-row"><div class="token-dot" style="background:#0f172a"></div><span class="token-name">--color-foreground</span><span class="token-val">#0f172a</span></div>
+    <div class="token-row"><div class="token-dot" style="background:#475569"></div><span class="token-name">--color-foreground-secondary</span><span class="token-val">#475569</span></div>
+    <div class="token-row"><div class="token-dot" style="background:#64748b"></div><span class="token-name">--color-foreground-muted</span><span class="token-val">#64748b</span></div>
+    <div class="token-row"><div class="token-dot" style="background:hsl(220 13% 91%)"></div><span class="token-name">--color-border</span><span class="token-val">hsl(220 13% 91%)</span></div>
+    <div class="token-row"><div class="token-dot" style="background:#0f172a"></div><span class="token-name">--color-dark-bg</span><span class="token-val">#0f172a</span></div>
+    <div class="token-row"><div class="token-dot" style="background:#22d3ee"></div><span class="token-name">--color-dark-accent</span><span class="token-val">#22d3ee</span></div>
+  </div>
+</section>
+
+</body>
+</html>

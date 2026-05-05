@@ -40,6 +40,9 @@ coverage/
 # Next.js
 next-env.d.ts
 
+# TypeScript incremental build artifacts
+*.tsbuildinfo
+
 # Prisma
 prisma/*.db
 prisma/*.db-journal

@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Work Nucleus — Hiring Plans v2</title>
+<link rel="stylesheet" href="../tokens.css">
+<style>
+html,body{height:100%;overflow:hidden}
+.shell{display:flex;height:100vh;background:var(--color-background)}
+.sidebar{width:var(--sidebar-width);flex-shrink:0;display:flex;flex-direction:column;background:var(--color-surface);border-right:1px solid var(--color-border);height:100vh}
+.sb-header{height:var(--topbar-height);display:flex;align-items:center;padding:0 20px;border-bottom:1px solid var(--color-border);flex-shrink:0}
+.sb-mark{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#4338ca);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;box-shadow:0 2px 6px rgba(79,70,229,.3)}
+.sb-word{font-size:16px;font-weight:700;color:var(--color-slate-900);margin-left:9px}
+.sb-word span{color:#4f46e5}
+.sb-nav{flex:1;padding:10px;overflow-y:auto}
+.ni{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;font-size:13px;font-weight:500;color:var(--color-slate-500);cursor:pointer;margin-bottom:1px;transition:var(--transition-colors)}
+.ni:hover{background:var(--color-slate-50);color:var(--color-slate-900)}
+.ni.act{background:var(--color-indigo-50);color:#4338ca}
+.ni.act svg{color:#4f46e5}
+.ni svg{width:18px;height:18px;flex-shrink:0}
+.sb-footer{padding:10px;border-top:1px solid var(--color-border)}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{height:var(--topbar-height);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--color-surface);border-bottom:1px solid var(--color-border);flex-shrink:0}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--color-slate-50);border:1px solid var(--color-border);border-radius:10px;padding:8px 14px;font-size:13px;color:var(--color-slate-400);width:260px}
+.tb-right{display:flex;align-items:center;gap:8px}
+.notif{width:36px;height:36px;border-radius:9px;border:1px solid var(--color-border);background:var(--color-surface);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative}
+.notif-dot{position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;background:#ef4444;border:1.5px solid #fff}
+.ua{width:30px;height:30px;border-radius:50%;background:var(--gradient-avatar);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700}
+.user-btn{display:flex;align-items:center;gap:8px;padding:5px 10px 5px 6px;border-radius:10px;cursor:pointer}
+.user-btn:hover{background:var(--color-slate-50)}
+
+/* ── Content layout ── */
+.content-area{flex:1;display:flex;overflow:hidden}
+.list-pane{flex:1;overflow-y:auto;padding:24px;min-width:0}
+.detail-pane{width:400px;flex-shrink:0;background:var(--color-surface);border-left:1px solid var(--color-border);display:flex;flex-direction:column;overflow:hidden}
+
+/* ── Page header ── */
+.page-h{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px}
+.page-title{font-size:22px;font-weight:700;color:var(--color-slate-900)}
+.page-sub{font-size:13px;color:var(--color-slate-400);margin-top:3px}
+
+/* ── Filter bar ── */
+.filter-bar{background:var(--color-surface);border-radius:var(--radius-xl);border:1px solid var(--color-border);padding:14px 18px;display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.fselect{border:1px solid var(--color-border);border-radius:var(--radius-base);padding:7px 10px;font-size:13px;color:var(--color-slate-600);background:#fff;outline:none;cursor:pointer;font-family:var(--font-sans);box-shadow:var(--shadow-xs)}
+.finput{border:1px solid var(--color-border);border-radius:var(--radius-base);padding:7px 12px;font-size:13px;color:var(--color-slate-600);background:#fff;outline:none;font-family:var(--font-sans);width:160px;box-shadow:var(--shadow-xs)}
+.finput::placeholder{color:var(--color-slate-400)}
+
+/* ── Table ── */
+.table-wrap{background:var(--color-surface);border-radius:var(--radius-xl);border:1px solid var(--color-border);overflow:hidden;box-shadow:var(--shadow-card)}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl thead{background:var(--color-slate-50);border-bottom:1px solid var(--color-border)}
+.tbl th{text-align:left;padding:11px 16px;font-size:10px;font-weight:700;color:var(--color-slate-400);text-transform:uppercase;letter-spacing:.06em}
+.tbl td{padding:13px 16px;border-bottom:1px solid #f8fafc;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr.selected td{background:#f0f4ff}
+.tbl tr:hover:not(.selected) td{background:#f8fafc;cursor:pointer}
+.plan-name{font-weight:600;color:var(--color-slate-900);font-size:13px}
+.plan-industry{font-size:11px;color:var(--color-slate-400);margin-top:2px}
+.prog-mini{display:flex;align-items:center;gap:8px}
+.prog-track{background:var(--color-slate-100);border-radius:9999px;overflow:hidden}
+.prog-fill{height:100%;border-radius:9999px;background:linear-gradient(90deg,#6366f1,#06b6d4)}
+.status-pill{display:inline-flex;align-items:center;gap:4px;border-radius:9999px;border:1px solid transparent;padding:2px 10px;font-size:11px;font-weight:600}
+.s-draft    {background:#f1f5f9;color:#475569;border-color:#e2e8f0}
+.s-active   {background:#dcfce7;color:#166534;border-color:#bbf7d0}
+.s-completed{background:#eef2ff;color:#4338ca;border-color:#e0e7ff}
+.s-cancelled{background:#fef2f2;color:#991b1b;border-color:#fecaca}
+.more-btn{width:28px;height:28px;border-radius:6px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--color-slate-400)}
+.more-btn:hover{background:var(--color-slate-100);color:var(--color-slate-600)}
+.pagination{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-top:1px solid var(--color-border)}
+.pg-info{font-size:12px;color:var(--color-slate-400)}
+.pg-btns{display:flex;gap:6px}
+.btn-sm{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:0 12px;border-radius:var(--radius-base);font-size:12px;font-weight:500;cursor:pointer;border:none;font-family:var(--font-sans);transition:var(--transition-all)}
+.btn-primary-sm{background:var(--color-primary);color:#fff;box-shadow:var(--shadow-primary)}
+.btn-primary-sm:hover{background:var(--color-primary-hover)}
+.btn-outline-sm{background:#fff;color:var(--color-slate-700);border:1px solid var(--color-border);box-shadow:var(--shadow-xs)}
+.btn-outline-sm:hover{background:var(--color-slate-50)}
+.btn-ghost-sm{background:transparent;color:var(--color-slate-500)}
+.btn-ghost-sm:hover{background:var(--color-slate-50)}
+.btn-ai-sm{background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;box-shadow:var(--shadow-ai)}
+
+/* ── Detail panel ── */
+.dp-header{padding:20px 24px 16px;border-bottom:1px solid var(--color-border)}
+.dp-back{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--color-slate-400);cursor:pointer;margin-bottom:10px}
+.dp-back:hover{color:var(--color-slate-600)}
+.dp-title{font-size:17px;font-weight:700;color:var(--color-slate-900);line-height:1.3}
+.dp-meta{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.dp-tabs{display:flex;background:rgba(241,245,249,.8);border-radius:9px;padding:3px;gap:2px;margin-top:14px}
+.dp-tab{padding:5px 14px;border-radius:7px;font-size:12px;font-weight:500;color:var(--color-slate-500);cursor:pointer;border:none;background:none;font-family:var(--font-sans)}
+.dp-tab.act{background:#fff;color:var(--color-slate-900);box-shadow:var(--shadow-xs)}
+.dp-body{flex:1;overflow-y:auto;padding:20px 24px}
+.dp-section{margin-bottom:20px}
+.dp-section-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--color-slate-400);margin-bottom:10px}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.info-item .il{font-size:11px;color:var(--color-slate-400);margin-bottom:3px}
+.info-item .iv{font-size:13px;font-weight:500;color:var(--color-slate-700)}
+.skill-chip{display:inline-flex;align-items:center;gap:5px;border-radius:7px;border:1px solid;padding:3px 9px;font-size:11px;font-weight:500;margin:3px 3px 0 0}
+.dp-actions{padding:14px 24px;border-top:1px solid var(--color-border);display:flex;gap:8px}
+/* prog in dp */
+.dp-prog-wrap{margin-top:10px}
+.dp-prog-row{display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px}
+.dp-prog-track{background:var(--color-slate-100);border-radius:9999px;height:6px;overflow:hidden}
+.dp-prog-fill{height:100%;border-radius:9999px;background:linear-gradient(90deg,#6366f1,#06b6d4)}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sb-header">
+      <div class="sb-mark">W</div>
+      <span class="sb-word">Work<span>Nucleus</span></span>
+    </div>
+    <nav class="sb-nav">
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
+      <div class="ni act"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>Hiring Plans</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Candidates</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Offers</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>BGV</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>Appraisal</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Compensation</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Reports</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>Training</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>Admin</div>
+    </nav>
+    <div class="sb-footer">
+      <div style="border-radius:10px;background:linear-gradient(135deg,#eef2ff,#ecfeff);padding:12px">
+        <div style="font-size:11px;font-weight:700;color:#312e81">Nova Design System</div>
+        <div style="font-size:10px;color:#4f46e5;margin-top:1px">Powered by Claude AI</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="topbar">
+      <div class="search-box"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Search plans, candidates…</div>
+      <div class="tb-right">
+        <div class="notif"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg><div class="notif-dot"></div></div>
+        <div class="user-btn"><div class="ua">PS</div><span style="font-size:13px;font-weight:500;color:var(--color-slate-700)">Priya Sharma</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-slate-400)"><polyline points="6 9 12 15 18 9"/></svg></div>
+      </div>
+    </header>
+
+    <div class="content-area">
+      <!-- List pane -->
+      <div class="list-pane">
+        <div class="page-h">
+          <div><div class="page-title">Hiring Plans</div><div class="page-sub">Manage your hiring plans and positions</div></div>
+          <button class="btn-sm btn-primary-sm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Create New Plan</button>
+        </div>
+
+        <div class="filter-bar">
+          <select class="fselect"><option>All Statuses</option><option selected>ACTIVE</option><option>DRAFT</option><option>COMPLETED</option><option>CANCELLED</option></select>
+          <select class="fselect"><option>All Quarters</option><option selected>Q2</option><option>Q1</option><option>Q3</option><option>Q4</option></select>
+          <input class="finput" placeholder="Department…">
+          <select class="fselect"><option>All Managers</option><option>Priya Sharma</option><option>Rahul Kumar</option></select>
+        </div>
+
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead><tr>
+              <th>Title</th><th>Department</th><th>Period</th><th>Roles</th><th>Budget</th><th>Status</th><th>Manager</th><th></th>
+            </tr></thead>
+            <tbody>
+              <tr class="selected">
+                <td><div class="plan-name">Senior Product Manager</div><div class="plan-industry">Software / Technology</div></td>
+                <td style="color:var(--color-slate-600)">Product</td>
+                <td style="color:var(--color-slate-600)">Q2 2025</td>
+                <td><div class="prog-mini"><span style="font-weight:600;color:var(--color-slate-900)">3/5</span><div class="prog-track" style="width:52px;height:5px"><div class="prog-fill" style="width:60%"></div></div></div></td>
+                <td style="color:var(--color-slate-600)">₹25L–₹35L</td>
+                <td><span class="status-pill s-active"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>ACTIVE</span></td>
+                <td style="color:var(--color-slate-600)">Priya Sharma</td>
+                <td><button class="more-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button></td>
+              </tr>
+              <tr>
+                <td><div class="plan-name">Backend Engineer (Node.js)</div><div class="plan-industry">Software / Technology</div></td>
+                <td style="color:var(--color-slate-600)">Engineering</td><td style="color:var(--color-slate-600)">Q2 2025</td>
+                <td><div class="prog-mini"><span style="font-weight:600;color:var(--color-slate-900)">8/10</span><div class="prog-track" style="width:52px;height:5px"><div class="prog-fill" style="width:80%"></div></div></div></td>
+                <td style="color:var(--color-slate-600)">₹18L–₹28L</td>
+                <td><span class="status-pill s-active"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>ACTIVE</span></td>
+                <td style="color:var(--color-slate-600)">Rahul Kumar</td>
+                <td><button class="more-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button></td>
+              </tr>
+              <tr>
+                <td><div class="plan-name">UX Designer</div><div class="plan-industry">Software / Technology</div></td>
+                <td style="color:var(--color-slate-600)">Design</td><td style="color:var(--color-slate-600)">Q2 2025</td>
+                <td><div class="prog-mini"><span style="font-weight:600;color:var(--color-slate-900)">1/4</span><div class="prog-track" style="width:52px;height:5px"><div class="prog-fill" style="width:25%;background:linear-gradient(90deg,#f59e0b,#d97706)"></div></div></div></td>
+                <td style="color:var(--color-slate-600)">₹15L–₹22L</td>
+                <td><span class="status-pill s-draft">DRAFT</span></td>
+                <td style="color:var(--color-slate-600)">Anjali Mehta</td>
+                <td><button class="more-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button></td>
+              </tr>
+              <tr>
+                <td><div class="plan-name">DevOps Engineer</div><div class="plan-industry">Software / Technology</div></td>
+                <td style="color:var(--color-slate-600)">Infrastructure</td><td style="color:var(--color-slate-600)">Q1 2025</td>
+                <td><div class="prog-mini"><span style="font-weight:600;color:var(--color-slate-900)">3/3</span><div class="prog-track" style="width:52px;height:5px"><div class="prog-fill" style="width:100%"></div></div></div></td>
+                <td style="color:var(--color-slate-600)">₹20L–₹32L</td>
+                <td><span class="status-pill s-completed">COMPLETED</span></td>
+                <td style="color:var(--color-slate-600)">Vikram Singh</td>
+                <td><button class="more-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button></td>
+              </tr>
+              <tr>
+                <td><div class="plan-name">Sales Manager – North</div><div class="plan-industry">Retail</div></td>
+                <td style="color:var(--color-slate-600)">Sales</td><td style="color:var(--color-slate-600)">Q2 2025</td>
+                <td><div class="prog-mini"><span style="font-weight:600;color:var(--color-slate-900)">2/4</span><div class="prog-track" style="width:52px;height:5px"><div class="prog-fill" style="width:50%"></div></div></div></td>
+                <td style="color:var(--color-slate-600)">₹10L–₹16L</td>
+                <td><span class="status-pill s-active"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>ACTIVE</span></td>
+                <td style="color:var(--color-slate-600)">Arun Patel</td>
+                <td><button class="more-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button></td>
+              </tr>
+              <tr>
+                <td><div class="plan-name">Data Analyst</div><div class="plan-industry">Finance</div></td>
+                <td style="color:var(--color-slate-600)">Analytics</td><td style="color:var(--color-slate-600)">Q3 2025</td>
+                <td><div class="prog-mini"><span style="font-weight:600;color:var(--color-slate-900)">0/6</span><div class="prog-track" style="width:52px;height:5px"><div class="prog-fill" style="width:0%"></div></div></div></td>
+                <td style="color:var(--color-slate-600)">₹12L–₹18L</td>
+                <td><span class="status-pill s-draft">DRAFT</span></td>
+                <td style="color:var(--color-slate-600)">Deepa Rao</td>
+                <td><button class="more-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="pagination">
+            <span class="pg-info">Showing 1–6 of 24 plans</span>
+            <div class="pg-btns">
+              <button class="btn-sm btn-outline-sm" style="opacity:.4;cursor:default"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>Prev</button>
+              <button class="btn-sm btn-outline-sm">Next<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detail pane -->
+      <div class="detail-pane">
+        <div class="dp-header">
+          <div class="dp-back"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>Back to plans</div>
+          <div class="dp-title">Senior Product Manager</div>
+          <div class="dp-meta">
+            <span class="status-pill s-active"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>ACTIVE</span>
+            <span style="font-size:12px;color:var(--color-slate-400)">Q2 2025 · Product</span>
+          </div>
+          <div class="dp-prog-wrap">
+            <div class="dp-prog-row"><span style="font-size:12px;color:var(--color-slate-400)">Role progress</span><span style="font-size:12px;font-weight:600;color:var(--color-slate-900)">3/5</span></div>
+            <div class="dp-prog-track"><div class="dp-prog-fill" style="width:60%"></div></div>
+          </div>
+          <div class="dp-tabs">
+            <button class="dp-tab act">Overview</button>
+            <button class="dp-tab">Job Description</button>
+            <button class="dp-tab">Pipeline</button>
+            <button class="dp-tab">Feedback</button>
+          </div>
+        </div>
+        <div class="dp-body">
+          <div class="dp-section">
+            <div class="dp-section-label">Basic Info</div>
+            <div class="info-grid">
+              <div class="info-item"><div class="il">Designation</div><div class="iv">Senior PM</div></div>
+              <div class="info-item"><div class="il">Industry</div><div class="iv">Software / Tech</div></div>
+              <div class="info-item"><div class="il">Hiring Manager</div><div class="iv">Priya Sharma</div></div>
+              <div class="info-item"><div class="il">HOD</div><div class="iv">Arjun Das</div></div>
+              <div class="info-item"><div class="il">Reporting To</div><div class="iv">Suresh Iyer</div></div>
+              <div class="info-item"><div class="il">Team Size</div><div class="iv">8 people</div></div>
+            </div>
+          </div>
+          <div class="dp-section">
+            <div class="dp-section-label">Compensation</div>
+            <div class="info-grid">
+              <div class="info-item"><div class="il">Budget Range</div><div class="iv">₹25L – ₹35L</div></div>
+              <div class="info-item"><div class="il">Currency</div><div class="iv">INR</div></div>
+            </div>
+            <div style="margin-top:10px">
+              <div class="il" style="font-size:11px;color:var(--color-slate-400);margin-bottom:6px">Benefits</div>
+              <div>
+                <span class="status-pill s-draft" style="margin:2px">Health Insurance</span>
+                <span class="status-pill s-draft" style="margin:2px">ESOPs</span>
+                <span class="status-pill s-draft" style="margin:2px">Flexible WFH</span>
+                <span class="status-pill s-draft" style="margin:2px">Learning Budget</span>
+              </div>
+            </div>
+          </div>
+          <div class="dp-section">
+            <div class="dp-section-label">Required Skills</div>
+            <div>
+              <span class="skill-chip" style="background:#dbeafe;color:#1d4ed8;border-color:#bfdbfe">Product Strategy · Must Have</span>
+              <span class="skill-chip" style="background:#dbeafe;color:#1d4ed8;border-color:#bfdbfe">Roadmapping · Must Have</span>
+              <span class="skill-chip" style="background:#f3e8ff;color:#7e22ce;border-color:#e9d5ff">Stakeholder Mgmt · Must Have</span>
+              <span class="skill-chip" style="background:#dcfce7;color:#166534;border-color:#bbf7d0">Communication · Must Have</span>
+              <span class="skill-chip" style="background:#dbeafe;color:#1d4ed8;border-color:#bfdbfe">SQL · Nice to Have</span>
+              <span class="skill-chip" style="background:#dcfce7;color:#166534;border-color:#bbf7d0">Team Leadership · Nice to Have</span>
+            </div>
+          </div>
+          <div class="dp-section">
+            <div class="dp-section-label">Status Actions</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn-sm btn-outline-sm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Mark Completed</button>
+              <button class="btn-sm btn-outline-sm" style="color:#dc2626;border-color:#fecaca"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Cancel</button>
+            </div>
+          </div>
+        </div>
+        <div class="dp-actions">
+          <button class="btn-sm btn-ai-sm" style="flex:1"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 008.5 14.063l-6.135-1.582a.5.5 0 010-.962L8.5 9.936A2 2 0 009.937 8.5l1.582-6.135a.5.5 0 01.963 0L14.063 8.5A2 2 0 0015.5 9.937l6.135 1.581a.5.5 0 010 .964L15.5 14.063a2 2 0 00-1.437 1.437l-1.582 6.135a.5.5 0 01-.963 0z"/></svg>Generate JD</button>
+          <button class="btn-sm btn-outline-sm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Work Nucleus — Kanban Pipeline v2</title>
+<link rel="stylesheet" href="../tokens.css">
+<style>
+html,body{height:100%;overflow:hidden}
+.shell{display:flex;height:100vh;background:var(--color-background)}
+/* Sidebar */
+.sidebar{width:var(--sidebar-width);flex-shrink:0;display:flex;flex-direction:column;background:var(--color-surface);border-right:1px solid var(--color-border);height:100vh}
+.sb-header{height:var(--topbar-height);display:flex;align-items:center;padding:0 20px;border-bottom:1px solid var(--color-border);flex-shrink:0}
+.sb-mark{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#4338ca);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;box-shadow:0 2px 6px rgba(79,70,229,.3)}
+.sb-word{font-size:16px;font-weight:700;color:var(--color-slate-900);margin-left:9px}
+.sb-word span{color:#4f46e5}
+.sb-nav{flex:1;padding:10px;overflow-y:auto}
+.ni{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;font-size:13px;font-weight:500;color:var(--color-slate-500);cursor:pointer;margin-bottom:1px;transition:var(--transition-colors)}
+.ni:hover{background:var(--color-slate-50);color:var(--color-slate-900)}
+.ni.act{background:var(--color-indigo-50);color:#4338ca}
+.ni.act svg{color:#4f46e5}
+.ni svg{width:18px;height:18px;flex-shrink:0}
+.sb-footer{padding:10px;border-top:1px solid var(--color-border)}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{height:var(--topbar-height);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--color-surface);border-bottom:1px solid var(--color-border);flex-shrink:0}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--color-slate-50);border:1px solid var(--color-border);border-radius:10px;padding:8px 14px;font-size:13px;color:var(--color-slate-400);width:260px}
+.tb-right{display:flex;align-items:center;gap:8px}
+.notif{width:36px;height:36px;border-radius:9px;border:1px solid var(--color-border);background:var(--color-surface);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative}
+.notif-dot{position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;background:#ef4444;border:1.5px solid #fff}
+.ua{width:30px;height:30px;border-radius:50%;background:var(--gradient-avatar);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700}
+.user-btn{display:flex;align-items:center;gap:8px;padding:5px 10px 5px 6px;border-radius:10px;cursor:pointer}
+
+/* Page content */
+.page-content{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.page-top{padding:20px 24px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.plan-label{font-size:11px;color:var(--color-slate-400);margin-bottom:3px;display:flex;align-items:center;gap:5px}
+.page-title{font-size:20px;font-weight:700;color:var(--color-slate-900)}
+
+/* Sub-tabs */
+.sub-tabs-bar{padding:14px 24px 0;border-bottom:1px solid var(--color-border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.sub-tabs{display:inline-flex;align-items:center;gap:1px;background:rgba(241,245,249,.8);border-radius:9px;padding:3px}
+.st{padding:5px 14px;border-radius:7px;font-size:12px;font-weight:500;color:var(--color-slate-500);cursor:pointer;border:none;background:none;font-family:var(--font-sans)}
+.st.act{background:#fff;color:var(--color-slate-900);box-shadow:var(--shadow-xs)}
+.sub-actions{display:flex;align-items:center;gap:8px;padding-bottom:14px}
+
+/* Stats strip */
+.stats-strip{display:flex;align-items:center;gap:20px;padding:10px 24px;background:var(--color-surface);border-bottom:1px solid var(--color-border);flex-shrink:0}
+.stat{display:flex;align-items:center;gap:6px;font-size:12px}
+.stat-val{font-weight:700;color:var(--color-slate-900)}
+.stat-lbl{color:var(--color-slate-400)}
+.stat-dot{width:8px;height:8px;border-radius:50%}
+
+/* Board */
+.board{flex:1;overflow-x:auto;overflow-y:hidden;padding:16px 24px;display:flex;gap:12px}
+.board::-webkit-scrollbar{height:6px}
+.board::-webkit-scrollbar-track{background:transparent}
+.board::-webkit-scrollbar-thumb{background:var(--color-slate-200);border-radius:3px}
+
+/* Column */
+.col{width:268px;flex-shrink:0;display:flex;flex-direction:column;border-radius:var(--radius-xl);overflow:hidden;background:var(--color-slate-100);border:1px solid var(--color-border)}
+.col-header{padding:12px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--color-border);background:#fff}
+.col-left{display:flex;align-items:center;gap:8px}
+.col-type-icon{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.col-name{font-size:13px;font-weight:600;color:var(--color-slate-800)}
+.col-count{font-size:11px;font-weight:600;background:var(--color-slate-100);color:var(--color-slate-500);border-radius:9999px;padding:2px 8px}
+.col-meta{display:flex;align-items:center;gap:5px;padding:6px 14px;background:#fff;border-bottom:1px solid var(--color-slate-100)}
+.col-avg{font-size:10px;color:var(--color-slate-400)}
+.sla-ok{color:var(--color-emerald-600)}
+.sla-warn{color:var(--color-amber-600)}
+.sla-breach{color:var(--color-red-600)}
+.col-body{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:7px}
+.col-body::-webkit-scrollbar{width:3px}
+.col-body::-webkit-scrollbar-thumb{background:var(--color-slate-200);border-radius:2px}
+
+/* Candidate card */
+.ccard{background:#fff;border-radius:var(--radius-lg);border:1px solid rgba(226,232,240,.7);padding:12px;box-shadow:var(--shadow-xs);cursor:grab;transition:var(--transition-all)}
+.ccard:hover{box-shadow:var(--shadow-md);transform:translateY(-1px);border-color:var(--color-indigo-200)}
+.ccard.dragging{opacity:.5;box-shadow:var(--shadow-xl)}
+.cc-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
+.cc-avatar{width:30px;height:30px;border-radius:50%;background:var(--gradient-avatar);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;flex-shrink:0}
+.cc-name{font-size:13px;font-weight:600;color:var(--color-slate-900);line-height:1.3;flex:1;margin:0 8px}
+.cc-role{font-size:11px;color:var(--color-slate-400);margin-bottom:8px}
+.cc-badges{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.cc-badge{display:inline-flex;align-items:center;gap:3px;border-radius:5px;padding:2px 7px;font-size:10px;font-weight:600}
+.days-ok    {background:#ecfdf5;color:#059669}
+.days-warn  {background:#fffbeb;color:#d97706}
+.days-breach{background:#fef2f2;color:#dc2626}
+.score-high {background:#ecfdf5;color:#059669}
+.score-mid  {background:#fffbeb;color:#d97706}
+.score-low  {background:#fef2f2;color:#dc2626}
+.cc-footer{display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--color-slate-50)}
+.cc-exp{font-size:10px;color:var(--color-slate-400)}
+.cc-feedback{display:flex;align-items:center;gap:3px;font-size:10px;color:var(--color-slate-400)}
+
+/* Add col */
+.add-card{border-radius:var(--radius-lg);border:1.5px dashed var(--color-slate-200);padding:10px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--color-slate-400);cursor:pointer;margin:8px}
+.add-card:hover{background:#fff;color:var(--color-indigo-600);border-color:var(--color-indigo-200)}
+
+/* Btn */
+.btn-sm{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:0 12px;border-radius:var(--radius-base);font-size:12px;font-weight:500;cursor:pointer;border:none;font-family:var(--font-sans);transition:var(--transition-all)}
+.btn-primary-sm{background:var(--color-primary);color:#fff;box-shadow:var(--shadow-primary)}
+.btn-primary-sm:hover{background:var(--color-primary-hover)}
+.btn-outline-sm{background:#fff;color:var(--color-slate-700);border:1px solid var(--color-border);box-shadow:var(--shadow-xs)}
+.btn-ghost-sm{background:transparent;color:var(--color-slate-500)}
+.btn-ghost-sm:hover{background:var(--color-slate-50)}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sb-header">
+      <div class="sb-mark">W</div>
+      <span class="sb-word">Work<span>Nucleus</span></span>
+    </div>
+    <nav class="sb-nav">
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
+      <div class="ni act"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>Hiring Plans</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Candidates</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Offers</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>BGV</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>Appraisal</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Compensation</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Reports</div>
+    </nav>
+    <div class="sb-footer">
+      <div style="border-radius:10px;background:linear-gradient(135deg,#eef2ff,#ecfeff);padding:12px">
+        <div style="font-size:11px;font-weight:700;color:#312e81">Nova Design System</div>
+        <div style="font-size:10px;color:#4f46e5;margin-top:1px">Powered by Claude AI</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="topbar">
+      <div class="search-box"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Search plans, candidates…</div>
+      <div class="tb-right">
+        <div class="notif"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg><div class="notif-dot"></div></div>
+        <div class="user-btn"><div class="ua">PS</div><span style="font-size:13px;font-weight:500;color:var(--color-slate-700)">Priya Sharma</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-slate-400)"><polyline points="6 9 12 15 18 9"/></svg></div>
+      </div>
+    </header>
+
+    <div class="page-content">
+      <!-- Page top -->
+      <div class="page-top">
+        <div>
+          <div class="plan-label"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>Senior Product Manager · Q2 2025</div>
+          <div class="page-title">Interview Pipeline</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-sm btn-outline-sm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Filter</button>
+          <button class="btn-sm btn-primary-sm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Candidate</button>
+        </div>
+      </div>
+
+      <!-- Sub tabs -->
+      <div class="sub-tabs-bar">
+        <div class="sub-tabs">
+          <button class="st act">Kanban Board</button>
+          <button class="st">Pipeline Setup</button>
+        </div>
+        <div class="sub-actions">
+          <span style="font-size:12px;color:var(--color-slate-400)">Show:</span>
+          <select style="border:1px solid var(--color-border);border-radius:7px;padding:4px 8px;font-size:12px;color:var(--color-slate-600);background:#fff;outline:none;font-family:var(--font-sans)"><option>Active only</option><option>All</option></select>
+        </div>
+      </div>
+
+      <!-- Stats strip -->
+      <div class="stats-strip">
+        <div class="stat"><div class="stat-dot" style="background:#6366f1"></div><span class="stat-val">137</span><span class="stat-lbl">Total</span></div>
+        <div class="stat"><div class="stat-dot" style="background:#10b981"></div><span class="stat-val">18</span><span class="stat-lbl">Selected</span></div>
+        <div class="stat"><div class="stat-dot" style="background:#ef4444"></div><span class="stat-val">42</span><span class="stat-lbl">Rejected</span></div>
+        <div class="stat"><div class="stat-dot" style="background:#f59e0b"></div><span class="stat-val">31%</span><span class="stat-lbl">Rejection rate</span></div>
+        <div style="margin-left:auto;font-size:12px;color:var(--color-slate-400);display:flex;align-items:center;gap:5px">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Avg 28 days to hire
+        </div>
+      </div>
+
+      <!-- Kanban Board -->
+      <div class="board">
+
+        <!-- Screening -->
+        <div class="col">
+          <div class="col-header">
+            <div class="col-left">
+              <div class="col-type-icon" style="background:#eef2ff"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+              <span class="col-name">Screening</span>
+            </div>
+            <span class="col-count">8</span>
+          </div>
+          <div class="col-meta"><span class="col-avg sla-ok">Avg 1.4d · SLA 3d</span></div>
+          <div class="col-body">
+            <!-- Card 1 -->
+            <div class="ccard">
+              <div class="cc-top"><div class="cc-avatar">AK</div><div class="cc-name">Aditya Kumar</div></div>
+              <div class="cc-role">Senior PM · Flipkart</div>
+              <div class="cc-badges">
+                <span class="cc-badge days-ok"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>1d</span>
+              </div>
+              <div class="cc-footer"><span class="cc-exp">7 yrs exp</span><div class="cc-feedback"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>0 feedback</div></div>
+            </div>
+            <!-- Card 2 -->
+            <div class="ccard">
+              <div class="cc-top"><div class="cc-avatar" style="background:linear-gradient(135deg,#06b6d4,#0891b2)">SM</div><div class="cc-name">Sneha Mahajan</div></div>
+              <div class="cc-role">Product Lead · Swiggy</div>
+              <div class="cc-badges">
+                <span class="cc-badge days-ok"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>2d</span>
+                <span class="cc-badge score-high">82</span>
+              </div>
+              <div class="cc-footer"><span class="cc-exp">5 yrs exp</span><div class="cc-feedback"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>1/2</div></div>
+            </div>
+          </div>
+          <div class="add-card"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add candidate</div>
+        </div>
+
+        <!-- Technical R1 -->
+        <div class="col">
+          <div class="col-header">
+            <div class="col-left">
+              <div class="col-type-icon" style="background:#eff6ff"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
+              <span class="col-name">Technical R1</span>
+            </div>
+            <span class="col-count">6</span>
+          </div>
+          <div class="col-meta"><span class="col-avg sla-warn">Avg 4.2d · SLA 5d ⚠</span></div>
+          <div class="col-body">
+            <div class="ccard">
+              <div class="cc-top"><div class="cc-avatar" style="background:linear-gradient(135deg,#f59e0b,#d97706)">RV</div><div class="cc-name">Rohit Verma</div></div>
+              <div class="cc-role">Group PM · Amazon</div>
+              <div class="cc-badges">
+                <span class="cc-badge days-warn"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>4d</span>
+                <span class="cc-badge score-high">91</span>
+              </div>
+              <div class="cc-footer"><span class="cc-exp">9 yrs exp</span><div class="cc-feedback"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>2/3</div></div>
+            </div>
+            <div class="ccard">
+              <div class="cc-top"><div class="cc-avatar" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed)">NK</div><div class="cc-name">Nisha Kapoor</div></div>
+              <div class="cc-role">PM · Meesho</div>
+              <div class="cc-badges">
+                <span class="cc-badge days-ok"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>2d</span>
+                <span class="cc-badge score-mid">64</span>
+              </div>
+              <div class="cc-footer"><span class="cc-exp">4 yrs exp</span><div class="cc-feedback"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>1/3</div></div>
+            </div>
+            <div class="ccard">
+              <div class="cc-top"><div class="cc-avatar" style="background:linear-gradient(135deg,#10b981,#059669)">DJ</div><div class="cc-name">Deepak Joshi</div></div>
+              <div class="cc-role">APM · Google</div>
+              <div class="cc-badges">
+                <span class="cc-badge days-breach"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>6d !</span>
+              </div>
+              <div class="cc-footer"><span class="cc-exp">3 yrs exp</span><div class="cc-feedback"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>0/3</div></div>
+            </div>
+          </div>
+          <div class="add-card"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add candidate</div>
+        </div>
+
+        <!-- Technical R2 -->
+        <div class="col">
+          <div class="col-header">
+            <div class="col-left">
+              <div class="col-type-icon" style="background:#eff6ff"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
+              <span class="col-name">Technical R2</span>
+            </div>
+            <span class="col-count">3</span>
+          </div>
+          <div class="col-meta"><span class="col-avg sla-ok">Avg 2.1d · SLA 5d</span></div>
+          <div class="col-body">
+            <div class="ccard" style="border-color:#e0e7ff;background:#fafafe">
+              <div style="position:relative">
+                <div class="cc-top"><div class="cc-avatar" style="background:linear-gradient(135deg,#4f46e5,#4338ca)">PR</div><div class="cc-name">Prateek Rao</div></div>
+                <div class="cc-role">Lead PM · Razorpay</div>
+                <div class="cc-badges">
+                  <span class="cc-badge days-ok"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>1d</span>
+                  <span class="cc-badge score-high">88</span>
+                </div>
+                <div class="cc-footer"><span class="cc-exp">8 yrs exp</span><div class="cc-feedback"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>3/3 ✓</div></div>
+                <div style="position:absolute;top:0;right:0;width:6px;height:6px;border-radius:50%;background:#4f46e5"></div>
+              </div>
+            </div>
+          </div>
+          <div class="add-card"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add candidate</div>
+        </div>
+
+        <!-- HR Round -->
+        <div class="col">
+          <div class="col-header">
+            <div class="col-left">
+              <div class="col-type-icon" style="background:#ecfdf5"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+              <span class="col-name">HR Round</span>
+            </div>
+            <span class="col-count">2</span>
+          </div>
+          <div class="col-meta"><span class="col-avg sla-ok">Avg 1.0d · SLA 3d</span></div>
+          <div class="col-body">
+            <div class="ccard">
+              <div class="cc-top"><div class="cc-avatar" style="background:linear-gradient(135deg,#06b6d4,#0891b2)">MS</div><div class="cc-name">Meera Sharma</div></div>
+              <div class="cc-role">PM · PhonePe</div>
+              <div class="cc-badges">
+                <span class="cc-badge days-ok"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>1d</span>
+                <span class="cc-badge score-high">79</span>
+              </div>
+              <div class="cc-footer"><span class="cc-exp">6 yrs exp</span><div class="cc-feedback"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>1/2</div></div>
+            </div>
+          </div>
+          <div class="add-card"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add candidate</div>
+        </div>
+
+        <!-- Leadership -->
+        <div class="col">
+          <div class="col-header">
+            <div class="col-left">
+              <div class="col-type-icon" style="background:#fef3c7"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg></div>
+              <span class="col-name">Leadership</span>
+            </div>
+            <span class="col-count">1</span>
+          </div>
+          <div class="col-meta"><span class="col-avg sla-ok">Avg 2.0d · SLA 4d</span></div>
+          <div class="col-body">
+            <div class="ccard" style="border-color:#d1fae5;background:#f0fdf4">
+              <div class="cc-top"><div class="cc-avatar" style="background:linear-gradient(135deg,#10b981,#059669)">RV</div><div class="cc-name">Rohit Verma</div></div>
+              <div class="cc-role">Group PM · Amazon</div>
+              <div class="cc-badges">
+                <span class="cc-badge days-ok"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>2d</span>
+                <span class="cc-badge score-high">91</span>
+              </div>
+              <div class="cc-footer"><span class="cc-exp">9 yrs exp</span><div class="cc-feedback"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>2/2 ✓</div></div>
+            </div>
+          </div>
+          <div class="add-card"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add candidate</div>
+        </div>
+
+        <!-- Offer -->
+        <div class="col" style="border-color:#d1fae5">
+          <div class="col-header" style="background:#f0fdf4">
+            <div class="col-left">
+              <div class="col-type-icon" style="background:#d1fae5"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <span class="col-name" style="color:#065f46">Offer</span>
+            </div>
+            <span class="col-count" style="background:#d1fae5;color:#059669">0</span>
+          </div>
+          <div class="col-meta" style="background:#f0fdf4"><span class="col-avg sla-ok">Ready for offers</span></div>
+          <div class="col-body" style="align-items:center;justify-content:center;min-height:80px">
+            <div style="text-align:center;padding:16px">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-slate-300)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+              <div style="font-size:11px;color:var(--color-slate-400);margin-top:6px">No candidates yet</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /board -->
+    </div><!-- /page-content -->
+  </div><!-- /main -->
+</div>
+</body>
+</html>

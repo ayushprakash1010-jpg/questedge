@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Work Nucleus — Dashboard v2</title>
+<link rel="stylesheet" href="../tokens.css">
+<style>
+html,body{height:100%;overflow:hidden}
+.shell{display:flex;height:100vh;background:var(--color-background)}
+
+/* Sidebar */
+.sidebar{width:var(--sidebar-width);flex-shrink:0;display:flex;flex-direction:column;background:var(--color-surface);border-right:1px solid var(--color-border);height:100vh}
+.sb-header{height:var(--topbar-height);display:flex;align-items:center;padding:0 20px;border-bottom:1px solid var(--color-border);flex-shrink:0}
+.sb-logo{display:flex;align-items:center;gap:9px;text-decoration:none}
+.sb-mark{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#4338ca);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;box-shadow:0 2px 6px rgba(79,70,229,.3)}
+.sb-wordmark{font-size:16px;font-weight:700;color:var(--color-slate-900)}
+.sb-wordmark span{color:#4f46e5}
+.sb-nav{flex:1;padding:10px;overflow-y:auto}
+.ni{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;font-size:13px;font-weight:500;color:var(--color-slate-500);cursor:pointer;margin-bottom:1px;transition:var(--transition-colors)}
+.ni:hover{background:var(--color-slate-50);color:var(--color-slate-900)}
+.ni.act{background:var(--color-indigo-50);color:#4338ca}
+.ni svg{width:18px;height:18px;flex-shrink:0}
+.ni.act svg{color:#4f46e5}
+.sb-footer{padding:10px;border-top:1px solid var(--color-border)}
+.sb-widget{border-radius:10px;background:linear-gradient(135deg,#eef2ff,#ecfeff);padding:12px}
+
+/* Main */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{height:var(--topbar-height);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--color-surface);border-bottom:1px solid var(--color-border);flex-shrink:0;gap:16px}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--color-slate-50);border:1px solid var(--color-border);border-radius:10px;padding:8px 14px;font-size:13px;color:var(--color-slate-400);width:260px;cursor:text}
+.tb-right{display:flex;align-items:center;gap:8px}
+.notif{width:36px;height:36px;border-radius:9px;border:1px solid var(--color-border);background:var(--color-surface);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative}
+.notif-dot{position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;background:#ef4444;border:1.5px solid #fff}
+.user-btn{display:flex;align-items:center;gap:8px;padding:5px 10px 5px 6px;border-radius:10px;cursor:pointer}
+.user-btn:hover{background:var(--color-slate-50)}
+.ua{width:30px;height:30px;border-radius:50%;background:var(--gradient-avatar);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700}
+
+/* Content */
+.content{flex:1;overflow-y:auto;padding:var(--content-padding)}
+.page-h{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px}
+.page-title{font-size:22px;font-weight:700;color:var(--color-slate-900)}
+.page-sub{font-size:13px;color:var(--color-slate-400);margin-top:3px}
+
+/* KPI grid */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.kpi{background:var(--color-surface);border-radius:var(--radius-xl);border:1px solid rgba(226,232,240,.6);overflow:hidden;box-shadow:var(--shadow-card);transition:var(--transition-all)}
+.kpi:hover{box-shadow:var(--shadow-card-hover);transform:translateY(-1px)}
+.kpi-top{height:3px}
+.kpi-body{padding:16px}
+.kpi-label{font-size:12px;font-weight:500;color:var(--color-slate-500)}
+.kpi-row{display:flex;align-items:flex-start;justify-content:space-between;margin-top:8px}
+.kpi-val{font-size:30px;font-weight:700;color:var(--color-slate-900);line-height:1}
+.kpi-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center}
+.kpi-trend{display:flex;align-items:center;gap:4px;font-size:11px;margin-top:10px}
+
+/* Chart cards */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.chart-card{background:var(--color-surface);border-radius:var(--radius-xl);border:1px solid rgba(226,232,240,.6);box-shadow:var(--shadow-card);overflow:hidden}
+.card-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;border-bottom:1px solid var(--color-slate-50)}
+.card-title{font-size:14px;font-weight:600;color:var(--color-slate-900)}
+.card-body{padding:16px 18px}
+
+/* Bars (funnel) */
+.bar-chart{display:flex;align-items:flex-end;gap:8px;height:180px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px}
+.bar-rect{width:100%;border-radius:5px 5px 0 0}
+.bar-lbl{font-size:10px;color:var(--color-slate-400);text-align:center;line-height:1.2}
+.bar-val{font-size:11px;font-weight:600;color:var(--color-slate-700)}
+
+/* Progress list */
+.prog-list{display:flex;flex-direction:column;gap:13px}
+.prog-row{display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px}
+.prog-track{background:var(--color-slate-100);border-radius:9999px;height:6px;overflow:hidden}
+.prog-fill{height:100%;border-radius:9999px;background:linear-gradient(90deg,var(--color-indigo-500),var(--color-cyan-500));transition:width .4s ease-out}
+
+/* AI Insights */
+.insights-card{background:var(--color-surface);border-radius:var(--radius-xl);border:1px solid rgba(226,232,240,.6);box-shadow:var(--shadow-card);overflow:hidden;margin-bottom:20px}
+.insights-accent{height:3px;background:linear-gradient(90deg,#7c3aed,#6366f1,#06b6d4)}
+.ai-icon-wrap{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#7c3aed,#4f46e5);display:flex;align-items:center;justify-content:center}
+.insight-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px 18px}
+.insight-item{border-radius:var(--radius-xl);border:1px solid;padding:14px;display:flex;gap:10px}
+.insight-ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.insight-rec{margin-top:8px;padding:8px 10px;border-radius:7px;background:rgba(255,255,255,.7)}
+
+/* Bottom row */
+.bottom-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.data-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.data-tbl th{text-align:left;padding:8px 14px;font-size:10px;font-weight:700;color:var(--color-slate-400);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--color-border);background:var(--color-slate-50)}
+.data-tbl td{padding:10px 14px;border-bottom:1px solid #f8fafc;color:var(--color-slate-700)}
+.data-tbl tr:hover td{background:#f8fafc}
+.dot-row{display:flex;gap:2px}
+.dot{width:6px;height:6px;border-radius:50%}
+.rate-badge{display:inline-block;padding:2px 8px;border-radius:9999px;font-size:10px;font-weight:600}
+.gen-ts{display:inline-flex;align-items:center;gap:5px;background:var(--color-slate-100);border-radius:9999px;padding:3px 10px;font-size:11px;color:var(--color-slate-500)}
+.btn-sm{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:0 12px;border-radius:var(--radius-base);font-size:12px;font-weight:500;cursor:pointer;border:none;font-family:var(--font-sans);transition:var(--transition-all)}
+.btn-outline-sm{background:#fff;color:var(--color-slate-700);border:1px solid var(--color-border);box-shadow:var(--shadow-xs)}
+.btn-outline-sm:hover{background:var(--color-slate-50)}
+.btn-ghost-sm{background:transparent;color:var(--color-slate-500)}
+.btn-ghost-sm:hover{background:var(--color-slate-50)}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sb-header">
+      <div class="sb-logo">
+        <div class="sb-mark">W</div>
+        <span class="sb-wordmark">Work<span>Nucleus</span></span>
+      </div>
+    </div>
+    <nav class="sb-nav">
+      <div class="ni act">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </div>
+      <div class="ni">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+        Hiring Plans
+      </div>
+      <div class="ni">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        Candidates
+      </div>
+      <div class="ni">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Offers
+      </div>
+      <div class="ni">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        BGV
+      </div>
+      <div class="ni">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
+        Appraisal
+      </div>
+      <div class="ni">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        Compensation
+      </div>
+      <div class="ni">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Reports
+      </div>
+      <div class="ni">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+        Training
+      </div>
+      <div class="ni">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+        Admin
+      </div>
+    </nav>
+    <div class="sb-footer">
+      <div class="sb-widget">
+        <div style="font-size:11px;font-weight:700;color:#312e81">Nova Design System</div>
+        <div style="font-size:10px;color:#4f46e5;margin-top:1px">Powered by Claude AI</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="topbar">
+      <div class="search-box">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Search plans, candidates…
+      </div>
+      <div class="tb-right">
+        <div class="notif">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+          <div class="notif-dot"></div>
+        </div>
+        <div class="user-btn">
+          <div class="ua">PS</div>
+          <span style="font-size:13px;font-weight:500;color:var(--color-slate-700)">Priya Sharma</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-slate-400)"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+    </header>
+
+    <main class="content">
+
+      <!-- Page header -->
+      <div class="page-h">
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-sub">Hiring analytics overview</div>
+        </div>
+        <button class="btn-sm btn-outline-sm">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+          Refresh
+        </button>
+      </div>
+
+      <!-- KPI Cards -->
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-top" style="background:linear-gradient(90deg,#6366f1,#4f46e5)"></div>
+          <div class="kpi-body">
+            <div class="kpi-label">Active Plans</div>
+            <div class="kpi-row">
+              <div class="kpi-val">12</div>
+              <div class="kpi-icon" style="background:#eef2ff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg></div>
+            </div>
+            <div class="kpi-trend"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg><span style="color:#10b981">+2 this month</span></div>
+          </div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-top" style="background:linear-gradient(90deg,#06b6d4,#0891b2)"></div>
+          <div class="kpi-body">
+            <div class="kpi-label">Open Roles</div>
+            <div class="kpi-row">
+              <div class="kpi-val">48</div>
+              <div class="kpi-icon" style="background:#ecfeff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></div>
+            </div>
+            <div class="kpi-trend"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg><span style="color:#10b981">31 filled · 64%</span></div>
+          </div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-top" style="background:linear-gradient(90deg,#f59e0b,#d97706)"></div>
+          <div class="kpi-body">
+            <div class="kpi-label">Avg Time to Hire</div>
+            <div class="kpi-row">
+              <div class="kpi-val">28d</div>
+              <div class="kpi-icon" style="background:#fffbeb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+            </div>
+            <div class="kpi-trend"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg><span style="color:#10b981">vs 35d avg</span></div>
+          </div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-top" style="background:linear-gradient(90deg,#10b981,#059669)"></div>
+          <div class="kpi-body">
+            <div class="kpi-label">In Pipeline</div>
+            <div class="kpi-row">
+              <div class="kpi-val">137</div>
+              <div class="kpi-icon" style="background:#ecfdf5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+            </div>
+            <div class="kpi-trend"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg><span style="color:#10b981">18 selected</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="charts-row">
+        <div class="chart-card">
+          <div class="card-header">
+            <span class="card-title">Pipeline Funnel</span>
+            <button class="btn-sm btn-ghost-sm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></button>
+          </div>
+          <div class="card-body">
+            <div class="bar-chart">
+              <div class="bar-col"><div class="bar-rect" style="height:160px;background:linear-gradient(180deg,#6366f1,#4f46e5)"></div><div class="bar-lbl">Screening</div><div class="bar-val">137</div></div>
+              <div class="bar-col"><div class="bar-rect" style="height:112px;background:#6366f1;opacity:.78"></div><div class="bar-lbl">Tech R1</div><div class="bar-val">94</div></div>
+              <div class="bar-col"><div class="bar-rect" style="height:78px;background:#6366f1;opacity:.58"></div><div class="bar-lbl">Tech R2</div><div class="bar-val">66</div></div>
+              <div class="bar-col"><div class="bar-rect" style="height:53px;background:#06b6d4;opacity:.85"></div><div class="bar-lbl">HR</div><div class="bar-val">44</div></div>
+              <div class="bar-col"><div class="bar-rect" style="height:34px;background:#10b981"></div><div class="bar-lbl">Offer</div><div class="bar-val">18</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="card-header">
+            <span class="card-title">Hiring Progress</span>
+            <button class="btn-sm btn-ghost-sm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></button>
+          </div>
+          <div class="card-body">
+            <div class="prog-list">
+              <div><div class="prog-row"><span style="font-weight:500;color:var(--color-slate-700)">Senior PM</span><span style="font-weight:600;color:var(--color-slate-900)">3/5</span></div><div class="prog-track"><div class="prog-fill" style="width:60%"></div></div></div>
+              <div><div class="prog-row"><span style="font-weight:500;color:var(--color-slate-700)">Backend Engineer</span><span style="font-weight:600;color:var(--color-slate-900)">8/10</span></div><div class="prog-track"><div class="prog-fill" style="width:80%"></div></div></div>
+              <div><div class="prog-row"><span style="font-weight:500;color:var(--color-slate-700)">UX Designer</span><span style="font-weight:600;color:var(--color-slate-900)">1/4</span></div><div class="prog-track"><div class="prog-fill" style="width:25%;background:linear-gradient(90deg,#f59e0b,#d97706)"></div></div></div>
+              <div><div class="prog-row"><span style="font-weight:500;color:var(--color-slate-700)">DevOps Engineer</span><span style="font-weight:600;color:var(--color-slate-900)">2/3</span></div><div class="prog-track"><div class="prog-fill" style="width:67%"></div></div></div>
+              <div><div class="prog-row"><span style="font-weight:500;color:var(--color-slate-700)">Data Analyst</span><span style="font-weight:600;color:var(--color-slate-900)">4/6</span></div><div class="prog-track"><div class="prog-fill" style="width:67%"></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Insights -->
+      <div class="insights-card">
+        <div class="insights-accent"></div>
+        <div class="card-header">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="ai-icon-wrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 008.5 14.063l-6.135-1.582a.5.5 0 010-.962L8.5 9.936A2 2 0 009.937 8.5l1.582-6.135a.5.5 0 01.963 0L14.063 8.5A2 2 0 0015.5 9.937l6.135 1.581a.5.5 0 010 .964L15.5 14.063a2 2 0 00-1.437 1.437l-1.582 6.135a.5.5 0 01-.963 0z"/></svg></div>
+            <span class="card-title">AI Insights</span>
+            <span class="gen-ts"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Generated 2h ago · Priya Sharma</span>
+          </div>
+          <button class="btn-sm btn-outline-sm">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 008.5 14.063l-6.135-1.582a.5.5 0 010-.962L8.5 9.936A2 2 0 009.937 8.5l1.582-6.135a.5.5 0 01.963 0L14.063 8.5A2 2 0 0015.5 9.937l6.135 1.581a.5.5 0 010 .964L15.5 14.063a2 2 0 00-1.437 1.437l-1.582 6.135a.5.5 0 01-.963 0z"/></svg>
+            Regenerate
+          </button>
+        </div>
+        <div class="insight-grid">
+          <div class="insight-item" style="background:#eff6ff;border-color:#bfdbfe">
+            <div class="insight-ic" style="background:#dbeafe"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--color-slate-900);margin-bottom:4px">Pipeline velocity strong</div>
+              <div style="font-size:12px;color:var(--color-slate-600);line-height:1.6">Time-to-hire is 20% below the 35-day industry average.</div>
+              <div class="insight-rec"><div style="font-size:10px;font-weight:700;color:#1d4ed8;margin-bottom:2px">Recommendation</div><div style="font-size:11px;color:var(--color-slate-700);line-height:1.5">Maintain current interview cadence and share notes with other teams.</div></div>
+            </div>
+          </div>
+          <div class="insight-item" style="background:#fffbeb;border-color:#fde68a">
+            <div class="insight-ic" style="background:#fef3c7"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--color-slate-900);margin-bottom:4px">Feedback bottleneck</div>
+              <div style="font-size:12px;color:var(--color-slate-600);line-height:1.6">5 candidates awaiting Round 2 feedback for over 5 days.</div>
+              <div class="insight-rec" style="background:rgba(255,255,255,.65)"><div style="font-size:10px;font-weight:700;color:#92400e;margin-bottom:2px">Recommendation</div><div style="font-size:11px;color:var(--color-slate-700);line-height:1.5">Send automated reminders to interviewers for Technical Round 2.</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom row -->
+      <div class="bottom-row">
+        <div class="chart-card">
+          <div class="card-header"><span class="card-title">Interviewer Stats</span><button class="btn-sm btn-ghost-sm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></button></div>
+          <table class="data-tbl"><thead><tr><th>Name</th><th>Interviews</th><th>Rating</th><th>Response</th></tr></thead><tbody>
+            <tr><td style="font-weight:500;color:var(--color-slate-900)">Rahul Kumar</td><td>24</td><td><div style="display:flex;align-items:center;gap:5px"><div class="dot-row"><div class="dot" style="background:#fbbf24"></div><div class="dot" style="background:#fbbf24"></div><div class="dot" style="background:#fbbf24"></div><div class="dot" style="background:#fbbf24"></div><div class="dot" style="background:#e2e8f0"></div></div>4.2</div></td><td>3h</td></tr>
+            <tr><td style="font-weight:500;color:var(--color-slate-900)">Anjali Mehta</td><td>18</td><td><div style="display:flex;align-items:center;gap:5px"><div class="dot-row"><div class="dot" style="background:#fbbf24"></div><div class="dot" style="background:#fbbf24"></div><div class="dot" style="background:#fbbf24"></div><div class="dot" style="background:#fbbf24"></div><div class="dot" style="background:#fbbf24"></div></div>4.8</div></td><td>1.5h</td></tr>
+            <tr><td style="font-weight:500;color:var(--color-slate-900)">Vikram Singh</td><td>31</td><td><div style="display:flex;align-items:center;gap:5px"><div class="dot-row"><div class="dot" style="background:#fbbf24"></div><div class="dot" style="background:#fbbf24"></div><div class="dot" style="background:#fbbf24"></div><div class="dot" style="background:#e2e8f0"></div><div class="dot" style="background:#e2e8f0"></div></div>3.5</div></td><td>8h</td></tr>
+          </tbody></table>
+        </div>
+        <div class="chart-card">
+          <div class="card-header"><span class="card-title">Source Effectiveness</span><button class="btn-sm btn-ghost-sm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></button></div>
+          <table class="data-tbl"><thead><tr><th>Source</th><th>Candidates</th><th>Selected</th><th>Rate</th></tr></thead><tbody>
+            <tr><td style="font-weight:500;color:var(--color-slate-900)">Referral</td><td>42</td><td>11</td><td><span class="rate-badge" style="background:#dcfce7;color:#166534">26%</span></td></tr>
+            <tr><td style="font-weight:500;color:var(--color-slate-900)">Job Board</td><td>78</td><td>9</td><td><span class="rate-badge" style="background:#f1f5f9;color:#475569">12%</span></td></tr>
+            <tr><td style="font-weight:500;color:var(--color-slate-900)">Direct</td><td>23</td><td>6</td><td><span class="rate-badge" style="background:#dcfce7;color:#166534">26%</span></td></tr>
+            <tr><td style="font-weight:500;color:var(--color-slate-900)">Agency</td><td>31</td><td>3</td><td><span class="rate-badge" style="background:#fef9c3;color:#713f12">10%</span></td></tr>
+          </tbody></table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+</body>
+</html>

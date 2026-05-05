@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Work Nucleus — Spacing & Foundations v2</title>
+<link rel="stylesheet" href="../tokens.css">
+<style>
+body { padding: 36px; background: #f8fafc; font-family: var(--font-sans); }
+section { margin-bottom: 40px; }
+h2 { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--color-slate-400); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+h2::after { content:''; flex:1; height:1px; background: var(--color-border); }
+
+/* Spacing */
+.sp-row { display: flex; align-items: center; gap: 14px; padding: 7px 0; border-bottom: 1px solid var(--color-slate-100); }
+.sp-meta { width: 200px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+.sp-token { font-size: 11px; font-family: monospace; color: var(--color-slate-600); }
+.sp-px    { font-size: 11px; color: var(--color-slate-400); font-family: monospace; }
+.sp-bar   { background: linear-gradient(90deg, var(--color-indigo-500), var(--color-cyan-500)); border-radius: 3px; height: 8px; }
+
+/* Radius */
+.radius-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+.rad-item { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.rad-box { background: var(--color-indigo-100); border: 2px solid var(--color-indigo-300); width: 72px; height: 60px; }
+.rad-label { font-size: 10px; font-family: monospace; color: var(--color-slate-500); text-align: center; line-height: 1.4; }
+
+/* Shadows */
+.shadow-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+.sh-card { background: #fff; border-radius: 12px; padding: 20px; }
+.sh-name { font-size: 12px; font-weight: 600; color: var(--color-slate-800); margin-bottom: 4px; }
+.sh-spec { font-size: 9px; font-family: monospace; color: var(--color-slate-400); line-height: 1.5; }
+.sh-use  { font-size: 11px; color: var(--color-slate-400); margin-top: 6px; }
+
+/* Layout */
+.layout-demo { background: #fff; border-radius: 12px; border: 1px solid var(--color-border); overflow: hidden; margin-bottom: 8px; }
+.layout-header { padding: 10px 14px; border-bottom: 1px solid var(--color-border); font-size: 11px; font-weight: 600; color: var(--color-slate-500); }
+.layout-body { padding: 12px; }
+.layout-grid { display: grid; gap: 8px; }
+.layout-col { background: var(--color-indigo-50); border-radius: 6px; padding: 10px; text-align: center; font-size: 11px; font-weight: 600; color: var(--color-indigo-600); }
+
+/* App shell */
+.shell-demo { height: 180px; border-radius: 12px; overflow: hidden; border: 1px solid var(--color-border); display: flex; }
+.shell-sidebar { width: 120px; background: #fff; border-right: 1px solid var(--color-border); display: flex; flex-direction: column; flex-shrink: 0; }
+.shell-sidebar-h { height: 32px; border-bottom: 1px solid var(--color-border); display: flex; align-items: center; padding: 0 10px; }
+.shell-main { flex: 1; display: flex; flex-direction: column; }
+.shell-topbar { height: 32px; background: #fff; border-bottom: 1px solid var(--color-border); }
+.shell-content { flex: 1; background: var(--color-background); padding: 8px; display: grid; gap: 6px; }
+.shell-content-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; }
+.shell-kpi { background: #fff; border-radius: 6px; height: 28px; border: 1px solid var(--color-border); }
+.shell-chart { background: #fff; border-radius: 6px; border: 1px solid var(--color-border); }
+.ann-line { position: absolute; }
+</style>
+</head>
+<body>
+
+<section>
+  <h2>Spacing Scale</h2>
+  <div>
+    <div class="sp-row"><div class="sp-meta"><span class="sp-token">--space-1</span><span class="sp-px">4px</span></div><div class="sp-bar" style="width:4px"></div></div>
+    <div class="sp-row"><div class="sp-meta"><span class="sp-token">--space-2</span><span class="sp-px">8px</span></div><div class="sp-bar" style="width:8px"></div></div>
+    <div class="sp-row"><div class="sp-meta"><span class="sp-token">--space-3</span><span class="sp-px">12px</span></div><div class="sp-bar" style="width:12px"></div></div>
+    <div class="sp-row"><div class="sp-meta"><span class="sp-token">--space-4</span><span class="sp-px">16px</span></div><div class="sp-bar" style="width:16px"></div></div>
+    <div class="sp-row"><div class="sp-meta"><span class="sp-token">--space-5</span><span class="sp-px">20px</span></div><div class="sp-bar" style="width:20px"></div></div>
+    <div class="sp-row"><div class="sp-meta"><span class="sp-token">--space-6</span><span class="sp-px">24px — content-padding</span></div><div class="sp-bar" style="width:24px"></div></div>
+    <div class="sp-row"><div class="sp-meta"><span class="sp-token">--space-8</span><span class="sp-px">32px</span></div><div class="sp-bar" style="width:32px"></div></div>
+    <div class="sp-row"><div class="sp-meta"><span class="sp-token">--space-10</span><span class="sp-px">40px — btn-height-md</span></div><div class="sp-bar" style="width:40px"></div></div>
+    <div class="sp-row"><div class="sp-meta"><span class="sp-token">--space-12</span><span class="sp-px">48px</span></div><div class="sp-bar" style="width:48px"></div></div>
+    <div class="sp-row"><div class="sp-meta"><span class="sp-token">--space-16</span><span class="sp-px">64px — topbar-height</span></div><div class="sp-bar" style="width:64px"></div></div>
+    <div class="sp-row"><div class="sp-meta"><span class="sp-token">--space-24</span><span class="sp-px">96px — section py</span></div><div class="sp-bar" style="width:96px"></div></div>
+    <div class="sp-row"><div class="sp-meta"><span class="sp-token">--space-32</span><span class="sp-px">128px — section py-lg</span></div><div class="sp-bar" style="width:128px"></div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Border Radius</h2>
+  <div class="radius-row">
+    <div class="rad-item"><div class="rad-box" style="border-radius:0px"></div><span class="rad-label">none<br>0px</span></div>
+    <div class="rad-item"><div class="rad-box" style="border-radius:4px"></div><span class="rad-label">sm<br>4px</span></div>
+    <div class="rad-item"><div class="rad-box" style="border-radius:6px"></div><span class="rad-label">md<br>6px</span></div>
+    <div class="rad-item"><div class="rad-box" style="border-radius:8px"></div><span class="rad-label">base<br>8px</span></div>
+    <div class="rad-item"><div class="rad-box" style="border-radius:12px;border-color:#4f46e5;border-width:2px;background:#eef2ff"></div><span class="rad-label" style="color:#4f46e5;font-weight:700">lg / xl ★<br>12px</span></div>
+    <div class="rad-item"><div class="rad-box" style="border-radius:16px"></div><span class="rad-label">2xl<br>16px</span></div>
+    <div class="rad-item"><div class="rad-box" style="border-radius:24px"></div><span class="rad-label">3xl<br>24px</span></div>
+    <div class="rad-item"><div class="rad-box" style="border-radius:9999px;width:60px;height:60px"></div><span class="rad-label">full<br>pill / badge</span></div>
+  </div>
+  <div style="margin-top:12px;background:#fff;border:1px solid var(--color-border);border-radius:10px;padding:12px 16px;font-size:12px;color:var(--color-slate-500)">
+    <strong style="color:var(--color-slate-700)">Usage rules:</strong> &nbsp;
+    Buttons → <code style="color:var(--color-indigo-600)">rounded-lg</code> (12px) &nbsp;·&nbsp;
+    Inputs → <code style="color:var(--color-indigo-600)">rounded-lg</code> &nbsp;·&nbsp;
+    Cards → <code style="color:var(--color-indigo-600)">rounded-xl</code> (12px) &nbsp;·&nbsp;
+    Nav items → <code style="color:var(--color-indigo-600)">rounded-xl</code> (10px) &nbsp;·&nbsp;
+    Badges → <code style="color:var(--color-indigo-600)">rounded-full</code> &nbsp;·&nbsp;
+    Avatars → <code style="color:var(--color-indigo-600)">rounded-full</code>
+  </div>
+</section>
+
+<section>
+  <h2>Shadows</h2>
+  <div class="shadow-grid">
+    <div class="sh-card" style="box-shadow:0 1px 2px rgba(0,0,0,0.04)"><span class="sh-name">xs</span><span class="sh-spec">0 1px 2px rgba(0,0,0,.04)</span><span class="sh-use">Subtle raise</span></div>
+    <div class="sh-card" style="box-shadow:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.04)"><span class="sh-name">card (default)</span><span class="sh-spec">0 1px 3px rgba(0,0,0,.08)<br>0 1px 2px rgba(0,0,0,.04)</span><span class="sh-use">Default card state</span></div>
+    <div class="sh-card" style="box-shadow:0 8px 20px rgba(0,0,0,0.08),0 2px 6px rgba(0,0,0,0.04)"><span class="sh-name">card-hover</span><span class="sh-spec">0 8px 20px rgba(0,0,0,.08)<br>0 2px 6px rgba(0,0,0,.04)</span><span class="sh-use">Hovered card</span></div>
+    <div class="sh-card" style="box-shadow:0 10px 15px rgba(0,0,0,0.08),0 4px 6px rgba(0,0,0,0.04)"><span class="sh-name">lg</span><span class="sh-spec">0 10px 15px rgba(0,0,0,.08)<br>0 4px 6px rgba(0,0,0,.04)</span><span class="sh-use">Dropdown, sheet</span></div>
+    <div class="sh-card" style="box-shadow:0 10px 24px rgba(0,0,0,0.10),0 2px 6px rgba(0,0,0,0.06)"><span class="sh-name">dropdown</span><span class="sh-spec">0 10px 24px rgba(0,0,0,.10)<br>0 2px 6px rgba(0,0,0,.06)</span><span class="sh-use">Popover, menu</span></div>
+    <div class="sh-card" style="box-shadow:0 4px 14px rgba(79,70,229,0.28)"><span class="sh-name">primary</span><span class="sh-spec">0 4px 14px rgba(79,70,229,.28)</span><span class="sh-use">Primary button rest</span></div>
+    <div class="sh-card" style="box-shadow:0 8px 24px rgba(79,70,229,0.32)"><span class="sh-name">primary-lg</span><span class="sh-spec">0 8px 24px rgba(79,70,229,.32)</span><span class="sh-use">Primary button hover</span></div>
+    <div class="sh-card" style="box-shadow:0 4px 14px rgba(124,58,237,0.25)"><span class="sh-name">ai</span><span class="sh-spec">0 4px 14px rgba(124,58,237,.25)</span><span class="sh-use">AI action buttons</span></div>
+    <div class="sh-card" style="box-shadow:0 24px 48px rgba(0,0,0,0.14),0 8px 16px rgba(0,0,0,0.08)"><span class="sh-name">modal</span><span class="sh-spec">0 24px 48px rgba(0,0,0,.14)<br>0 8px 16px rgba(0,0,0,.08)</span><span class="sh-use">Modal dialogs</span></div>
+  </div>
+</section>
+
+<section>
+  <h2>Layout Grid Patterns</h2>
+  <div class="layout-demo">
+    <div class="layout-header">4-column KPI grid — gap-4 (16px)</div>
+    <div class="layout-body"><div class="layout-grid" style="grid-template-columns:repeat(4,1fr)"><div class="layout-col">KPI 1</div><div class="layout-col">KPI 2</div><div class="layout-col">KPI 3</div><div class="layout-col">KPI 4</div></div></div>
+  </div>
+  <div class="layout-demo">
+    <div class="layout-header">2-column charts — gap-4 (16px)</div>
+    <div class="layout-body"><div class="layout-grid" style="grid-template-columns:1fr 1fr"><div class="layout-col">Chart / Panel 1</div><div class="layout-col">Chart / Panel 2</div></div></div>
+  </div>
+  <div class="layout-demo">
+    <div class="layout-header">3-column feature cards — gap-6 (24px)</div>
+    <div class="layout-body"><div class="layout-grid" style="grid-template-columns:repeat(3,1fr)"><div class="layout-col">Feature 1</div><div class="layout-col">Feature 2</div><div class="layout-col">Feature 3</div></div></div>
+  </div>
+  <div class="layout-demo">
+    <div class="layout-header">Kanban — horizontal scroll columns, each ~280px</div>
+    <div class="layout-body" style="overflow-x:auto"><div class="layout-grid" style="grid-template-columns:repeat(5,280px);gap:12px"><div class="layout-col">Screening</div><div class="layout-col">Tech R1</div><div class="layout-col">Tech R2</div><div class="layout-col">HR Round</div><div class="layout-col">Offer</div></div></div>
+  </div>
+</section>
+
+<section>
+  <h2>App Shell Dimensions</h2>
+  <div style="background:#fff;border:1px solid var(--color-border);border-radius:12px;padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div>
+      <div style="font-size:12px;font-weight:600;color:var(--color-slate-700);margin-bottom:12px">Component Sizes</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--color-border)"><span style="color:var(--color-slate-500)">Sidebar width</span><span style="font-family:monospace;color:var(--color-indigo-600)">240px (--sidebar-width)</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--color-border)"><span style="color:var(--color-slate-500)">Topbar height</span><span style="font-family:monospace;color:var(--color-indigo-600)">64px (--topbar-height)</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--color-border)"><span style="color:var(--color-slate-500)">Content padding</span><span style="font-family:monospace;color:var(--color-indigo-600)">24px all sides</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--color-border)"><span style="color:var(--color-slate-500)">Button (default)</span><span style="font-family:monospace;color:var(--color-indigo-600)">h-10 (40px) · px-4</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--color-border)"><span style="color:var(--color-slate-500)">Button (sm)</span><span style="font-family:monospace;color:var(--color-indigo-600)">h-8 (32px) · px-3</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--color-border)"><span style="color:var(--color-slate-500)">Input (default)</span><span style="font-family:monospace;color:var(--color-indigo-600)">h-10 (40px) · px-3.5</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0"><span style="color:var(--color-slate-500)">Kanban column</span><span style="font-family:monospace;color:var(--color-indigo-600)">~280px wide</span></div>
+      </div>
+    </div>
+    <div>
+      <div style="font-size:12px;font-weight:600;color:var(--color-slate-700);margin-bottom:12px">Section Padding (landing)</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--color-border)"><span style="color:var(--color-slate-500)">Section (default)</span><span style="font-family:monospace;color:var(--color-indigo-600)">py-24 (96px)</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--color-border)"><span style="color:var(--color-slate-500)">Section (sm+)</span><span style="font-family:monospace;color:var(--color-indigo-600)">sm:py-32 (128px)</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--color-border)"><span style="color:var(--color-slate-500)">Container</span><span style="font-family:monospace;color:var(--color-indigo-600)">max-w-7xl · px-6</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--color-border)"><span style="color:var(--color-slate-500)">Card padding</span><span style="font-family:monospace;color:var(--color-indigo-600)">p-5 (20px)</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--color-border)"><span style="color:var(--color-slate-500)">Card header</span><span style="font-family:monospace;color:var(--color-indigo-600)">p-5 pb-3</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0"><span style="color:var(--color-slate-500)">Grid gap (cards)</span><span style="font-family:monospace;color:var(--color-indigo-600)">gap-4 (16px)</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

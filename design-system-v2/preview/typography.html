@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Work Nucleus — Typography v2</title>
+<link rel="stylesheet" href="../tokens.css">
+<style>
+body { padding: 36px; background: #f8fafc; font-family: var(--font-sans); }
+section { margin-bottom: 40px; }
+h2 { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--color-slate-400); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+h2::after { content:''; flex:1; height:1px; background: var(--color-border); }
+
+/* Scale */
+.scale-row { display: flex; align-items: baseline; gap: 20px; padding: 14px 0; border-bottom: 1px solid var(--color-slate-100); }
+.scale-meta { width: 148px; flex-shrink: 0; }
+.meta-role  { font-size: 11px; font-weight: 600; color: var(--color-slate-600); }
+.meta-spec  { font-size: 9px; font-family: monospace; color: var(--color-slate-400); margin-top: 2px; line-height: 1.5; }
+.scale-sample { flex: 1; line-height: var(--leading-tight); }
+.scale-token  { font-size: 9px; font-family: monospace; color: var(--color-slate-300); margin-left: auto; flex-shrink: 0; text-align: right; }
+
+/* Weights */
+.weight-row { display: grid; grid-template-columns: repeat(6,1fr); gap: 10px; }
+.w-card { background: #fff; border: 1px solid var(--color-border); border-radius: 10px; padding: 14px; }
+.w-sample { font-size: 22px; color: var(--color-slate-900); line-height: 1; margin-bottom: 8px; }
+.w-label  { font-size: 10px; color: var(--color-slate-400); }
+.w-token  { font-size: 9px; font-family: monospace; color: var(--color-slate-300); }
+
+/* Text roles */
+.roles-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.role-card  { background: #fff; border: 1px solid var(--color-border); border-radius: 10px; padding: 16px; }
+.role-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--color-slate-400); margin-bottom: 10px; }
+
+/* Contexts */
+.context-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ctx { border-radius: 12px; padding: 20px; }
+.eyebrow { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--color-indigo-600); margin-bottom: 6px; }
+.gradient-text { background: linear-gradient(135deg,#6366f1,#06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+</style>
+</head>
+<body>
+
+<section>
+  <h2>Typeface</h2>
+  <div style="background:#fff;border:1px solid var(--color-border);border-radius:12px;padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:24px">
+    <div>
+      <div style="font-size:36px;font-weight:800;color:var(--color-slate-900);letter-spacing:-0.02em;line-height:1">Inter</div>
+      <div style="font-size:12px;color:var(--color-slate-400);margin-top:6px;font-family:monospace">system-ui, -apple-system, sans-serif</div>
+      <div style="font-size:12px;color:var(--color-slate-400);font-family:monospace;margin-top:2px">font-feature-settings: "cv02","cv03","cv04","cv11"</div>
+      <div style="margin-top:16px;font-size:14px;color:var(--color-slate-700);line-height:1.8">
+        ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>
+        abcdefghijklmnopqrstuvwxyz<br>
+        0123456789 !@#$&amp;%*()?
+      </div>
+    </div>
+    <div>
+      <div style="font-size:13px;font-weight:600;color:var(--color-slate-700);margin-bottom:12px">OpenType Features Active</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:12px;align-items:center">
+          <span style="font-size:11px;font-family:monospace;color:var(--color-indigo-600);background:var(--color-indigo-50);padding:2px 8px;border-radius:4px">cv02</span>
+          <span style="font-size:12px;color:var(--color-slate-600)">Open 4 (no closed top)</span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center">
+          <span style="font-size:11px;font-family:monospace;color:var(--color-indigo-600);background:var(--color-indigo-50);padding:2px 8px;border-radius:4px">cv03</span>
+          <span style="font-size:12px;color:var(--color-slate-600)">Open 6</span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center">
+          <span style="font-size:11px;font-family:monospace;color:var(--color-indigo-600);background:var(--color-indigo-50);padding:2px 8px;border-radius:4px">cv04</span>
+          <span style="font-size:12px;color:var(--color-slate-600)">Open 9</span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center">
+          <span style="font-size:11px;font-family:monospace;color:var(--color-indigo-600);background:var(--color-indigo-50);padding:2px 8px;border-radius:4px">cv11</span>
+          <span style="font-size:12px;color:var(--color-slate-600)">Single-storey a</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Type Scale</h2>
+  <div>
+    <div class="scale-row">
+      <div class="scale-meta"><span class="meta-role">Display</span><span class="meta-spec">72px · 800 · tight<br>--text-7xl</span></div>
+      <div class="scale-sample" style="font-size:72px;font-weight:800;letter-spacing:-0.025em;color:var(--color-slate-900)">Hire smarter</div>
+    </div>
+    <div class="scale-row">
+      <div class="scale-meta"><span class="meta-role">Hero H1</span><span class="meta-spec">60px · 800 · tight<br>--text-6xl</span></div>
+      <div class="scale-sample" style="font-size:60px;font-weight:800;letter-spacing:-0.02em;color:var(--color-slate-900)">Work Nucleus</div>
+    </div>
+    <div class="scale-row">
+      <div class="scale-meta"><span class="meta-role">Section H2</span><span class="meta-spec">36px · 700 · tight<br>--text-4xl</span></div>
+      <div class="scale-sample" style="font-size:36px;font-weight:700;letter-spacing:-0.015em;color:var(--color-slate-900)">Hiring Intelligence</div>
+    </div>
+    <div class="scale-row">
+      <div class="scale-meta"><span class="meta-role">Section H2 (sm)</span><span class="meta-spec">30px · 700<br>--text-3xl</span></div>
+      <div class="scale-sample" style="font-size:30px;font-weight:700;letter-spacing:-0.01em;color:var(--color-slate-900)">AI-Powered Features</div>
+    </div>
+    <div class="scale-row">
+      <div class="scale-meta"><span class="meta-role">Card Title H3</span><span class="meta-spec">20px · 600<br>--text-xl</span></div>
+      <div class="scale-sample" style="font-size:20px;font-weight:600;color:var(--color-slate-900)">Senior Product Manager — Q2 2025</div>
+    </div>
+    <div class="scale-row">
+      <div class="scale-meta"><span class="meta-role">Large Body</span><span class="meta-spec">18px · 400 · relaxed<br>--text-lg</span></div>
+      <div class="scale-sample" style="font-size:18px;color:var(--color-slate-600);line-height:1.625">Automate your hiring workflow with intelligent AI agents that generate job descriptions, score candidates, and surface insights — all in one place.</div>
+    </div>
+    <div class="scale-row">
+      <div class="scale-meta"><span class="meta-role">Body Default</span><span class="meta-spec">14px · 400 · relaxed<br>--text-sm</span></div>
+      <div class="scale-sample" style="font-size:14px;color:var(--color-slate-600);line-height:1.625">Manage your hiring plans and track candidates through every stage of the pipeline with real-time updates and AI-generated feedback summaries.</div>
+    </div>
+    <div class="scale-row">
+      <div class="scale-meta"><span class="meta-role">Label</span><span class="meta-spec">14px · 500<br>--text-sm · medium</span></div>
+      <div class="scale-sample" style="font-size:14px;font-weight:500;color:var(--color-slate-700)">Hiring Manager</div>
+    </div>
+    <div class="scale-row">
+      <div class="scale-meta"><span class="meta-role">Eyebrow</span><span class="meta-spec">11px · 700 · ALL CAPS<br>widest tracking</span></div>
+      <div class="scale-sample" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--color-indigo-600)">AI-Powered Platform</div>
+    </div>
+    <div class="scale-row">
+      <div class="scale-meta"><span class="meta-role">Caption</span><span class="meta-spec">12px · 400<br>--text-xs</span></div>
+      <div class="scale-sample" style="font-size:12px;color:var(--color-slate-400)">Updated 2 hours ago &nbsp;·&nbsp; Q2 2025 &nbsp;·&nbsp; Engineering</div>
+    </div>
+    <div class="scale-row">
+      <div class="scale-meta"><span class="meta-role">Micro</span><span class="meta-spec">10px · 500–600<br>--text-xs</span></div>
+      <div class="scale-sample" style="font-size:10px;font-weight:600;color:var(--color-slate-400);text-transform:uppercase;letter-spacing:.08em">TECHNICAL &nbsp;·&nbsp; MUST HAVE &nbsp;·&nbsp; PROFICIENCY 4/5</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Weights</h2>
+  <div class="weight-row">
+    <div class="w-card"><div class="w-sample" style="font-weight:300">Nucleus</div><div class="w-label">Light</div><div class="w-token">300</div></div>
+    <div class="w-card"><div class="w-sample" style="font-weight:400">Nucleus</div><div class="w-label">Regular</div><div class="w-token">400</div></div>
+    <div class="w-card"><div class="w-sample" style="font-weight:500">Nucleus</div><div class="w-label">Medium</div><div class="w-token">500</div></div>
+    <div class="w-card"><div class="w-sample" style="font-weight:600">Nucleus</div><div class="w-label">Semibold</div><div class="w-token">600</div></div>
+    <div class="w-card"><div class="w-sample" style="font-weight:700">Nucleus</div><div class="w-label">Bold</div><div class="w-token">700</div></div>
+    <div class="w-card"><div class="w-sample" style="font-weight:800">Nucleus</div><div class="w-label">Extrabold</div><div class="w-token">800</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Text in Context</h2>
+  <div class="context-grid">
+    <!-- Eyebrow → Heading → Body pattern -->
+    <div class="ctx" style="background:#fff;border:1px solid var(--color-border);border-radius:12px">
+      <div class="eyebrow">AI-Powered Platform</div>
+      <div style="font-size:28px;font-weight:700;letter-spacing:-0.015em;color:var(--color-slate-900);margin-top:6px;line-height:1.2">Hire smarter,<br><span class="gradient-text">not harder</span></div>
+      <div style="font-size:14px;color:var(--color-slate-500);margin-top:10px;line-height:1.65">The eyebrow → heading → description pattern used in all section headers throughout the product.</div>
+    </div>
+    <!-- Card context -->
+    <div class="ctx" style="background:#fff;border:1px solid var(--color-border);border-radius:12px">
+      <div style="font-size:11px;font-weight:600;color:var(--color-slate-400);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Card context</div>
+      <div style="font-size:15px;font-weight:600;color:var(--color-slate-900)">Senior Product Manager</div>
+      <div style="font-size:13px;color:var(--color-slate-500);margin-top:3px">Product &nbsp;·&nbsp; Q2 2025</div>
+      <div style="font-size:12px;color:var(--color-slate-400);margin-top:2px">Created by Priya Sharma &nbsp;·&nbsp; 3d ago</div>
+      <div style="margin-top:12px;height:1px;background:var(--color-border)"></div>
+      <div style="margin-top:12px;display:flex;justify-content:space-between;font-size:12px">
+        <span style="color:var(--color-slate-400)">Roles</span><span style="font-weight:600;color:var(--color-slate-900)">3 / 5</span>
+      </div>
+    </div>
+    <!-- On dark bg -->
+    <div class="ctx" style="background:var(--color-slate-900);border-radius:12px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#6366f1;margin-bottom:6px">Dark Section</div>
+      <div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:8px">AI Feedback Scoring</div>
+      <div style="font-size:13px;color:#cbd5e1;line-height:1.65">Use white for headings, slate-300 for body, slate-400 for muted. Hover links: cyan-400.</div>
+      <div style="font-size:12px;color:#94a3b8;margin-top:8px">Muted — slate-400 &nbsp;·&nbsp; <span style="color:#22d3ee">Link hover</span></div>
+    </div>
+    <!-- Monospace / code context -->
+    <div class="ctx" style="background:#fff;border:1px solid var(--color-border);border-radius:12px">
+      <div style="font-size:11px;font-weight:600;color:var(--color-slate-400);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Monospace (tokens, code)</div>
+      <div style="font-size:12px;font-family:monospace;color:var(--color-indigo-600);background:var(--color-indigo-50);padding:10px 12px;border-radius:8px;line-height:1.8">
+        --color-primary: #4f46e5;<br>
+        --radius-xl: 0.75rem;<br>
+        --shadow-card: 0 1px 3px …;<br>
+        --font-semibold: 600;
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>
