@@ -36,6 +36,8 @@ import { GoalsModule } from './modules/goals/goals.module';
 import { AssessmentsModule } from './modules/assessments/assessments.module';
 import { PeerFeedbackModule } from './modules/peer-feedback/peer-feedback.module';
 import { CalibrationModule } from './modules/calibration/calibration.module';
+import { CompBudgetModule } from './modules/comp-budget/comp-budget.module';
+import { CompRevisionsModule } from './modules/comp-revisions/comp-revisions.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 
@@ -78,6 +80,8 @@ import { RolesGuard } from './auth/guards/roles.guard';
     AssessmentsModule,
     PeerFeedbackModule,
     CalibrationModule,
+    CompBudgetModule,
+    CompRevisionsModule,
     HealthModule,
   ],
   providers: [

@@ -11,6 +11,7 @@ import {
   FileText,
   ShieldCheck,
   Award,
+  IndianRupee,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +29,7 @@ const navItems: NavItem[] = [
   { label: "Offers", href: "/offers", icon: FileText, roles: ["ADMIN", "HR", "HIRING_MANAGER"] },
   { label: "BGV", href: "/bgv", icon: ShieldCheck, roles: ["ADMIN", "HR"] },
   { label: "Appraisal", href: "/appraisal", icon: Award },
+  { label: "Compensation", href: "/compensation/team", icon: IndianRupee, roles: ["ADMIN", "HR", "HIRING_MANAGER"] },
   { label: "Training", href: "/training", icon: GraduationCap },
   { label: "Admin", href: "/admin/users", icon: Shield, roles: ["ADMIN"] },
 ];
