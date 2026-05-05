@@ -1,15 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Select } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
 import {
   Plus,
   Eye,
@@ -19,7 +12,31 @@ import {
   MoreHorizontal,
   ClipboardList,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { StatusBadge, type PlanStatus } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { PageHeader } from "@/components/shared/page-header";
+import {
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTablePagination,
+  DataTableRow,
+} from "@/components/shared/data-table";
 
 interface HiringPlanSkill {
   id: string;
@@ -52,24 +69,15 @@ interface PlansResponse {
   meta: { total: number; page: number; limit: number; totalPages: number };
 }
 
-const STATUS_OPTIONS = ["", "DRAFT", "ACTIVE", "COMPLETED", "CANCELLED"];
-const QUARTER_OPTIONS = ["", "1", "2", "3", "4"];
-
-const statusColors: Record<string, string> = {
-  DRAFT: "bg-slate-100 text-slate-700 border-slate-200",
-  ACTIVE: "bg-green-50 text-green-700 border-green-200",
-  COMPLETED: "bg-indigo-50 text-indigo-700 border-indigo-200",
-  CANCELLED: "bg-red-50 text-red-700 border-red-200",
-};
+const PAGE_SIZE = 20;
+const PLAN_STATUSES: PlanStatus[] = ["DRAFT", "ACTIVE", "COMPLETED", "CANCELLED"];
+const VALID_STATUSES = new Set<string>(PLAN_STATUSES);
 
 export default function HiringPlansPage() {
   const router = useRouter();
   const [plans, setPlans] = useState<HiringPlan[]>([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, totalPages: 1 });
   const [loading, setLoading] = useState(true);
-  const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
-  const menuBtnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   // Filters
   const [statusFilter, setStatusFilter] = useState("");
@@ -80,7 +88,10 @@ export default function HiringPlansPage() {
     async (page = 1) => {
       setLoading(true);
       try {
-        const params = new URLSearchParams({ page: String(page), limit: "20" });
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(PAGE_SIZE),
+        });
         if (statusFilter) params.set("status", statusFilter);
         if (quarterFilter) params.set("quarter", quarterFilter);
         if (departmentFilter) params.set("department", departmentFilter);
@@ -102,22 +113,12 @@ export default function HiringPlansPage() {
     fetchPlans();
   }, [fetchPlans]);
 
-  // Close menu on outside click
-  useEffect(() => {
-    if (!openMenu) return;
-    const handleClick = () => setOpenMenu(null);
-    document.addEventListener("click", handleClick);
-    return () => document.removeEventListener("click", handleClick);
-  }, [openMenu]);
-
   const handleClone = async (id: string) => {
-    setOpenMenu(null);
     await fetch(`/api/hiring-plans/${id}/clone`, { method: "POST" });
     fetchPlans(meta.page);
   };
 
   const handleDelete = async (id: string) => {
-    setOpenMenu(null);
     if (!confirm("Cancel this hiring plan?")) return;
     await fetch(`/api/hiring-plans/${id}`, { method: "DELETE" });
     fetchPlans(meta.page);
@@ -135,23 +136,21 @@ export default function HiringPlansPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Hiring Plans</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Manage your hiring plans and positions
-          </p>
-        </div>
-        <Link href="/hiring-plans/new">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Create New Plan
-          </Button>
-        </Link>
-      </div>
+      <PageHeader
+        title="Hiring Plans"
+        subtitle="Manage your hiring plans and positions"
+        actions={
+          <Link href="/hiring-plans/new">
+            <Button>
+              <Plus className="h-4 w-4" />
+              Create New Plan
+            </Button>
+          </Link>
+        }
+      />
 
       {/* Filters */}
-      <Card className="mb-6 border-slate-200">
+      <Card className="mb-6">
         <CardContent className="flex flex-wrap items-center gap-4 p-4">
           <Select
             value={statusFilter}
@@ -159,7 +158,7 @@ export default function HiringPlansPage() {
             className="w-40"
           >
             <option value="">All Statuses</option>
-            {STATUS_OPTIONS.filter(Boolean).map((s) => (
+            {PLAN_STATUSES.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>
@@ -171,7 +170,7 @@ export default function HiringPlansPage() {
             className="w-36"
           >
             <option value="">All Quarters</option>
-            {QUARTER_OPTIONS.filter(Boolean).map((q) => (
+            {["1", "2", "3", "4"].map((q) => (
               <option key={q} value={q}>
                 Q{q}
               </option>
@@ -186,219 +185,131 @@ export default function HiringPlansPage() {
         </CardContent>
       </Card>
 
-      {/* Table */}
       {loading ? (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-16 rounded-xl shimmer"
-            />
+            <Skeleton key={i} variant="block" className="h-16 w-full" />
           ))}
         </div>
       ) : plans.length === 0 ? (
-        <Card className="border-slate-200">
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-50">
-              <ClipboardList className="h-7 w-7 text-indigo-600" />
-            </div>
-            <h3 className="mt-4 text-lg font-semibold text-slate-900">
-              No hiring plans yet
-            </h3>
-            <p className="mt-1 text-sm text-slate-500">
-              Create your first hiring plan to get started
-            </p>
-            <Link href="/hiring-plans/new" className="mt-4">
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
+        <EmptyState
+          icon={<ClipboardList className="h-6 w-6" />}
+          title="No hiring plans yet"
+          description="Create your first hiring plan to get started"
+          action={
+            <Link href="/hiring-plans/new">
+              <Button size="sm">
+                <Plus className="h-4 w-4" />
                 Create New Plan
               </Button>
             </Link>
-          </CardContent>
-        </Card>
+          }
+        />
       ) : (
-        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium text-slate-500">
-                  Title
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-slate-500">
-                  Department
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-slate-500">
-                  Period
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-slate-500">
-                  Roles
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-slate-500">
-                  Budget
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-slate-500">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-slate-500">
-                  Manager
-                </th>
-                <th className="px-4 py-3 text-right font-medium text-slate-500">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {plans.map((plan) => (
-                <tr
-                  key={plan.id}
-                  className="hover:bg-slate-50 cursor-pointer transition-colors"
-                  onClick={() => router.push(`/hiring-plans/${plan.id}`)}
+        <DataTable>
+          <DataTableHeader>
+            <tr>
+              <DataTableHead>Title</DataTableHead>
+              <DataTableHead>Department</DataTableHead>
+              <DataTableHead>Period</DataTableHead>
+              <DataTableHead>Roles</DataTableHead>
+              <DataTableHead>Budget</DataTableHead>
+              <DataTableHead>Status</DataTableHead>
+              <DataTableHead>Manager</DataTableHead>
+              <DataTableHead className="text-right">Actions</DataTableHead>
+            </tr>
+          </DataTableHeader>
+          <DataTableBody>
+            {plans.map((plan) => (
+              <DataTableRow
+                key={plan.id}
+                onClick={() => router.push(`/hiring-plans/${plan.id}`)}
+              >
+                <DataTableCell>
+                  <div className="font-medium text-slate-900">{plan.title}</div>
+                  <div className="text-xs text-slate-400">{plan.industry}</div>
+                </DataTableCell>
+                <DataTableCell>{plan.department}</DataTableCell>
+                <DataTableCell>
+                  Q{plan.quarter} {plan.year}
+                </DataTableCell>
+                <DataTableCell>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-900">
+                      {plan.filledRoles}/{plan.totalRoles}
+                    </span>
+                    <Progress
+                      value={plan.filledRoles}
+                      max={plan.totalRoles}
+                      className="h-1.5 w-16"
+                    />
+                  </div>
+                </DataTableCell>
+                <DataTableCell>
+                  {formatBudget(plan.budgetMin, plan.budgetMax, plan.currency)}
+                </DataTableCell>
+                <DataTableCell>
+                  {VALID_STATUSES.has(plan.status) ? (
+                    <StatusBadge status={plan.status as PlanStatus} />
+                  ) : (
+                    plan.status
+                  )}
+                </DataTableCell>
+                <DataTableCell>{plan.hiringManager?.name}</DataTableCell>
+                <DataTableCell
+                  className="text-right"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-slate-900">
-                      {plan.title}
-                    </div>
-                    <div className="text-xs text-slate-500">
-                      {plan.industry}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {plan.department}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    Q{plan.quarter} {plan.year}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-slate-900">
-                        {plan.filledRoles}/{plan.totalRoles}
-                      </span>
-                      <Progress
-                        value={plan.filledRoles}
-                        max={plan.totalRoles}
-                        className="w-16"
-                      />
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {formatBudget(plan.budgetMin, plan.budgetMax, plan.currency)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "text-xs",
-                        statusColors[plan.status] || ""
-                      )}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      {plan.status}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {plan.hiringManager?.name}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      ref={(el) => { menuBtnRefs.current[plan.id] = el; }}
-                      className="rounded p-1 hover:bg-slate-100"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (openMenu === plan.id) {
-                          setOpenMenu(null);
-                        } else {
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          setMenuPos({ top: rect.bottom + 4, left: rect.right - 160 });
-                          setOpenMenu(plan.id);
+                      <MoreHorizontal className="h-4 w-4" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-[176px]">
+                      <DropdownMenuItem
+                        onClick={() => router.push(`/hiring-plans/${plan.id}`)}
+                      >
+                        <Eye className="h-4 w-4" /> View
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() =>
+                          router.push(`/hiring-plans/${plan.id}/edit`)
                         }
-                      }}
-                    >
-                      <MoreHorizontal className="h-4 w-4 text-slate-500" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {/* Pagination */}
-          {meta.totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3">
-              <span className="text-sm text-slate-500">
-                Showing {(meta.page - 1) * 20 + 1}-
-                {Math.min(meta.page * 20, meta.total)} of {meta.total}
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={meta.page <= 1}
-                  onClick={() => fetchPlans(meta.page - 1)}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={meta.page >= meta.totalPages}
-                  onClick={() => fetchPlans(meta.page + 1)}
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
+                      >
+                        <Pencil className="h-4 w-4" /> Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleClone(plan.id)}>
+                        <Copy className="h-4 w-4" /> Clone
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        variant="danger"
+                        onClick={() => handleDelete(plan.id)}
+                      >
+                        <Trash2 className="h-4 w-4" /> Cancel
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </DataTableCell>
+              </DataTableRow>
+            ))}
+          </DataTableBody>
+          <tfoot>
+            <tr>
+              <td colSpan={8} className="p-0">
+                <DataTablePagination
+                  page={meta.page}
+                  pageSize={PAGE_SIZE}
+                  total={meta.total}
+                  onPageChange={(p) => fetchPlans(p)}
+                />
+              </td>
+            </tr>
+          </tfoot>
+        </DataTable>
       )}
-      {/* Portal dropdown menu */}
-      {openMenu &&
-        typeof document !== "undefined" &&
-        createPortal(
-          <div
-            className="fixed z-50 w-44 rounded-xl border border-slate-200/60 bg-white py-1.5 shadow-lg"
-            style={{ top: menuPos.top, left: menuPos.left }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50"
-              onClick={() => {
-                setOpenMenu(null);
-                router.push(`/hiring-plans/${openMenu}`);
-              }}
-            >
-              <Eye className="h-4 w-4" /> View
-            </button>
-            <button
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50"
-              onClick={() => {
-                setOpenMenu(null);
-                router.push(`/hiring-plans/${openMenu}/edit`);
-              }}
-            >
-              <Pencil className="h-4 w-4" /> Edit
-            </button>
-            <button
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50"
-              onClick={() => {
-                const id = openMenu;
-                setOpenMenu(null);
-                handleClone(id);
-              }}
-            >
-              <Copy className="h-4 w-4" /> Clone
-            </button>
-            <button
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-              onClick={() => {
-                const id = openMenu;
-                setOpenMenu(null);
-                handleDelete(id);
-              }}
-            >
-              <Trash2 className="h-4 w-4" /> Cancel
-            </button>
-          </div>,
-          document.body
-        )}
     </div>
   );
 }

@@ -39,8 +39,13 @@ function Badge({ className, variant, ...props }: BadgeProps) {
 
 // Hiring-plan / candidate status helper. Maps domain status enums to v2
 // badge colors so callers don't repeat the mapping.
-type PlanStatus = "DRAFT" | "ACTIVE" | "COMPLETED" | "CANCELLED";
-type CandidateStatus = "ACTIVE" | "SELECTED" | "REJECTED" | "ON_HOLD" | "WITHDRAWN";
+export type PlanStatus = "DRAFT" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+export type CandidateStatus =
+  | "ACTIVE"
+  | "SELECTED"
+  | "REJECTED"
+  | "ON_HOLD"
+  | "WITHDRAWN";
 
 const planStatusVariant: Record<PlanStatus, BadgeProps["variant"]> = {
   DRAFT: "secondary",
