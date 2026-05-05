@@ -244,7 +244,7 @@ export default function AdminUsersPage() {
       </Card>
 
       {dialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
           <Card className="w-full max-w-md shadow-2xl">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>{editingUser ? "Edit User" : "Invite User"}</CardTitle>

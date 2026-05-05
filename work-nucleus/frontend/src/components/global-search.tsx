@@ -86,7 +86,7 @@ export function GlobalSearch() {
       {/* Modal */}
       {open && (
         <>
-          <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setOpen(false)} />
+          <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
           <div className="fixed inset-x-0 top-[15%] z-50 mx-auto w-full max-w-lg rounded-xl border border-slate-200 bg-white shadow-2xl">
             {/* Search input */}
             <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3">
