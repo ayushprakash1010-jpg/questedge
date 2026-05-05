@@ -21,6 +21,13 @@ from app.schemas.resume_match import ResumeMatchRequest, ResumeMatchResponse
 from app.agents.resume_matcher import ResumeMatcherAgent
 from app.schemas.bgv import BgvSummariseRequest, BgvSummariseResponse
 from app.agents.bgv_summariser import BgvSummariserAgent
+from app.schemas.appraisal import (
+    AppraisalSummaryRequest,
+    AppraisalSummaryResponse,
+    PeerFeedbackThemesRequest,
+    PeerFeedbackThemesResponse,
+)
+from app.agents.appraisal_agent import AppraisalAgent
 from app.services.resume_parser import extract_text
 
 logging.basicConfig(level=logging.INFO)
@@ -33,6 +40,7 @@ communication_drafter = CommunicationDrafterAgent()
 insights_agent = InsightsAgent()
 resume_matcher = ResumeMatcherAgent()
 bgv_summariser = BgvSummariserAgent()
+appraisal_agent = AppraisalAgent()
 
 
 @asynccontextmanager
@@ -141,6 +149,26 @@ async def match_resume(
     result = await resume_matcher.match(request)
     logger.info(f"Resume match complete for {request.candidateName}: score={result.matchScore}")
     return result
+
+
+@app.post("/ai/appraisal-summary", response_model=AppraisalSummaryResponse)
+async def appraisal_summary(
+    request: AppraisalSummaryRequest,
+    _api_key: str = Depends(verify_internal_api_key),
+):
+    """Manager-review advisory summary (advisory only — manager finalises)."""
+    logger.info(f"Appraisal summary for cycle={request.cycleId} employee={request.employeeId}")
+    return await appraisal_agent.summarise(request)
+
+
+@app.post("/ai/peer-feedback-summary", response_model=PeerFeedbackThemesResponse)
+async def peer_feedback_summary(
+    request: PeerFeedbackThemesRequest,
+    _api_key: str = Depends(verify_internal_api_key),
+):
+    """Aggregate anonymous peer responses into themes (≥3 responses enforced backend-side)."""
+    logger.info(f"Peer themes from {len(request.responses)} responses")
+    return await appraisal_agent.peer_themes(request)
 
 
 @app.post("/ai/bgv-summarise", response_model=BgvSummariseResponse)

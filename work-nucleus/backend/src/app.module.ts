@@ -31,6 +31,11 @@ import { JoiningModule } from './modules/joining/joining.module';
 import { ESignModule } from './integrations/esign/esign.module';
 import { BgvIntegrationsModule } from './integrations/bgv/bgv.module';
 import { BgvModule } from './modules/bgv/bgv.module';
+import { AppraisalCyclesModule } from './modules/appraisal-cycles/appraisal-cycles.module';
+import { GoalsModule } from './modules/goals/goals.module';
+import { AssessmentsModule } from './modules/assessments/assessments.module';
+import { PeerFeedbackModule } from './modules/peer-feedback/peer-feedback.module';
+import { CalibrationModule } from './modules/calibration/calibration.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 
@@ -68,6 +73,11 @@ import { RolesGuard } from './auth/guards/roles.guard';
     JoiningModule,
     BgvIntegrationsModule,
     BgvModule,
+    AppraisalCyclesModule,
+    GoalsModule,
+    AssessmentsModule,
+    PeerFeedbackModule,
+    CalibrationModule,
     HealthModule,
   ],
   providers: [

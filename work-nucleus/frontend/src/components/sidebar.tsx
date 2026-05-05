@@ -10,6 +10,7 @@ import {
   Shield,
   FileText,
   ShieldCheck,
+  Award,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +27,7 @@ const navItems: NavItem[] = [
   { label: "Candidates", href: "/candidates", icon: Users },
   { label: "Offers", href: "/offers", icon: FileText, roles: ["ADMIN", "HR", "HIRING_MANAGER"] },
   { label: "BGV", href: "/bgv", icon: ShieldCheck, roles: ["ADMIN", "HR"] },
+  { label: "Appraisal", href: "/appraisal", icon: Award },
   { label: "Training", href: "/training", icon: GraduationCap },
   { label: "Admin", href: "/admin/users", icon: Shield, roles: ["ADMIN"] },
 ];

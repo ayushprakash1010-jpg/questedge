@@ -251,6 +251,82 @@ enum BgvVendor {
   SPRINGVERIFY
 }
 
+// ── Appraisal Enums (Phase 3) ───────────────────────────────────
+
+enum CycleType {
+  MID_YEAR
+  ANNUAL
+  PROBATION
+  SPECIAL
+}
+
+enum CycleStatus {
+  DRAFT
+  GOAL_SETTING
+  SELF_ASSESSMENT
+  MANAGER_REVIEW
+  PEER_FEEDBACK
+  CALIBRATION
+  COMMUNICATED
+  CLOSED
+}
+
+enum GoalType {
+  OKR
+  KRA
+  COMPETENCY
+  VALUE
+  STRETCH
+}
+
+enum GoalStatus {
+  DRAFT
+  AGREED
+  IN_PROGRESS
+  COMPLETED
+  PARTIAL
+  NOT_MET
+  ABANDONED
+}
+
+enum AssessmentType {
+  SELF
+  MANAGER
+  SKIP_LEVEL
+}
+
+enum AssessmentStatus {
+  DRAFT
+  SUBMITTED
+  REVIEWED
+  FINALISED
+  REOPENED
+}
+
+enum PeerRelationship {
+  PEER
+  REPORT
+  MANAGER
+  SKIP_LEVEL
+  CROSS_FUNCTIONAL
+  EXTERNAL
+}
+
+enum FeedbackRequestStatus {
+  REQUESTED
+  ACCEPTED
+  DECLINED
+  SUBMITTED
+  EXPIRED
+}
+
+enum CalibrationStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
 // ── Core Models ─────────────────────────────────────────────────
 
 model Organization {
@@ -276,6 +352,8 @@ model Organization {
   offers             Offer[]
   joiningChecklists  JoiningChecklist[]
   bgvProfiles        BgvProfile[]
+  appraisalCycles    AppraisalCycle[]
+  orgGoals           OrgGoal[]
 
   @@map("organizations")
 }
@@ -315,6 +393,15 @@ model User {
   createdOffers           Offer[]              @relation("OfferCreator")
   buddyForJoinings        CandidateJoining[]   @relation("JoiningBuddy")
   managerForJoinings      CandidateJoining[]   @relation("JoiningReportingManager")
+  goalsAsEmployee         Goal[]               @relation("GoalEmployee")
+  goalsAsManager          Goal[]               @relation("GoalManager")
+  ownedOrgGoals           OrgGoal[]            @relation("OrgGoalOwner")
+  selfAssessments         AppraisalAssessment[] @relation("AssessmentEmployee")
+  managedAssessments      AppraisalAssessment[] @relation("AssessmentManager")
+  peerFeedbackAsSubject   PeerFeedbackRequest[] @relation("PeerSubject")
+  peerFeedbackAsReviewer  PeerFeedbackRequest[] @relation("PeerReviewer")
+  peerFeedbackRequested   PeerFeedbackRequest[] @relation("PeerRequester")
+  facilitatedCalibrations CalibrationSession[] @relation("CalibrationFacilitator")
 
   @@index([orgId])
   @@index([auth0Sub])
@@ -1019,6 +1106,171 @@ model BgvCheck {
   @@index([profileId, status])
   @@index([type])
   @@map("bgv_checks")
+}
+
+// ── Appraisal Models (Phase 3) ──────────────────────────────────
+
+model AppraisalCycle {
+  id                     String      @id @default(uuid()) @db.Uuid
+  orgId                  String      @db.Uuid
+  name                   String
+  type                   CycleType
+  status                 CycleStatus @default(DRAFT)
+  startDate              DateTime    @map("start_date")
+  endDate                DateTime    @map("end_date")
+  goalSettingDeadline    DateTime    @map("goal_setting_deadline")
+  selfAssessmentDeadline DateTime    @map("self_assessment_deadline")
+  managerReviewDeadline  DateTime    @map("manager_review_deadline")
+  calibrationDeadline    DateTime    @map("calibration_deadline")
+  ratingScale            Json        @default("[]") @map("rating_scale")
+  weights                Json        @default("{}")
+  eligibilityRules       Json        @default("{}") @map("eligibility_rules")
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  goals        Goal[]
+  assessments  AppraisalAssessment[]
+  peerRequests PeerFeedbackRequest[]
+  orgGoals     OrgGoal[]
+  calibrations CalibrationSession[]
+
+  @@index([orgId, status])
+  @@map("appraisal_cycles")
+}
+
+model OrgGoal {
+  id          String   @id @default(uuid()) @db.Uuid
+  orgId       String   @db.Uuid
+  cycleId     String   @map("cycle_id") @db.Uuid
+  parentId    String?  @map("parent_id") @db.Uuid
+  ownerId     String?  @map("owner_id") @db.Uuid
+  title       String
+  description String?
+  metric      String?
+  target      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  organization Organization    @relation(fields: [orgId], references: [id])
+  cycle        AppraisalCycle  @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  parent       OrgGoal?        @relation("OrgGoalTree", fields: [parentId], references: [id])
+  children     OrgGoal[]       @relation("OrgGoalTree")
+  owner        User?           @relation("OrgGoalOwner", fields: [ownerId], references: [id])
+  alignedGoals Goal[]          @relation("GoalAlignedOrgGoal")
+
+  @@index([orgId, cycleId])
+  @@map("org_goals")
+}
+
+model Goal {
+  id                 String     @id @default(uuid()) @db.Uuid
+  cycleId            String     @map("cycle_id") @db.Uuid
+  employeeId         String     @map("employee_id") @db.Uuid
+  managerId          String     @map("manager_id") @db.Uuid
+  alignedToOrgGoalId String?    @map("aligned_to_org_goal_id") @db.Uuid
+  type               GoalType
+  status             GoalStatus @default(DRAFT)
+  title              String
+  description        String?
+  metrics            String?
+  weight             Int        @default(0)
+  selfRating         Int?       @map("self_rating")
+  managerRating      Int?       @map("manager_rating")
+  selfComment        String?    @map("self_comment")
+  managerComment     String?    @map("manager_comment")
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  cycle           AppraisalCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  employee        User           @relation("GoalEmployee", fields: [employeeId], references: [id])
+  manager         User           @relation("GoalManager", fields: [managerId], references: [id])
+  alignedToOrgGoal OrgGoal?      @relation("GoalAlignedOrgGoal", fields: [alignedToOrgGoalId], references: [id])
+
+  @@index([cycleId, employeeId])
+  @@index([managerId])
+  @@map("goals")
+}
+
+model AppraisalAssessment {
+  id                String           @id @default(uuid()) @db.Uuid
+  cycleId           String           @map("cycle_id") @db.Uuid
+  employeeId        String           @map("employee_id") @db.Uuid
+  managerId         String           @map("manager_id") @db.Uuid
+  type              AssessmentType
+  status            AssessmentStatus @default(DRAFT)
+  formData          Json             @default("{}") @map("form_data")
+  competencyRatings Json             @default("{}") @map("competency_ratings")
+  goalsRollup       Json             @default("{}") @map("goals_rollup")
+  finalRating       Decimal?         @map("final_rating") @db.Decimal(3, 2)
+  ratingLabel       String?          @map("rating_label")
+  selfSummary       String?          @map("self_summary")
+  managerSummary    String?          @map("manager_summary")
+  aiSummary         Json?            @map("ai_summary")
+  submittedAt       DateTime?        @map("submitted_at")
+  reviewedAt        DateTime?        @map("reviewed_at")
+  finalisedAt       DateTime?        @map("finalised_at")
+  acknowledgedAt    DateTime?        @map("acknowledged_at")
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  cycle    AppraisalCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  employee User           @relation("AssessmentEmployee", fields: [employeeId], references: [id])
+  manager  User           @relation("AssessmentManager", fields: [managerId], references: [id])
+
+  @@unique([cycleId, employeeId, type])
+  @@index([cycleId, status])
+  @@index([managerId])
+  @@map("appraisal_assessments")
+}
+
+model PeerFeedbackRequest {
+  id             String                @id @default(uuid()) @db.Uuid
+  cycleId        String                @map("cycle_id") @db.Uuid
+  subjectUserId  String                @map("subject_user_id") @db.Uuid
+  reviewerUserId String                @map("reviewer_user_id") @db.Uuid
+  requestedById  String                @map("requested_by_id") @db.Uuid
+  relationship   PeerRelationship
+  status         FeedbackRequestStatus @default(REQUESTED)
+  isAnonymous    Boolean               @default(true) @map("is_anonymous")
+  formData       Json?                 @map("form_data")
+  reviewerToken  String                @unique @map("reviewer_token")
+  declinedReason String?               @map("declined_reason")
+  submittedAt    DateTime?             @map("submitted_at")
+  expiresAt      DateTime?             @map("expires_at")
+  requestedAt    DateTime              @default(now()) @map("requested_at")
+
+  cycle       AppraisalCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  subject     User           @relation("PeerSubject", fields: [subjectUserId], references: [id])
+  reviewer    User           @relation("PeerReviewer", fields: [reviewerUserId], references: [id])
+  requestedBy User           @relation("PeerRequester", fields: [requestedById], references: [id])
+
+  @@unique([cycleId, subjectUserId, reviewerUserId])
+  @@index([cycleId, status])
+  @@map("peer_feedback_requests")
+}
+
+model CalibrationSession {
+  id                 String            @id @default(uuid()) @db.Uuid
+  cycleId            String            @map("cycle_id") @db.Uuid
+  groupName          String            @map("group_name")
+  facilitatorId      String            @map("facilitator_id") @db.Uuid
+  participantUserIds String[]          @map("participant_user_ids") @db.Uuid
+  scope              Json              @default("{}")
+  targetDistribution Json              @default("{}") @map("target_distribution")
+  decisionLog        Json              @default("[]") @map("decision_log")
+  status             CalibrationStatus @default(SCHEDULED)
+  scheduledAt        DateTime          @map("scheduled_at")
+  lockedAt           DateTime?         @map("locked_at")
+  completedAt        DateTime?         @map("completed_at")
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  cycle       AppraisalCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  facilitator User           @relation("CalibrationFacilitator", fields: [facilitatorId], references: [id])
+
+  @@index([cycleId, status])
+  @@map("calibration_sessions")
 }
 
 // ── AI Dashboard Insights ───────────────────────────────────────
