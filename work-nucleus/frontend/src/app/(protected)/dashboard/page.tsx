@@ -7,8 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import {
   ClipboardList, Users, TrendingUp, Clock, Sparkles,
-  AlertTriangle, Info, AlertCircle, Download, RefreshCw,
-  ArrowUpRight, ArrowDownRight, CalendarClock,
+  Download, RefreshCw, CalendarClock,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -16,6 +15,17 @@ import {
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { PageHeader } from "@/components/shared/page-header";
+import { KpiCard } from "@/components/shared/kpi-card";
+import { AiInsightCard } from "@/components/shared/ai-insight-card";
+import {
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/shared/data-table";
 
 interface Overview {
   activePlans: number;
@@ -89,18 +99,16 @@ const CHART_COLORS = {
   amber: "#f59e0b",
 };
 
-const severityConfig: Record<string, { icon: typeof Info; color: string; iconBg: string; bg: string; border: string; descColor: string }> = {
-  info: { icon: Info, color: "text-blue-600", iconBg: "bg-blue-100", bg: "bg-blue-50/50", border: "border-blue-200", descColor: "text-blue-900/70" },
-  warning: { icon: AlertTriangle, color: "text-amber-600", iconBg: "bg-amber-100", bg: "bg-amber-50/50", border: "border-amber-200", descColor: "text-amber-900/70" },
-  critical: { icon: AlertCircle, color: "text-red-600", iconBg: "bg-red-100", bg: "bg-red-50/50", border: "border-red-200", descColor: "text-red-900/70" },
-};
-
-function exportCsv(data: any[], filename: string) {
+function exportCsv(data: unknown[], filename: string) {
   if (!data.length) return;
-  const headers = Object.keys(data[0]);
+  const headers = Object.keys(data[0] as Record<string, unknown>);
   const csv = [
     headers.join(","),
-    ...data.map((row) => headers.map((h) => JSON.stringify(row[h] ?? "")).join(",")),
+    ...data.map((row) =>
+      headers
+        .map((h) => JSON.stringify((row as Record<string, unknown>)[h] ?? ""))
+        .join(",")
+    ),
   ].join("\n");
   const blob = new Blob([csv], { type: "text/csv" });
   const url = URL.createObjectURL(blob);
@@ -111,19 +119,39 @@ function exportCsv(data: any[], filename: string) {
   URL.revokeObjectURL(url);
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: Array<{ color: string; name: string; value: number | string }>;
+  label?: string;
+}) => {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-lg border border-slate-100 bg-white px-3 py-2 shadow-lg">
       <p className="text-xs font-medium text-slate-500">{label}</p>
-      {payload.map((entry: any, i: number) => (
-        <p key={i} className="text-sm font-semibold" style={{ color: entry.color }}>
-          {entry.name}: {typeof entry.value === "number" ? entry.value.toLocaleString() : entry.value}
+      {payload.map((entry, i) => (
+        <p
+          key={i}
+          className="text-sm font-semibold"
+          style={{ color: entry.color }}
+        >
+          {entry.name}:{" "}
+          {typeof entry.value === "number"
+            ? entry.value.toLocaleString()
+            : entry.value}
         </p>
       ))}
     </div>
   );
 };
+
+// Narrow the API's free-form severity string to the AiInsightCard's enum.
+function normaliseSeverity(s: string): "info" | "warning" | "critical" {
+  return s === "warning" || s === "critical" ? s : "info";
+}
 
 export default function DashboardPage() {
   const [overview, setOverview] = useState<Overview | null>(null);
@@ -132,7 +160,9 @@ export default function DashboardPage() {
   const [cost, setCost] = useState<CostItem[]>([]);
   const [interviewers, setInterviewers] = useState<InterviewerStat[]>([]);
   const [sources, setSources] = useState<SourceStat[]>([]);
-  const [timeToHire, setTimeToHire] = useState<{ trend: { month: string; avgDays: number }[] }>({ trend: [] });
+  const [timeToHire, setTimeToHire] = useState<{
+    trend: { month: string; avgDays: number }[];
+  }>({ trend: [] });
   const [insights, setInsights] = useState<Insight[]>([]);
   const [insightsGeneratedAt, setInsightsGeneratedAt] = useState<string | null>(null);
   const [insightsGeneratedBy, setInsightsGeneratedBy] = useState<string | null>(null);
@@ -160,7 +190,6 @@ export default function DashboardPage() {
       setSources(Array.isArray(sr) ? sr : []);
       setTimeToHire(tth || { trend: [] });
 
-      // Load persisted insights from backend
       if (savedInsights?.insights) {
         const insightsData = Array.isArray(savedInsights.insights)
           ? savedInsights.insights
@@ -210,7 +239,11 @@ export default function DashboardPage() {
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays === 1) return "Yesterday";
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined });
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+    });
   };
 
   if (loading) {
@@ -221,94 +254,51 @@ export default function DashboardPage() {
     );
   }
 
-  const kpiCards = [
-    {
-      title: "Active Plans",
-      value: overview?.activePlans ?? 0,
-      icon: ClipboardList,
-      gradient: "from-indigo-500 to-indigo-600",
-      iconBg: "bg-indigo-50",
-      iconColor: "text-indigo-600",
-      trend: "+2 this month",
-      trendUp: true,
-    },
-    {
-      title: "Open Roles",
-      value: `${overview?.openRoles ?? 0}`,
-      sub: `${overview?.fillRate ?? 0}% filled`,
-      icon: Users,
-      gradient: "from-cyan-500 to-cyan-600",
-      iconBg: "bg-cyan-50",
-      iconColor: "text-cyan-600",
-      trend: `${overview?.filledRoles ?? 0} filled`,
-      trendUp: true,
-    },
-    {
-      title: "Avg Time to Hire",
-      value: `${overview?.avgTimeToHire ?? 0}d`,
-      icon: Clock,
-      gradient: "from-amber-500 to-orange-500",
-      iconBg: "bg-amber-50",
-      iconColor: "text-amber-600",
-      trend: "vs 35d avg",
-      trendUp: (overview?.avgTimeToHire ?? 0) < 35,
-    },
-    {
-      title: "In Pipeline",
-      value: overview?.pipelineCandidates ?? 0,
-      icon: TrendingUp,
-      gradient: "from-emerald-500 to-emerald-600",
-      iconBg: "bg-emerald-50",
-      iconColor: "text-emerald-600",
-      trend: `${overview?.selectedCount ?? 0} selected`,
-      trendUp: true,
-    },
-  ];
+  const avgTtHGood = (overview?.avgTimeToHire ?? 0) < 35;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-          <p className="mt-0.5 text-sm text-slate-500">Hiring analytics overview</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={fetchAll}>
-          <RefreshCw className="h-3.5 w-3.5" /> Refresh
-        </Button>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        subtitle="Hiring analytics overview"
+        actions={
+          <Button variant="outline" size="sm" onClick={fetchAll}>
+            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+          </Button>
+        }
+      />
 
       {/* KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {kpiCards.map((card) => (
-          <Card key={card.title} className="card-hover overflow-hidden">
-            <div className={cn("h-1 bg-gradient-to-r", card.gradient)} />
-            <CardContent className="p-5">
-              <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-slate-500">{card.title}</p>
-                  <p className="text-3xl font-bold text-slate-900">{card.value}</p>
-                  {"sub" in card && card.sub && (
-                    <p className="text-xs text-slate-500">{card.sub}</p>
-                  )}
-                </div>
-                <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl", card.iconBg)}>
-                  <card.icon className={cn("h-5 w-5", card.iconColor)} />
-                </div>
-              </div>
-              <div className="mt-3 flex items-center gap-1 text-xs">
-                {card.trendUp ? (
-                  <ArrowUpRight className="h-3 w-3 text-emerald-500" />
-                ) : (
-                  <ArrowDownRight className="h-3 w-3 text-red-500" />
-                )}
-                <span className={card.trendUp ? "text-emerald-600" : "text-red-600"}>
-                  {card.trend}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        <KpiCard
+          title="Active Plans"
+          value={overview?.activePlans ?? 0}
+          icon={<ClipboardList />}
+          accent="indigo"
+          trend={{ label: "+2 this month", direction: "up" }}
+        />
+        <KpiCard
+          title="Open Roles"
+          value={overview?.openRoles ?? 0}
+          subValue={`${overview?.fillRate ?? 0}% filled`}
+          icon={<Users />}
+          accent="cyan"
+          trend={{ label: `${overview?.filledRoles ?? 0} filled`, direction: "up" }}
+        />
+        <KpiCard
+          title="Avg Time to Hire"
+          value={`${overview?.avgTimeToHire ?? 0}d`}
+          icon={<Clock />}
+          accent="amber"
+          trend={{ label: "vs 35d avg", direction: avgTtHGood ? "up" : "down" }}
+        />
+        <KpiCard
+          title="In Pipeline"
+          value={overview?.pipelineCandidates ?? 0}
+          icon={<TrendingUp />}
+          accent="emerald"
+          trend={{ label: `${overview?.selectedCount ?? 0} selected`, direction: "up" }}
+        />
       </div>
 
       {/* Row 2: Pipeline Funnel + Hiring Progress */}
@@ -355,7 +345,7 @@ export default function DashboardPage() {
             ) : (
               <div className="space-y-4">
                 {progress.slice(0, 6).map((p) => (
-                  <div key={p.id} className="group">
+                  <div key={p.id}>
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-medium text-slate-700 truncate max-w-[220px]">{p.title}</span>
                       <span className="text-xs font-semibold text-slate-900">{p.filledRoles}/{p.totalRoles}</span>
@@ -449,47 +439,45 @@ export default function DashboardPage() {
               <Download className="h-3.5 w-3.5" />
             </Button>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-0 pb-0">
             {interviewers.length === 0 ? (
-              <p className="text-sm text-slate-400">No interview data</p>
+              <p className="px-5 pb-5 text-sm text-slate-400">No interview data</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-100">
-                      <th className="pb-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Name</th>
-                      <th className="pb-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Interviews</th>
-                      <th className="pb-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Avg Rating</th>
-                      <th className="pb-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Response</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {interviewers.slice(0, 8).map((i) => (
-                      <tr key={i.name} className="transition-colors hover:bg-slate-50/50">
-                        <td className="py-3 font-medium text-slate-900">{i.name}</td>
-                        <td className="py-3 text-slate-600">{i.totalInterviews}</td>
-                        <td className="py-3">
-                          <div className="flex items-center gap-1.5">
-                            <div className="flex">
-                              {Array.from({ length: 5 }).map((_, idx) => (
-                                <div
-                                  key={idx}
-                                  className={cn(
-                                    "h-1.5 w-1.5 rounded-full mr-0.5",
-                                    idx < Math.round(i.avgRating) ? "bg-amber-400" : "bg-slate-200"
-                                  )}
-                                />
-                              ))}
-                            </div>
-                            <span className="text-slate-600">{i.avgRating}</span>
+              <DataTable className="rounded-none border-0 shadow-none">
+                <DataTableHeader>
+                  <tr>
+                    <DataTableHead>Name</DataTableHead>
+                    <DataTableHead>Interviews</DataTableHead>
+                    <DataTableHead>Avg Rating</DataTableHead>
+                    <DataTableHead>Response</DataTableHead>
+                  </tr>
+                </DataTableHeader>
+                <DataTableBody>
+                  {interviewers.slice(0, 8).map((i) => (
+                    <DataTableRow key={i.name}>
+                      <DataTableCell className="font-medium text-slate-900">{i.name}</DataTableCell>
+                      <DataTableCell>{i.totalInterviews}</DataTableCell>
+                      <DataTableCell>
+                        <div className="flex items-center gap-1.5">
+                          <div className="flex">
+                            {Array.from({ length: 5 }).map((_, idx) => (
+                              <div
+                                key={idx}
+                                className={cn(
+                                  "h-1.5 w-1.5 rounded-full mr-0.5",
+                                  idx < Math.round(i.avgRating) ? "bg-amber-400" : "bg-slate-200"
+                                )}
+                              />
+                            ))}
                           </div>
-                        </td>
-                        <td className="py-3 text-slate-600">{i.avgFeedbackTimeHours}h</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                          <span>{i.avgRating}</span>
+                        </div>
+                      </DataTableCell>
+                      <DataTableCell>{i.avgFeedbackTimeHours}h</DataTableCell>
+                    </DataTableRow>
+                  ))}
+                </DataTableBody>
+              </DataTable>
             )}
           </CardContent>
         </Card>
@@ -501,38 +489,36 @@ export default function DashboardPage() {
               <Download className="h-3.5 w-3.5" />
             </Button>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-0 pb-0">
             {sources.length === 0 ? (
-              <p className="text-sm text-slate-400">No source data</p>
+              <p className="px-5 pb-5 text-sm text-slate-400">No source data</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-100">
-                      <th className="pb-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Source</th>
-                      <th className="pb-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Candidates</th>
-                      <th className="pb-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Selected</th>
-                      <th className="pb-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Rate</th>
-                      <th className="pb-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Score</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {sources.map((s) => (
-                      <tr key={s.source} className="transition-colors hover:bg-slate-50/50">
-                        <td className="py-3 font-medium text-slate-900">{s.source}</td>
-                        <td className="py-3 text-slate-600">{s.candidates}</td>
-                        <td className="py-3 text-slate-600">{s.selected}</td>
-                        <td className="py-3">
-                          <Badge variant={s.selectionRate > 20 ? "success" : "outline"} className="text-[10px]">
-                            {s.selectionRate}%
-                          </Badge>
-                        </td>
-                        <td className="py-3 text-slate-600">{s.avgScore || "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DataTable className="rounded-none border-0 shadow-none">
+                <DataTableHeader>
+                  <tr>
+                    <DataTableHead>Source</DataTableHead>
+                    <DataTableHead>Candidates</DataTableHead>
+                    <DataTableHead>Selected</DataTableHead>
+                    <DataTableHead>Rate</DataTableHead>
+                    <DataTableHead>Score</DataTableHead>
+                  </tr>
+                </DataTableHeader>
+                <DataTableBody>
+                  {sources.map((s) => (
+                    <DataTableRow key={s.source}>
+                      <DataTableCell className="font-medium text-slate-900">{s.source}</DataTableCell>
+                      <DataTableCell>{s.candidates}</DataTableCell>
+                      <DataTableCell>{s.selected}</DataTableCell>
+                      <DataTableCell>
+                        <Badge variant={s.selectionRate > 20 ? "success" : "outline"} className="text-[10px]">
+                          {s.selectionRate}%
+                        </Badge>
+                      </DataTableCell>
+                      <DataTableCell>{s.avgScore || "—"}</DataTableCell>
+                    </DataTableRow>
+                  ))}
+                </DataTableBody>
+              </DataTable>
             )}
           </CardContent>
         </Card>
@@ -540,11 +526,11 @@ export default function DashboardPage() {
 
       {/* Row 5: AI Insights */}
       <Card className="overflow-hidden">
-        <div className="h-1 bg-gradient-to-r from-purple-500 via-indigo-500 to-cyan-500" />
+        <div className="h-0.5 bg-gradient-to-r from-purple-500 via-indigo-500 to-cyan-500" />
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="flex items-center gap-3">
             <CardTitle className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 to-indigo-600">
                 <Sparkles className="h-3.5 w-3.5 text-white" />
               </div>
               AI Insights
@@ -560,13 +546,13 @@ export default function DashboardPage() {
             )}
           </div>
           <Button
-            variant="outline"
+            variant="ai"
             size="sm"
             onClick={handleGenerateInsights}
             disabled={generatingInsights}
           >
             {generatingInsights ? (
-              <Spinner size="xs" tone="muted" />
+              <Spinner size="xs" tone="white" />
             ) : (
               <Sparkles className="h-3.5 w-3.5" />
             )}
@@ -585,48 +571,16 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
-              {insights.map((insight, i) => {
-                const config = severityConfig[insight.severity] || severityConfig.info;
-                const Icon = config.icon;
-                return (
-                  <div
-                    key={i}
-                    className={cn(
-                      "rounded-xl border p-5 transition-all duration-200 hover:shadow-md",
-                      config.bg, config.border
-                    )}
-                  >
-                    <div style={{ display: "flex", gap: "12px" }}>
-                      <div className={cn("shrink-0 flex items-center justify-center rounded-lg", config.iconBg)} style={{ width: 32, height: 32 }}>
-                        <Icon className={cn("h-4 w-4", config.color)} />
-                      </div>
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, lineHeight: 1.4, color: "#0f172a" }}>
-                          {insight.title}
-                        </h4>
-                        <p style={{ margin: "8px 0 0", fontSize: 13, lineHeight: 1.6, color: "#475569" }}>
-                          {insight.description}
-                        </p>
-                        {insight.recommendation && (
-                          <div style={{ margin: "10px 0 0", padding: 12, borderRadius: 8, background: "rgba(255,255,255,0.6)" }}>
-                            <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#4338ca" }}>Recommendation</p>
-                            <p style={{ margin: "4px 0 0", fontSize: 13, lineHeight: 1.6, color: "#334155" }}>
-                              {insight.recommendation}
-                            </p>
-                          </div>
-                        )}
-                        {insight.category && (
-                          <div style={{ marginTop: 8 }}>
-                            <Badge variant="outline" className="text-[10px] bg-white/50">
-                              {insight.category}
-                            </Badge>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              {insights.map((insight, i) => (
+                <AiInsightCard
+                  key={i}
+                  severity={normaliseSeverity(insight.severity)}
+                  title={insight.title}
+                  description={insight.description}
+                  recommendation={insight.recommendation}
+                  category={insight.category}
+                />
+              ))}
             </div>
           )}
         </CardContent>
