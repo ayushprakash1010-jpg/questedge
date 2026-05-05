@@ -1,16 +1,11 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
 import {
   Search,
   Sparkles,
   FileText,
-  ChevronLeft,
-  ChevronRight,
   ExternalLink,
   Zap,
   Filter,
@@ -18,8 +13,25 @@ import {
   Trophy,
   X,
 } from "lucide-react";
+import { Badge, CandidateStatusBadge, type CandidateStatus } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "@/components/ui/toaster";
+import { PageHeader } from "@/components/shared/page-header";
+import {
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTablePagination,
+  DataTableRow,
+} from "@/components/shared/data-table";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
 
 interface Application {
   id: string;
@@ -52,24 +64,29 @@ interface Meta {
   totalPages: number;
 }
 
+const PAGE_SIZE = 20;
+
 const sourceColors: Record<string, string> = {
   JOB_BOARD: "bg-blue-50 text-blue-700 border-blue-200",
-  REFERRAL: "bg-green-50 text-green-700 border-green-200",
+  REFERRAL: "bg-emerald-50 text-emerald-700 border-emerald-200",
   AGENCY: "bg-purple-50 text-purple-700 border-purple-200",
   DIRECT: "bg-amber-50 text-amber-700 border-amber-200",
   LINKEDIN: "bg-sky-50 text-sky-700 border-sky-200",
 };
 
-const statusColors: Record<string, string> = {
-  ACTIVE: "bg-green-50 text-green-700 border-green-200",
-  SELECTED: "bg-indigo-50 text-indigo-700 border-indigo-200",
-  REJECTED: "bg-red-50 text-red-700 border-red-200",
-  ON_HOLD: "bg-amber-50 text-amber-700 border-amber-200",
-  WITHDRAWN: "bg-slate-50 text-slate-700 border-slate-200",
-};
+const VALID_CANDIDATE_STATUSES: CandidateStatus[] = [
+  "ACTIVE",
+  "SELECTED",
+  "REJECTED",
+  "ON_HOLD",
+  "WITHDRAWN",
+];
+const VALID_STATUS_SET = new Set<string>(VALID_CANDIDATE_STATUSES);
 
-function getScoreColor(score: number): string {
-  if (score >= 80) return "text-green-700 bg-green-50 border-green-200";
+// 4-tier score scheme specific to this page (AI resume match shown with finer
+// granularity than the kanban 3-tier helper).
+function scoreBadgeClass(score: number): string {
+  if (score >= 80) return "text-emerald-700 bg-emerald-50 border-emerald-200";
   if (score >= 60) return "text-blue-700 bg-blue-50 border-blue-200";
   if (score >= 40) return "text-amber-700 bg-amber-50 border-amber-200";
   return "text-red-700 bg-red-50 border-red-200";
@@ -82,6 +99,11 @@ function getBestScore(applications: Application[]): number | null {
   return scores.length > 0 ? Math.max(...scores) : null;
 }
 
+interface HiringPlanLite {
+  id: string;
+  title: string;
+}
+
 export default function CandidatesPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [meta, setMeta] = useState<Meta | null>(null);
@@ -90,21 +112,16 @@ export default function CandidatesPage() {
   const [page, setPage] = useState(1);
   const [topN, setTopN] = useState<number | null>(null);
   const [hiringPlanId, setHiringPlanId] = useState<string>("");
-  const [hiringPlans, setHiringPlans] = useState<
-    { id: string; title: string }[]
-  >([]);
+  const [hiringPlans, setHiringPlans] = useState<HiringPlanLite[]>([]);
   const [triggeringScoring, setTriggeringScoring] = useState(false);
-  const [scoringMessage, setScoringMessage] = useState("");
-  const [expandedCandidate, setExpandedCandidate] = useState<string | null>(
-    null
-  );
+  const [expandedCandidate, setExpandedCandidate] = useState<string | null>(null);
 
   // Fetch hiring plans for filter dropdown
   useEffect(() => {
     fetch("/api/hiring-plans?limit=100")
       .then((r) => r.json())
-      .then((d) => {
-        if (d.data) setHiringPlans(d.data.map((p: any) => ({ id: p.id, title: p.title })));
+      .then((d: { data?: HiringPlanLite[] }) => {
+        if (d.data) setHiringPlans(d.data.map((p) => ({ id: p.id, title: p.title })));
       })
       .catch(() => {});
   }, []);
@@ -117,7 +134,7 @@ export default function CandidatesPage() {
     if (topN) params.set("topN", String(topN));
     if (!topN) {
       params.set("page", String(page));
-      params.set("limit", "20");
+      params.set("limit", String(PAGE_SIZE));
     }
 
     try {
@@ -141,88 +158,72 @@ export default function CandidatesPage() {
 
   const handleTriggerScoring = async () => {
     setTriggeringScoring(true);
-    setScoringMessage("");
     try {
       const res = await fetch("/api/candidates/trigger-scoring", {
         method: "POST",
       });
       if (res.ok) {
-        setScoringMessage("AI scoring queued! Scores will appear shortly.");
+        toast.success("AI scoring queued — scores will appear shortly.");
       } else {
-        setScoringMessage("Failed to trigger scoring.");
+        toast.error("Failed to trigger scoring.");
       }
     } catch {
-      setScoringMessage("Failed to trigger scoring.");
+      toast.error("Failed to trigger scoring.");
     } finally {
       setTriggeringScoring(false);
-      setTimeout(() => setScoringMessage(""), 5000);
     }
   };
 
   const handleTopNFilter = (n: number | null) => {
-    if (!hiringPlanId && n) {
-      // topN requires a hiring plan
-      return;
-    }
+    if (!hiringPlanId && n) return; // topN requires a hiring plan
     setTopN(n);
     setPage(1);
   };
 
   return (
     <div>
-      {/* Header */}
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Candidates</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Track candidates and AI resume match scores across hiring plans.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {scoringMessage && (
-            <span className="text-sm text-green-700">{scoringMessage}</span>
-          )}
+      <PageHeader
+        title="Candidates"
+        subtitle="Track candidates and AI resume match scores across hiring plans."
+        actions={
           <Button
             variant="outline"
             size="sm"
             onClick={handleTriggerScoring}
             disabled={triggeringScoring}
           >
-            <Zap className="mr-1.5 h-4 w-4" />
+            <Zap className="h-4 w-4" />
             {triggeringScoring ? "Queuing..." : "Run AI Scoring"}
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Filters */}
-      <Card className="mb-6 border-slate-200">
+      <Card className="mb-6">
         <CardContent className="py-4">
           <div className="flex flex-wrap items-center gap-3">
-            {/* Search */}
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <div className="min-w-[200px] flex-1">
               <Input
+                leftIcon={<Search />}
                 placeholder="Search by name or email..."
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
-                className="pl-9"
               />
             </div>
 
-            {/* Hiring Plan Filter */}
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-slate-400" />
-              <select
+              <Select
                 value={hiringPlanId}
                 onChange={(e) => {
                   setHiringPlanId(e.target.value);
                   setPage(1);
                   if (!e.target.value) setTopN(null);
                 }}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                className="w-56"
               >
                 <option value="">All Hiring Plans</option>
                 {hiringPlans.map((p) => (
@@ -230,10 +231,9 @@ export default function CandidatesPage() {
                     {p.title}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
 
-            {/* Top N Filter — only available when a hiring plan is selected */}
             {hiringPlanId && (
               <div className="flex items-center gap-1.5">
                 <Trophy className="h-4 w-4 text-amber-500" />
@@ -243,25 +243,25 @@ export default function CandidatesPage() {
                     variant={topN === n ? "default" : "outline"}
                     size="sm"
                     onClick={() => handleTopNFilter(topN === n ? null : n)}
-                    className="h-8 px-2.5 text-xs"
                   >
                     Top {n}
                   </Button>
                 ))}
                 {topN && (
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
                     onClick={() => handleTopNFilter(null)}
-                    className="ml-1 rounded p-1 hover:bg-slate-100"
                   >
-                    <X className="h-3.5 w-3.5 text-slate-400" />
-                  </button>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
                 )}
               </div>
             )}
           </div>
 
           {topN && hiringPlanId && (
-            <div className="mt-3 flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            <div className="mt-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
               <Trophy className="h-4 w-4" />
               Showing top {topN} candidates by AI match score for the selected hiring plan
             </div>
@@ -271,251 +271,192 @@ export default function CandidatesPage() {
 
       {/* Results */}
       {loading ? (
-        <div className="flex h-40 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} variant="block" className="h-16 w-full" />
+          ))}
         </div>
       ) : candidates.length === 0 ? (
-        <Card className="border-slate-200">
-          <CardContent className="flex flex-col items-center py-16">
-            <Users className="h-12 w-12 text-slate-300" />
-            <h3 className="mt-4 text-lg font-semibold text-slate-900">
-              No candidates found
-            </h3>
-            <p className="mt-1 text-sm text-slate-500">
-              {search
-                ? "Try a different search term."
-                : "Candidates will appear here once they apply via the public job page."}
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<Users className="h-6 w-6" />}
+          title="No candidates found"
+          description={
+            search
+              ? "Try a different search term."
+              : "Candidates will appear here once they apply via the public job page."
+          }
+        />
       ) : (
-        <>
-          {/* Summary */}
-          <div className="mb-4 text-sm text-slate-500">
-            Showing {candidates.length} of {meta?.total ?? 0} candidates
-          </div>
+        <DataTable>
+          <DataTableHeader>
+            <tr>
+              <DataTableHead>Candidate</DataTableHead>
+              <DataTableHead>Source</DataTableHead>
+              <DataTableHead>Experience</DataTableHead>
+              <DataTableHead>
+                <span className="flex items-center gap-1">
+                  <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                  AI Score
+                </span>
+              </DataTableHead>
+              <DataTableHead>Applications</DataTableHead>
+              <DataTableHead>Resume</DataTableHead>
+              <DataTableHead>Applied</DataTableHead>
+            </tr>
+          </DataTableHeader>
+          <DataTableBody>
+            {candidates.map((c) => {
+              const bestScore = getBestScore(c.applications);
+              const isExpanded = expandedCandidate === c.id;
 
-          {/* Table */}
-          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/50">
-                  <th className="px-4 py-3 text-left font-medium text-slate-600">
-                    Candidate
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-slate-600">
-                    Source
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-slate-600">
-                    Experience
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-slate-600">
-                    <div className="flex items-center gap-1">
-                      <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-                      AI Score
-                    </div>
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-slate-600">
-                    Applications
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-slate-600">
-                    Resume
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-slate-600">
-                    Applied
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {candidates.map((c) => {
-                  const bestScore = getBestScore(c.applications);
-                  const isExpanded = expandedCandidate === c.id;
-
-                  return (
-                    <React.Fragment key={c.id}>
-                      <tr
-                        className={cn(
-                          "cursor-pointer border-b border-slate-50 transition-colors hover:bg-slate-50/50",
-                          isExpanded && "bg-slate-50/50"
-                        )}
-                        onClick={() =>
-                          setExpandedCandidate(isExpanded ? null : c.id)
-                        }
+              return (
+                <React.Fragment key={c.id}>
+                  <DataTableRow
+                    selected={isExpanded}
+                    onClick={() =>
+                      setExpandedCandidate(isExpanded ? null : c.id)
+                    }
+                  >
+                    <DataTableCell>
+                      <p className="font-medium text-slate-900">{c.name}</p>
+                      <p className="text-xs text-slate-500">{c.email}</p>
+                      {c.currentRole && (
+                        <p className="mt-0.5 text-xs text-slate-400">
+                          {c.currentRole}
+                          {c.currentCompany && ` at ${c.currentCompany}`}
+                        </p>
+                      )}
+                    </DataTableCell>
+                    <DataTableCell>
+                      <Badge
+                        variant="outline"
+                        className={cn("text-xs", sourceColors[c.source] ?? "")}
                       >
-                        <td className="px-4 py-3">
-                          <p className="font-medium text-slate-900">
-                            {c.name}
-                          </p>
-                          <p className="text-xs text-slate-500">{c.email}</p>
-                          {c.currentRole && (
-                            <p className="mt-0.5 text-xs text-slate-400">
-                              {c.currentRole}
-                              {c.currentCompany && ` at ${c.currentCompany}`}
-                            </p>
+                        {c.source.replace("_", " ")}
+                      </Badge>
+                    </DataTableCell>
+                    <DataTableCell>
+                      {c.experienceYears
+                        ? `${Number(c.experienceYears)} yrs`
+                        : "—"}
+                    </DataTableCell>
+                    <DataTableCell>
+                      {bestScore !== null ? (
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-xs font-semibold",
+                            scoreBadgeClass(bestScore)
                           )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "text-xs",
-                              sourceColors[c.source] || ""
-                            )}
-                          >
-                            {c.source.replace("_", " ")}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 text-slate-600">
-                          {c.experienceYears
-                            ? `${Number(c.experienceYears)} yrs`
-                            : "—"}
-                        </td>
-                        <td className="px-4 py-3">
-                          {bestScore !== null ? (
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "text-xs font-semibold",
-                                getScoreColor(bestScore)
-                              )}
-                            >
-                              <Sparkles className="mr-1 h-3 w-3" />
-                              {bestScore}%
-                            </Badge>
-                          ) : (
-                            <span className="text-xs text-slate-400">
-                              Pending
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-slate-600">
-                          {c.applications.length}
-                        </td>
-                        <td className="px-4 py-3">
-                          {c.resumeUrl ? (
-                            <FileText className="h-4 w-4 text-indigo-500" />
-                          ) : (
-                            <span className="text-xs text-slate-400">—</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-slate-500">
-                          {c.applications[0]
-                            ? new Date(
-                                c.applications[0].appliedAt
-                              ).toLocaleDateString()
-                            : new Date(c.createdAt).toLocaleDateString()}
-                        </td>
-                      </tr>
+                        >
+                          <Sparkles className="h-3 w-3" />
+                          {bestScore}%
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-slate-400">Pending</span>
+                      )}
+                    </DataTableCell>
+                    <DataTableCell>{c.applications.length}</DataTableCell>
+                    <DataTableCell>
+                      {c.resumeUrl ? (
+                        <FileText className="h-4 w-4 text-indigo-500" />
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      )}
+                    </DataTableCell>
+                    <DataTableCell className="text-slate-500">
+                      {c.applications[0]
+                        ? new Date(c.applications[0].appliedAt).toLocaleDateString()
+                        : new Date(c.createdAt).toLocaleDateString()}
+                    </DataTableCell>
+                  </DataTableRow>
 
-                      {/* Expanded: Show all applications with scores */}
-                      {isExpanded && c.applications.length > 0 && (
-                        <tr>
-                          <td colSpan={7} className="bg-slate-50/30 px-8 py-4">
-                            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                              Applications ({c.applications.length})
-                            </p>
-                            <div className="space-y-2">
-                              {c.applications.map((app) => (
-                                <div
-                                  key={app.id}
-                                  className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3"
+                  {/* Expanded: show all applications with scores */}
+                  {isExpanded && c.applications.length > 0 && (
+                    <tr>
+                      <td colSpan={7} className="bg-slate-50/40 px-8 py-4">
+                        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Applications ({c.applications.length})
+                        </p>
+                        <div className="space-y-2">
+                          {c.applications.map((app) => (
+                            <div
+                              key={app.id}
+                              className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3"
+                            >
+                              <div className="flex items-center gap-3">
+                                <Link
+                                  href={`/hiring-plans/${app.hiringPlanId}`}
+                                  className="text-sm font-medium text-indigo-600 hover:underline"
+                                  onClick={(e) => e.stopPropagation()}
                                 >
-                                  <div className="flex items-center gap-3">
-                                    <Link
-                                      href={`/hiring-plans/${app.hiringPlanId}`}
-                                      className="text-sm font-medium text-indigo-600 hover:underline"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      {app.hiringPlan.title}
-                                      <ExternalLink className="ml-1 inline h-3 w-3" />
-                                    </Link>
+                                  {app.hiringPlan.title}
+                                  <ExternalLink className="ml-1 inline h-3 w-3" />
+                                </Link>
+                                {VALID_STATUS_SET.has(app.status) ? (
+                                  <CandidateStatusBadge
+                                    status={app.status as CandidateStatus}
+                                  />
+                                ) : (
+                                  <Badge variant="outline">{app.status}</Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-4">
+                                {app.aiMatchScore ? (
+                                  <div className="flex items-center gap-2">
                                     <Badge
                                       variant="outline"
                                       className={cn(
-                                        "text-xs",
-                                        statusColors[app.status] || ""
+                                        "text-xs font-semibold",
+                                        scoreBadgeClass(Number(app.aiMatchScore))
                                       )}
                                     >
-                                      {app.status}
+                                      <Sparkles className="h-3 w-3" />
+                                      {Number(app.aiMatchScore)}%
                                     </Badge>
-                                  </div>
-                                  <div className="flex items-center gap-4">
-                                    {app.aiMatchScore ? (
-                                      <div className="flex items-center gap-2">
-                                        <Badge
-                                          variant="outline"
-                                          className={cn(
-                                            "text-xs font-semibold",
-                                            getScoreColor(
-                                              Number(app.aiMatchScore)
-                                            )
-                                          )}
-                                        >
-                                          <Sparkles className="mr-1 h-3 w-3" />
-                                          {Number(app.aiMatchScore)}%
-                                        </Badge>
-                                        {app.aiMatchSummary && (
-                                          <span
-                                            className="max-w-[300px] truncate text-xs text-slate-500"
-                                            title={app.aiMatchSummary}
-                                          >
-                                            {app.aiMatchSummary}
-                                          </span>
-                                        )}
-                                      </div>
-                                    ) : (
-                                      <span className="text-xs text-slate-400">
-                                        Score pending
+                                    {app.aiMatchSummary && (
+                                      <span
+                                        className="max-w-[300px] truncate text-xs text-slate-500"
+                                        title={app.aiMatchSummary}
+                                      >
+                                        {app.aiMatchSummary}
                                       </span>
                                     )}
-                                    <span className="text-xs text-slate-400">
-                                      {new Date(
-                                        app.appliedAt
-                                      ).toLocaleDateString()}
-                                    </span>
                                   </div>
-                                </div>
-                              ))}
+                                ) : (
+                                  <span className="text-xs text-slate-400">
+                                    Score pending
+                                  </span>
+                                )}
+                                <span className="text-xs text-slate-400">
+                                  {new Date(app.appliedAt).toLocaleDateString()}
+                                </span>
+                              </div>
                             </div>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          {meta && meta.totalPages > 1 && !topN && (
-            <div className="mt-4 flex items-center justify-between">
-              <p className="text-sm text-slate-500">
-                Page {meta.page} of {meta.totalPages}
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={meta.page <= 1}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={meta.page >= meta.totalPages}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </DataTableBody>
+          {meta && !topN && meta.total > PAGE_SIZE && (
+            <tfoot>
+              <tr>
+                <td colSpan={7} className="p-0">
+                  <DataTablePagination
+                    page={meta.page}
+                    pageSize={PAGE_SIZE}
+                    total={meta.total}
+                    onPageChange={(p) => setPage(p)}
+                  />
+                </td>
+              </tr>
+            </tfoot>
           )}
-        </>
+        </DataTable>
       )}
     </div>
   );
