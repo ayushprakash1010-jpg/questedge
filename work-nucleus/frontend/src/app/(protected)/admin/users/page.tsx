@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Plus, Pencil, Trash2, X } from "lucide-react";
-import { NvLoader } from "@nova-design-system/nova-react";
+import { Spinner } from "@/components/ui/spinner";
 
 interface User {
   id: string;
@@ -140,7 +140,7 @@ export default function AdminUsersPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex h-32 items-center justify-center"><NvLoader /></div>
+            <div className="flex h-32 items-center justify-center"><Spinner /></div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

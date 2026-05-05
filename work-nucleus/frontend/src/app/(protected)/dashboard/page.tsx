@@ -14,7 +14,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Area, AreaChart,
 } from "recharts";
-import { NvButton, NvAlert, NvLoader } from "@nova-design-system/nova-react";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 
 interface Overview {
   activePlans: number;
@@ -215,7 +216,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <NvLoader />
+        <Spinner />
       </div>
     );
   }
@@ -272,9 +273,9 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
           <p className="mt-0.5 text-sm text-slate-500">Hiring analytics overview</p>
         </div>
-        <NvButton emphasis="medium" size="sm" onClick={fetchAll}>
+        <Button variant="outline" size="sm" onClick={fetchAll}>
           <RefreshCw className="h-3.5 w-3.5" /> Refresh
-        </NvButton>
+        </Button>
       </div>
 
       {/* KPI Cards */}
@@ -315,9 +316,9 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Pipeline Funnel</CardTitle>
-            <NvButton emphasis="lower" size="xs" onClick={() => exportCsv(funnel, "pipeline-funnel")}>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => exportCsv(funnel, "pipeline-funnel")}>
               <Download className="h-3.5 w-3.5" />
-            </NvButton>
+            </Button>
           </CardHeader>
           <CardContent>
             {funnel.length === 0 ? (
@@ -342,9 +343,9 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Hiring Progress</CardTitle>
-            <NvButton emphasis="lower" size="xs" onClick={() => exportCsv(progress, "hiring-progress")}>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => exportCsv(progress, "hiring-progress")}>
               <Download className="h-3.5 w-3.5" />
-            </NvButton>
+            </Button>
           </CardHeader>
           <CardContent>
             {progress.length === 0 ? (
@@ -414,9 +415,9 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Budget vs Actual</CardTitle>
-            <NvButton emphasis="lower" size="xs" onClick={() => exportCsv(cost, "budget")}>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => exportCsv(cost, "budget")}>
               <Download className="h-3.5 w-3.5" />
-            </NvButton>
+            </Button>
           </CardHeader>
           <CardContent>
             {cost.length === 0 ? (
@@ -444,9 +445,9 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Interviewer Stats</CardTitle>
-            <NvButton emphasis="lower" size="xs" onClick={() => exportCsv(interviewers, "interviewers")}>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => exportCsv(interviewers, "interviewers")}>
               <Download className="h-3.5 w-3.5" />
-            </NvButton>
+            </Button>
           </CardHeader>
           <CardContent>
             {interviewers.length === 0 ? (
@@ -496,9 +497,9 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Source Effectiveness</CardTitle>
-            <NvButton emphasis="lower" size="xs" onClick={() => exportCsv(sources, "sources")}>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => exportCsv(sources, "sources")}>
               <Download className="h-3.5 w-3.5" />
-            </NvButton>
+            </Button>
           </CardHeader>
           <CardContent>
             {sources.length === 0 ? (
@@ -558,16 +559,19 @@ export default function DashboardPage() {
               </span>
             )}
           </div>
-          <NvButton
-            emphasis="medium"
+          <Button
+            variant="outline"
             size="sm"
             onClick={handleGenerateInsights}
             disabled={generatingInsights}
-            loading={generatingInsights}
           >
-            {!generatingInsights && <Sparkles className="h-3.5 w-3.5" />}
+            {generatingInsights ? (
+              <Spinner size="xs" tone="muted" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" />
+            )}
             {generatingInsights ? "Analyzing..." : insights.length > 0 ? "Regenerate" : "Generate Insights"}
-          </NvButton>
+          </Button>
         </CardHeader>
         <CardContent>
           {insights.length === 0 ? (

@@ -1,16 +1,4 @@
 @import "tailwindcss";
-@import "@nova-design-system/nova-base/dist/css/spark.css";
-
-/* spark.css ships --leading-* as px values; restore unitless multipliers.
-   Remove together with the spark.css import in PR-3 (Nova removal). */
-:root {
-  --leading-none: 1;
-  --leading-tight: 1.25;
-  --leading-snug: 1.375;
-  --leading-normal: 1.5;
-  --leading-relaxed: 1.625;
-  --leading-loose: 2;
-}
 
 /* ════════════════════════════════════════════════════════════════
    TAILWIND v4 THEME
@@ -372,15 +360,6 @@
     font-family: var(--font-sans);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
-}
-
-/* Nova component overrides — remove together with spark.css in PR-3 */
-nv-button {
-  --nv-button-radius: var(--radius);
-}
-
-nv-badge {
-  --nv-badge-radius: 9999px;
 }
 
 /* ════════════════════════════════════════════════════════════════

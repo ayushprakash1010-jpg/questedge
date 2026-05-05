@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { TopBar } from "@/components/top-bar";
-import { NovaProvider } from "@/components/nova-provider";
 import { useProfile } from "@/hooks/use-profile";
 import { registerServiceWorker } from "@/lib/pwa";
 
@@ -49,15 +48,13 @@ export default function ProtectedLayout({
       );
     }
     return (
-      <NovaProvider>
-        <div className="flex h-screen">
-          <Sidebar userRole={profile?.role} />
-          <div className="flex flex-1 flex-col overflow-hidden">
-            <TopBar />
-            <main className="flex-1 overflow-y-auto bg-background p-6">{children}</main>
-          </div>
+      <div className="flex h-screen">
+        <Sidebar userRole={profile?.role} />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <TopBar />
+          <main className="flex-1 overflow-y-auto bg-background p-6">{children}</main>
         </div>
-      </NovaProvider>
+      </div>
     );
   }
 
@@ -72,14 +69,12 @@ export default function ProtectedLayout({
   if (!user) return null;
 
   return (
-    <NovaProvider>
-      <div className="flex h-screen">
-        <Sidebar userRole={profile?.role} />
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <TopBar />
-          <main className="flex-1 overflow-y-auto bg-background p-6">{children}</main>
-        </div>
+    <div className="flex h-screen">
+      <Sidebar userRole={profile?.role} />
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <TopBar />
+        <main className="flex-1 overflow-y-auto bg-background p-6">{children}</main>
       </div>
-    </NovaProvider>
+    </div>
   );
 }
