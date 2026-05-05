@@ -4,10 +4,21 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Badge, StatusBadge, type BadgeProps, type PlanStatus } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { Spinner } from "@/components/ui/spinner";
+import { EmptyState } from "@/components/ui/empty-state";
+import { toast } from "@/components/ui/toaster";
+import {
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/shared/data-table";
 import {
   ArrowLeft,
   Pencil,
@@ -68,19 +79,16 @@ interface HiringPlan {
   updatedAt: string;
 }
 
-const statusColors: Record<string, string> = {
-  DRAFT: "bg-slate-100 text-slate-700 border-slate-200",
-  ACTIVE: "bg-green-50 text-green-700 border-green-200",
-  COMPLETED: "bg-indigo-50 text-indigo-700 border-indigo-200",
-  CANCELLED: "bg-red-50 text-red-700 border-red-200",
-};
+const PLAN_STATUSES: ReadonlyArray<PlanStatus> = ["DRAFT", "ACTIVE", "COMPLETED", "CANCELLED"];
+const isPlanStatus = (s: string): s is PlanStatus =>
+  (PLAN_STATUSES as readonly string[]).includes(s);
 
-const categoryColors: Record<string, string> = {
-  TECHNICAL: "bg-blue-50 text-blue-700 border-blue-200",
-  LEADERSHIP: "bg-purple-50 text-purple-700 border-purple-200",
-  BEHAVIOURAL: "bg-green-50 text-green-700 border-green-200",
-  COMMUNICATION: "bg-amber-50 text-amber-700 border-amber-200",
-  DOMAIN: "bg-cyan-50 text-cyan-700 border-cyan-200",
+const categoryToVariant: Record<string, BadgeProps["variant"]> = {
+  TECHNICAL: "skillTechnical",
+  LEADERSHIP: "skillLeadership",
+  BEHAVIOURAL: "skillBehavioural",
+  COMMUNICATION: "skillCommunication",
+  DOMAIN: "skillDomain",
 };
 
 export default function HiringPlanDetailPage() {
@@ -113,7 +121,7 @@ export default function HiringPlanDetailPage() {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        <Spinner />
       </div>
     );
   }
@@ -138,12 +146,12 @@ export default function HiringPlanDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (res.ok) {
-        const updated = await res.json();
-        setPlan(updated);
-      }
-    } catch {
-      // ignore
+      if (!res.ok) throw new Error("Status update failed");
+      const updated = await res.json();
+      setPlan(updated);
+      toast.success(`Status changed to ${newStatus}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Status update failed");
     } finally {
       setStatusUpdating(false);
     }
@@ -203,13 +211,14 @@ export default function HiringPlanDetailPage() {
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-slate-900">{plan.title}</h1>
-              <Badge
-                variant="outline"
-                className={cn(statusColors[plan.status])}
-              >
-                {plan.status}
-              </Badge>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                {plan.title}
+              </h1>
+              {isPlanStatus(plan.status) ? (
+                <StatusBadge status={plan.status} />
+              ) : (
+                <Badge variant="outline">{plan.status}</Badge>
+              )}
             </div>
             <div className="mt-1 flex items-center gap-4 text-sm text-slate-500">
               <span>Q{plan.quarter} {plan.year}</span>
@@ -379,8 +388,8 @@ export default function HiringPlanDetailPage() {
                   {Object.entries(skillsByCategory).map(([category, skills]) => (
                     <div key={category}>
                       <Badge
-                        variant="outline"
-                        className={cn("mb-3 text-xs", categoryColors[category])}
+                        variant={categoryToVariant[category] ?? "outline"}
+                        className="mb-3"
                       >
                         {category}
                       </Badge>
@@ -532,6 +541,17 @@ function DetailField({ label, value }: { label: string; value?: string | null })
   );
 }
 
+interface DecisionRow {
+  id: string;
+  decision: string;
+  createdAt: string;
+  offerCtc: string | null;
+  communicationSent: boolean;
+  communicationDraft: string | null;
+  application?: { candidate?: { name?: string } };
+  decidedBy?: { name?: string };
+}
+
 function DecisionsTab({
   planId,
   filledRoles,
@@ -541,7 +561,7 @@ function DecisionsTab({
   filledRoles: number;
   totalRoles: number;
 }) {
-  const [decisions, setDecisions] = useState<any[]>([]);
+  const [decisions, setDecisions] = useState<DecisionRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -564,15 +584,14 @@ function DecisionsTab({
   if (loading) {
     return (
       <div className="flex h-32 items-center justify-center">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+        <Spinner size="sm" />
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      {/* Progress Header */}
-      <Card className="border-slate-200">
+      <Card>
         <CardContent className="py-4">
           <div className="flex items-center justify-between">
             <div>
@@ -589,74 +608,75 @@ function DecisionsTab({
         </CardContent>
       </Card>
 
-      {/* Decisions Table */}
-      <Card className="border-slate-200">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Award className="h-4 w-4 text-indigo-600" />
             Decisions ({decisions.length})
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-0 pb-0">
           {decisions.length === 0 ? (
-            <p className="text-sm text-slate-400">No decisions made yet</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 text-left text-xs text-slate-500">
-                    <th className="pb-2 font-medium">Candidate</th>
-                    <th className="pb-2 font-medium">Decision</th>
-                    <th className="pb-2 font-medium">By</th>
-                    <th className="pb-2 font-medium">Date</th>
-                    <th className="pb-2 font-medium">Offer CTC</th>
-                    <th className="pb-2 font-medium">Communication</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {decisions.map((d: any) => (
-                    <tr key={d.id} className="border-b border-slate-50">
-                      <td className="py-2.5 font-medium text-slate-900">
-                        {d.application?.candidate?.name || "—"}
-                      </td>
-                      <td className="py-2.5">
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "text-xs",
-                            d.decision === "SELECTED"
-                              ? "bg-green-50 text-green-700 border-green-200"
-                              : "bg-red-50 text-red-700 border-red-200"
-                          )}
-                        >
-                          {d.decision}
-                        </Badge>
-                      </td>
-                      <td className="py-2.5 text-slate-600">{d.decidedBy?.name || "—"}</td>
-                      <td className="py-2.5 text-slate-600">
-                        {new Date(d.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="py-2.5 text-slate-600">
-                        {d.offerCtc ? `₹${Number(d.offerCtc).toLocaleString()}` : "—"}
-                      </td>
-                      <td className="py-2.5">
-                        {d.communicationSent ? (
-                          <span className="flex items-center gap-1 text-xs text-green-600">
-                            <Check className="h-3 w-3" /> Sent
-                          </span>
-                        ) : d.communicationDraft ? (
-                          <span className="flex items-center gap-1 text-xs text-amber-600">
-                            <Mail className="h-3 w-3" /> Draft
-                          </span>
-                        ) : (
-                          <span className="text-xs text-slate-400">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="px-5 pb-5">
+              <EmptyState
+                icon={<Award className="h-6 w-6" />}
+                title="No decisions made yet"
+                description="Decisions will appear here as candidates progress through the pipeline."
+              />
             </div>
+          ) : (
+            <DataTable className="rounded-none border-0 shadow-none">
+              <DataTableHeader>
+                <tr>
+                  <DataTableHead>Candidate</DataTableHead>
+                  <DataTableHead>Decision</DataTableHead>
+                  <DataTableHead>By</DataTableHead>
+                  <DataTableHead>Date</DataTableHead>
+                  <DataTableHead>Offer CTC</DataTableHead>
+                  <DataTableHead>Communication</DataTableHead>
+                </tr>
+              </DataTableHeader>
+              <DataTableBody>
+                {decisions.map((d) => (
+                  <DataTableRow key={d.id}>
+                    <DataTableCell className="font-medium text-slate-900">
+                      {d.application?.candidate?.name ?? "—"}
+                    </DataTableCell>
+                    <DataTableCell>
+                      <Badge
+                        variant={
+                          d.decision === "SELECTED" ? "success" : "destructive"
+                        }
+                      >
+                        {d.decision}
+                      </Badge>
+                    </DataTableCell>
+                    <DataTableCell>{d.decidedBy?.name ?? "—"}</DataTableCell>
+                    <DataTableCell>
+                      {new Date(d.createdAt).toLocaleDateString()}
+                    </DataTableCell>
+                    <DataTableCell>
+                      {d.offerCtc
+                        ? `₹${Number(d.offerCtc).toLocaleString()}`
+                        : "—"}
+                    </DataTableCell>
+                    <DataTableCell>
+                      {d.communicationSent ? (
+                        <span className="flex items-center gap-1 text-xs text-emerald-600">
+                          <Check className="h-3 w-3" /> Sent
+                        </span>
+                      ) : d.communicationDraft ? (
+                        <span className="flex items-center gap-1 text-xs text-amber-600">
+                          <Mail className="h-3 w-3" /> Draft
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      )}
+                    </DataTableCell>
+                  </DataTableRow>
+                ))}
+              </DataTableBody>
+            </DataTable>
           )}
         </CardContent>
       </Card>

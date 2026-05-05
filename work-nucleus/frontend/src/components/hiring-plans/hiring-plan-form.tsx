@@ -82,7 +82,7 @@ const categoryColors: Record<string, string> = {
   DOMAIN: "bg-cyan-50 text-cyan-700 border-cyan-200",
 };
 
-interface HiringPlanFormProps {
+export interface HiringPlanFormProps {
   initialData?: HiringPlanFormData;
   planId?: string;
 }

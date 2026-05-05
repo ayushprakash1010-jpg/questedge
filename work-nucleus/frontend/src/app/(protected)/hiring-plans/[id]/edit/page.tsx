@@ -2,12 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { HiringPlanForm } from "@/components/hiring-plans/hiring-plan-form";
+import {
+  HiringPlanForm,
+  type HiringPlanFormProps,
+} from "@/components/hiring-plans/hiring-plan-form";
+import { Spinner } from "@/components/ui/spinner";
+
+interface PlanSkillFromApi {
+  skill: { id: string; name: string; category: string };
+  priority: string;
+  minProficiency: number;
+}
 
 export default function EditHiringPlanPage() {
   const params = useParams();
   const id = params.id as string;
-  const [initialData, setInitialData] = useState<any>(null);
+  const [initialData, setInitialData] = useState<
+    HiringPlanFormProps["initialData"] | null
+  >(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,7 +38,7 @@ export default function EditHiringPlanPage() {
           totalRoles: plan.totalRoles,
           reportingManagerName: plan.reportingManagerName,
           hodName: plan.hodName,
-          teamSize: plan.teamSize,
+          teamSize: plan.teamSize ?? undefined,
           teamLevels: plan.teamLevels || "",
           hiringManagerId: plan.hiringManagerId,
           budgetMin: Number(plan.budgetMin),
@@ -34,7 +46,7 @@ export default function EditHiringPlanPage() {
           currency: plan.currency,
           benefits: plan.benefits || [],
           notes: plan.notes || "",
-          skills: (plan.skills || []).map((s: any) => ({
+          skills: (plan.skills || []).map((s: PlanSkillFromApi) => ({
             skillId: s.skill.id,
             name: s.skill.name,
             category: s.skill.category,
@@ -54,7 +66,7 @@ export default function EditHiringPlanPage() {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        <Spinner />
       </div>
     );
   }
