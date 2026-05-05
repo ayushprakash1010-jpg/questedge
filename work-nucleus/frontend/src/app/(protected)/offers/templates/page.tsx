@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Plus, Save, FileText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Save, Eye } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
+import { toast } from "@/components/ui/toaster";
+import { PageHeader } from "@/components/shared/page-header";
 
 interface Template {
   id: string;
@@ -46,75 +50,85 @@ export default function OfferTemplatesPage() {
     setBusy(true);
     try {
       const isNew = !editing.id;
-      const res = await fetch(`/api/v2/offer-templates${isNew ? "" : `/${editing.id}`}`, {
-        method: isNew ? "POST" : "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: editing.name,
-          body: editing.body,
-          variables: editing.variables ?? [],
-          brandingJson: editing.brandingJson ?? null,
-        }),
-      });
+      const res = await fetch(
+        `/api/v2/offer-templates${isNew ? "" : `/${editing.id}`}`,
+        {
+          method: isNew ? "POST" : "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: editing.name,
+            body: editing.body,
+            variables: editing.variables ?? [],
+            brandingJson: editing.brandingJson ?? null,
+          }),
+        }
+      );
       if (!res.ok) throw new Error("Failed to save");
       await load();
       setEditing(null);
+      toast.success(isNew ? "Template created" : "Template saved");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error");
+      toast.error(err instanceof Error ? err.message : "Save failed");
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold">Offer Letter Templates</h1>
-          <p className="text-sm text-slate-500">Reusable templates with variables that fill from offer + candidate data.</p>
-        </div>
-        <Button
-          onClick={() =>
-            setEditing({
-              name: "",
-              body: STARTER_BODY,
-              variables: [],
-            })
-          }
-        >
-          <Plus className="w-4 h-4 mr-1" /> New template
-        </Button>
-      </div>
+    <div>
+      <PageHeader
+        title="Offer Letter Templates"
+        subtitle="Reusable templates with variables that fill from offer + candidate data."
+        actions={
+          !editing ? (
+            <Button
+              size="sm"
+              onClick={() =>
+                setEditing({ name: "", body: STARTER_BODY, variables: [] })
+              }
+            >
+              <Plus className="h-4 w-4" /> New template
+            </Button>
+          ) : null
+        }
+      />
 
       {editing ? (
         <Card>
           <CardHeader>
-            <CardTitle>{editing.id ? `Edit: ${editing.name}` : "New template"}</CardTitle>
+            <CardTitle>
+              {editing.id ? `Edit: ${editing.name}` : "New template"}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <label className="text-xs text-slate-500">Name</label>
+            <div className="space-y-1.5">
+              <Label htmlFor="tpl-name">Name</Label>
               <Input
+                id="tpl-name"
                 value={editing.name ?? ""}
                 onChange={(e) => setEditing({ ...editing, name: e.target.value })}
               />
             </div>
-            <div>
-              <label className="text-xs text-slate-500">Body (HTML, supports {`{{variable}}`} interpolation)</label>
+            <div className="space-y-1.5">
+              <Label htmlFor="tpl-body">
+                Body (HTML, supports {`{{variable}}`} interpolation)
+              </Label>
               <Textarea
+                id="tpl-body"
                 rows={16}
                 value={editing.body ?? ""}
                 onChange={(e) => setEditing({ ...editing, body: e.target.value })}
               />
             </div>
-            <div className="bg-slate-50 border rounded-md p-3 text-xs text-slate-600">
-              Available variables: <code>{`{{candidate.name}}`}</code>, <code>{`{{role.title}}`}</code>,{" "}
-              <code>{`{{org.name}}`}</code>, <code>{`{{compensation.fixedAnnual}}`}</code>,{" "}
+            <div className="rounded-md border border-slate-200/60 bg-slate-50 p-3 text-xs text-slate-600">
+              Available variables: <code>{`{{candidate.name}}`}</code>,{" "}
+              <code>{`{{role.title}}`}</code>, <code>{`{{org.name}}`}</code>,{" "}
+              <code>{`{{compensation.fixedAnnual}}`}</code>,{" "}
               <code>{`{{offer.expiresAt}}`}</code>
             </div>
             <div className="flex gap-2">
               <Button onClick={save} disabled={busy}>
-                <Save className="w-4 h-4 mr-1" /> Save
+                <Save className="h-4 w-4" /> Save
               </Button>
               <Button variant="outline" onClick={() => setEditing(null)} disabled={busy}>
                 Cancel
@@ -122,29 +136,49 @@ export default function OfferTemplatesPage() {
             </div>
           </CardContent>
         </Card>
+      ) : templates.length === 0 ? (
+        <EmptyState
+          icon={<FileText className="h-6 w-6" />}
+          title="No templates yet"
+          description="Create one to start sending offer letters."
+          action={
+            <Button
+              size="sm"
+              onClick={() =>
+                setEditing({ name: "", body: STARTER_BODY, variables: [] })
+              }
+            >
+              <Plus className="h-4 w-4" /> New template
+            </Button>
+          }
+        />
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {templates.map((t) => (
-            <Card key={t.id} className="cursor-pointer hover:shadow-md transition" onClick={() => setEditing(t)}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-medium">{t.name}</p>
-                    <p className="text-xs text-slate-500">v{t.version} · updated {new Date(t.updatedAt).toLocaleDateString()}</p>
+            <Card
+              key={t.id}
+              className="card-hover cursor-pointer"
+              onClick={() => setEditing(t)}
+            >
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-slate-900">{t.name}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      v{t.version} · updated{" "}
+                      {new Date(t.updatedAt).toLocaleDateString()}
+                    </p>
                   </div>
-                  <Badge>{t.isActive ? "Active" : "Inactive"}</Badge>
+                  <Badge variant={t.isActive ? "success" : "secondary"}>
+                    {t.isActive ? "Active" : "Inactive"}
+                  </Badge>
                 </div>
-                <p className="mt-3 text-xs text-slate-600 line-clamp-3">{t.body.replace(/<[^>]+>/g, "").slice(0, 160)}…</p>
+                <p className="mt-3 line-clamp-3 text-xs text-slate-600">
+                  {t.body.replace(/<[^>]+>/g, "").slice(0, 160)}…
+                </p>
               </CardContent>
             </Card>
           ))}
-          {templates.length === 0 && (
-            <Card>
-              <CardContent className="p-6 text-center text-slate-500">
-                No templates yet. Create one to start sending offer letters.
-              </CardContent>
-            </Card>
-          )}
         </div>
       )}
     </div>

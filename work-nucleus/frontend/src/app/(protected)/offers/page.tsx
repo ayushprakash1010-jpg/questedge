@@ -2,10 +2,20 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { FileText, Receipt } from "lucide-react";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, Plus } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/shared/page-header";
+import {
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/shared/data-table";
 
 interface OfferRow {
   id: string;
@@ -17,17 +27,27 @@ interface OfferRow {
   compensation: { fixedAnnual: string; currency: string } | null;
 }
 
-const statusColors: Record<string, string> = {
-  DRAFT: "bg-slate-100 text-slate-700",
-  PENDING_APPROVAL: "bg-amber-100 text-amber-700",
-  APPROVED: "bg-blue-100 text-blue-700",
-  SENT: "bg-indigo-100 text-indigo-700",
-  VIEWED: "bg-purple-100 text-purple-700",
-  ACCEPTED: "bg-emerald-100 text-emerald-700",
-  DECLINED: "bg-rose-100 text-rose-700",
-  REVOKED: "bg-slate-200 text-slate-600",
-  EXPIRED: "bg-slate-200 text-slate-600",
+const offerStatusVariant: Record<string, BadgeProps["variant"]> = {
+  DRAFT: "secondary",
+  PENDING_APPROVAL: "warning",
+  APPROVED: "info",
+  SENT: "default",
+  VIEWED: "default",
+  ACCEPTED: "success",
+  DECLINED: "destructive",
+  REVOKED: "secondary",
+  EXPIRED: "secondary",
 };
+
+const FILTER_OPTIONS = [
+  "",
+  "DRAFT",
+  "PENDING_APPROVAL",
+  "APPROVED",
+  "SENT",
+  "ACCEPTED",
+  "DECLINED",
+];
 
 export default function OffersListPage() {
   const [data, setData] = useState<OfferRow[]>([]);
@@ -44,80 +64,88 @@ export default function OffersListPage() {
   }, [statusFilter]);
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Offers</h1>
-          <p className="text-sm text-slate-500">Generate, approve, and track offer letters end-to-end.</p>
-        </div>
-        <Link href="/offers/templates">
-          <Button variant="outline">
-            <FileText className="w-4 h-4 mr-2" /> Templates
-          </Button>
-        </Link>
-      </div>
+    <div>
+      <PageHeader
+        title="Offers"
+        subtitle="Generate, approve, and track offer letters end-to-end."
+        actions={
+          <Link href="/offers/templates">
+            <Button variant="outline" size="sm">
+              <FileText className="h-4 w-4" /> Templates
+            </Button>
+          </Link>
+        }
+      />
 
-      <div className="flex gap-2 mb-4">
-        {["", "DRAFT", "PENDING_APPROVAL", "APPROVED", "SENT", "ACCEPTED", "DECLINED"].map((s) => (
-          <button
+      <div className="mb-4 flex flex-wrap gap-2">
+        {FILTER_OPTIONS.map((s) => (
+          <Button
             key={s || "all"}
+            variant={statusFilter === s ? "default" : "outline"}
+            size="sm"
             onClick={() => setStatusFilter(s)}
-            className={`px-3 py-1 text-xs rounded-full border ${
-              statusFilter === s ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-700"
-            }`}
           >
-            {s || "All"}
-          </button>
+            {s.replace("_", " ") || "All"}
+          </Button>
         ))}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{loading ? "Loading…" : `${data.length} offers`}</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <table className="w-full text-sm">
-            <thead className="text-left text-xs uppercase tracking-wider text-slate-500 bg-slate-50">
-              <tr>
-                <th className="px-4 py-3">Candidate</th>
-                <th className="px-4 py-3">Template</th>
-                <th className="px-4 py-3">Compensation</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Created</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((o) => (
-                <tr key={o.id} className="border-t hover:bg-slate-50">
-                  <td className="px-4 py-3">
-                    <Link className="text-blue-600 hover:underline" href={`/offers/${o.id}`}>
-                      {o.application.candidate.name}
-                    </Link>
-                    <div className="text-xs text-slate-500">{o.application.candidate.email}</div>
-                  </td>
-                  <td className="px-4 py-3 text-slate-700">{o.template.name}</td>
-                  <td className="px-4 py-3 text-slate-700">
-                    {o.compensation ? `${o.compensation.currency} ${Number(o.compensation.fixedAnnual).toLocaleString("en-IN")}` : "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge className={statusColors[o.status] ?? ""}>{o.status}</Badge>
-                  </td>
-                  <td className="px-4 py-3 text-slate-500 text-xs">
-                    {new Date(o.createdAt).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-              {!loading && data.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center text-slate-500">
-                    No offers yet. Create one from a SELECTED candidate&apos;s decision page.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
+      {loading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} variant="block" className="h-14 w-full" />
+          ))}
+        </div>
+      ) : data.length === 0 ? (
+        <EmptyState
+          icon={<Receipt className="h-6 w-6" />}
+          title="No offers yet"
+          description="Create one from a SELECTED candidate's decision page."
+        />
+      ) : (
+        <DataTable>
+          <DataTableHeader>
+            <tr>
+              <DataTableHead>Candidate</DataTableHead>
+              <DataTableHead>Template</DataTableHead>
+              <DataTableHead>Compensation</DataTableHead>
+              <DataTableHead>Status</DataTableHead>
+              <DataTableHead>Created</DataTableHead>
+            </tr>
+          </DataTableHeader>
+          <DataTableBody>
+            {data.map((o) => (
+              <DataTableRow key={o.id}>
+                <DataTableCell>
+                  <Link
+                    href={`/offers/${o.id}`}
+                    className="text-sm font-medium text-indigo-600 hover:underline"
+                  >
+                    {o.application.candidate.name}
+                  </Link>
+                  <div className="text-xs text-slate-500">
+                    {o.application.candidate.email}
+                  </div>
+                </DataTableCell>
+                <DataTableCell>{o.template.name}</DataTableCell>
+                <DataTableCell>
+                  {o.compensation
+                    ? `${o.compensation.currency} ${Number(o.compensation.fixedAnnual).toLocaleString("en-IN")}`
+                    : "—"}
+                </DataTableCell>
+                <DataTableCell>
+                  <Badge variant={offerStatusVariant[o.status] ?? "outline"}>
+                    {o.status.replace("_", " ")}
+                  </Badge>
+                </DataTableCell>
+                <DataTableCell className="text-xs text-slate-500">
+                  {new Date(o.createdAt).toLocaleDateString()}
+                </DataTableCell>
+              </DataTableRow>
+            ))}
+          </DataTableBody>
+        </DataTable>
+      )}
     </div>
   );
 }
