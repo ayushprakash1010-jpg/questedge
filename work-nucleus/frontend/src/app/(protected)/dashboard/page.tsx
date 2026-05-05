@@ -316,7 +316,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Pipeline Funnel</CardTitle>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => exportCsv(funnel, "pipeline-funnel")}>
+            <Button variant="ghost" size="icon-sm" onClick={() => exportCsv(funnel, "pipeline-funnel")}>
               <Download className="h-3.5 w-3.5" />
             </Button>
           </CardHeader>
@@ -343,7 +343,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Hiring Progress</CardTitle>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => exportCsv(progress, "hiring-progress")}>
+            <Button variant="ghost" size="icon-sm" onClick={() => exportCsv(progress, "hiring-progress")}>
               <Download className="h-3.5 w-3.5" />
             </Button>
           </CardHeader>
@@ -415,7 +415,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Budget vs Actual</CardTitle>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => exportCsv(cost, "budget")}>
+            <Button variant="ghost" size="icon-sm" onClick={() => exportCsv(cost, "budget")}>
               <Download className="h-3.5 w-3.5" />
             </Button>
           </CardHeader>
@@ -445,7 +445,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Interviewer Stats</CardTitle>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => exportCsv(interviewers, "interviewers")}>
+            <Button variant="ghost" size="icon-sm" onClick={() => exportCsv(interviewers, "interviewers")}>
               <Download className="h-3.5 w-3.5" />
             </Button>
           </CardHeader>
@@ -497,7 +497,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Source Effectiveness</CardTitle>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => exportCsv(sources, "sources")}>
+            <Button variant="ghost" size="icon-sm" onClick={() => exportCsv(sources, "sources")}>
               <Download className="h-3.5 w-3.5" />
             </Button>
           </CardHeader>
