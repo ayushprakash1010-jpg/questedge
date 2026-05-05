@@ -31,6 +31,7 @@ class BaseAgent:
         system_prompt: str,
         user_prompt: str,
         max_tokens: int = 4096,
+        temperature: float | None = None,
     ) -> dict[str, Any]:
         start_time = time.time()
         status = "success"
@@ -40,13 +41,16 @@ class BaseAgent:
         tokens_output = None
 
         try:
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=max_tokens,
-                system=system_prompt,
-                messages=[{"role": "user", "content": user_prompt}],
-                timeout=30.0,
-            )
+            kwargs: dict[str, Any] = {
+                "model": self.model,
+                "max_tokens": max_tokens,
+                "system": system_prompt,
+                "messages": [{"role": "user", "content": user_prompt}],
+                "timeout": 30.0,
+            }
+            if temperature is not None:
+                kwargs["temperature"] = temperature
+            response = self.client.messages.create(**kwargs)
 
             tokens_input = response.usage.input_tokens
             tokens_output = response.usage.output_tokens

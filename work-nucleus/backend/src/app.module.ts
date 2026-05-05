@@ -29,6 +29,8 @@ import { CompensationModule } from './modules/compensation/compensation.module';
 import { OffersModule } from './modules/offers/offers.module';
 import { JoiningModule } from './modules/joining/joining.module';
 import { ESignModule } from './integrations/esign/esign.module';
+import { BgvIntegrationsModule } from './integrations/bgv/bgv.module';
+import { BgvModule } from './modules/bgv/bgv.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 
@@ -64,6 +66,8 @@ import { RolesGuard } from './auth/guards/roles.guard';
     CompensationModule,
     OffersModule,
     JoiningModule,
+    BgvIntegrationsModule,
+    BgvModule,
     HealthModule,
   ],
   providers: [

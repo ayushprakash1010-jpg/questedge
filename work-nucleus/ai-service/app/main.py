@@ -19,6 +19,8 @@ from app.schemas.insights import InsightsRequest, InsightsResponse
 from app.agents.insights_agent import InsightsAgent
 from app.schemas.resume_match import ResumeMatchRequest, ResumeMatchResponse
 from app.agents.resume_matcher import ResumeMatcherAgent
+from app.schemas.bgv import BgvSummariseRequest, BgvSummariseResponse
+from app.agents.bgv_summariser import BgvSummariserAgent
 from app.services.resume_parser import extract_text
 
 logging.basicConfig(level=logging.INFO)
@@ -30,6 +32,7 @@ candidate_scorer = CandidateScorerAgent()
 communication_drafter = CommunicationDrafterAgent()
 insights_agent = InsightsAgent()
 resume_matcher = ResumeMatcherAgent()
+bgv_summariser = BgvSummariserAgent()
 
 
 @asynccontextmanager
@@ -137,4 +140,20 @@ async def match_resume(
     logger.info(f"Matching resume for: {request.candidateName}")
     result = await resume_matcher.match(request)
     logger.info(f"Resume match complete for {request.candidateName}: score={result.matchScore}")
+    return result
+
+
+@app.post("/ai/bgv-summarise", response_model=BgvSummariseResponse)
+async def bgv_summarise(
+    request: BgvSummariseRequest,
+    _api_key: str = Depends(verify_internal_api_key),
+):
+    """Summarise BGV findings into an advisory recommendation (PROCEED / CAUTION / BLOCK).
+
+    IMPORTANT: This output is advisory only and never auto-actioned. A human reviewer
+    must approve any candidate-facing decision.
+    """
+    logger.info(f"Summarising BGV for: {request.candidate.name} ({len(request.checks)} checks)")
+    result = await bgv_summariser.summarise(request)
+    logger.info(f"BGV summary complete: recommendation={result.overall_recommendation}")
     return result

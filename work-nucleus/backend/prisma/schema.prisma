@@ -136,6 +136,7 @@ enum TicketCategory {
   FEATURE_REQUEST
   BUG_REPORT
   ONBOARDING
+  BGV_DISCREPANCY
   GENERAL
 }
 
@@ -195,6 +196,61 @@ enum OfferApprovalDecision {
   REJECTED
 }
 
+// ── BGV Enums (Phase 2) ─────────────────────────────────────────
+
+enum BgvProfileStatus {
+  NOT_STARTED
+  CONSENT_PENDING
+  IN_PROGRESS
+  NEEDS_REVIEW
+  COMPLETED
+  CANCELLED
+}
+
+enum BgvCheckType {
+  PAN
+  AADHAAR
+  PASSPORT
+  EDUCATION
+  EMPLOYMENT_HISTORY
+  ADDRESS_CURRENT
+  ADDRESS_PERMANENT
+  CRIMINAL_COURT
+  POLICE_VERIFICATION
+  CREDIT_CHECK
+  GLOBAL_DATABASE
+  DRUG_TEST
+  REFERENCE
+}
+
+enum BgvCheckStatus {
+  QUEUED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum BgvFinding {
+  PENDING
+  CLEAR
+  DISCREPANCY
+  UNABLE_TO_VERIFY
+}
+
+enum BgvRiskScore {
+  GREEN
+  AMBER
+  RED
+}
+
+enum BgvVendor {
+  AUTHBRIDGE
+  ONGRID
+  IDFY
+  SPRINGVERIFY
+}
+
 // ── Core Models ─────────────────────────────────────────────────
 
 model Organization {
@@ -219,6 +275,7 @@ model Organization {
   offerTemplates     OfferTemplate[]
   offers             Offer[]
   joiningChecklists  JoiningChecklist[]
+  bgvProfiles        BgvProfile[]
 
   @@map("organizations")
 }
@@ -413,6 +470,7 @@ model Candidate {
 
   organization Organization           @relation(fields: [orgId], references: [id])
   applications CandidateApplication[]
+  bgvProfiles  BgvProfile[]
 
   @@unique([orgId, email])
   @@index([orgId])
@@ -800,6 +858,7 @@ model Offer {
   signatureRequest ESignRequest?
   docVersions      OfferDocVersion[]
   joining          CandidateJoining?
+  bgvProfile       BgvProfile?
 
   @@index([orgId, status])
   @@map("offers")
@@ -900,6 +959,66 @@ model CandidateJoining {
 
   @@index([status])
   @@map("candidate_joinings")
+}
+
+// ── BGV Models (Phase 2) ────────────────────────────────────────
+
+model BgvProfile {
+  id             String           @id @default(uuid()) @db.Uuid
+  orgId          String           @db.Uuid
+  candidateId    String           @map("candidate_id") @db.Uuid
+  offerId        String?          @unique @map("offer_id") @db.Uuid
+  status         BgvProfileStatus @default(NOT_STARTED)
+  vendor         BgvVendor        @default(AUTHBRIDGE)
+  vendorRefId    String?          @map("vendor_ref_id")
+  consentedAt    DateTime?        @map("consented_at")
+  consentIpHash  String?          @map("consent_ip_hash")
+  consentDocUrl  String?          @map("consent_doc_url")
+  consentToken   String           @unique @map("consent_token")
+  consentOtp     String?          @map("consent_otp")
+  consentOtpExp  DateTime?        @map("consent_otp_exp")
+  startedAt      DateTime?        @map("started_at")
+  completedAt    DateTime?        @map("completed_at")
+  finalReportUrl String?          @map("final_report_url")
+  riskScore      BgvRiskScore?    @map("risk_score")
+  aiSummary      Json?            @map("ai_summary")
+  retentionDays  Int              @default(90) @map("retention_days")
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  candidate    Candidate    @relation(fields: [candidateId], references: [id])
+  offer        Offer?       @relation(fields: [offerId], references: [id])
+  checks       BgvCheck[]
+
+  @@index([orgId, status])
+  @@index([candidateId])
+  @@map("bgv_profiles")
+}
+
+model BgvCheck {
+  id            String         @id @default(uuid()) @db.Uuid
+  profileId     String         @map("profile_id") @db.Uuid
+  type          BgvCheckType
+  status        BgvCheckStatus @default(QUEUED)
+  vendorRefId   String?        @map("vendor_ref_id")
+  request       Json           @default("{}")
+  response      Json?
+  finding       BgvFinding     @default(PENDING)
+  reportUrl     String?        @map("report_url")
+  costInPaise   Int?           @map("cost_in_paise")
+  retryCount    Int            @default(0) @map("retry_count")
+  failureReason String?        @map("failure_reason")
+  startedAt     DateTime?      @map("started_at")
+  completedAt   DateTime?      @map("completed_at")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  profile BgvProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, status])
+  @@index([type])
+  @@map("bgv_checks")
 }
 
 // ── AI Dashboard Insights ───────────────────────────────────────
