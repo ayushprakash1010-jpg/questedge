@@ -1,15 +1,20 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import {
+  Plus, Users, X, Search, UserPlus, Sparkles, Award, FileText, MessageSquare, Settings, type LucideIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui/spinner";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
-  Plus, Users, Clock, Award, X, Search, UserPlus, Sparkles,
-} from "lucide-react";
+  CandidateCard,
+  slaBadgeClass,
+} from "@/components/shared/candidate-card";
+import { cn } from "@/lib/utils";
 
 interface KanbanCandidate {
   applicationId: string;
@@ -44,15 +49,21 @@ interface PipelineStats {
   rejectionRate: number;
 }
 
-const stageTypeIcons: Record<string, string> = {
-  SCREENING: "🔍",
-  TECHNICAL: "💻",
-  HR: "🤝",
-  LEADERSHIP: "👔",
-  CULTURAL: "🌐",
-  OFFER: "📋",
-  CUSTOM: "⚙️",
+const stageTypeIcon: Record<string, LucideIcon> = {
+  SCREENING: Search,
+  TECHNICAL: Sparkles,
+  HR: MessageSquare,
+  LEADERSHIP: Award,
+  CULTURAL: Users,
+  OFFER: FileText,
+  CUSTOM: Settings,
 };
+
+function buildRoleLabel(c: KanbanCandidate): string | undefined {
+  const parts = [c.currentRole, c.currentCompany].filter(Boolean);
+  if (parts.length === 0) return undefined;
+  return parts.join(" @ ");
+}
 
 export function KanbanBoard({
   planId,
@@ -110,12 +121,15 @@ export function KanbanBoard({
         ...s,
         candidates: s.candidates.filter((c) => c.applicationId !== draggedApp),
       }));
-      const candidate = prev.flatMap((s) => s.candidates).find((c) => c.applicationId === draggedApp);
+      const candidate = prev
+        .flatMap((s) => s.candidates)
+        .find((c) => c.applicationId === draggedApp);
       if (candidate) {
         const targetIdx = newStages.findIndex((s) => s.id === targetStageId);
         if (targetIdx !== -1) {
           newStages[targetIdx].candidates.push({ ...candidate, daysInStage: 0 });
-          newStages[targetIdx].candidateCount = newStages[targetIdx].candidates.length;
+          newStages[targetIdx].candidateCount =
+            newStages[targetIdx].candidates.length;
         }
       }
       return newStages.map((s) => ({ ...s, candidateCount: s.candidates.length }));
@@ -123,7 +137,6 @@ export function KanbanBoard({
 
     setDraggedApp(null);
 
-    // API call
     try {
       await fetch(`/api/applications/${draggedApp}`, {
         method: "POST",
@@ -135,38 +148,21 @@ export function KanbanBoard({
     }
   };
 
-  const getDaysColor = (days: number, maxDays: number | null) => {
-    if (!maxDays) return "text-slate-500";
-    const ratio = days / maxDays;
-    if (ratio > 1) return "text-red-600 bg-red-50";
-    if (ratio > 0.5) return "text-amber-600 bg-amber-50";
-    return "text-green-600 bg-green-50";
-  };
-
-  const getScoreColor = (score: number | null) => {
-    if (score === null) return "";
-    if (score > 75) return "text-green-600 bg-green-50";
-    if (score > 50) return "text-amber-600 bg-amber-50";
-    return "text-red-600 bg-red-50";
-  };
-
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        <Spinner />
       </div>
     );
   }
 
   if (stages.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <Users className="h-12 w-12 text-slate-300" />
-        <h3 className="mt-4 text-lg font-semibold text-slate-900">No Pipeline Stages</h3>
-        <p className="mt-1 text-sm text-slate-500">
-          Go to the Setup tab to configure your interview pipeline stages first.
-        </p>
-      </div>
+      <EmptyState
+        icon={<Users className="h-6 w-6" />}
+        title="No Pipeline Stages"
+        description="Go to the Setup tab to configure your interview pipeline stages first."
+      />
     );
   }
 
@@ -184,144 +180,107 @@ export function KanbanBoard({
 
   return (
     <div className="space-y-4">
-      {/* Stats bar */}
+      {/* Stats strip */}
       {stats && (
-        <div className="flex gap-6 rounded-lg border border-slate-200 bg-white px-4 py-3">
-          <StatItem label="Total" value={stats.totalCandidates} />
-          <StatItem label="Active" value={stats.activeCandidates} color="text-blue-600" />
-          <StatItem label="Selected" value={stats.selected} color="text-green-600" />
-          <StatItem label="Rejected" value={stats.rejected} color="text-red-600" />
-          <StatItem label="Rejection Rate" value={`${stats.rejectionRate}%`} />
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-slate-200/70 bg-white px-5 py-3 shadow-sm">
+          <Stat label="Total" value={stats.totalCandidates} dotClass="bg-slate-400" />
+          <Stat label="Active" value={stats.activeCandidates} dotClass="bg-blue-500" />
+          <Stat label="Selected" value={stats.selected} dotClass="bg-emerald-500" />
+          <Stat label="Rejected" value={stats.rejected} dotClass="bg-red-500" />
+          <Stat label="Rejection Rate" value={`${stats.rejectionRate}%`} dotClass="bg-amber-500" />
         </div>
       )}
 
       {/* Action bar */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              className="pl-9 w-60"
-              placeholder="Search candidates..."
-              value={searchFilter}
-              onChange={(e) => setSearchFilter(e.target.value)}
-            />
-          </div>
-        </div>
+        <Input
+          leftIcon={<Search />}
+          className="w-60"
+          placeholder="Search candidates..."
+          value={searchFilter}
+          onChange={(e) => setSearchFilter(e.target.value)}
+        />
         <Button size="sm" onClick={() => setShowAddDialog(true)}>
-          <UserPlus className="mr-1 h-3 w-3" />
+          <UserPlus className="h-3.5 w-3.5" />
           Add Candidate
         </Button>
       </div>
 
       {/* Kanban columns */}
-      <div className="flex gap-4 overflow-x-auto pb-4">
-        {filteredStages.map((stage) => (
-          <div
-            key={stage.id}
-            className="w-72 shrink-0 rounded-lg border border-slate-200 bg-slate-50"
-            onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, stage.id)}
-          >
-            {/* Column header */}
-            <div className="border-b border-slate-200 px-3 py-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm">{stageTypeIcons[stage.stageType] || "⚙️"}</span>
-                  <h4 className="text-sm font-semibold text-slate-900">{stage.name}</h4>
+      <div className="flex gap-3 overflow-x-auto pb-4">
+        {filteredStages.map((stage) => {
+          const Icon = stageTypeIcon[stage.stageType] ?? Settings;
+          const slaCls = stage.maxDurationDays
+            ? slaBadgeClass(stage.avgDaysInStage, stage.maxDurationDays)
+            : "text-slate-500";
+
+          return (
+            <div
+              key={stage.id}
+              className="flex w-[268px] shrink-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, stage.id)}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-slate-200 bg-white px-3.5 py-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50">
+                    <Icon className="h-3.5 w-3.5 text-indigo-600" />
+                  </div>
+                  <span className="text-sm font-semibold text-slate-800">
+                    {stage.name}
+                  </span>
                 </div>
-                <Badge variant="outline" className="text-xs">
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-500">
                   {stage.candidateCount}
-                </Badge>
+                </span>
               </div>
-              {stage.avgDaysInStage > 0 && (
-                <div className="mt-1 flex items-center gap-1">
-                  <Clock className="h-3 w-3 text-slate-400" />
+
+              {/* SLA meta row */}
+              {(stage.avgDaysInStage > 0 || stage.maxDurationDays) && (
+                <div className="border-b border-slate-100 bg-white px-3.5 py-1.5">
                   <span
                     className={cn(
-                      "rounded px-1 text-xs",
-                      stage.maxDurationDays && stage.avgDaysInStage > stage.maxDurationDays
-                        ? "text-amber-600"
-                        : "text-slate-500"
+                      "rounded px-1 text-[10px] font-medium",
+                      slaCls
                     )}
                   >
                     Avg {stage.avgDaysInStage}d
+                    {stage.maxDurationDays
+                      ? ` · SLA ${stage.maxDurationDays}d`
+                      : ""}
                   </span>
                 </div>
               )}
-            </div>
 
-            {/* Candidate cards */}
-            <div className="max-h-[60vh] space-y-2 overflow-y-auto p-2">
-              {stage.candidates.map((candidate) => (
-                <div
-                  key={candidate.applicationId}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, candidate.applicationId)}
-                  onClick={() => onCandidateClick(candidate.applicationId)}
-                  className={cn(
-                    "cursor-pointer rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-all hover:border-indigo-200 hover:shadow",
-                    draggedApp === candidate.applicationId && "opacity-50"
-                  )}
-                >
-                  <p className="text-sm font-medium text-slate-900">{candidate.name}</p>
-                  {(candidate.currentRole || candidate.currentCompany) && (
-                    <p className="mt-0.5 text-xs text-slate-500">
-                      {candidate.currentRole}
-                      {candidate.currentRole && candidate.currentCompany ? " @ " : ""}
-                      {candidate.currentCompany}
-                    </p>
-                  )}
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    {candidate.experienceYears !== null && (
-                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">
-                        {candidate.experienceYears}y exp
-                      </span>
-                    )}
-                    <span
-                      className={cn(
-                        "flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs",
-                        getDaysColor(candidate.daysInStage, stage.maxDurationDays)
-                      )}
-                    >
-                      <Clock className="h-3 w-3" />
-                      {candidate.daysInStage}d
-                    </span>
-                    {candidate.aiMatchScore !== null && (
-                      <span
-                        className={cn(
-                          "flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs",
-                          getScoreColor(candidate.aiMatchScore)
-                        )}
-                        title="AI Resume Match Score"
-                      >
-                        <Sparkles className="h-3 w-3" />
-                        {candidate.aiMatchScore}
-                      </span>
-                    )}
-                    {candidate.totalScore !== null && (
-                      <span
-                        className={cn(
-                          "flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs",
-                          getScoreColor(candidate.totalScore)
-                        )}
-                      >
-                        <Award className="h-3 w-3" />
-                        {candidate.totalScore}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {stage.candidates.length === 0 && (
-                <p className="py-8 text-center text-xs text-slate-400">No candidates</p>
-              )}
+              {/* Cards */}
+              <div className="flex max-h-[60vh] flex-col gap-2 overflow-y-auto p-2">
+                {stage.candidates.map((c) => (
+                  <CandidateCard
+                    key={c.applicationId}
+                    name={c.name}
+                    role={buildRoleLabel(c)}
+                    score={c.totalScore ?? c.aiMatchScore ?? undefined}
+                    daysInStage={c.daysInStage}
+                    slaMaxDays={stage.maxDurationDays ?? 0}
+                    yearsExperience={c.experienceYears ?? undefined}
+                    isDragging={draggedApp === c.applicationId}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, c.applicationId)}
+                    onClick={() => onCandidateClick(c.applicationId)}
+                  />
+                ))}
+                {stage.candidates.length === 0 && (
+                  <p className="py-8 text-center text-xs text-slate-400">
+                    No candidates
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* Add Candidate Dialog */}
       {showAddDialog && (
         <AddCandidateDialog
           planId={planId}
@@ -336,13 +295,28 @@ export function KanbanBoard({
   );
 }
 
-function StatItem({ label, value, color }: { label: string; value: number | string; color?: string }) {
+function Stat({
+  label,
+  value,
+  dotClass,
+}: {
+  label: string;
+  value: number | string;
+  dotClass: string;
+}) {
   return (
-    <div>
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className={cn("text-sm font-semibold", color || "text-slate-900")}>{value}</p>
+    <div className="flex items-center gap-2 text-xs">
+      <span className={cn("h-2 w-2 rounded-full", dotClass)} />
+      <span className="font-bold text-slate-900">{value}</span>
+      <span className="text-slate-400">{label}</span>
     </div>
   );
+}
+
+interface SearchedCandidate {
+  id: string;
+  name: string;
+  email: string;
 }
 
 function AddCandidateDialog({
@@ -356,7 +330,7 @@ function AddCandidateDialog({
 }) {
   const [mode, setMode] = useState<"search" | "create">("create");
   const [searchQ, setSearchQ] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchedCandidate[]>([]);
   const [form, setForm] = useState({
     name: "", email: "", phone: "", source: "DIRECT",
     currentCompany: "", currentRole: "", experienceYears: "",
@@ -393,7 +367,6 @@ function AddCandidateDialog({
     if (!form.name || !form.email) return;
     setSaving(true);
     try {
-      // Create candidate
       const createRes = await fetch("/api/candidates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -407,7 +380,6 @@ function AddCandidateDialog({
       if (!createRes.ok) return;
       const candidate = await createRes.json();
 
-      // Add to pipeline
       await fetch(`/api/hiring-plans/${planId}/pipeline`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -426,12 +398,11 @@ function AddCandidateDialog({
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-slate-900">Add Candidate</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
-            <X className="h-5 w-5" />
-          </button>
+          <Button variant="ghost" size="icon-sm" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
         </div>
 
-        {/* Mode toggle */}
         <div className="mt-4 flex gap-2">
           <Button
             variant={mode === "create" ? "default" : "outline"}
