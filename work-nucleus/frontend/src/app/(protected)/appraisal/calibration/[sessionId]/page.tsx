@@ -2,10 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { AlertTriangle, Lock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Lock } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { toast } from "@/components/ui/toaster";
 
 interface Board {
   session: {
@@ -52,12 +55,16 @@ export default function CalibrationBoardPage() {
     if (!reason || reason.length < 5) return;
     setBusy(true);
     try {
-      await fetch(`/api/v2/appraisal/calibration/${sessionId}/move`, {
+      const res = await fetch(`/api/v2/appraisal/calibration/${sessionId}/move`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ employeeId, newRating, reason }),
       });
+      if (!res.ok) throw new Error("Move failed");
       await refresh();
+      toast.success("Rating moved");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Move failed");
     } finally {
       setBusy(false);
     }
@@ -67,14 +74,26 @@ export default function CalibrationBoardPage() {
     if (!window.confirm("Lock the session? This freezes all ratings.")) return;
     setBusy(true);
     try {
-      await fetch(`/api/v2/appraisal/calibration/${sessionId}/lock`, { method: "POST" });
+      const res = await fetch(`/api/v2/appraisal/calibration/${sessionId}/lock`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error("Lock failed");
       await refresh();
+      toast.success("Session locked");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Lock failed");
     } finally {
       setBusy(false);
     }
   }
 
-  if (!board) return <div className="p-6 text-slate-500">Loading…</div>;
+  if (!board) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   const grouped: Record<number, Board["assessments"]> = { 1: [], 2: [], 3: [], 4: [], 5: [] };
   for (const a of board.assessments) {
@@ -85,28 +104,31 @@ export default function CalibrationBoardPage() {
   const locked = board.session.status === "COMPLETED";
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="mx-auto max-w-7xl">
       <header className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Calibration: {board.session.groupName}</h1>
-          <Badge>{board.session.status}</Badge>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            Calibration: {board.session.groupName}
+          </h1>
+          <Badge className="mt-2">{board.session.status}</Badge>
         </div>
         <div className="flex gap-2">
           {!locked && (
             <Button onClick={lock} disabled={busy}>
-              <Lock className="w-4 h-4 mr-1" /> Lock &amp; finalise
+              <Lock className="h-4 w-4" /> Lock &amp; finalise
             </Button>
           )}
         </div>
       </header>
 
       {board.forceFitWarning && (
-        <Card className="mb-4 border-amber-300">
-          <CardContent className="p-3 flex items-center gap-2 text-amber-700">
-            <AlertTriangle className="w-5 h-5" /> More than 10% of participants have been moved — please justify in the
-            decision log.
-          </CardContent>
-        </Card>
+        <Alert variant="warning" className="mb-4">
+          <AlertTriangle />
+          <AlertDescription>
+            More than 10% of participants have been moved — please justify in
+            the decision log.
+          </AlertDescription>
+        </Alert>
       )}
 
       <Card className="mb-4">
@@ -116,9 +138,14 @@ export default function CalibrationBoardPage() {
         <CardContent>
           <div className="grid grid-cols-5 gap-2 text-xs">
             {BUCKETS.map((r) => (
-              <div key={r} className="border rounded-md p-2">
+              <div
+                key={r}
+                className="rounded-md border border-slate-200/60 p-2"
+              >
                 <p className="text-slate-500">Rating {r}</p>
-                <p className="text-lg font-semibold">{board.actualPct[r] ?? 0}%</p>
+                <p className="text-lg font-bold text-slate-900">
+                  {board.actualPct[r] ?? 0}%
+                </p>
                 <p className="text-slate-400">target {board.target[r] ?? 0}%</p>
               </div>
             ))}
@@ -130,7 +157,9 @@ export default function CalibrationBoardPage() {
         {BUCKETS.map((r) => (
           <Card key={r}>
             <CardHeader>
-              <CardTitle className="text-sm">{r} ({grouped[r].length})</CardTitle>
+              <CardTitle className="text-sm">
+                {r} ({grouped[r].length})
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {grouped[r].map((a) => (
@@ -138,13 +167,17 @@ export default function CalibrationBoardPage() {
                   key={a.id}
                   disabled={locked || busy}
                   onClick={() => move(a.employee.id, r)}
-                  className="w-full text-left border rounded-md p-2 hover:bg-slate-50 disabled:opacity-60"
+                  className="w-full rounded-md border border-slate-200/60 p-2 text-left transition-colors hover:border-indigo-200 hover:bg-slate-50 disabled:opacity-60"
                 >
-                  <p className="text-sm font-medium">{a.employee.name}</p>
+                  <p className="text-sm font-medium text-slate-900">
+                    {a.employee.name}
+                  </p>
                   <p className="text-xs text-slate-500">{a.manager.name}</p>
                 </button>
               ))}
-              {grouped[r].length === 0 && <p className="text-xs text-slate-400">No employees here.</p>}
+              {grouped[r].length === 0 && (
+                <p className="text-xs text-slate-400">No employees here.</p>
+              )}
             </CardContent>
           </Card>
         ))}
@@ -152,15 +185,20 @@ export default function CalibrationBoardPage() {
 
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle>Decision log ({board.session.decisionLog.length})</CardTitle>
+          <CardTitle>
+            Decision log ({board.session.decisionLog.length})
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-1 text-xs">
           {board.session.decisionLog.map((e, i) => (
-            <div key={i} className="border-b py-1">
-              {e.employeeId.slice(0, 8)}: {e.oldRating ?? "—"} → {e.newRating} · {e.reason}
+            <div key={i} className="border-b border-slate-100 py-1">
+              {e.employeeId.slice(0, 8)}: {e.oldRating ?? "—"} → {e.newRating} ·{" "}
+              {e.reason}
             </div>
           ))}
-          {board.session.decisionLog.length === 0 && <p className="text-slate-500">No moves yet.</p>}
+          {board.session.decisionLog.length === 0 && (
+            <p className="text-slate-500">No moves yet.</p>
+          )}
         </CardContent>
       </Card>
     </div>

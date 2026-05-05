@@ -2,11 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
+import { Send } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Save, Send } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
+import { toast } from "@/components/ui/toaster";
+import { cn } from "@/lib/utils";
 
 interface Assessment {
   id: string;
@@ -38,7 +41,6 @@ export default function SelfAssessmentPage() {
     fetch("/api/v2/profile")
       .then((r) => r.json())
       .then((profile) => {
-        // Assume manager information present in profile or fallback to self
         const managerId = profile?.managerId ?? profile?.id;
         const employeeId = profile?.id;
         if (!employeeId) return;
@@ -74,24 +76,42 @@ export default function SelfAssessmentPage() {
 
   async function submit() {
     if (!a) return;
-    const res = await fetch(`/api/v2/appraisal/assessments/${a.id}/submit`, { method: "POST" });
-    if (res.ok) {
+    try {
+      const res = await fetch(`/api/v2/appraisal/assessments/${a.id}/submit`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error("Submit failed");
       const updated = await res.json();
       setA(updated);
+      toast.success("Self-assessment submitted");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Submit failed");
     }
   }
 
-  if (!a) return <div className="p-6 text-slate-500">Loading…</div>;
+  if (!a) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   const isLocked = a.status !== "DRAFT" && a.status !== "REOPENED";
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="mx-auto max-w-4xl">
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold">Self-assessment</h1>
-        <p className="text-sm text-slate-500">
-          Status: <Badge>{a.status}</Badge>{" "}
-          {savedAt && <span className="text-xs ml-2">Saved {savedAt.toLocaleTimeString()}</span>}
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          Self-assessment
+        </h1>
+        <p className="mt-1 flex items-center gap-2 text-sm text-slate-500">
+          Status: <Badge>{a.status}</Badge>
+          {savedAt && (
+            <span className="text-xs text-slate-400">
+              Saved {savedAt.toLocaleTimeString()}
+            </span>
+          )}
         </p>
       </header>
 
@@ -102,7 +122,7 @@ export default function SelfAssessmentPage() {
         <CardContent className="space-y-3">
           {COMPETENCIES.map((c) => (
             <div key={c.key} className="flex items-center justify-between gap-4">
-              <span className="text-sm">{c.label}</span>
+              <span className="text-sm text-slate-700">{c.label}</span>
               <div className="flex gap-1">
                 {[1, 2, 3, 4, 5].map((v) => (
                   <button
@@ -113,9 +133,12 @@ export default function SelfAssessmentPage() {
                       setRatings(next);
                       autosave({ ratings: next });
                     }}
-                    className={`w-8 h-8 rounded-md border text-sm ${
-                      ratings[c.key] === v ? "bg-indigo-600 text-white border-indigo-600" : "bg-white"
-                    }`}
+                    className={cn(
+                      "h-8 w-8 rounded-md border text-sm font-medium transition-colors disabled:opacity-50",
+                      ratings[c.key] === v
+                        ? "border-indigo-600 bg-indigo-600 text-white"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-slate-50"
+                    )}
                   >
                     {v}
                   </button>
@@ -144,12 +167,11 @@ export default function SelfAssessmentPage() {
         </CardContent>
       </Card>
 
-      {!isLocked && (
+      {!isLocked ? (
         <Button onClick={submit} disabled={summary.length < 20}>
-          <Send className="w-4 h-4 mr-1" /> Submit self-assessment
+          <Send className="h-4 w-4" /> Submit self-assessment
         </Button>
-      )}
-      {isLocked && (
+      ) : (
         <p className="text-sm text-slate-500">
           Locked. Reach out to HR to reopen if you need to amend.
         </p>

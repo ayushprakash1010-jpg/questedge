@@ -2,10 +2,20 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Target, MessageSquare, ListChecks } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Target, MessageSquare, ListChecks, Award } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
+import { PageHeader } from "@/components/shared/page-header";
+import {
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/shared/data-table";
 
 interface Cycle {
   id: string;
@@ -50,51 +60,71 @@ export default function AppraisalHomePage() {
       .then(setData);
   }, []);
 
-  if (!data) return <div className="p-6 text-slate-500">Loading…</div>;
+  if (!data) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold flex items-center gap-2">
-          <Award className="w-6 h-6 text-indigo-600" /> My Appraisal
-        </h1>
-        <p className="text-sm text-slate-500">Cycles, goals, self-assessment, and peer feedback at a glance.</p>
-      </header>
+    <div className="mx-auto max-w-5xl">
+      <PageHeader
+        title="My Appraisal"
+        subtitle="Cycles, goals, self-assessment, and peer feedback at a glance."
+      />
 
-      <div className="grid sm:grid-cols-2 gap-4 mb-6">
+      <div className="mb-6 grid gap-4 sm:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Target className="w-4 h-4" /> Active cycles
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Target className="h-4 w-4" /> Active cycles
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {data.cycles.map((c) => (
-              <div key={c.id} className="border rounded-md p-2 flex justify-between items-center">
+              <div
+                key={c.id}
+                className="flex items-center justify-between rounded-md border border-slate-200/60 p-2"
+              >
                 <div>
-                  <p className="font-medium">{c.name}</p>
-                  <p className="text-xs text-slate-500">{c.type} · stage: {c.status}</p>
+                  <p className="font-medium text-slate-900">{c.name}</p>
+                  <p className="text-xs text-slate-500">
+                    {c.type} · stage: {c.status}
+                  </p>
                 </div>
                 <Link href={`/appraisal/cycles/${c.id}/assessment`}>
-                  <Button size="sm" variant="outline">Open</Button>
+                  <Button size="sm" variant="outline">
+                    Open
+                  </Button>
                 </Link>
               </div>
             ))}
-            {data.cycles.length === 0 && <p className="text-slate-500 text-sm">No active cycles.</p>}
+            {data.cycles.length === 0 && (
+              <p className="text-sm text-slate-500">No active cycles.</p>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <MessageSquare className="w-4 h-4" /> Peer feedback requests
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <MessageSquare className="h-4 w-4" /> Peer feedback requests
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-semibold text-slate-900">{data.peerFeedbackPending}</p>
-            <p className="text-xs text-slate-500 mt-1">Pending requests waiting on you.</p>
+            <p className="text-3xl font-bold leading-none text-slate-900">
+              {data.peerFeedbackPending}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Pending requests waiting on you.
+            </p>
             {data.peerFeedbackPending > 0 && (
-              <Link href="/appraisal/peer-incoming" className="text-blue-600 text-sm underline mt-2 inline-block">
+              <Link
+                href="/appraisal/peer-incoming"
+                className="mt-2 inline-block text-sm text-indigo-600 underline"
+              >
                 Review now →
               </Link>
             )}
@@ -105,14 +135,17 @@ export default function AppraisalHomePage() {
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <ListChecks className="w-5 h-5" /> My goals
+            <ListChecks className="h-5 w-5" /> My goals
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {data.goals.map((g) => (
-            <div key={g.id} className="border rounded-md p-3 flex justify-between items-center">
+            <div
+              key={g.id}
+              className="flex items-center justify-between rounded-md border border-slate-200/60 p-3"
+            >
               <div>
-                <p className="font-medium">{g.title}</p>
+                <p className="font-medium text-slate-900">{g.title}</p>
                 <p className="text-xs text-slate-500">
                   {g.cycle.name} · weight {g.weight}%
                 </p>
@@ -120,7 +153,11 @@ export default function AppraisalHomePage() {
               <Badge>{g.status}</Badge>
             </div>
           ))}
-          {data.goals.length === 0 && <p className="text-slate-500 text-sm">No goals captured for current cycles.</p>}
+          {data.goals.length === 0 && (
+            <p className="text-sm text-slate-500">
+              No goals captured for current cycles.
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -128,34 +165,40 @@ export default function AppraisalHomePage() {
         <CardHeader>
           <CardTitle>Assessment history</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          <table className="w-full text-sm">
-            <thead className="text-left text-xs uppercase tracking-wider text-slate-500 bg-slate-50">
-              <tr>
-                <th className="px-4 py-3">Type</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Rating</th>
-                <th className="px-4 py-3">Acknowledged</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.assessments.map((a) => (
-                <tr key={a.id} className="border-t">
-                  <td className="px-4 py-3">{a.type}</td>
-                  <td className="px-4 py-3">
-                    <Badge>{a.status}</Badge>
-                  </td>
-                  <td className="px-4 py-3">{a.finalRating ?? "—"} {a.ratingLabel && `(${a.ratingLabel})`}</td>
-                  <td className="px-4 py-3 text-xs text-slate-500">
-                    {a.acknowledgedAt ? new Date(a.acknowledgedAt).toLocaleDateString() : "Pending"}
-                  </td>
+        <CardContent className="px-0 pb-0">
+          {data.assessments.length === 0 ? (
+            <p className="px-5 pb-5 text-sm text-slate-500">No assessments yet.</p>
+          ) : (
+            <DataTable className="rounded-none border-0 shadow-none">
+              <DataTableHeader>
+                <tr>
+                  <DataTableHead>Type</DataTableHead>
+                  <DataTableHead>Status</DataTableHead>
+                  <DataTableHead>Rating</DataTableHead>
+                  <DataTableHead>Acknowledged</DataTableHead>
                 </tr>
-              ))}
-              {data.assessments.length === 0 && (
-                <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-500">No assessments yet.</td></tr>
-              )}
-            </tbody>
-          </table>
+              </DataTableHeader>
+              <DataTableBody>
+                {data.assessments.map((a) => (
+                  <DataTableRow key={a.id}>
+                    <DataTableCell>{a.type}</DataTableCell>
+                    <DataTableCell>
+                      <Badge>{a.status}</Badge>
+                    </DataTableCell>
+                    <DataTableCell>
+                      {a.finalRating ?? "—"}{" "}
+                      {a.ratingLabel && `(${a.ratingLabel})`}
+                    </DataTableCell>
+                    <DataTableCell className="text-xs text-slate-500">
+                      {a.acknowledgedAt
+                        ? new Date(a.acknowledgedAt).toLocaleDateString()
+                        : "Pending"}
+                    </DataTableCell>
+                  </DataTableRow>
+                ))}
+              </DataTableBody>
+            </DataTable>
+          )}
         </CardContent>
       </Card>
     </div>
