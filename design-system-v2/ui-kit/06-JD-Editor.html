@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Work Nucleus — JD Editor</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+html,body{height:100%;overflow:hidden}
+.shell{display:flex;height:100vh;background:var(--color-background)}
+.sidebar{width:var(--sidebar-width);flex-shrink:0;display:flex;flex-direction:column;background:var(--color-surface);border-right:1px solid var(--color-border);height:100vh}
+.sb-header{height:var(--topbar-height);display:flex;align-items:center;padding:0 20px;border-bottom:1px solid var(--color-border);flex-shrink:0}
+.sb-mark{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#4338ca);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;box-shadow:0 2px 6px rgba(79,70,229,.3)}
+.sb-word{font-size:16px;font-weight:700;color:var(--color-slate-900);margin-left:9px}.sb-word span{color:#4f46e5}
+.sb-nav{flex:1;padding:10px;overflow-y:auto}
+.ni{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;font-size:13px;font-weight:500;color:var(--color-slate-500);cursor:pointer;margin-bottom:1px;transition:var(--transition-colors)}
+.ni:hover{background:var(--color-slate-50);color:var(--color-slate-900)}
+.ni.act{background:var(--color-indigo-50);color:#4338ca}.ni.act svg{color:#4f46e5}
+.ni svg{width:18px;height:18px;flex-shrink:0}
+.sb-footer{padding:10px;border-top:1px solid var(--color-border)}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{height:var(--topbar-height);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--color-surface);border-bottom:1px solid var(--color-border);flex-shrink:0;gap:16px}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--color-slate-50);border:1px solid var(--color-border);border-radius:10px;padding:8px 14px;font-size:13px;color:var(--color-slate-400);width:260px}
+.tb-right{display:flex;align-items:center;gap:8px}
+.notif{width:36px;height:36px;border-radius:9px;border:1px solid var(--color-border);background:var(--color-surface);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative}
+.notif-dot{position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;background:#ef4444;border:1.5px solid #fff}
+.ua{width:30px;height:30px;border-radius:50%;background:var(--gradient-avatar);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700}
+.user-btn{display:flex;align-items:center;gap:8px;padding:5px 10px 5px 6px;border-radius:10px;cursor:pointer}
+.user-btn:hover{background:var(--color-slate-50)}
+
+/* ── Editor layout ── */
+.editor-shell{flex:1;display:flex;overflow:hidden}
+.editor-left{flex:1;display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--color-border)}
+.editor-right{width:320px;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden}
+
+/* ── Toolbar ── */
+.toolbar{height:48px;display:flex;align-items:center;gap:4px;padding:0 16px;background:var(--color-surface);border-bottom:1px solid var(--color-border);flex-shrink:0}
+.tb-sep{width:1px;height:20px;background:var(--color-border);margin:0 4px}
+.tb-btn{width:32px;height:30px;border-radius:6px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--color-slate-500);font-size:13px;font-weight:600;font-family:var(--font-sans);transition:var(--transition-colors)}
+.tb-btn:hover{background:var(--color-slate-100);color:var(--color-slate-800)}
+.tb-btn.act{background:#eef2ff;color:#4f46e5}
+.tb-title{font-size:13px;font-weight:500;color:var(--color-slate-700);padding:0 8px;flex:1}
+.tb-tags{display:flex;align-items:center;gap:4px}
+.tbtag{font-size:10px;font-weight:600;border-radius:4px;padding:2px 7px;border:1px solid}
+.tbtag-draft{background:#f1f5f9;color:#475569;border-color:#e2e8f0}
+.tbtag-saved{background:#dcfce7;color:#166534;border-color:#bbf7d0}
+
+/* ── Editor ── */
+.editor-area{flex:1;overflow-y:auto;padding:32px 40px;background:#fff}
+.jd-title{font-size:24px;font-weight:700;color:var(--color-slate-900);border:none;outline:none;width:100%;margin-bottom:6px;font-family:var(--font-sans)}
+.jd-meta-row{display:flex;align-items:center;gap:12px;margin-bottom:28px;flex-wrap:wrap}
+.jd-meta-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--color-slate-500)}
+.jd-section{margin-bottom:24px}
+.jd-section h3{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--color-slate-400);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.jd-section p,.jd-section li{font-size:14px;color:var(--color-slate-700);line-height:1.75}
+.jd-section ul{padding-left:18px}
+.jd-section ul li{margin-bottom:4px}
+.ai-highlight{background:linear-gradient(90deg,rgba(99,102,241,.08),rgba(6,182,212,.06));border-left:3px solid #6366f1;padding:12px 14px;border-radius:0 8px 8px 0;margin:8px 0;font-size:13px;color:var(--color-slate-700);line-height:1.7}
+.salary-range{display:inline-flex;align-items:center;gap:6px;background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;border-radius:8px;padding:5px 12px;font-size:13px;font-weight:600}
+
+/* ── Right panel ── */
+.rp-tabs{display:flex;background:var(--color-slate-50);border-bottom:1px solid var(--color-border)}
+.rpt{flex:1;padding:10px 0;text-align:center;font-size:12px;font-weight:500;color:var(--color-slate-500);cursor:pointer;border:none;background:none;font-family:var(--font-sans);border-bottom:2px solid transparent}
+.rpt.act{color:#4f46e5;border-bottom-color:#4f46e5;background:#fff}
+.rp-body{flex:1;overflow-y:auto;padding:16px}
+.rp-section{margin-bottom:20px}
+.rp-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--color-slate-400);margin-bottom:8px}
+
+/* AI panel */
+.ai-prompt-box{background:#f5f3ff;border:1px solid #e0e7ff;border-radius:10px;padding:12px 14px;margin-bottom:12px}
+.ai-prompt-header{display:flex;align-items:center;gap:7px;margin-bottom:8px}
+.ai-icon-sm{width:20px;height:20px;border-radius:5px;background:linear-gradient(135deg,#7c3aed,#4f46e5);display:flex;align-items:center;justify-content:center}
+.ai-prompt-textarea{width:100%;border:1px solid #e0e7ff;border-radius:8px;padding:7px 10px;font-size:12px;font-family:var(--font-sans);color:var(--color-slate-700);background:#fff;resize:none;outline:none;line-height:1.5}
+.ai-prompt-textarea:focus{border-color:#7c3aed;box-shadow:0 0 0 2px rgba(124,58,237,.1)}
+.ai-suggestion{background:#fff;border:1px solid #e0e7ff;border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:12px;color:var(--color-slate-600);line-height:1.6;position:relative}
+.ai-suggestion::before{content:'✦';position:absolute;top:10px;right:10px;font-size:10px;color:#7c3aed}
+.ai-apply-btn{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#4f46e5;background:#eef2ff;border:none;border-radius:5px;padding:3px 8px;cursor:pointer;margin-top:5px}
+
+/* field styles */
+input[type=text],select,textarea{width:100%;border:1px solid var(--color-border);border-radius:var(--radius-base);padding:7px 10px;font-size:12px;font-family:var(--font-sans);color:var(--color-slate-700);background:#fff;outline:none;transition:border-color .15s,box-shadow .15s}
+input[type=text]:focus,select:focus,textarea:focus{border-color:#4f46e5;box-shadow:0 0 0 2px rgba(99,102,241,.1)}
+textarea{resize:vertical;line-height:1.5}
+select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:26px}
+.field-group{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.field-label{font-size:11px;font-weight:600;color:var(--color-slate-600)}
+
+/* readability score */
+.score-bar-wrap{margin-bottom:12px}
+.score-bar-label{display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px}
+.score-bar{height:6px;background:var(--color-slate-100);border-radius:9999px;overflow:hidden}
+.score-fill{height:100%;border-radius:9999px}
+
+/* Btn */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 14px;border-radius:var(--radius-lg);font-size:13px;font-weight:500;cursor:pointer;border:none;font-family:var(--font-sans);transition:var(--transition-all)}
+.btn-primary{background:var(--color-primary);color:#fff;box-shadow:var(--shadow-primary)}
+.btn-primary:hover{background:var(--color-primary-hover)}
+.btn-outline{background:#fff;color:var(--color-slate-700);border:1px solid var(--color-border);box-shadow:var(--shadow-xs)}
+.btn-outline:hover{background:var(--color-slate-50)}
+.btn-ai{background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;box-shadow:0 4px 14px rgba(124,58,237,.25)}
+.btn-sm{height:30px;padding:0 10px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sb-header"><div class="sb-mark">W</div><span class="sb-word">Work<span>Nucleus</span></span></div>
+    <nav class="sb-nav">
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
+      <div class="ni act"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>Hiring Plans</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Candidates</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Offers</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>BGV</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>Appraisal</div>
+    </nav>
+    <div class="sb-footer"><div style="border-radius:10px;background:linear-gradient(135deg,#eef2ff,#ecfeff);padding:12px"><div style="font-size:11px;font-weight:700;color:#312e81">Nova Design System</div><div style="font-size:10px;color:#4f46e5;margin-top:1px">Powered by Claude AI</div></div></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="search-box"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Search plans, candidates…</div>
+      <div class="tb-right">
+        <div class="notif"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg><div class="notif-dot"></div></div>
+        <div class="user-btn"><div class="ua">PS</div><span style="font-size:13px;font-weight:500;color:var(--color-slate-700)">Priya Sharma</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-slate-400)"><polyline points="6 9 12 15 18 9"/></svg></div>
+      </div>
+    </header>
+
+    <div class="editor-shell">
+
+      <!-- Editor left -->
+      <div class="editor-left">
+        <div class="toolbar">
+          <!-- Formatting -->
+          <button class="tb-btn act" title="Bold"><b>B</b></button>
+          <button class="tb-btn" title="Italic"><i>I</i></button>
+          <button class="tb-btn" title="Underline"><u>U</u></button>
+          <div class="tb-sep"></div>
+          <button class="tb-btn" title="Heading">H1</button>
+          <button class="tb-btn" title="Bullet list">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1" fill="currentColor" stroke="none"/></svg>
+          </button>
+          <div class="tb-sep"></div>
+          <div class="tb-title">
+            <span style="color:var(--color-slate-400)">Hiring Plans /</span> Senior PM · Q2 2025 — Job Description
+          </div>
+          <div class="tb-tags">
+            <span class="tbtag tbtag-saved">✓ Saved</span>
+            <span style="font-size:11px;color:var(--color-slate-400);margin:0 4px">v3</span>
+          </div>
+          <div class="tb-sep"></div>
+          <button class="btn btn-outline btn-sm">Preview</button>
+          <button class="btn btn-primary btn-sm" style="margin-left:6px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+            Publish
+          </button>
+        </div>
+
+        <div class="editor-area">
+          <div contenteditable="true" class="jd-title" spellcheck="false">Senior Product Manager — Platform</div>
+          <div class="jd-meta-row">
+            <span class="jd-meta-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>Bengaluru (Hybrid)</span>
+            <span class="jd-meta-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>Full-time</span>
+            <span class="jd-meta-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>5–9 yrs experience</span>
+            <span class="salary-range"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>₹40–55 LPA</span>
+          </div>
+
+          <div class="jd-section">
+            <h3>About the Role</h3>
+            <div class="ai-highlight">We're hiring a Senior PM to own our core platform — the infrastructure layer powering 12M+ users across payments, lending, and insurance verticals. You'll partner with Engineering, Design, and Data to ship features that unlock growth for our business units.</div>
+          </div>
+
+          <div class="jd-section">
+            <h3>What You'll Do</h3>
+            <ul>
+              <li>Define and execute the product strategy for platform capabilities including APIs, developer tooling, and internal services.</li>
+              <li>Translate ambiguous business problems into clear product requirements and acceptance criteria.</li>
+              <li>Partner with 4+ engineering pods to deliver high-quality, high-impact features on time.</li>
+              <li>Drive data-informed decisions using SQL, dashboards, and A/B test results — you're comfortable getting your hands dirty with data.</li>
+              <li>Own the platform roadmap, quarterly planning, and stakeholder communication from IC level to C-suite.</li>
+              <li>Mentor 1–2 APMs and establish best practices for product thinking across the org.</li>
+            </ul>
+          </div>
+
+          <div class="jd-section">
+            <h3>What We're Looking For</h3>
+            <ul>
+              <li><strong>5+ years of PM experience</strong> with at least 2 years on platform, API, or infrastructure products.</li>
+              <li>Strong quantitative skills — experience with metrics frameworks (HEART, AARRR) and statistical thinking.</li>
+              <li>Excellent written and verbal communication; ability to synthesise complex trade-offs for senior leadership.</li>
+              <li>Prior experience in fintech, payments, or lending is a strong plus.</li>
+              <li>Bachelor's degree in Engineering, Computer Science, or a quantitative field; MBA from a Tier 1 school preferred.</li>
+            </ul>
+          </div>
+
+          <div class="jd-section">
+            <h3>Benefits</h3>
+            <ul>
+              <li>Competitive compensation: ₹40–55 LPA (base + equity)</li>
+              <li>ESOP with 4-year vesting, 1-year cliff</li>
+              <li>Comprehensive health insurance (self + family)</li>
+              <li>₹1L annual learning & development budget</li>
+              <li>Hybrid work — 3 days in office (Bengaluru)</li>
+            </ul>
+          </div>
+        </div>
+      </div><!-- /editor-left -->
+
+      <!-- Right panel -->
+      <div class="editor-right">
+        <div class="rp-tabs">
+          <button class="rpt act" onclick="switchTab(this,'ai')">AI Assistant</button>
+          <button class="rpt" onclick="switchTab(this,'meta')">Metadata</button>
+          <button class="rpt" onclick="switchTab(this,'quality')">Quality</button>
+        </div>
+
+        <!-- AI tab -->
+        <div id="tab-ai" class="rp-body">
+          <div class="rp-section">
+            <div class="rp-label">Ask AI to improve the JD</div>
+            <div class="ai-prompt-box">
+              <div class="ai-prompt-header">
+                <div class="ai-icon-sm"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 008.5 14.063l-6.135-1.582a.5.5 0 010-.962L8.5 9.936A2 2 0 009.937 8.5l1.582-6.135a.5.5 0 01.963 0L14.063 8.5A2 2 0 0015.5 9.937l6.135 1.581a.5.5 0 010 .964L15.5 14.063a2 2 0 00-1.437 1.437l-1.582 6.135a.5.5 0 01-.963 0z"/></svg></div>
+                <span style="font-size:11px;font-weight:700;color:#6d28d9">AI Prompt</span>
+              </div>
+              <textarea class="ai-prompt-textarea" rows="3" placeholder="e.g. Make the tone more inclusive, add a section on growth opportunities…">Make the role requirements less restrictive — we're open to non-MBA backgrounds if the PM has strong execution track record.</textarea>
+              <button class="btn btn-ai btn-sm" style="margin-top:8px;width:100%;height:32px;justify-content:center">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 008.5 14.063l-6.135-1.582a.5.5 0 010-.962L8.5 9.936A2 2 0 009.937 8.5l1.582-6.135a.5.5 0 01.963 0L14.063 8.5A2 2 0 0015.5 9.937l6.135 1.581a.5.5 0 010 .964L15.5 14.063a2 2 0 00-1.437 1.437l-1.582 6.135a.5.5 0 01-.963 0z"/></svg>
+                Generate
+              </button>
+            </div>
+          </div>
+
+          <div class="rp-section">
+            <div class="rp-label">AI Suggestions</div>
+            <div class="ai-suggestion">
+              <strong style="font-size:11px;color:var(--color-slate-800)">Education requirement</strong><br>
+              Replace "MBA from a Tier 1 school" with "MBA preferred but not required — we value demonstrated execution over credentials." This improves diversity of applicants by ~22%.
+              <br><button class="ai-apply-btn">↑ Apply</button>
+            </div>
+            <div class="ai-suggestion">
+              <strong style="font-size:11px;color:var(--color-slate-800)">Inclusive language</strong><br>
+              "Getting your hands dirty" is idiomatic — consider "comfortable working directly with data tools and writing basic SQL queries."
+              <br><button class="ai-apply-btn">↑ Apply</button>
+            </div>
+            <div class="ai-suggestion">
+              <strong style="font-size:11px;color:var(--color-slate-800)">Missing section</strong><br>
+              Consider adding an interview process section — JDs with process transparency see 30% higher application completion rates.
+              <br><button class="ai-apply-btn">↑ Apply</button>
+            </div>
+          </div>
+
+          <div class="rp-section">
+            <div class="rp-label">Quick Actions</div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <button class="btn btn-outline btn-sm" style="justify-content:flex-start;gap:8px;padding:0 12px">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg>
+                Generate from scratch with AI
+              </button>
+              <button class="btn btn-outline btn-sm" style="justify-content:flex-start;gap:8px;padding:0 12px">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Shorten to 400 words
+              </button>
+              <button class="btn btn-outline btn-sm" style="justify-content:flex-start;gap:8px;padding:0 12px">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Bias check
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Metadata tab (hidden) -->
+        <div id="tab-meta" class="rp-body" style="display:none">
+          <div class="rp-section">
+            <div class="rp-label">Job Details</div>
+            <div class="field-group">
+              <div class="field-label">Job Title</div>
+              <input type="text" value="Senior Product Manager — Platform">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Department</div>
+              <select><option>Product</option><option>Engineering</option><option>Design</option><option>Data</option></select>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Location</div>
+              <select><option>Bengaluru (Hybrid)</option><option>Remote</option><option>Mumbai</option><option>Delhi NCR</option></select>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Employment Type</div>
+              <select><option>Full-time</option><option>Contract</option><option>Internship</option></select>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div class="field-group" style="margin-bottom:0">
+                <div class="field-label">Min CTC (LPA)</div>
+                <input type="text" value="40">
+              </div>
+              <div class="field-group" style="margin-bottom:0">
+                <div class="field-label">Max CTC (LPA)</div>
+                <input type="text" value="55">
+              </div>
+            </div>
+          </div>
+          <div class="rp-section">
+            <div class="rp-label">Publishing</div>
+            <div class="field-group">
+              <div class="field-label">Target Job Boards</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px">
+                <span style="background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;border-radius:5px;padding:3px 9px;font-size:11px;font-weight:500">Naukri</span>
+                <span style="background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;border-radius:5px;padding:3px 9px;font-size:11px;font-weight:500">LinkedIn</span>
+                <span style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;border-radius:5px;padding:3px 9px;font-size:11px;font-weight:500">+ Add</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quality tab (hidden) -->
+        <div id="tab-quality" class="rp-body" style="display:none">
+          <div class="rp-section">
+            <div class="rp-label">JD Quality Score</div>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+              <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#06b6d4);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;font-weight:700;flex-shrink:0">82</div>
+              <div style="font-size:12px;color:var(--color-slate-600);line-height:1.5">Good JD — a few improvements could increase application rates by ~18%.</div>
+            </div>
+            <div class="score-bar-wrap">
+              <div class="score-bar-label"><span style="font-size:11px;color:var(--color-slate-600)">Clarity</span><span style="font-size:11px;font-weight:600;color:#10b981">90</span></div>
+              <div class="score-bar"><div class="score-fill" style="width:90%;background:linear-gradient(90deg,#10b981,#059669)"></div></div>
+            </div>
+            <div class="score-bar-wrap">
+              <div class="score-bar-label"><span style="font-size:11px;color:var(--color-slate-600)">Inclusivity</span><span style="font-size:11px;font-weight:600;color:#f59e0b">68</span></div>
+              <div class="score-bar"><div class="score-fill" style="width:68%;background:linear-gradient(90deg,#f59e0b,#d97706)"></div></div>
+            </div>
+            <div class="score-bar-wrap">
+              <div class="score-bar-label"><span style="font-size:11px;color:var(--color-slate-600)">Completeness</span><span style="font-size:11px;font-weight:600;color:#10b981">88</span></div>
+              <div class="score-bar"><div class="score-fill" style="width:88%;background:linear-gradient(90deg,#6366f1,#06b6d4)"></div></div>
+            </div>
+            <div class="score-bar-wrap">
+              <div class="score-bar-label"><span style="font-size:11px;color:var(--color-slate-600)">Readability</span><span style="font-size:11px;font-weight:600;color:#10b981">85</span></div>
+              <div class="score-bar"><div class="score-fill" style="width:85%;background:linear-gradient(90deg,#6366f1,#06b6d4)"></div></div>
+            </div>
+          </div>
+          <div class="rp-section">
+            <div class="rp-label">Word Count</div>
+            <div style="font-size:22px;font-weight:700;color:var(--color-slate-900)">487 <span style="font-size:13px;font-weight:400;color:var(--color-slate-400)">words</span></div>
+            <div style="font-size:12px;color:var(--color-slate-500);margin-top:3px">Optimal: 400–600 words · Reading time ~2.5 min</div>
+          </div>
+        </div>
+
+      </div><!-- /editor-right -->
+    </div><!-- /editor-shell -->
+  </div>
+</div>
+<script>
+function switchTab(btn, tab) {
+  document.querySelectorAll('.rpt').forEach(b => b.classList.remove('act'));
+  btn.classList.add('act');
+  ['ai','meta','quality'].forEach(t => {
+    const el = document.getElementById('tab-'+t);
+    if (el) el.style.display = t === tab ? 'block' : 'none';
+  });
+}
+</script>
+</body>
+</html>

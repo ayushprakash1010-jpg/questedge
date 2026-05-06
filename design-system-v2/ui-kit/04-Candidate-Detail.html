@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Work Nucleus — Candidate Detail</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+html,body{height:100%;overflow:hidden}
+.shell{display:flex;height:100vh;background:var(--color-background)}
+
+/* ── Sidebar ── */
+.sidebar{width:var(--sidebar-width);flex-shrink:0;display:flex;flex-direction:column;background:var(--color-surface);border-right:1px solid var(--color-border);height:100vh}
+.sb-header{height:var(--topbar-height);display:flex;align-items:center;padding:0 20px;border-bottom:1px solid var(--color-border);flex-shrink:0}
+.sb-mark{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#4338ca);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;box-shadow:0 2px 6px rgba(79,70,229,.3)}
+.sb-word{font-size:16px;font-weight:700;color:var(--color-slate-900);margin-left:9px}
+.sb-word span{color:#4f46e5}
+.sb-nav{flex:1;padding:10px;overflow-y:auto}
+.ni{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;font-size:13px;font-weight:500;color:var(--color-slate-500);cursor:pointer;margin-bottom:1px;transition:var(--transition-colors)}
+.ni:hover{background:var(--color-slate-50);color:var(--color-slate-900)}
+.ni.act{background:var(--color-indigo-50);color:#4338ca}
+.ni.act svg{color:#4f46e5}
+.ni svg{width:18px;height:18px;flex-shrink:0}
+.sb-footer{padding:10px;border-top:1px solid var(--color-border)}
+
+/* ── Main ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{height:var(--topbar-height);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--color-surface);border-bottom:1px solid var(--color-border);flex-shrink:0;gap:16px}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--color-slate-50);border:1px solid var(--color-border);border-radius:10px;padding:8px 14px;font-size:13px;color:var(--color-slate-400);width:260px}
+.tb-right{display:flex;align-items:center;gap:8px}
+.notif{width:36px;height:36px;border-radius:9px;border:1px solid var(--color-border);background:var(--color-surface);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative}
+.notif-dot{position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;background:#ef4444;border:1.5px solid #fff}
+.ua{width:30px;height:30px;border-radius:50%;background:var(--gradient-avatar);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700}
+.user-btn{display:flex;align-items:center;gap:8px;padding:5px 10px 5px 6px;border-radius:10px;cursor:pointer}
+.user-btn:hover{background:var(--color-slate-50)}
+
+/* ── Content: two-col ── */
+.content{flex:1;display:flex;overflow:hidden}
+.left-col{flex:1;overflow-y:auto;padding:24px;min-width:0;display:flex;flex-direction:column;gap:16px}
+.right-col{width:360px;flex-shrink:0;background:var(--color-surface);border-left:1px solid var(--color-border);overflow-y:auto;display:flex;flex-direction:column}
+
+/* ── Breadcrumb ── */
+.breadcrumb{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-slate-400);margin-bottom:16px}
+.breadcrumb a{color:var(--color-slate-400);text-decoration:none}
+.breadcrumb a:hover{color:var(--color-indigo-600)}
+.bc-sep{color:var(--color-slate-300)}
+
+/* ── Hero card ── */
+.hero-card{background:var(--color-surface);border-radius:var(--radius-2xl);border:1px solid rgba(226,232,240,.6);box-shadow:var(--shadow-card);overflow:hidden}
+.hero-banner{height:80px;background:linear-gradient(135deg,#eef2ff 0%,#ecfeff 100%);position:relative}
+.hero-banner-pattern{position:absolute;inset:0;background-image:radial-gradient(circle,#4f46e5 1px,transparent 1px);background-size:24px 24px;opacity:.04}
+.hero-body{padding:0 24px 20px;position:relative}
+.avatar-wrap{position:relative;display:inline-block;margin-top:-32px}
+.avatar-lg{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#06b6d4);display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;font-weight:700;border:3px solid #fff;box-shadow:var(--shadow-md)}
+.online-dot{position:absolute;bottom:3px;right:3px;width:12px;height:12px;border-radius:50%;background:#10b981;border:2px solid #fff}
+.hero-info{margin-top:10px}
+.hero-name{font-size:20px;font-weight:700;color:var(--color-slate-900)}
+.hero-role{font-size:13px;color:var(--color-slate-500);margin-top:2px}
+.hero-meta-row{display:flex;align-items:center;gap:16px;margin-top:12px;flex-wrap:wrap}
+.hero-meta-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--color-slate-500)}
+.hero-actions{display:flex;align-items:center;gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid var(--color-border)}
+
+/* ── Tabs ── */
+.tabs-bar{display:flex;background:rgba(241,245,249,.8);border-radius:10px;padding:3px;gap:2px}
+.tab{padding:6px 16px;border-radius:8px;font-size:13px;font-weight:500;color:var(--color-slate-500);cursor:pointer;border:none;background:none;font-family:var(--font-sans);transition:var(--transition-colors)}
+.tab.act{background:#fff;color:var(--color-slate-900);box-shadow:var(--shadow-xs)}
+
+/* ── Sections ── */
+.card{background:var(--color-surface);border-radius:var(--radius-xl);border:1px solid rgba(226,232,240,.6);box-shadow:var(--shadow-card);overflow:hidden}
+.card-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--color-slate-50)}
+.card-title{font-size:13px;font-weight:600;color:var(--color-slate-900)}
+.card-body{padding:16px 18px}
+.section-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--color-slate-400);margin-bottom:10px}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.info-item .il{font-size:11px;color:var(--color-slate-400);margin-bottom:3px}
+.info-item .iv{font-size:13px;font-weight:500;color:var(--color-slate-700)}
+
+/* ── Skill chips ── */
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.chip{display:inline-flex;align-items:center;gap:4px;border-radius:6px;border:1px solid;padding:3px 10px;font-size:11px;font-weight:500}
+.chip-tech{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
+.chip-lead{background:#f5f3ff;color:#6d28d9;border-color:#ddd6fe}
+.chip-beh{background:#ecfdf5;color:#065f46;border-color:#a7f3d0}
+.chip-comm{background:#fffbeb;color:#92400e;border-color:#fde68a}
+.chip-dom{background:#ecfeff;color:#164e63;border-color:#a5f3fc}
+
+/* ── Timeline ── */
+.timeline{display:flex;flex-direction:column;gap:0}
+.tl-item{display:flex;gap:14px;padding-bottom:18px;position:relative}
+.tl-item:last-child{padding-bottom:0}
+.tl-item:not(:last-child)::before{content:'';position:absolute;left:15px;top:28px;bottom:0;width:1px;background:var(--color-border)}
+.tl-icon{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.tl-content{flex:1;min-width:0}
+.tl-title{font-size:13px;font-weight:600;color:var(--color-slate-800)}
+.tl-sub{font-size:12px;color:var(--color-slate-500);margin-top:2px}
+.tl-time{font-size:11px;color:var(--color-slate-400);margin-top:4px}
+.tl-feedback-box{background:var(--color-slate-50);border-radius:8px;padding:10px 12px;margin-top:8px;font-size:12px;color:var(--color-slate-600);line-height:1.6;border:1px solid var(--color-border)}
+.verdict-badge{display:inline-flex;align-items:center;gap:4px;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;margin-top:6px}
+.vb-pass{background:#dcfce7;color:#166534}
+.vb-mixed{background:#fef9c3;color:#713f12}
+.vb-hold{background:#e0e7ff;color:#3730a3}
+
+/* ── Score ring ── */
+.score-ring-wrap{display:flex;flex-direction:column;align-items:center;gap:4px}
+.score-ring{width:72px;height:72px;position:relative}
+.score-ring svg{transform:rotate(-90deg)}
+.score-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:var(--color-slate-900)}
+.score-label{font-size:11px;color:var(--color-slate-400)}
+
+/* ── Right col ── */
+.rc-section{padding:16px 18px;border-bottom:1px solid var(--color-border)}
+.rc-section:last-child{border-bottom:none}
+.rc-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--color-slate-400);margin-bottom:10px}
+.stage-row{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.stage-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.stage-name{font-size:12px;font-weight:500;color:var(--color-slate-700);flex:1}
+.stage-status{font-size:11px;font-weight:600}
+.interviewer-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.int-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:700;flex-shrink:0}
+.int-name{font-size:12px;font-weight:500;color:var(--color-slate-700)}
+.int-role{font-size:11px;color:var(--color-slate-400)}
+.int-status{margin-left:auto;font-size:10px;font-weight:600;background:#fef9c3;color:#713f12;border-radius:4px;padding:2px 6px}
+.int-status.done{background:#dcfce7;color:#166534}
+
+/* ── AI summary card ── */
+.ai-card{background:linear-gradient(135deg,#f5f3ff,#ecfeff);border:1px solid #e0e7ff;border-radius:var(--radius-xl);padding:14px 16px}
+.ai-header{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.ai-icon{width:24px;height:24px;border-radius:6px;background:linear-gradient(135deg,#7c3aed,#4f46e5);display:flex;align-items:center;justify-content:center}
+.ai-title{font-size:12px;font-weight:700;color:var(--color-slate-800)}
+.ai-text{font-size:12px;color:var(--color-slate-600);line-height:1.65}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:var(--btn-height-md);padding:0 16px;border-radius:var(--radius-lg);font-size:13px;font-weight:500;cursor:pointer;border:none;font-family:var(--font-sans);transition:var(--transition-all)}
+.btn-primary{background:var(--color-primary);color:#fff;box-shadow:var(--shadow-primary)}
+.btn-primary:hover{background:var(--color-primary-hover)}
+.btn-outline{background:#fff;color:var(--color-slate-700);border:1px solid var(--color-border);box-shadow:var(--shadow-xs)}
+.btn-outline:hover{background:var(--color-slate-50)}
+.btn-ghost{background:transparent;color:var(--color-slate-500)}
+.btn-ghost:hover{background:var(--color-slate-50)}
+.btn-sm{height:32px;padding:0 12px;font-size:12px;border-radius:var(--radius-base)}
+.btn-danger{background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
+.btn-danger:hover{background:#fee2e2}
+.btn-ai{background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;box-shadow:0 4px 14px rgba(124,58,237,.25)}
+.btn-ai:hover{filter:brightness(1.08)}
+
+/* ── Status badge ── */
+.status-pill{display:inline-flex;align-items:center;gap:4px;border-radius:9999px;border:1px solid transparent;padding:3px 10px;font-size:11px;font-weight:600}
+.sp-active{background:#ecfdf5;color:#065f46;border-color:#a7f3d0}
+.sp-hold{background:#fffbeb;color:#92400e;border-color:#fde68a}
+.sp-selected{background:#eef2ff;color:#4338ca;border-color:#c7d2fe}
+
+/* progress bar */
+.pbar-track{background:var(--color-slate-100);border-radius:9999px;height:5px;overflow:hidden;margin-top:4px}
+.pbar-fill{height:100%;border-radius:9999px;background:linear-gradient(90deg,#6366f1,#06b6d4)}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sb-header">
+      <div class="sb-mark">W</div>
+      <span class="sb-word">Work<span>Nucleus</span></span>
+    </div>
+    <nav class="sb-nav">
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>Hiring Plans</div>
+      <div class="ni act"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Candidates</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Offers</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>BGV</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>Appraisal</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Compensation</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Reports</div>
+    </nav>
+    <div class="sb-footer">
+      <div style="border-radius:10px;background:linear-gradient(135deg,#eef2ff,#ecfeff);padding:12px">
+        <div style="font-size:11px;font-weight:700;color:#312e81">Nova Design System</div>
+        <div style="font-size:10px;color:#4f46e5;margin-top:1px">Powered by Claude AI</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="topbar">
+      <div class="search-box"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Search plans, candidates…</div>
+      <div class="tb-right">
+        <div class="notif"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg><div class="notif-dot"></div></div>
+        <div class="user-btn"><div class="ua">PS</div><span style="font-size:13px;font-weight:500;color:var(--color-slate-700)">Priya Sharma</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-slate-400)"><polyline points="6 9 12 15 18 9"/></svg></div>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- Left column -->
+      <div class="left-col">
+        <!-- Breadcrumb -->
+        <div>
+          <div class="breadcrumb">
+            <a href="#">Hiring Plans</a><span class="bc-sep">/</span>
+            <a href="#">Senior PM · Q2 2025</a><span class="bc-sep">/</span>
+            <a href="#">Pipeline</a><span class="bc-sep">/</span>
+            <span style="color:var(--color-slate-700);font-weight:500">Rohit Verma</span>
+          </div>
+
+          <!-- Hero card -->
+          <div class="hero-card">
+            <div class="hero-banner"><div class="hero-banner-pattern"></div></div>
+            <div class="hero-body">
+              <div style="display:flex;align-items:flex-end;justify-content:space-between">
+                <div class="avatar-wrap">
+                  <div class="avatar-lg">RV</div>
+                  <div class="online-dot"></div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;padding-top:10px">
+                  <span class="status-pill sp-active">
+                    <svg width="6" height="6" viewBox="0 0 6 6"><circle cx="3" cy="3" r="3" fill="currentColor"/></svg>
+                    Active
+                  </span>
+                  <span style="background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;border-radius:9999px;padding:3px 10px;font-size:11px;font-weight:600">Leadership Round</span>
+                  <button class="btn btn-outline btn-sm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+                </div>
+              </div>
+              <div class="hero-info">
+                <div class="hero-name">Rohit Verma</div>
+                <div class="hero-role">Group Product Manager · Amazon India</div>
+                <div class="hero-meta-row">
+                  <span class="hero-meta-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="fd8f92959489d38b988f909cbd9a909c9491d39e9290">[email&#160;protected]</a></span>
+                  <span class="hero-meta-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 .82h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>+91 98765 43210</span>
+                  <span class="hero-meta-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>Bengaluru, India</span>
+                  <span class="hero-meta-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>9 yrs experience</span>
+                  <span class="hero-meta-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>Source: Referral (Anjali Mehta)</span>
+                </div>
+              </div>
+              <div class="hero-actions">
+                <button class="btn btn-primary btn-sm">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Move to Offer
+                </button>
+                <button class="btn btn-outline btn-sm">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                  Add Note
+                </button>
+                <button class="btn btn-outline btn-sm">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  Schedule Interview
+                </button>
+                <button class="btn btn-ai btn-sm" style="margin-left:auto">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 008.5 14.063l-6.135-1.582a.5.5 0 010-.962L8.5 9.936A2 2 0 009.937 8.5l1.582-6.135a.5.5 0 01.963 0L14.063 8.5A2 2 0 0015.5 9.937l6.135 1.581a.5.5 0 010 .964L15.5 14.063a2 2 0 00-1.437 1.437l-1.582 6.135a.5.5 0 01-.963 0z"/></svg>
+                  AI Summary
+                </button>
+                <button class="btn btn-danger btn-sm">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                  Reject
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs-bar">
+          <button class="tab act">Overview</button>
+          <button class="tab">Feedback</button>
+          <button class="tab">Documents</button>
+          <button class="tab">Activity</button>
+        </div>
+
+        <!-- Overview grid -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+          <!-- Profile info -->
+          <div class="card">
+            <div class="card-header"><span class="card-title">Profile</span><button class="btn btn-ghost btn-sm" style="font-size:11px;color:var(--color-slate-400)">Edit</button></div>
+            <div class="card-body">
+              <div class="section-label">Background</div>
+              <div class="info-grid">
+                <div class="info-item"><div class="il">Current Role</div><div class="iv">Group PM</div></div>
+                <div class="info-item"><div class="il">Company</div><div class="iv">Amazon India</div></div>
+                <div class="info-item"><div class="il">Experience</div><div class="iv">9 years</div></div>
+                <div class="info-item"><div class="il">Education</div><div class="iv">IIM Bangalore</div></div>
+                <div class="info-item"><div class="il">Notice Period</div><div class="iv">60 days</div></div>
+                <div class="info-item"><div class="il">Expected CTC</div><div class="iv">₹48–52 LPA</div></div>
+                <div class="info-item"><div class="il">Current CTC</div><div class="iv">₹42 LPA</div></div>
+                <div class="info-item"><div class="il">Applied On</div><div class="iv">Apr 12, 2025</div></div>
+              </div>
+              <div style="margin-top:16px"><div class="section-label">Skills</div>
+                <div class="chips">
+                  <span class="chip chip-tech">Product Strategy</span>
+                  <span class="chip chip-tech">Data Analytics</span>
+                  <span class="chip chip-lead">Team Leadership</span>
+                  <span class="chip chip-lead">Roadmapping</span>
+                  <span class="chip chip-dom">E-commerce</span>
+                  <span class="chip chip-dom">Fintech</span>
+                  <span class="chip chip-beh">Stakeholder Mgmt</span>
+                  <span class="chip chip-comm">Communication</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Interview scorecard -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Scorecard</span>
+              <span style="font-size:11px;color:var(--color-slate-400)">2 of 3 rounds scored</span>
+            </div>
+            <div class="card-body">
+              <div style="display:flex;align-items:center;gap:20px;margin-bottom:16px">
+                <div class="score-ring-wrap">
+                  <div class="score-ring">
+                    <svg width="72" height="72" viewBox="0 0 72 72">
+                      <circle cx="36" cy="36" r="28" fill="none" stroke="#f1f5f9" stroke-width="7"/>
+                      <circle cx="36" cy="36" r="28" fill="none" stroke="url(#scoreGrad)" stroke-width="7" stroke-linecap="round" stroke-dasharray="175.9" stroke-dashoffset="28.1"/>
+                      <defs><linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#6366f1"/><stop offset="100%" stop-color="#06b6d4"/></linearGradient></defs>
+                    </svg>
+                    <div class="score-num">91</div>
+                  </div>
+                  <span class="score-label">Overall</span>
+                </div>
+                <div style="flex:1">
+                  <div style="margin-bottom:8px">
+                    <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px"><span style="color:var(--color-slate-600)">Technical</span><span style="font-weight:600;color:var(--color-slate-800)">88</span></div>
+                    <div class="pbar-track"><div class="pbar-fill" style="width:88%"></div></div>
+                  </div>
+                  <div style="margin-bottom:8px">
+                    <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px"><span style="color:var(--color-slate-600)">Leadership</span><span style="font-weight:600;color:var(--color-slate-800)">94</span></div>
+                    <div class="pbar-track"><div class="pbar-fill" style="width:94%"></div></div>
+                  </div>
+                  <div style="margin-bottom:8px">
+                    <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px"><span style="color:var(--color-slate-600)">Communication</span><span style="font-weight:600;color:var(--color-slate-800)">90</span></div>
+                    <div class="pbar-track"><div class="pbar-fill" style="width:90%"></div></div>
+                  </div>
+                  <div>
+                    <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px"><span style="color:var(--color-slate-600)">Problem Solving</span><span style="font-weight:600;color:var(--color-slate-800)">92</span></div>
+                    <div class="pbar-track"><div class="pbar-fill" style="width:92%"></div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="ai-card">
+                <div class="ai-header">
+                  <div class="ai-icon"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 008.5 14.063l-6.135-1.582a.5.5 0 010-.962L8.5 9.936A2 2 0 009.937 8.5l1.582-6.135a.5.5 0 01.963 0L14.063 8.5A2 2 0 0015.5 9.937l6.135 1.581a.5.5 0 010 .964L15.5 14.063a2 2 0 00-1.437 1.437l-1.582 6.135a.5.5 0 01-.963 0z"/></svg></div>
+                  <span class="ai-title">AI Assessment</span>
+                </div>
+                <div class="ai-text">Strong candidate — top 5% across 12 SPM applicants. Leadership scores align with Senior Director level. Recommend prioritising offer. Watch: notice period may require negotiation.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interview History -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Interview History</span></div>
+          <div class="card-body">
+            <div class="timeline">
+              <div class="tl-item">
+                <div class="tl-icon" style="background:#eef2ff"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+                <div class="tl-content">
+                  <div class="tl-title">Screening Call</div>
+                  <div class="tl-sub">With Priya Sharma · HR</div>
+                  <div class="tl-time">Apr 14, 2025 · 11:00 AM · 45 min</div>
+                  <div class="tl-feedback-box">"Strong communication, clearly articulates product thinking. Solid background in consumer e-commerce. Confident about the role."</div>
+                  <span class="verdict-badge vb-pass">✓ Cleared</span>
+                </div>
+              </div>
+              <div class="tl-item">
+                <div class="tl-icon" style="background:#eff6ff"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
+                <div class="tl-content">
+                  <div class="tl-title">Technical Round 1 — Product Design</div>
+                  <div class="tl-sub">With Rahul Kumar, Anjali Mehta · Engineering + Product</div>
+                  <div class="tl-time">Apr 18, 2025 · 2:00 PM · 60 min</div>
+                  <div class="tl-feedback-box">"Excellent product case — designed a seamless delivery rescheduling flow. Asked great clarifying questions. Metrics-driven thinking. Score: 88/100."</div>
+                  <span class="verdict-badge vb-pass">✓ Cleared</span>
+                </div>
+              </div>
+              <div class="tl-item">
+                <div class="tl-icon" style="background:#fef3c7"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg></div>
+                <div class="tl-content">
+                  <div class="tl-title">Leadership Round</div>
+                  <div class="tl-sub">With Vikram Singh · VP Product — <span style="color:#d97706;font-weight:500">Pending feedback</span></div>
+                  <div class="tl-time">May 2, 2025 · 4:00 PM · 60 min</div>
+                  <span class="verdict-badge vb-hold" style="margin-top:6px">⏳ Awaiting</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /left-col -->
+
+      <!-- Right column -->
+      <div class="right-col">
+
+        <!-- Pipeline progress -->
+        <div class="rc-section">
+          <div class="rc-label">Pipeline Stage</div>
+          <div style="margin-bottom:12px">
+            <div class="stage-row">
+              <div class="stage-dot" style="background:#10b981"></div>
+              <span class="stage-name">Screening</span>
+              <span class="stage-status" style="color:#10b981;font-size:11px;font-weight:600">✓ Done</span>
+            </div>
+            <div class="stage-row">
+              <div class="stage-dot" style="background:#10b981"></div>
+              <span class="stage-name">Technical R1</span>
+              <span class="stage-status" style="color:#10b981;font-size:11px;font-weight:600">✓ Done</span>
+            </div>
+            <div class="stage-row">
+              <div class="stage-dot" style="background:#4f46e5;box-shadow:0 0 0 3px #e0e7ff"></div>
+              <span class="stage-name" style="color:#4338ca;font-weight:600">Leadership Round</span>
+              <span style="font-size:10px;background:#eef2ff;color:#4338ca;border-radius:4px;padding:2px 6px;font-weight:600">Active</span>
+            </div>
+            <div class="stage-row">
+              <div class="stage-dot" style="background:#e2e8f0"></div>
+              <span class="stage-name" style="color:var(--color-slate-400)">HR Round</span>
+              <span style="font-size:10px;color:var(--color-slate-300)">Upcoming</span>
+            </div>
+            <div class="stage-row">
+              <div class="stage-dot" style="background:#e2e8f0"></div>
+              <span class="stage-name" style="color:var(--color-slate-400)">Offer</span>
+              <span style="font-size:10px;color:var(--color-slate-300)">Upcoming</span>
+            </div>
+          </div>
+          <div style="background:var(--color-slate-50);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--color-slate-500)">
+            <span style="font-weight:600;color:var(--color-slate-700)">Day 22</span> in pipeline · <span style="color:#10b981;font-weight:500">6 days ahead of SLA</span>
+          </div>
+        </div>
+
+        <!-- Panel Interviewers -->
+        <div class="rc-section">
+          <div class="rc-label">Interview Panel</div>
+          <div class="interviewer-row">
+            <div class="int-av" style="background:linear-gradient(135deg,#6366f1,#4f46e5)">PS</div>
+            <div><div class="int-name">Priya Sharma</div><div class="int-role">HR Lead · Screening</div></div>
+            <span class="int-status done">Done</span>
+          </div>
+          <div class="interviewer-row">
+            <div class="int-av" style="background:linear-gradient(135deg,#06b6d4,#0891b2)">RK</div>
+            <div><div class="int-name">Rahul Kumar</div><div class="int-role">Eng Mgr · Tech R1</div></div>
+            <span class="int-status done">Done</span>
+          </div>
+          <div class="interviewer-row">
+            <div class="int-av" style="background:linear-gradient(135deg,#10b981,#059669)">AM</div>
+            <div><div class="int-name">Anjali Mehta</div><div class="int-role">Sr PM · Tech R1</div></div>
+            <span class="int-status done">Done</span>
+          </div>
+          <div class="interviewer-row">
+            <div class="int-av" style="background:linear-gradient(135deg,#f59e0b,#d97706)">VS</div>
+            <div><div class="int-name">Vikram Singh</div><div class="int-role">VP Product · Leadership</div></div>
+            <span class="int-status">Pending</span>
+          </div>
+        </div>
+
+        <!-- Attachments -->
+        <div class="rc-section">
+          <div class="rc-label">Documents</div>
+          <div style="display:flex;flex-direction:column;gap:7px">
+            <div style="display:flex;align-items:center;gap:8px;background:var(--color-slate-50);border:1px solid var(--color-border);border-radius:8px;padding:8px 10px">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span style="flex:1;font-size:12px;font-weight:500;color:var(--color-slate-700)">Rohit_Verma_CV.pdf</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--color-slate-400)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;background:var(--color-slate-50);border:1px solid var(--color-border);border-radius:8px;padding:8px 10px">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span style="flex:1;font-size:12px;font-weight:500;color:var(--color-slate-700)">Portfolio_Link.url</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--color-slate-400)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </div>
+          </div>
+          <button class="btn btn-outline btn-sm" style="width:100%;margin-top:8px;justify-content:center">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Upload Document
+          </button>
+        </div>
+
+        <!-- Notes -->
+        <div class="rc-section">
+          <div class="rc-label">Internal Notes</div>
+          <div style="background:var(--color-slate-50);border:1px solid var(--color-border);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--color-slate-600);line-height:1.6;margin-bottom:8px">
+            <div style="font-size:10px;font-weight:600;color:var(--color-slate-400);margin-bottom:4px">Priya Sharma · Apr 14</div>
+            Referral from Anjali. Very impressive background, proactively reached out after the JD was posted. Notice period is 60 days — may need to negotiate joining date.
+          </div>
+          <textarea placeholder="Add a note…" style="width:100%;border:1px solid var(--color-border);border-radius:8px;padding:8px 10px;font-size:12px;font-family:var(--font-sans);color:var(--color-slate-700);resize:none;outline:none;background:#fff;line-height:1.5" rows="3"></textarea>
+          <button class="btn btn-outline btn-sm" style="margin-top:6px;font-size:12px">Save Note</button>
+        </div>
+
+      </div><!-- /right-col -->
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script></body>
+</html>

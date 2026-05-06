@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Work Nucleus — Interview Feedback</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+html,body{height:100%;overflow:hidden}
+.shell{display:flex;height:100vh;background:var(--color-background)}
+.sidebar{width:var(--sidebar-width);flex-shrink:0;display:flex;flex-direction:column;background:var(--color-surface);border-right:1px solid var(--color-border);height:100vh}
+.sb-header{height:var(--topbar-height);display:flex;align-items:center;padding:0 20px;border-bottom:1px solid var(--color-border);flex-shrink:0}
+.sb-mark{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#4338ca);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;box-shadow:0 2px 6px rgba(79,70,229,.3)}
+.sb-word{font-size:16px;font-weight:700;color:var(--color-slate-900);margin-left:9px}
+.sb-word span{color:#4f46e5}
+.sb-nav{flex:1;padding:10px;overflow-y:auto}
+.ni{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;font-size:13px;font-weight:500;color:var(--color-slate-500);cursor:pointer;margin-bottom:1px;transition:var(--transition-colors)}
+.ni:hover{background:var(--color-slate-50);color:var(--color-slate-900)}
+.ni.act{background:var(--color-indigo-50);color:#4338ca}
+.ni.act svg{color:#4f46e5}
+.ni svg{width:18px;height:18px;flex-shrink:0}
+.sb-footer{padding:10px;border-top:1px solid var(--color-border)}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{height:var(--topbar-height);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--color-surface);border-bottom:1px solid var(--color-border);flex-shrink:0;gap:16px}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--color-slate-50);border:1px solid var(--color-border);border-radius:10px;padding:8px 14px;font-size:13px;color:var(--color-slate-400);width:260px}
+.tb-right{display:flex;align-items:center;gap:8px}
+.notif{width:36px;height:36px;border-radius:9px;border:1px solid var(--color-border);background:var(--color-surface);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative}
+.notif-dot{position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;background:#ef4444;border:1.5px solid #fff}
+.ua{width:30px;height:30px;border-radius:50%;background:var(--gradient-avatar);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700}
+.user-btn{display:flex;align-items:center;gap:8px;padding:5px 10px 5px 6px;border-radius:10px;cursor:pointer}
+.user-btn:hover{background:var(--color-slate-50)}
+
+/* ── Layout ── */
+.content{flex:1;overflow-y:auto;padding:24px;display:flex;gap:20px}
+.form-area{flex:1;display:flex;flex-direction:column;gap:16px;min-width:0}
+.sidebar-area{width:300px;flex-shrink:0;display:flex;flex-direction:column;gap:14px}
+
+/* ── Cards ── */
+.card{background:var(--color-surface);border-radius:var(--radius-xl);border:1px solid rgba(226,232,240,.6);box-shadow:var(--shadow-card);overflow:hidden}
+.card-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--color-slate-50)}
+.card-title{font-size:13px;font-weight:600;color:var(--color-slate-900)}
+.card-body{padding:16px 18px}
+
+/* ── Form elements ── */
+.field{margin-bottom:16px}
+.field:last-child{margin-bottom:0}
+.field-label{font-size:12px;font-weight:600;color:var(--color-slate-700);margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.field-label .req{color:#ef4444}
+textarea,input[type=text],select{width:100%;border:1px solid var(--color-border);border-radius:var(--radius-base);padding:8px 12px;font-size:13px;font-family:var(--font-sans);color:var(--color-slate-700);background:#fff;outline:none;transition:border-color .15s,box-shadow .15s}
+textarea:focus,input[type=text]:focus,select:focus{border-color:#4f46e5;box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+textarea{resize:vertical;line-height:1.6}
+select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:30px}
+
+/* ── Competency rows ── */
+.comp-grid{display:flex;flex-direction:column;gap:14px}
+.comp-row{display:flex;align-items:flex-start;gap:12px}
+.comp-info{flex:0 0 160px}
+.comp-name{font-size:12px;font-weight:600;color:var(--color-slate-800)}
+.comp-type{font-size:10px;color:var(--color-slate-400);margin-top:2px}
+.comp-right{flex:1}
+.rating-row{display:flex;gap:6px;margin-bottom:6px}
+.star-btn{width:32px;height:32px;border-radius:7px;border:1px solid var(--color-border);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--transition-colors)}
+.star-btn:hover{border-color:#4f46e5;background:#eef2ff}
+.star-btn.sel-1,.star-btn.sel-2{border-color:#ef4444;background:#fef2f2}
+.star-btn.sel-3{border-color:#f59e0b;background:#fffbeb}
+.star-btn.sel-4,.star-btn.sel-5{border-color:#10b981;background:#ecfdf5}
+.star-labels{display:flex;justify-content:space-between;font-size:9px;color:var(--color-slate-400);padding:0 2px}
+.comp-note{border:1px solid var(--color-border);border-radius:var(--radius-base);padding:6px 10px;font-size:11px;font-family:var(--font-sans);color:var(--color-slate-600);width:100%;resize:none;outline:none;background:#fafbfc}
+.comp-note:focus{border-color:#4f46e5;box-shadow:0 0 0 2px rgba(99,102,241,.1);background:#fff}
+
+/* ── Verdict buttons ── */
+.verdict-group{display:flex;gap:10px}
+.verdict-btn{flex:1;padding:14px 10px;border-radius:var(--radius-xl);border:2px solid var(--color-border);background:#fff;cursor:pointer;text-align:center;transition:var(--transition-all)}
+.verdict-btn.v-strong{border-color:#10b981;background:#f0fdf4}
+.verdict-btn.v-hire{border-color:#6366f1;background:#eef2ff}
+.verdict-btn.v-hold{border-color:#f59e0b;background:#fffbeb}
+.verdict-btn.v-no{border-color:#ef4444;background:#fef2f2}
+.vb-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 8px}
+.vb-label{font-size:12px;font-weight:700}
+.vb-sub{font-size:10px;margin-top:2px}
+
+/* ── Candidate snapshot ── */
+.snap-avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#06b6d4);display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;font-weight:700}
+.snap-name{font-size:15px;font-weight:700;color:var(--color-slate-900);margin-top:10px}
+.snap-role{font-size:12px;color:var(--color-slate-500);margin-top:2px}
+.snap-meta{display:flex;flex-direction:column;gap:5px;margin-top:12px}
+.snap-meta-row{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--color-slate-500)}
+
+/* ── Progress tracker ── */
+.tracker{display:flex;flex-direction:column;gap:0}
+.tr-step{display:flex;gap:10px;align-items:flex-start;padding-bottom:12px;position:relative}
+.tr-step:not(:last-child)::before{content:'';position:absolute;left:11px;top:24px;bottom:0;width:1px;background:var(--color-border)}
+.tr-circle{width:22px;height:22px;border-radius:50%;border:2px solid;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;font-weight:700}
+.tr-done{border-color:#10b981;background:#10b981;color:#fff}
+.tr-active{border-color:#4f46e5;background:#fff;color:#4f46e5}
+.tr-pending{border-color:#e2e8f0;background:#fff;color:#94a3b8}
+.tr-name{font-size:12px;font-weight:500;color:var(--color-slate-700);margin-top:2px}
+.tr-meta{font-size:11px;color:var(--color-slate-400)}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:40px;padding:0 18px;border-radius:var(--radius-lg);font-size:13px;font-weight:500;cursor:pointer;border:none;font-family:var(--font-sans);transition:var(--transition-all)}
+.btn-primary{background:var(--color-primary);color:#fff;box-shadow:var(--shadow-primary)}
+.btn-primary:hover{background:var(--color-primary-hover)}
+.btn-outline{background:#fff;color:var(--color-slate-700);border:1px solid var(--color-border);box-shadow:var(--shadow-xs)}
+.btn-outline:hover{background:var(--color-slate-50)}
+.btn-ai{background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;box-shadow:0 4px 14px rgba(124,58,237,.25)}
+
+/* ── Section header ── */
+.section-eyebrow{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--color-slate-400);margin-bottom:10px}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sb-header"><div class="sb-mark">W</div><span class="sb-word">Work<span>Nucleus</span></span></div>
+    <nav class="sb-nav">
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>Hiring Plans</div>
+      <div class="ni act"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Candidates</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Offers</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>BGV</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>Appraisal</div>
+    </nav>
+    <div class="sb-footer"><div style="border-radius:10px;background:linear-gradient(135deg,#eef2ff,#ecfeff);padding:12px"><div style="font-size:11px;font-weight:700;color:#312e81">Nova Design System</div><div style="font-size:10px;color:#4f46e5;margin-top:1px">Powered by Claude AI</div></div></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="search-box"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Search plans, candidates…</div>
+      <div class="tb-right">
+        <div class="notif"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg><div class="notif-dot"></div></div>
+        <div class="user-btn"><div class="ua">RK</div><span style="font-size:13px;font-weight:500;color:var(--color-slate-700)">Rahul Kumar</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-slate-400)"><polyline points="6 9 12 15 18 9"/></svg></div>
+      </div>
+    </header>
+
+    <div class="content">
+      <!-- Form area -->
+      <div class="form-area">
+
+        <!-- Page header -->
+        <div style="display:flex;align-items:flex-start;justify-content:space-between">
+          <div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-slate-400);margin-bottom:5px">
+              <a href="#" style="color:var(--color-slate-400);text-decoration:none">Senior PM · Q2 2025</a>
+              <span>›</span><a href="#" style="color:var(--color-slate-400);text-decoration:none">Rohit Verma</a>
+              <span>›</span><span style="color:var(--color-slate-600);font-weight:500">Submit Feedback</span>
+            </div>
+            <div style="font-size:20px;font-weight:700;color:var(--color-slate-900)">Interview Feedback</div>
+            <div style="font-size:13px;color:var(--color-slate-400);margin-top:3px">Technical Round 1 · Apr 18, 2025</div>
+          </div>
+          <button class="btn btn-ai">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 008.5 14.063l-6.135-1.582a.5.5 0 010-.962L8.5 9.936A2 2 0 009.937 8.5l1.582-6.135a.5.5 0 01.963 0L14.063 8.5A2 2 0 0015.5 9.937l6.135 1.581a.5.5 0 010 .964L15.5 14.063a2 2 0 00-1.437 1.437l-1.582 6.135a.5.5 0 01-.963 0z"/></svg>
+            Draft with AI
+          </button>
+        </div>
+
+        <!-- Overall summary -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Interview Summary</span></div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
+            <div class="field">
+              <div class="field-label">Overall Impression <span class="req">*</span></div>
+              <textarea rows="3" placeholder="Describe your overall assessment of the candidate…">Excellent product instinct and data-driven approach. Designed a seamless rescheduling flow for Amazon's logistics product — clear user empathy and well-structured metrics. Strong communicator.</textarea>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div class="field" style="margin-bottom:0">
+                <div class="field-label">Interview Type</div>
+                <select><option>Product Design</option><option>Technical</option><option>Leadership</option><option>HR / Culture Fit</option></select>
+              </div>
+              <div class="field" style="margin-bottom:0">
+                <div class="field-label">Interview Duration</div>
+                <select><option>30 minutes</option><option selected>60 minutes</option><option>90 minutes</option></select>
+              </div>
+            </div>
+            <div class="field" style="margin-bottom:0">
+              <div class="field-label">Strengths</div>
+              <textarea rows="2" placeholder="What stood out positively?">Strong product case structuring, clear metrics definition, excellent user empathy. Very calm under ambiguity.</textarea>
+            </div>
+            <div class="field" style="margin-bottom:0">
+              <div class="field-label">Areas to Probe Further</div>
+              <textarea rows="2" placeholder="What needs deeper evaluation in next rounds?">Technical depth on ML/AI product features — limited exposure to AI-native products. Worth exploring in R2.</textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Competency scoring -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Competency Ratings</span>
+            <span style="font-size:11px;color:var(--color-slate-400)">Rate 1–5 · 5 = Exceptional</span>
+          </div>
+          <div class="card-body">
+            <div class="comp-grid">
+
+              <div class="comp-row">
+                <div class="comp-info">
+                  <div class="comp-name">Problem Structuring</div>
+                  <div class="comp-type" style="color:#1d4ed8">TECHNICAL</div>
+                </div>
+                <div class="comp-right">
+                  <div class="rating-row" id="r1">
+                    <button class="star-btn sel-5" onclick="rate('r1',1)">1</button>
+                    <button class="star-btn sel-5" onclick="rate('r1',2)">2</button>
+                    <button class="star-btn sel-5" onclick="rate('r1',3)">3</button>
+                    <button class="star-btn sel-5" onclick="rate('r1',4)">4</button>
+                    <button class="star-btn" onclick="rate('r1',5)">5</button>
+                  </div>
+                  <div class="star-labels"><span>Poor</span><span>Below avg</span><span>Average</span><span>Good</span><span>Exceptional</span></div>
+                  <textarea class="comp-note" rows="1" placeholder="Optional note…">Great MECE framework applied.</textarea>
+                </div>
+              </div>
+
+              <div class="comp-row">
+                <div class="comp-info">
+                  <div class="comp-name">Product Sense</div>
+                  <div class="comp-type" style="color:#1d4ed8">TECHNICAL</div>
+                </div>
+                <div class="comp-right">
+                  <div class="rating-row" id="r2">
+                    <button class="star-btn sel-5" onclick="rate('r2',1)">1</button>
+                    <button class="star-btn sel-5" onclick="rate('r2',2)">2</button>
+                    <button class="star-btn sel-5" onclick="rate('r2',3)">3</button>
+                    <button class="star-btn sel-5" onclick="rate('r2',4)">4</button>
+                    <button class="star-btn sel-5" onclick="rate('r2',5)">5</button>
+                  </div>
+                  <div class="star-labels"><span>Poor</span><span>Below avg</span><span>Average</span><span>Good</span><span>Exceptional</span></div>
+                  <textarea class="comp-note" rows="1" placeholder="Optional note…">Identified non-obvious user pain points.</textarea>
+                </div>
+              </div>
+
+              <div class="comp-row">
+                <div class="comp-info">
+                  <div class="comp-name">Data & Metrics</div>
+                  <div class="comp-type" style="color:#1d4ed8">TECHNICAL</div>
+                </div>
+                <div class="comp-right">
+                  <div class="rating-row" id="r3">
+                    <button class="star-btn sel-5" onclick="rate('r3',1)">1</button>
+                    <button class="star-btn sel-5" onclick="rate('r3',2)">2</button>
+                    <button class="star-btn sel-5" onclick="rate('r3',3)">3</button>
+                    <button class="star-btn sel-4" onclick="rate('r3',4)">4</button>
+                    <button class="star-btn" onclick="rate('r3',5)">5</button>
+                  </div>
+                  <div class="star-labels"><span>Poor</span><span>Below avg</span><span>Average</span><span>Good</span><span>Exceptional</span></div>
+                  <textarea class="comp-note" rows="1" placeholder="Optional note…"></textarea>
+                </div>
+              </div>
+
+              <div class="comp-row">
+                <div class="comp-info">
+                  <div class="comp-name">Communication</div>
+                  <div class="comp-type" style="color:#d97706">COMMUNICATION</div>
+                </div>
+                <div class="comp-right">
+                  <div class="rating-row" id="r4">
+                    <button class="star-btn sel-5" onclick="rate('r4',1)">1</button>
+                    <button class="star-btn sel-5" onclick="rate('r4',2)">2</button>
+                    <button class="star-btn sel-5" onclick="rate('r4',3)">3</button>
+                    <button class="star-btn sel-5" onclick="rate('r4',4)">4</button>
+                    <button class="star-btn sel-5" onclick="rate('r4',5)">5</button>
+                  </div>
+                  <div class="star-labels"><span>Poor</span><span>Below avg</span><span>Average</span><span>Good</span><span>Exceptional</span></div>
+                  <textarea class="comp-note" rows="1" placeholder="Optional note…">Very articulate, zero filler words.</textarea>
+                </div>
+              </div>
+
+              <div class="comp-row">
+                <div class="comp-info">
+                  <div class="comp-name">Culture Fit</div>
+                  <div class="comp-type" style="color:#059669">BEHAVIOURAL</div>
+                </div>
+                <div class="comp-right">
+                  <div class="rating-row" id="r5">
+                    <button class="star-btn sel-5" onclick="rate('r5',1)">1</button>
+                    <button class="star-btn sel-5" onclick="rate('r5',2)">2</button>
+                    <button class="star-btn sel-5" onclick="rate('r5',3)">3</button>
+                    <button class="star-btn sel-5" onclick="rate('r5',4)">4</button>
+                    <button class="star-btn" onclick="rate('r5',5)">5</button>
+                  </div>
+                  <div class="star-labels"><span>Poor</span><span>Below avg</span><span>Average</span><span>Good</span><span>Exceptional</span></div>
+                  <textarea class="comp-note" rows="1" placeholder="Optional note…"></textarea>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Hiring verdict -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Hiring Recommendation <span style="color:#ef4444;font-size:13px">*</span></span></div>
+          <div class="card-body">
+            <div class="verdict-group">
+              <div class="verdict-btn v-strong" onclick="selectVerdict(this)">
+                <div class="vb-icon" style="background:#dcfce7"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+                <div class="vb-label" style="color:#065f46">Strong Hire</div>
+                <div class="vb-sub" style="color:#059669">Top candidate</div>
+              </div>
+              <div class="verdict-btn" onclick="selectVerdict(this)" style="border-color:#e0e7ff;background:#f5f3ff">
+                <div class="vb-icon" style="background:#e0e7ff"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4338ca" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+                <div class="vb-label" style="color:#3730a3">Hire</div>
+                <div class="vb-sub" style="color:#4338ca">Good fit</div>
+              </div>
+              <div class="verdict-btn" onclick="selectVerdict(this)" style="border-color:#fde68a;background:#fffbeb">
+                <div class="vb-icon" style="background:#fef9c3"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+                <div class="vb-label" style="color:#92400e">Hold</div>
+                <div class="vb-sub" style="color:#d97706">Need more signal</div>
+              </div>
+              <div class="verdict-btn" onclick="selectVerdict(this)" style="border-color:#fecaca;background:#fff5f5">
+                <div class="vb-icon" style="background:#fee2e2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
+                <div class="vb-label" style="color:#991b1b">No Hire</div>
+                <div class="vb-sub" style="color:#dc2626">Doesn't meet bar</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div style="display:flex;align-items:center;gap:10px;justify-content:flex-end;padding-bottom:24px">
+          <button class="btn btn-outline">Save Draft</button>
+          <button class="btn btn-primary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Submit Feedback
+          </button>
+        </div>
+
+      </div><!-- /form-area -->
+
+      <!-- Sidebar -->
+      <div class="sidebar-area">
+
+        <!-- Candidate snapshot -->
+        <div class="card">
+          <div class="card-body">
+            <div class="snap-avatar">RV</div>
+            <div class="snap-name">Rohit Verma</div>
+            <div class="snap-role">Group PM · Amazon India</div>
+            <div class="snap-meta">
+              <div class="snap-meta-row"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>9 yrs experience</div>
+              <div class="snap-meta-row"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/></svg>IIM Bangalore</div>
+              <div class="snap-meta-row"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>₹42 LPA current · ₹48–52 exp</div>
+              <div class="snap-meta-row"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>60 days notice</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Round tracker -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Interview Progress</span></div>
+          <div class="card-body">
+            <div class="tracker">
+              <div class="tr-step">
+                <div class="tr-circle tr-done">✓</div>
+                <div><div class="tr-name">Screening</div><div class="tr-meta">Priya Sharma · Apr 14</div></div>
+              </div>
+              <div class="tr-step">
+                <div class="tr-circle tr-active">2</div>
+                <div><div class="tr-name" style="color:#4338ca;font-weight:600">Technical R1</div><div class="tr-meta" style="color:#4f46e5">Current · Apr 18</div></div>
+              </div>
+              <div class="tr-step">
+                <div class="tr-circle tr-pending">3</div>
+                <div><div class="tr-name" style="color:var(--color-slate-400)">Leadership Round</div><div class="tr-meta">Upcoming</div></div>
+              </div>
+              <div class="tr-step">
+                <div class="tr-circle tr-pending">4</div>
+                <div><div class="tr-name" style="color:var(--color-slate-400)">HR Round</div><div class="tr-meta">Upcoming</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI prompt -->
+        <div style="background:linear-gradient(135deg,#f5f3ff,#ecfeff);border:1px solid #e0e7ff;border-radius:var(--radius-xl);padding:14px 16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <div style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#7c3aed,#4f46e5);display:flex;align-items:center;justify-content:center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 008.5 14.063l-6.135-1.582a.5.5 0 010-.962L8.5 9.936A2 2 0 009.937 8.5l1.582-6.135a.5.5 0 01.963 0L14.063 8.5A2 2 0 0015.5 9.937l6.135 1.581a.5.5 0 010 .964L15.5 14.063a2 2 0 00-1.437 1.437l-1.582 6.135a.5.5 0 01-.963 0z"/></svg></div>
+            <span style="font-size:12px;font-weight:700;color:var(--color-slate-800)">AI Suggestion</span>
+          </div>
+          <div style="font-size:12px;color:var(--color-slate-600);line-height:1.65">Based on the competency scores you've entered, the AI suggests rating <strong>Data & Metrics</strong> one point lower — the candidate relied on vanity metrics without defining success criteria clearly.</div>
+        </div>
+
+      </div><!-- /sidebar-area -->
+    </div><!-- /content -->
+  </div>
+</div>
+<script>
+function rate(id, val) {
+  const row = document.getElementById(id);
+  const btns = row.querySelectorAll('.star-btn');
+  btns.forEach((b, i) => {
+    b.className = 'star-btn';
+    if (i < val) b.classList.add(val <= 2 ? 'sel-2' : val === 3 ? 'sel-3' : 'sel-5');
+  });
+}
+function selectVerdict(el) {
+  document.querySelectorAll('.verdict-btn').forEach(b => b.style.outline = 'none');
+  el.style.outline = '2.5px solid #4f46e5';
+  el.style.outlineOffset = '2px';
+}
+</script>
+</body>
+</html>

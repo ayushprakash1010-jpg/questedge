@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Work Nucleus — Offer Letter</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+html,body{height:100%;overflow:hidden}
+.shell{display:flex;height:100vh;background:var(--color-background)}
+.sidebar{width:var(--sidebar-width);flex-shrink:0;display:flex;flex-direction:column;background:var(--color-surface);border-right:1px solid var(--color-border);height:100vh}
+.sb-header{height:var(--topbar-height);display:flex;align-items:center;padding:0 20px;border-bottom:1px solid var(--color-border);flex-shrink:0}
+.sb-mark{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#4338ca);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;box-shadow:0 2px 6px rgba(79,70,229,.3)}
+.sb-word{font-size:16px;font-weight:700;color:var(--color-slate-900);margin-left:9px}.sb-word span{color:#4f46e5}
+.sb-nav{flex:1;padding:10px;overflow-y:auto}
+.ni{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;font-size:13px;font-weight:500;color:var(--color-slate-500);cursor:pointer;margin-bottom:1px;transition:var(--transition-colors)}
+.ni:hover{background:var(--color-slate-50);color:var(--color-slate-900)}
+.ni.act{background:var(--color-indigo-50);color:#4338ca}.ni.act svg{color:#4f46e5}
+.ni svg{width:18px;height:18px;flex-shrink:0}
+.sb-footer{padding:10px;border-top:1px solid var(--color-border)}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{height:var(--topbar-height);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--color-surface);border-bottom:1px solid var(--color-border);flex-shrink:0;gap:16px}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--color-slate-50);border:1px solid var(--color-border);border-radius:10px;padding:8px 14px;font-size:13px;color:var(--color-slate-400);width:260px}
+.tb-right{display:flex;align-items:center;gap:8px}
+.notif{width:36px;height:36px;border-radius:9px;border:1px solid var(--color-border);background:var(--color-surface);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative}
+.notif-dot{position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;background:#ef4444;border:1.5px solid #fff}
+.ua{width:30px;height:30px;border-radius:50%;background:var(--gradient-avatar);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700}
+.user-btn{display:flex;align-items:center;gap:8px;padding:5px 10px 5px 6px;border-radius:10px;cursor:pointer}
+.user-btn:hover{background:var(--color-slate-50)}
+
+/* Layout */
+.content{flex:1;display:flex;overflow:hidden}
+.form-col{width:340px;flex-shrink:0;border-right:1px solid var(--color-border);overflow-y:auto;display:flex;flex-direction:column}
+.preview-col{flex:1;overflow-y:auto;background:#f0f2f5;padding:32px;display:flex;justify-content:center}
+
+/* Form col */
+.fc-header{padding:20px 20px 16px;border-bottom:1px solid var(--color-border);flex-shrink:0}
+.fc-title{font-size:15px;font-weight:700;color:var(--color-slate-900)}
+.fc-sub{font-size:12px;color:var(--color-slate-400);margin-top:3px}
+.fc-body{padding:16px 20px;flex:1;display:flex;flex-direction:column;gap:14px}
+.form-section{display:flex;flex-direction:column;gap:10px}
+.fs-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--color-slate-400);padding-bottom:4px;border-bottom:1px solid var(--color-border)}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:12px;font-weight:600;color:var(--color-slate-700)}
+input[type=text],input[type=date],select,textarea{width:100%;border:1px solid var(--color-border);border-radius:var(--radius-base);padding:8px 10px;font-size:12px;font-family:var(--font-sans);color:var(--color-slate-700);background:#fff;outline:none;transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{border-color:#4f46e5;box-shadow:0 0 0 2px rgba(99,102,241,.1)}
+select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:26px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fc-actions{padding:14px 20px;border-top:1px solid var(--color-border);flex-shrink:0;display:flex;flex-direction:column;gap:8px}
+
+/* Approval flow */
+.approval-steps{display:flex;flex-direction:column;gap:0}
+.ap-step{display:flex;align-items:center;gap:10px;padding:8px 0}
+.ap-step:not(:last-child){border-bottom:1px solid var(--color-slate-50)}
+.ap-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;font-weight:700}
+.ap-done{background:#dcfce7;color:#059669}
+.ap-active{background:#eef2ff;color:#4f46e5;border:2px solid #4f46e5}
+.ap-pending{background:#f1f5f9;color:#94a3b8}
+.ap-name{font-size:12px;font-weight:500;color:var(--color-slate-700)}
+.ap-role{font-size:11px;color:var(--color-slate-400)}
+.ap-badge{margin-left:auto;font-size:10px;font-weight:600;border-radius:4px;padding:2px 7px}
+.ap-b-done{background:#dcfce7;color:#059669}
+.ap-b-pend{background:#fef9c3;color:#92400e}
+.ap-b-wait{background:#f1f5f9;color:#94a3b8}
+
+/* Letter preview */
+.letter{background:#fff;width:620px;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.08);padding:52px 56px;font-family:'Georgia',serif;position:relative}
+.letter-logo{display:flex;align-items:center;gap:8px;margin-bottom:36px}
+.letter-logo-mark{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#4338ca);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px}
+.letter-logo-name{font-family:var(--font-sans);font-size:17px;font-weight:700;color:var(--color-slate-900)}
+.letter-logo-name span{color:#4f46e5}
+.letter-divider{height:1px;background:linear-gradient(90deg,#6366f1,#06b6d4,transparent);margin-bottom:28px}
+.letter-date{font-family:var(--font-sans);font-size:13px;color:var(--color-slate-400);margin-bottom:20px}
+.letter-addr{font-family:var(--font-sans);font-size:13px;color:var(--color-slate-700);line-height:1.6;margin-bottom:24px}
+.letter-subject{font-family:var(--font-sans);font-size:14px;font-weight:700;color:var(--color-slate-900);margin-bottom:20px}
+.letter p{font-size:14px;color:var(--color-slate-700);line-height:1.85;margin-bottom:16px}
+.letter-comp-table{width:100%;border-collapse:collapse;margin:20px 0;font-family:var(--font-sans)}
+.letter-comp-table th{text-align:left;padding:9px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--color-slate-400);background:#f8fafc;border-bottom:1px solid var(--color-border)}
+.letter-comp-table td{padding:10px 14px;font-size:13px;color:var(--color-slate-700);border-bottom:1px solid #f8fafc}
+.letter-comp-table td:last-child{font-weight:700;color:var(--color-slate-900);text-align:right}
+.letter-comp-table tr:last-child td{border-bottom:none;font-weight:700;font-size:14px;color:#4338ca}
+.letter-sign-area{margin-top:36px}
+.letter-sign-line{width:140px;height:1px;background:var(--color-border);margin-bottom:6px}
+.letter-sign-name{font-family:var(--font-sans);font-size:13px;font-weight:600;color:var(--color-slate-800)}
+.letter-sign-title{font-family:var(--font-sans);font-size:12px;color:var(--color-slate-400)}
+.placeholder-field{background:linear-gradient(90deg,#eef2ff,#e0e7ff);border-radius:3px;padding:0 4px;color:#4338ca;font-weight:600;cursor:pointer}
+.letter-stamp{position:absolute;top:52px;right:56px;width:72px;height:72px;border-radius:50%;border:3px solid #e0e7ff;display:flex;align-items:center;justify-content:center;opacity:.6}
+
+/* Btns */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:38px;padding:0 16px;border-radius:var(--radius-lg);font-size:13px;font-weight:500;cursor:pointer;border:none;font-family:var(--font-sans);transition:var(--transition-all)}
+.btn-primary{background:var(--color-primary);color:#fff;box-shadow:var(--shadow-primary)}
+.btn-primary:hover{background:var(--color-primary-hover)}
+.btn-outline{background:#fff;color:var(--color-slate-700);border:1px solid var(--color-border);box-shadow:var(--shadow-xs)}
+.btn-outline:hover{background:var(--color-slate-50)}
+.btn-ai{background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;box-shadow:0 4px 14px rgba(124,58,237,.25)}
+.btn-sm{height:32px;padding:0 12px;font-size:12px}
+.btn-full{width:100%;justify-content:center}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sb-header"><div class="sb-mark">W</div><span class="sb-word">Work<span>Nucleus</span></span></div>
+    <nav class="sb-nav">
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>Hiring Plans</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Candidates</div>
+      <div class="ni act"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Offers</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>BGV</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>Appraisal</div>
+    </nav>
+    <div class="sb-footer"><div style="border-radius:10px;background:linear-gradient(135deg,#eef2ff,#ecfeff);padding:12px"><div style="font-size:11px;font-weight:700;color:#312e81">Nova Design System</div><div style="font-size:10px;color:#4f46e5;margin-top:1px">Powered by Claude AI</div></div></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="search-box"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Search plans, candidates…</div>
+      <div class="tb-right">
+        <div class="notif"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg><div class="notif-dot"></div></div>
+        <div class="user-btn"><div class="ua">PS</div><span style="font-size:13px;font-weight:500;color:var(--color-slate-700)">Priya Sharma</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-slate-400)"><polyline points="6 9 12 15 18 9"/></svg></div>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- Form column -->
+      <div class="form-col">
+        <div class="fc-header">
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--color-slate-400);margin-bottom:6px">
+            <a href="#" style="color:var(--color-slate-400);text-decoration:none">Offers</a> › <span style="color:var(--color-slate-600)">New Offer</span>
+          </div>
+          <div class="fc-title">Compose Offer Letter</div>
+          <div class="fc-sub">Rohit Verma · Senior PM · Q2 2025</div>
+        </div>
+
+        <div class="fc-body">
+
+          <!-- Candidate -->
+          <div class="form-section">
+            <div class="fs-label">Candidate</div>
+            <div class="field"><label>Full Name</label><input type="text" value="Rohit Verma"></div>
+            <div class="two-col">
+              <div class="field"><label>Role</label><input type="text" value="Senior Product Manager"></div>
+              <div class="field"><label>Department</label><select><option>Product</option><option>Engineering</option></select></div>
+            </div>
+            <div class="field"><label>Reporting To</label><input type="text" value="Vikram Singh, VP Product"></div>
+            <div class="two-col">
+              <div class="field"><label>Joining Date</label><input type="date" value="2025-07-14"></div>
+              <div class="field"><label>Location</label><select><option>Bengaluru</option><option>Mumbai</option></select></div>
+            </div>
+          </div>
+
+          <!-- Compensation -->
+          <div class="form-section">
+            <div class="fs-label">Compensation</div>
+            <div class="two-col">
+              <div class="field"><label>Fixed (LPA)</label><input type="text" value="42,00,000"></div>
+              <div class="field"><label>Variable (LPA)</label><input type="text" value="6,00,000"></div>
+            </div>
+            <div class="two-col">
+              <div class="field"><label>ESOP (units)</label><input type="text" value="2,500"></div>
+              <div class="field"><label>Vesting</label><select><option>4yr / 1yr cliff</option><option>3yr / 1yr cliff</option></select></div>
+            </div>
+            <div class="two-col">
+              <div class="field"><label>Joining Bonus</label><input type="text" value="2,00,000"></div>
+              <div class="field"><label>Relocation</label><input type="text" value="—"></div>
+            </div>
+          </div>
+
+          <!-- Template -->
+          <div class="form-section">
+            <div class="fs-label">Letter Settings</div>
+            <div class="field"><label>Template</label>
+              <select>
+                <option>Standard Offer Letter v3</option>
+                <option>Senior Leadership Template</option>
+                <option>Contract / Consulting Template</option>
+              </select>
+            </div>
+            <div class="field"><label>Offer Expiry</label><input type="date" value="2025-05-14"></div>
+            <div class="field"><label>Signatory</label><input type="text" value="Priya Sharma, Head of HR"></div>
+          </div>
+
+          <!-- Approval chain -->
+          <div class="form-section">
+            <div class="fs-label">Approval Chain</div>
+            <div class="approval-steps">
+              <div class="ap-step">
+                <div class="ap-icon ap-done">✓</div>
+                <div><div class="ap-name">Priya Sharma</div><div class="ap-role">HR Lead</div></div>
+                <span class="ap-badge ap-b-done">Approved</span>
+              </div>
+              <div class="ap-step">
+                <div class="ap-icon ap-active">2</div>
+                <div><div class="ap-name">Vikram Singh</div><div class="ap-role">VP Product</div></div>
+                <span class="ap-badge ap-b-pend">Pending</span>
+              </div>
+              <div class="ap-step">
+                <div class="ap-icon ap-pending">3</div>
+                <div><div class="ap-name">Arjun Nair</div><div class="ap-role">CFO</div></div>
+                <span class="ap-badge ap-b-wait">Waiting</span>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /fc-body -->
+
+        <div class="fc-actions">
+          <button class="btn btn-ai btn-full">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 008.5 14.063l-6.135-1.582a.5.5 0 010-.962L8.5 9.936A2 2 0 009.937 8.5l1.582-6.135a.5.5 0 01.963 0L14.063 8.5A2 2 0 0015.5 9.937l6.135 1.581a.5.5 0 010 .964L15.5 14.063a2 2 0 00-1.437 1.437l-1.582 6.135a.5.5 0 01-.963 0z"/></svg>
+            Regenerate with AI
+          </button>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline" style="flex:1;justify-content:center">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              Download PDF
+            </button>
+            <button class="btn btn-primary" style="flex:1;justify-content:center">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              Send for Approval
+            </button>
+          </div>
+        </div>
+      </div><!-- /form-col -->
+
+      <!-- Letter preview -->
+      <div class="preview-col">
+        <div class="letter">
+          <div class="letter-stamp">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+          </div>
+          <div class="letter-logo">
+            <div class="letter-logo-mark">W</div>
+            <span class="letter-logo-name">Work<span>Nucleus</span> Technologies Pvt. Ltd.</span>
+          </div>
+          <div class="letter-divider"></div>
+          <div class="letter-date">May 5, 2025</div>
+          <div class="letter-addr">
+            <strong>Rohit Verma</strong><br>
+            Bengaluru, Karnataka — 560034
+          </div>
+          <div class="letter-subject">Subject: Offer of Employment — <span class="placeholder-field">Senior Product Manager</span></div>
+          <p>Dear <span class="placeholder-field">Rohit</span>,</p>
+          <p>We are delighted to extend this offer of employment to you for the position of <strong>Senior Product Manager — Platform</strong> at WorkNucleus Technologies Pvt. Ltd., Bengaluru. This offer is contingent upon successful completion of background verification and submission of relevant documents.</p>
+
+          <table class="letter-comp-table">
+            <thead><tr><th>Compensation Component</th><th style="text-align:right">Per Annum (₹)</th></tr></thead>
+            <tbody>
+              <tr><td>Fixed Base Salary</td><td>42,00,000</td></tr>
+              <tr><td>Variable Performance Pay</td><td>6,00,000</td></tr>
+              <tr><td>Joining Bonus (one-time)</td><td>2,00,000</td></tr>
+              <tr><td>ESOP (2,500 units @ 4-yr vesting)</td><td>—</td></tr>
+              <tr><td><strong>Total Fixed CTC</strong></td><td>48,00,000</td></tr>
+            </tbody>
+          </table>
+
+          <p>Your employment will commence on <span class="placeholder-field">July 14, 2025</span>. You will report to <strong>Vikram Singh, VP Product</strong>. This offer is valid until <strong>May 14, 2025</strong>. Kindly sign and return a copy to confirm your acceptance.</p>
+          <p>We look forward to having you on the team and are confident you will make a significant contribution to WorkNucleus.</p>
+
+          <div class="letter-sign-area">
+            <p style="margin-bottom:28px">Warm regards,</p>
+            <div class="letter-sign-line"></div>
+            <div class="letter-sign-name">Priya Sharma</div>
+            <div class="letter-sign-title">Head of Human Resources · WorkNucleus Technologies</div>
+          </div>
+
+          <div style="margin-top:32px;padding-top:20px;border-top:1px solid var(--color-border);font-family:var(--font-sans);font-size:12px;color:var(--color-slate-400)">
+            This is a confidential offer letter. Please do not share with third parties.
+          </div>
+        </div>
+      </div><!-- /preview-col -->
+
+    </div>
+  </div>
+</div>
+</body>
+</html>

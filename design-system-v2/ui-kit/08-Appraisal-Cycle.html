@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Work Nucleus — Appraisal Cycle</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+html,body{height:100%;overflow:hidden}
+.shell{display:flex;height:100vh;background:var(--color-background)}
+.sidebar{width:var(--sidebar-width);flex-shrink:0;display:flex;flex-direction:column;background:var(--color-surface);border-right:1px solid var(--color-border);height:100vh}
+.sb-header{height:var(--topbar-height);display:flex;align-items:center;padding:0 20px;border-bottom:1px solid var(--color-border);flex-shrink:0}
+.sb-mark{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#4338ca);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;box-shadow:0 2px 6px rgba(79,70,229,.3)}
+.sb-word{font-size:16px;font-weight:700;color:var(--color-slate-900);margin-left:9px}.sb-word span{color:#4f46e5}
+.sb-nav{flex:1;padding:10px;overflow-y:auto}
+.ni{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;font-size:13px;font-weight:500;color:var(--color-slate-500);cursor:pointer;margin-bottom:1px;transition:var(--transition-colors)}
+.ni:hover{background:var(--color-slate-50);color:var(--color-slate-900)}
+.ni.act{background:var(--color-indigo-50);color:#4338ca}.ni.act svg{color:#4f46e5}
+.ni svg{width:18px;height:18px;flex-shrink:0}
+.sb-footer{padding:10px;border-top:1px solid var(--color-border)}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{height:var(--topbar-height);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--color-surface);border-bottom:1px solid var(--color-border);flex-shrink:0;gap:16px}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--color-slate-50);border:1px solid var(--color-border);border-radius:10px;padding:8px 14px;font-size:13px;color:var(--color-slate-400);width:260px}
+.tb-right{display:flex;align-items:center;gap:8px}
+.notif{width:36px;height:36px;border-radius:9px;border:1px solid var(--color-border);background:var(--color-surface);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative}
+.notif-dot{position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;background:#ef4444;border:1.5px solid #fff}
+.ua{width:30px;height:30px;border-radius:50%;background:var(--gradient-avatar);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700}
+.user-btn{display:flex;align-items:center;gap:8px;padding:5px 10px 5px 6px;border-radius:10px;cursor:pointer}
+.user-btn:hover{background:var(--color-slate-50)}
+
+/* ── Page layout ── */
+.content{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:18px}
+
+/* ── Cards ── */
+.card{background:var(--color-surface);border-radius:var(--radius-xl);border:1px solid rgba(226,232,240,.6);box-shadow:var(--shadow-card);overflow:hidden}
+.card-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--color-slate-50)}
+.card-title{font-size:13px;font-weight:600;color:var(--color-slate-900)}
+.card-body{padding:16px 18px}
+
+/* ── KPI strip ── */
+.kpi-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.kpi{background:var(--color-surface);border-radius:var(--radius-xl);border:1px solid rgba(226,232,240,.6);overflow:hidden;box-shadow:var(--shadow-card)}
+.kpi-top{height:3px}
+.kpi-body{padding:14px 16px}
+.kpi-label{font-size:11px;font-weight:500;color:var(--color-slate-500)}
+.kpi-val{font-size:26px;font-weight:700;color:var(--color-slate-900);line-height:1;margin-top:6px}
+.kpi-sub{font-size:11px;color:var(--color-slate-400);margin-top:5px}
+
+/* ── Cycle timeline ── */
+.cycle-track{display:flex;align-items:flex-start;gap:0;padding:20px 0 8px;position:relative}
+.cycle-track::before{content:'';position:absolute;top:36px;left:20px;right:20px;height:2px;background:linear-gradient(90deg,#10b981,#10b981 42%,#e2e8f0 42%)}
+.cycle-step{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;z-index:1}
+.cs-node{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;border:2px solid}
+.cs-done{background:#10b981;border-color:#10b981;color:#fff}
+.cs-active{background:#fff;border-color:#4f46e5;color:#4f46e5;box-shadow:0 0 0 3px rgba(99,102,241,.15)}
+.cs-upcoming{background:#fff;border-color:#e2e8f0;color:#94a3b8}
+.cs-label{font-size:11px;font-weight:500;color:var(--color-slate-600);text-align:center;max-width:80px;line-height:1.3}
+.cs-date{font-size:10px;color:var(--color-slate-400);text-align:center}
+.cs-active-label{color:#4f46e5;font-weight:700}
+
+/* ── Employee table ── */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl thead{background:var(--color-slate-50);border-bottom:1px solid var(--color-border)}
+.tbl th{text-align:left;padding:10px 16px;font-size:10px;font-weight:700;color:var(--color-slate-400);text-transform:uppercase;letter-spacing:.06em}
+.tbl td{padding:12px 16px;border-bottom:1px solid #f8fafc;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:#f8fafc;cursor:pointer}
+.emp-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;flex-shrink:0}
+.emp-name{font-weight:600;color:var(--color-slate-900)}
+.emp-role{font-size:11px;color:var(--color-slate-400);margin-top:1px}
+.status-pill{display:inline-flex;align-items:center;gap:4px;border-radius:9999px;border:1px solid transparent;padding:3px 10px;font-size:11px;font-weight:600}
+.sp-completed{background:#ecfdf5;color:#065f46;border-color:#a7f3d0}
+.sp-inprogress{background:#eef2ff;color:#4338ca;border-color:#c7d2fe}
+.sp-pending{background:#fffbeb;color:#92400e;border-color:#fde68a}
+.sp-notstarted{background:#f1f5f9;color:#475569;border-color:#e2e8f0}
+.rating-badge{display:inline-flex;align-items:center;gap:3px;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700}
+.r-exc{background:#ecfdf5;color:#065f46}
+.r-good{background:#eef2ff;color:#4338ca}
+.r-meets{background:#f1f5f9;color:#475569}
+.r-below{background:#fffbeb;color:#92400e}
+.r-pip{background:#fef2f2;color:#dc2626}
+
+/* ── Rating dist ── */
+.dist-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.dist-item{text-align:center;padding:12px 8px;background:var(--color-slate-50);border-radius:10px}
+.dist-bar-wrap{height:60px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:6px}
+.dist-bar{width:28px;border-radius:4px 4px 0 0}
+.dist-label{font-size:11px;font-weight:600;color:var(--color-slate-600)}
+.dist-count{font-size:18px;font-weight:700;color:var(--color-slate-900)}
+.dist-pct{font-size:10px;color:var(--color-slate-400)}
+
+/* ── Action row ── */
+.action-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.action-card{background:var(--color-surface);border-radius:var(--radius-xl);border:1px solid rgba(226,232,240,.6);box-shadow:var(--shadow-card);padding:16px;display:flex;align-items:flex-start;gap:12px;cursor:pointer;transition:var(--transition-all)}
+.action-card:hover{box-shadow:var(--shadow-card-hover);transform:translateY(-1px)}
+.ac-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ac-title{font-size:13px;font-weight:600;color:var(--color-slate-900)}
+.ac-sub{font-size:12px;color:var(--color-slate-400);margin-top:2px}
+.ac-badge{font-size:10px;font-weight:700;border-radius:9999px;padding:2px 8px;margin-top:6px;display:inline-block}
+
+/* ── Progress col ── */
+.prog-track{background:var(--color-slate-100);border-radius:9999px;height:5px;overflow:hidden;margin-top:4px}
+.prog-fill{height:100%;border-radius:9999px;background:linear-gradient(90deg,#6366f1,#06b6d4)}
+
+/* ── Btns ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 14px;border-radius:var(--radius-lg);font-size:13px;font-weight:500;cursor:pointer;border:none;font-family:var(--font-sans);transition:var(--transition-all)}
+.btn-primary{background:var(--color-primary);color:#fff;box-shadow:var(--shadow-primary)}
+.btn-primary:hover{background:var(--color-primary-hover)}
+.btn-outline{background:#fff;color:var(--color-slate-700);border:1px solid var(--color-border);box-shadow:var(--shadow-xs)}
+.btn-outline:hover{background:var(--color-slate-50)}
+.btn-ai{background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;box-shadow:0 4px 14px rgba(124,58,237,.25)}
+.btn-sm{height:30px;padding:0 10px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sb-header"><div class="sb-mark">W</div><span class="sb-word">Work<span>Nucleus</span></span></div>
+    <nav class="sb-nav">
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>Hiring Plans</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Candidates</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Offers</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>BGV</div>
+      <div class="ni act"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>Appraisal</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Compensation</div>
+    </nav>
+    <div class="sb-footer"><div style="border-radius:10px;background:linear-gradient(135deg,#eef2ff,#ecfeff);padding:12px"><div style="font-size:11px;font-weight:700;color:#312e81">Nova Design System</div><div style="font-size:10px;color:#4f46e5;margin-top:1px">Powered by Claude AI</div></div></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="search-box"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Search employees…</div>
+      <div class="tb-right">
+        <div class="notif"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg><div class="notif-dot"></div></div>
+        <div class="user-btn"><div class="ua">PS</div><span style="font-size:13px;font-weight:500;color:var(--color-slate-700)">Priya Sharma</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-slate-400)"><polyline points="6 9 12 15 18 9"/></svg></div>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- Page header -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between">
+        <div>
+          <div style="font-size:22px;font-weight:700;color:var(--color-slate-900)">Appraisal Cycle</div>
+          <div style="font-size:13px;color:var(--color-slate-400);margin-top:3px">FY 2024–25 · Annual Performance Review · 142 employees</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="btn btn-outline btn-sm">Export Report</button>
+          <button class="btn btn-ai btn-sm">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 008.5 14.063l-6.135-1.582a.5.5 0 010-.962L8.5 9.936A2 2 0 009.937 8.5l1.582-6.135a.5.5 0 01.963 0L14.063 8.5A2 2 0 0015.5 9.937l6.135 1.581a.5.5 0 010 .964L15.5 14.063a2 2 0 00-1.437 1.437l-1.582 6.135a.5.5 0 01-.963 0z"/></svg>
+            AI Insights
+          </button>
+          <button class="btn btn-primary btn-sm">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            New Cycle
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI strip -->
+      <div class="kpi-strip">
+        <div class="kpi">
+          <div class="kpi-top" style="background:linear-gradient(90deg,#6366f1,#4f46e5)"></div>
+          <div class="kpi-body">
+            <div class="kpi-label">Cycle Completion</div>
+            <div class="kpi-val">76%</div>
+            <div style="margin-top:6px"><div class="prog-track"><div class="prog-fill" style="width:76%"></div></div></div>
+            <div class="kpi-sub">108 / 142 done</div>
+          </div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-top" style="background:linear-gradient(90deg,#10b981,#059669)"></div>
+          <div class="kpi-body">
+            <div class="kpi-label">Ratings Submitted</div>
+            <div class="kpi-val">91</div>
+            <div class="kpi-sub" style="color:#10b981">Manager reviews done</div>
+          </div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-top" style="background:linear-gradient(90deg,#f59e0b,#d97706)"></div>
+          <div class="kpi-body">
+            <div class="kpi-label">Pending Self-Assess.</div>
+            <div class="kpi-val">34</div>
+            <div class="kpi-sub" style="color:#d97706">Due May 12</div>
+          </div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-top" style="background:linear-gradient(90deg,#8b5cf6,#7c3aed)"></div>
+          <div class="kpi-body">
+            <div class="kpi-label">Avg Rating</div>
+            <div class="kpi-val">3.8</div>
+            <div class="kpi-sub">Out of 5.0</div>
+          </div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-top" style="background:linear-gradient(90deg,#ef4444,#dc2626)"></div>
+          <div class="kpi-body">
+            <div class="kpi-label">On PIP</div>
+            <div class="kpi-val">4</div>
+            <div class="kpi-sub" style="color:#dc2626">Requires attention</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cycle timeline + rating distribution row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+        <!-- Cycle phases -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Cycle Phases</span><span style="font-size:11px;color:var(--color-slate-400)">FY 2024–25</span></div>
+          <div class="card-body">
+            <div class="cycle-track">
+              <div class="cycle-step">
+                <div class="cs-node cs-done">✓</div>
+                <div class="cs-label">Goal Setting</div>
+                <div class="cs-date">Apr 1</div>
+              </div>
+              <div class="cycle-step">
+                <div class="cs-node cs-done">✓</div>
+                <div class="cs-label">Mid-Year Check-in</div>
+                <div class="cs-date">Oct 15</div>
+              </div>
+              <div class="cycle-step">
+                <div class="cs-node cs-done">✓</div>
+                <div class="cs-label">Self Assessment</div>
+                <div class="cs-date">Apr 1</div>
+              </div>
+              <div class="cycle-step">
+                <div class="cs-node cs-active">4</div>
+                <div class="cs-label cs-active-label">Manager Review</div>
+                <div class="cs-date" style="color:#4f46e5">Active</div>
+              </div>
+              <div class="cycle-step">
+                <div class="cs-node cs-upcoming">5</div>
+                <div class="cs-label" style="color:var(--color-slate-400)">Calibration</div>
+                <div class="cs-date">May 20</div>
+              </div>
+              <div class="cycle-step">
+                <div class="cs-node cs-upcoming">6</div>
+                <div class="cs-label" style="color:var(--color-slate-400)">Final Review</div>
+                <div class="cs-date">Jun 1</div>
+              </div>
+            </div>
+            <div style="background:linear-gradient(135deg,#f5f3ff,#ecfeff);border:1px solid #e0e7ff;border-radius:10px;padding:12px 14px;margin-top:8px">
+              <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
+                <div style="width:20px;height:20px;border-radius:5px;background:linear-gradient(135deg,#7c3aed,#4f46e5);display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 008.5 14.063l-6.135-1.582a.5.5 0 010-.962L8.5 9.936A2 2 0 009.937 8.5l1.582-6.135a.5.5 0 01.963 0L14.063 8.5A2 2 0 0015.5 9.937l6.135 1.581a.5.5 0 010 .964L15.5 14.063a2 2 0 00-1.437 1.437l-1.582 6.135a.5.5 0 01-.963 0z"/></svg></div>
+                <span style="font-size:11px;font-weight:700;color:var(--color-slate-800)">AI Nudge</span>
+              </div>
+              <div style="font-size:12px;color:var(--color-slate-600);line-height:1.6">17 managers have not submitted reviews. At current pace, calibration will be delayed by 5 days. Consider sending automated reminders.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rating distribution -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Rating Distribution</span><span style="font-size:11px;color:var(--color-slate-400)">91 reviews submitted</span></div>
+          <div class="card-body">
+            <div class="dist-grid">
+              <div class="dist-item">
+                <div class="dist-bar-wrap"><div class="dist-bar" style="height:54px;background:linear-gradient(180deg,#10b981,#059669)"></div></div>
+                <div class="dist-count" style="color:#059669">18</div>
+                <div class="dist-label">Exceeds</div>
+                <div class="dist-pct">20%</div>
+              </div>
+              <div class="dist-item">
+                <div class="dist-bar-wrap"><div class="dist-bar" style="height:60px;background:linear-gradient(180deg,#6366f1,#4f46e5)"></div></div>
+                <div class="dist-count" style="color:#4f46e5">36</div>
+                <div class="dist-label">Meets+</div>
+                <div class="dist-pct">40%</div>
+              </div>
+              <div class="dist-item">
+                <div class="dist-bar-wrap"><div class="dist-bar" style="height:38px;background:linear-gradient(180deg,#94a3b8,#64748b)"></div></div>
+                <div class="dist-count" style="color:#475569">23</div>
+                <div class="dist-label">Meets</div>
+                <div class="dist-pct">25%</div>
+              </div>
+              <div class="dist-item">
+                <div class="dist-bar-wrap"><div class="dist-bar" style="height:22px;background:linear-gradient(180deg,#f59e0b,#d97706)"></div></div>
+                <div class="dist-count" style="color:#d97706">10</div>
+                <div class="dist-label">Below</div>
+                <div class="dist-pct">11%</div>
+              </div>
+              <div class="dist-item">
+                <div class="dist-bar-wrap"><div class="dist-bar" style="height:10px;background:linear-gradient(180deg,#ef4444,#dc2626)"></div></div>
+                <div class="dist-count" style="color:#dc2626">4</div>
+                <div class="dist-label">PIP</div>
+                <div class="dist-pct">4%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick actions -->
+      <div class="action-cards">
+        <div class="action-card">
+          <div class="ac-icon" style="background:#eef2ff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+          <div>
+            <div class="ac-title">Send Reminders</div>
+            <div class="ac-sub">17 pending manager reviews</div>
+            <span class="ac-badge" style="background:#fef9c3;color:#92400e">Due May 12</span>
+          </div>
+        </div>
+        <div class="action-card">
+          <div class="ac-icon" style="background:#ecfdf5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></div>
+          <div>
+            <div class="ac-title">Schedule Calibration</div>
+            <div class="ac-sub">Set up committee session</div>
+            <span class="ac-badge" style="background:#dcfce7;color:#166534">Recommended</span>
+          </div>
+        </div>
+        <div class="action-card">
+          <div class="ac-icon" style="background:#f5f3ff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 008.5 14.063l-6.135-1.582a.5.5 0 010-.962L8.5 9.936A2 2 0 009.937 8.5l1.582-6.135a.5.5 0 01.963 0L14.063 8.5A2 2 0 0115.5 9.937l6.135 1.581a.5.5 0 010 .964L15.5 14.063a2 2 0 00-1.437 1.437l-1.582 6.135a.5.5 0 01-.963 0z"/></svg></div>
+          <div>
+            <div class="ac-title">Generate Review Summaries</div>
+            <div class="ac-sub">AI drafts for 91 employees</div>
+            <span class="ac-badge" style="background:#ede9fe;color:#6d28d9">AI Powered</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Employee table -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Employee Reviews</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select style="border:1px solid var(--color-border);border-radius:7px;padding:5px 10px;font-size:12px;color:var(--color-slate-600);background:#fff;outline:none;font-family:var(--font-sans);cursor:pointer"><option>All Departments</option><option>Product</option><option>Engineering</option><option>Design</option></select>
+            <select style="border:1px solid var(--color-border);border-radius:7px;padding:5px 10px;font-size:12px;color:var(--color-slate-600);background:#fff;outline:none;font-family:var(--font-sans);cursor:pointer"><option>All Statuses</option><option>Completed</option><option>In Progress</option><option>Pending</option></select>
+          </div>
+        </div>
+        <table class="tbl">
+          <thead><tr><th>Employee</th><th>Department</th><th>Self Assess.</th><th>Manager Review</th><th>Rating</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:10px"><div class="emp-av" style="background:linear-gradient(135deg,#6366f1,#4f46e5)">AK</div><div><div class="emp-name">Anjali Mehta</div><div class="emp-role">Senior PM · Platform</div></div></div></td>
+              <td style="color:var(--color-slate-500)">Product</td>
+              <td><span class="status-pill sp-completed">✓ Done</span></td>
+              <td><span class="status-pill sp-completed">✓ Done</span></td>
+              <td><span class="rating-badge r-exc">Exceeds</span></td>
+              <td><span class="status-pill sp-completed">Completed</span></td>
+              <td><button class="btn btn-outline btn-sm">View</button></td>
+            </tr>
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:10px"><div class="emp-av" style="background:linear-gradient(135deg,#10b981,#059669)">RK</div><div><div class="emp-name">Rahul Kumar</div><div class="emp-role">Eng Manager</div></div></div></td>
+              <td style="color:var(--color-slate-500)">Engineering</td>
+              <td><span class="status-pill sp-completed">✓ Done</span></td>
+              <td><span class="status-pill sp-inprogress">In Review</span></td>
+              <td><span class="rating-badge r-good">Meets+</span></td>
+              <td><span class="status-pill sp-inprogress">In Progress</span></td>
+              <td><button class="btn btn-outline btn-sm">Review</button></td>
+            </tr>
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:10px"><div class="emp-av" style="background:linear-gradient(135deg,#f59e0b,#d97706)">VS</div><div><div class="emp-name">Vikram Singh</div><div class="emp-role">VP Product</div></div></div></td>
+              <td style="color:var(--color-slate-500)">Product</td>
+              <td><span class="status-pill sp-completed">✓ Done</span></td>
+              <td><span class="status-pill sp-pending">Pending</span></td>
+              <td style="color:var(--color-slate-300)">—</td>
+              <td><span class="status-pill sp-pending">Pending</span></td>
+              <td><button class="btn btn-outline btn-sm">Remind</button></td>
+            </tr>
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:10px"><div class="emp-av" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed)">DG</div><div><div class="emp-name">Deepa Gupta</div><div class="emp-role">UX Designer</div></div></div></td>
+              <td style="color:var(--color-slate-500)">Design</td>
+              <td><span class="status-pill sp-pending">Pending</span></td>
+              <td><span class="status-pill sp-notstarted">Not Started</span></td>
+              <td style="color:var(--color-slate-300)">—</td>
+              <td><span class="status-pill sp-notstarted">Not Started</span></td>
+              <td><button class="btn btn-outline btn-sm">Remind</button></td>
+            </tr>
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:10px"><div class="emp-av" style="background:linear-gradient(135deg,#ef4444,#dc2626)">MN</div><div><div class="emp-name">Manoj Nair</div><div class="emp-role">Backend Engineer</div></div></div></td>
+              <td style="color:var(--color-slate-500)">Engineering</td>
+              <td><span class="status-pill sp-completed">✓ Done</span></td>
+              <td><span class="status-pill sp-completed">✓ Done</span></td>
+              <td><span class="rating-badge r-pip">PIP</span></td>
+              <td><span class="status-pill" style="background:#fef2f2;color:#991b1b;border-color:#fecaca">Action Needed</span></td>
+              <td><button class="btn btn-outline btn-sm" style="color:#dc2626;border-color:#fecaca">PIP Plan</button></td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-top:1px solid var(--color-border)">
+          <span style="font-size:12px;color:var(--color-slate-400)">Showing 5 of 142 employees</span>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-outline btn-sm">← Previous</button>
+            <button class="btn btn-outline btn-sm">Next →</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Work Nucleus — BGV Consent Flow</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+html,body{height:100%;overflow:hidden}
+.shell{display:flex;height:100vh;background:var(--color-background)}
+.sidebar{width:var(--sidebar-width);flex-shrink:0;display:flex;flex-direction:column;background:var(--color-surface);border-right:1px solid var(--color-border);height:100vh}
+.sb-header{height:var(--topbar-height);display:flex;align-items:center;padding:0 20px;border-bottom:1px solid var(--color-border);flex-shrink:0}
+.sb-mark{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#4338ca);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;box-shadow:0 2px 6px rgba(79,70,229,.3)}
+.sb-word{font-size:16px;font-weight:700;color:var(--color-slate-900);margin-left:9px}.sb-word span{color:#4f46e5}
+.sb-nav{flex:1;padding:10px;overflow-y:auto}
+.ni{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;font-size:13px;font-weight:500;color:var(--color-slate-500);cursor:pointer;margin-bottom:1px;transition:var(--transition-colors)}
+.ni:hover{background:var(--color-slate-50);color:var(--color-slate-900)}
+.ni.act{background:var(--color-indigo-50);color:#4338ca}.ni.act svg{color:#4f46e5}
+.ni svg{width:18px;height:18px;flex-shrink:0}
+.sb-footer{padding:10px;border-top:1px solid var(--color-border)}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{height:var(--topbar-height);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--color-surface);border-bottom:1px solid var(--color-border);flex-shrink:0;gap:16px}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--color-slate-50);border:1px solid var(--color-border);border-radius:10px;padding:8px 14px;font-size:13px;color:var(--color-slate-400);width:260px}
+.tb-right{display:flex;align-items:center;gap:8px}
+.notif{width:36px;height:36px;border-radius:9px;border:1px solid var(--color-border);background:var(--color-surface);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative}
+.notif-dot{position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;background:#ef4444;border:1.5px solid #fff}
+.ua{width:30px;height:30px;border-radius:50%;background:var(--gradient-avatar);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700}
+.user-btn{display:flex;align-items:center;gap:8px;padding:5px 10px 5px 6px;border-radius:10px;cursor:pointer}
+.user-btn:hover{background:var(--color-slate-50)}
+
+/* ── Layout ── */
+.content{flex:1;overflow-y:auto;padding:24px;display:flex;gap:20px}
+.main-col{flex:1;display:flex;flex-direction:column;gap:16px;min-width:0}
+.side-col{width:320px;flex-shrink:0;display:flex;flex-direction:column;gap:14px}
+
+/* ── Cards ── */
+.card{background:var(--color-surface);border-radius:var(--radius-xl);border:1px solid rgba(226,232,240,.6);box-shadow:var(--shadow-card);overflow:hidden}
+.card-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--color-slate-50)}
+.card-title{font-size:13px;font-weight:600;color:var(--color-slate-900)}
+.card-body{padding:16px 18px}
+
+/* ── Header bar ── */
+.page-h{display:flex;align-items:flex-start;justify-content:space-between}
+.page-title{font-size:22px;font-weight:700;color:var(--color-slate-900)}
+.page-sub{font-size:13px;color:var(--color-slate-400);margin-top:3px}
+
+/* ── Status strip ── */
+.status-strip{display:flex;gap:10px;padding:12px 0;flex-wrap:wrap}
+.stat-pill{display:flex;align-items:center;gap:7px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;padding:8px 14px;box-shadow:var(--shadow-xs)}
+.sp-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sp-val{font-size:16px;font-weight:700;color:var(--color-slate-900)}
+.sp-label{font-size:11px;color:var(--color-slate-500)}
+
+/* ── Check types ── */
+.check-types{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.ct-card{background:#fff;border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:12px 14px;cursor:pointer;transition:var(--transition-all)}
+.ct-card:hover{border-color:#c7d2fe;background:#fafafe}
+.ct-card.selected{border-color:#4f46e5;background:#eef2ff;box-shadow:0 0 0 1px #4f46e5}
+.ct-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+.ct-name{font-size:12px;font-weight:600;color:var(--color-slate-800)}
+.ct-vendor{font-size:10px;color:var(--color-slate-400);margin-top:2px}
+.ct-tag{font-size:9px;font-weight:700;border-radius:3px;padding:1px 5px;margin-top:5px;display:inline-block}
+
+/* ── Candidate table ── */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl thead{background:var(--color-slate-50);border-bottom:1px solid var(--color-border)}
+.tbl th{text-align:left;padding:10px 14px;font-size:10px;font-weight:700;color:var(--color-slate-400);text-transform:uppercase;letter-spacing:.06em}
+.tbl td{padding:11px 14px;border-bottom:1px solid #f8fafc;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:#f8fafc;cursor:pointer}
+.emp-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;flex-shrink:0}
+.emp-name{font-weight:600;color:var(--color-slate-900)}
+.emp-role{font-size:11px;color:var(--color-slate-400);margin-top:1px}
+
+/* status pills */
+.sp{display:inline-flex;align-items:center;gap:4px;border-radius:9999px;border:1px solid transparent;padding:2px 9px;font-size:10px;font-weight:700}
+.sp-pend{background:#fffbeb;color:#92400e;border-color:#fde68a}
+.sp-init{background:#eef2ff;color:#4338ca;border-color:#c7d2fe}
+.sp-progress{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
+.sp-clear{background:#ecfdf5;color:#065f46;border-color:#a7f3d0}
+.sp-discrep{background:#fef2f2;color:#991b1b;border-color:#fecaca}
+.sp-hold{background:#f5f3ff;color:#5b21b6;border-color:#ddd6fe}
+
+/* check pills */
+.checks{display:flex;flex-wrap:wrap;gap:3px}
+.check-chip{border-radius:4px;padding:2px 6px;font-size:9px;font-weight:700}
+.cc-ident{background:#eff6ff;color:#1d4ed8}
+.cc-emp{background:#ecfdf5;color:#065f46}
+.cc-edu{background:#f5f3ff;color:#5b21b6}
+.cc-addr{background:#fffbeb;color:#92400e}
+.cc-crim{background:#fef2f2;color:#991b1b}
+.cc-ref{background:#ecfeff;color:#164e63}
+
+/* timeline in sidebar */
+.vtl{display:flex;flex-direction:column;gap:0}
+.vtl-item{display:flex;gap:10px;padding-bottom:14px;position:relative}
+.vtl-item:not(:last-child)::before{content:'';position:absolute;left:11px;top:24px;bottom:0;width:1px;background:var(--color-border)}
+.vtl-circle{width:22px;height:22px;border-radius:50%;border:2px solid;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;font-weight:700}
+.vtl-done{background:#10b981;border-color:#10b981;color:#fff}
+.vtl-active{background:#fff;border-color:#4f46e5;color:#4f46e5}
+.vtl-pend{background:#fff;border-color:#e2e8f0;color:#94a3b8}
+.vtl-name{font-size:12px;font-weight:500;color:var(--color-slate-700);margin-top:2px}
+.vtl-meta{font-size:11px;color:var(--color-slate-400)}
+
+/* Consent card */
+.consent-card{background:linear-gradient(135deg,#f8fafc,#f0f4ff);border:1px solid #c7d2fe;border-radius:var(--radius-xl);padding:16px 18px}
+.consent-title{font-size:13px;font-weight:700;color:var(--color-slate-900);margin-bottom:8px}
+.consent-body{font-size:12px;color:var(--color-slate-600);line-height:1.65;margin-bottom:12px}
+.consent-check{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
+.consent-check input[type=checkbox]{margin-top:2px;accent-color:#4f46e5;width:14px;height:14px;flex-shrink:0;cursor:pointer}
+.consent-check label{font-size:12px;color:var(--color-slate-700);line-height:1.5;cursor:pointer}
+
+/* ── Btn ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 14px;border-radius:var(--radius-lg);font-size:13px;font-weight:500;cursor:pointer;border:none;font-family:var(--font-sans);transition:var(--transition-all)}
+.btn-primary{background:var(--color-primary);color:#fff;box-shadow:var(--shadow-primary)}
+.btn-primary:hover{background:var(--color-primary-hover)}
+.btn-outline{background:#fff;color:var(--color-slate-700);border:1px solid var(--color-border);box-shadow:var(--shadow-xs)}
+.btn-outline:hover{background:var(--color-slate-50)}
+.btn-sm{height:30px;padding:0 10px;font-size:12px}
+.btn-success{background:#10b981;color:#fff}
+.btn-success:hover{background:#059669}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sb-header"><div class="sb-mark">W</div><span class="sb-word">Work<span>Nucleus</span></span></div>
+    <nav class="sb-nav">
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>Hiring Plans</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Candidates</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Offers</div>
+      <div class="ni act"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>BGV</div>
+      <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>Appraisal</div>
+    </nav>
+    <div class="sb-footer"><div style="border-radius:10px;background:linear-gradient(135deg,#eef2ff,#ecfeff);padding:12px"><div style="font-size:11px;font-weight:700;color:#312e81">Nova Design System</div><div style="font-size:10px;color:#4f46e5;margin-top:1px">Powered by Claude AI</div></div></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="search-box"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Search candidates…</div>
+      <div class="tb-right">
+        <div class="notif"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg><div class="notif-dot"></div></div>
+        <div class="user-btn"><div class="ua">PS</div><span style="font-size:13px;font-weight:500;color:var(--color-slate-700)">Priya Sharma</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-slate-400)"><polyline points="6 9 12 15 18 9"/></svg></div>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="main-col">
+
+        <!-- Page header -->
+        <div class="page-h">
+          <div>
+            <div class="page-title">Background Verification</div>
+            <div class="page-sub">Track consent status, check progress, and manage BGV vendors</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline btn-sm">Configure Checks</button>
+            <button class="btn btn-primary btn-sm">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Initiate BGV
+            </button>
+          </div>
+        </div>
+
+        <!-- Status strip -->
+        <div class="status-strip">
+          <div class="stat-pill"><div class="sp-dot" style="background:#94a3b8"></div><div><div class="sp-val">8</div><div class="sp-label">Pending Consent</div></div></div>
+          <div class="stat-pill"><div class="sp-dot" style="background:#4f46e5"></div><div><div class="sp-val">5</div><div class="sp-label">In Progress</div></div></div>
+          <div class="stat-pill"><div class="sp-dot" style="background:#10b981"></div><div><div class="sp-val">31</div><div class="sp-label">Cleared</div></div></div>
+          <div class="stat-pill"><div class="sp-dot" style="background:#ef4444"></div><div><div class="sp-val">2</div><div class="sp-label">Discrepancy Found</div></div></div>
+          <div class="stat-pill"><div class="sp-dot" style="background:#7c3aed"></div><div><div class="sp-val">3</div><div class="sp-label">On Hold</div></div></div>
+        </div>
+
+        <!-- Check types selection -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Default Check Package</span>
+            <button class="btn btn-outline btn-sm">Customise</button>
+          </div>
+          <div class="card-body">
+            <div class="check-types">
+              <div class="ct-card selected">
+                <div class="ct-icon" style="background:#eff6ff"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
+                <div class="ct-name">Identity Verification</div>
+                <div class="ct-vendor">Aadhaar + PAN</div>
+                <span class="ct-tag" style="background:#eff6ff;color:#1d4ed8">Mandatory</span>
+              </div>
+              <div class="ct-card selected">
+                <div class="ct-icon" style="background:#ecfdf5"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></div>
+                <div class="ct-name">Employment History</div>
+                <div class="ct-vendor">Last 2 employers</div>
+                <span class="ct-tag" style="background:#ecfdf5;color:#065f46">Mandatory</span>
+              </div>
+              <div class="ct-card selected">
+                <div class="ct-icon" style="background:#f5f3ff"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
+                <div class="ct-name">Education Check</div>
+                <div class="ct-vendor">Highest degree</div>
+                <span class="ct-tag" style="background:#f5f3ff;color:#5b21b6">Mandatory</span>
+              </div>
+              <div class="ct-card selected">
+                <div class="ct-icon" style="background:#fffbeb"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+                <div class="ct-name">Address Verification</div>
+                <div class="ct-vendor">Current + Permanent</div>
+                <span class="ct-tag" style="background:#fffbeb;color:#92400e">Recommended</span>
+              </div>
+              <div class="ct-card">
+                <div class="ct-icon" style="background:#fef2f2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+                <div class="ct-name">Criminal Record</div>
+                <div class="ct-vendor">National database</div>
+                <span class="ct-tag" style="background:#fef2f2;color:#991b1b">Role-specific</span>
+              </div>
+              <div class="ct-card">
+                <div class="ct-icon" style="background:#ecfeff"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></div>
+                <div class="ct-name">Reference Check</div>
+                <div class="ct-vendor">2 professional refs</div>
+                <span class="ct-tag" style="background:#ecfeff;color:#164e63">Optional</span>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:12px;color:var(--color-slate-500)">Vendor:</span>
+              <select style="border:1px solid var(--color-border);border-radius:7px;padding:5px 10px;font-size:12px;color:var(--color-slate-600);background:#fff;outline:none;font-family:var(--font-sans)"><option>AuthBridge</option><option>KPMG BGV</option><option>SpringVerify</option><option>IDfy</option></select>
+              <span style="font-size:12px;color:var(--color-slate-400);margin-left:4px">Avg TAT: 5–7 business days</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Candidate table -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">BGV Tracker</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <select style="border:1px solid var(--color-border);border-radius:7px;padding:5px 10px;font-size:12px;color:var(--color-slate-600);background:#fff;outline:none;font-family:var(--font-sans);cursor:pointer"><option>All Statuses</option><option>Pending Consent</option><option>In Progress</option><option>Cleared</option><option>Discrepancy</option></select>
+            </div>
+          </div>
+          <table class="tbl">
+            <thead><tr><th>Candidate</th><th>Role</th><th>Checks</th><th>Consent</th><th>Status</th><th>ETA</th><th></th></tr></thead>
+            <tbody>
+              <tr>
+                <td><div style="display:flex;align-items:center;gap:8px"><div class="emp-av" style="background:linear-gradient(135deg,#6366f1,#4f46e5)">RV</div><div><div class="emp-name">Rohit Verma</div><div class="emp-role">Senior PM</div></div></div></td>
+                <td style="color:var(--color-slate-500)">Senior PM</td>
+                <td><div class="checks"><span class="check-chip cc-ident">ID</span><span class="check-chip cc-emp">Emp</span><span class="check-chip cc-edu">Edu</span><span class="check-chip cc-addr">Addr</span></div></td>
+                <td><span class="sp sp-pend">Awaiting</span></td>
+                <td><span class="sp sp-pend">Pending Consent</span></td>
+                <td style="color:var(--color-slate-400)">—</td>
+                <td><button class="btn btn-outline btn-sm">Send Link</button></td>
+              </tr>
+              <tr>
+                <td><div style="display:flex;align-items:center;gap:8px"><div class="emp-av" style="background:linear-gradient(135deg,#10b981,#059669)">SM</div><div><div class="emp-name">Sneha Mahajan</div><div class="emp-role">UX Designer</div></div></div></td>
+                <td style="color:var(--color-slate-500)">UX Designer</td>
+                <td><div class="checks"><span class="check-chip cc-ident">ID</span><span class="check-chip cc-emp">Emp</span><span class="check-chip cc-edu">Edu</span></div></td>
+                <td><span class="sp sp-clear">Received</span></td>
+                <td><span class="sp sp-progress">In Progress</span></td>
+                <td style="color:var(--color-slate-600);font-weight:500">May 10</td>
+                <td><button class="btn btn-outline btn-sm">View</button></td>
+              </tr>
+              <tr>
+                <td><div style="display:flex;align-items:center;gap:8px"><div class="emp-av" style="background:linear-gradient(135deg,#f59e0b,#d97706)">PR</div><div><div class="emp-name">Prateek Rao</div><div class="emp-role">Backend Eng</div></div></div></td>
+                <td style="color:var(--color-slate-500)">Engineer</td>
+                <td><div class="checks"><span class="check-chip cc-ident">ID</span><span class="check-chip cc-emp">Emp</span><span class="check-chip cc-edu">Edu</span><span class="check-chip cc-addr">Addr</span><span class="check-chip cc-crim">Crim</span></div></td>
+                <td><span class="sp sp-clear">Received</span></td>
+                <td><span class="sp sp-clear">Cleared</span></td>
+                <td style="color:#10b981;font-weight:600">Done ✓</td>
+                <td><button class="btn btn-outline btn-sm">Report</button></td>
+              </tr>
+              <tr>
+                <td><div style="display:flex;align-items:center;gap:8px"><div class="emp-av" style="background:linear-gradient(135deg,#ef4444,#dc2626)">NK</div><div><div class="emp-name">Nisha Kapoor</div><div class="emp-role">Data Analyst</div></div></div></td>
+                <td style="color:var(--color-slate-500)">Analytics</td>
+                <td><div class="checks"><span class="check-chip cc-ident">ID</span><span class="check-chip cc-emp">Emp</span><span class="check-chip cc-edu">Edu</span></div></td>
+                <td><span class="sp sp-clear">Received</span></td>
+                <td><span class="sp sp-discrep">⚠ Discrepancy</span></td>
+                <td style="color:#dc2626;font-weight:600">Action needed</td>
+                <td><button class="btn btn-sm" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca">Review</button></td>
+              </tr>
+              <tr>
+                <td><div style="display:flex;align-items:center;gap:8px"><div class="emp-av" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed)">MK</div><div><div class="emp-name">Meera Kapoor</div><div class="emp-role">Finance Analyst</div></div></div></td>
+                <td style="color:var(--color-slate-500)">Finance</td>
+                <td><div class="checks"><span class="check-chip cc-ident">ID</span><span class="check-chip cc-emp">Emp</span><span class="check-chip cc-edu">Edu</span><span class="check-chip cc-ref">Ref</span></div></td>
+                <td><span class="sp sp-init">Sent</span></td>
+                <td><span class="sp sp-hold">On Hold</span></td>
+                <td style="color:var(--color-slate-400)">Pending docs</td>
+                <td><button class="btn btn-outline btn-sm">Follow Up</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 16px;border-top:1px solid var(--color-border)">
+            <span style="font-size:12px;color:var(--color-slate-400)">Showing 5 of 49 candidates</span>
+            <div style="display:flex;gap:6px"><button class="btn btn-outline btn-sm">← Prev</button><button class="btn btn-outline btn-sm">Next →</button></div>
+          </div>
+        </div>
+
+      </div><!-- /main-col -->
+
+      <!-- Sidebar -->
+      <div class="side-col">
+
+        <!-- Consent form -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Consent Form Preview</span>
+            <span style="font-size:10px;background:#eef2ff;color:#4338ca;border-radius:4px;padding:2px 7px;font-weight:600">Rohit Verma</span>
+          </div>
+          <div class="card-body">
+            <div class="consent-card">
+              <div class="consent-title">Background Verification Consent</div>
+              <div class="consent-body">By submitting this form, I, <strong>Rohit Verma</strong>, authorise WorkNucleus Technologies Pvt. Ltd. and its authorised BGV partner to conduct background checks including identity, employment, education, and address verification as part of the pre-employment process.</div>
+              <div class="consent-check">
+                <input type="checkbox" id="c1" checked>
+                <label for="c1">I consent to identity & document verification (Aadhaar, PAN, passport)</label>
+              </div>
+              <div class="consent-check">
+                <input type="checkbox" id="c2" checked>
+                <label for="c2">I consent to employment history verification with my previous employers</label>
+              </div>
+              <div class="consent-check">
+                <input type="checkbox" id="c3" checked>
+                <label for="c3">I consent to educational qualification verification</label>
+              </div>
+              <div class="consent-check">
+                <input type="checkbox" id="c4" checked>
+                <label for="c4">I consent to address verification</label>
+              </div>
+              <div class="consent-check">
+                <input type="checkbox" id="c5">
+                <label for="c5">I consent to a criminal record check (not mandatory for this role)</label>
+              </div>
+            </div>
+            <div style="margin-top:12px;display:flex;gap:8px">
+              <button class="btn btn-outline btn-sm" style="flex:1;justify-content:center">Preview Email</button>
+              <button class="btn btn-primary btn-sm" style="flex:1;justify-content:center">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                Send Consent
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- BGV timeline for selected candidate -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Check Timeline</span>
+            <span style="font-size:10px;color:var(--color-slate-400)">Sneha Mahajan</span>
+          </div>
+          <div class="card-body">
+            <div class="vtl">
+              <div class="vtl-item">
+                <div class="vtl-circle vtl-done">✓</div>
+                <div><div class="vtl-name">Consent Received</div><div class="vtl-meta">Apr 28 · 10:22 AM</div></div>
+              </div>
+              <div class="vtl-item">
+                <div class="vtl-circle vtl-done">✓</div>
+                <div><div class="vtl-name">BGV Initiated</div><div class="vtl-meta">Apr 29 · AuthBridge</div></div>
+              </div>
+              <div class="vtl-item">
+                <div class="vtl-circle vtl-done">✓</div>
+                <div><div class="vtl-name">Identity Verified</div><div class="vtl-meta">Apr 30 · Aadhaar + PAN</div></div>
+              </div>
+              <div class="vtl-item">
+                <div class="vtl-circle vtl-active">4</div>
+                <div><div class="vtl-name" style="color:#4338ca;font-weight:600">Employment Check</div><div class="vtl-meta" style="color:#4f46e5">Awaiting employer response</div></div>
+              </div>
+              <div class="vtl-item">
+                <div class="vtl-circle vtl-pend">5</div>
+                <div><div class="vtl-name" style="color:var(--color-slate-400)">Education Check</div><div class="vtl-meta">Pending</div></div>
+              </div>
+              <div class="vtl-item">
+                <div class="vtl-circle vtl-pend">6</div>
+                <div><div class="vtl-name" style="color:var(--color-slate-400)">Final Report</div><div class="vtl-meta">ETA: May 10</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Discrepancy alert -->
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:var(--radius-xl);padding:14px 16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <div style="width:22px;height:22px;border-radius:5px;background:#fecaca;display:flex;align-items:center;justify-content:center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+            <span style="font-size:12px;font-weight:700;color:#991b1b">Discrepancy — Nisha Kapoor</span>
+          </div>
+          <div style="font-size:12px;color:#7f1d1d;line-height:1.65;margin-bottom:10px"><strong>Education Check:</strong> Declared "B.Tech, IIT Delhi (2018)" — Issuing institute reports graduation year as 2019. Gap of 1 year unaccounted for.</div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm" style="background:#fecaca;color:#991b1b;border:none;flex:1;justify-content:center">Reject Candidate</button>
+            <button class="btn btn-outline btn-sm" style="flex:1;justify-content:center;font-size:11px">Request Clarification</button>
+          </div>
+        </div>
+
+      </div><!-- /side-col -->
+
+    </div><!-- /content -->
+  </div>
+</div>
+</body>
+</html>
