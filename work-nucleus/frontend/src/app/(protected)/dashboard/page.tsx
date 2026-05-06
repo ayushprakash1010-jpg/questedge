@@ -10,7 +10,7 @@ import {
   Download, RefreshCw, CalendarClock,
 } from "lucide-react";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  BarChart, Bar, Cell, LabelList, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Area, AreaChart,
 } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -98,6 +98,22 @@ const CHART_COLORS = {
   green: "#10b981",
   amber: "#f59e0b",
 };
+
+// Funnel bar colors per stage — mirrors design-system-v2/ui-kit/01-Dashboard
+// where Screening / Technical rounds use indigo (with progressively lighter
+// opacity), HR uses cyan, Leadership/Cultural use amber, and Offer uses
+// emerald. Stage label matching is fuzzy so renames don't break colors.
+function funnelBarColor(stageName: string, idx: number): string {
+  const lower = stageName.toLowerCase();
+  if (lower.includes("offer")) return CHART_COLORS.green;
+  if (lower.includes("hr")) return CHART_COLORS.cyan;
+  if (lower.includes("leadership") || lower.includes("cultural"))
+    return CHART_COLORS.amber;
+  if (lower.includes("screen")) return CHART_COLORS.indigo;
+  // Tech rounds — fade indigo as they go deeper.
+  const opacity = Math.max(0.55, 1 - idx * 0.12);
+  return `rgba(99,102,241,${opacity.toFixed(2)})`;
+}
 
 function exportCsv(data: unknown[], filename: string) {
   if (!data.length) return;
@@ -317,13 +333,34 @@ export default function DashboardPage() {
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={funnel} layout="vertical" barGap={4}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis type="number" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-                  <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="entered" fill={CHART_COLORS.indigo} radius={[0, 4, 4, 0]} name="Entered" />
-                  <Bar dataKey="passed" fill={CHART_COLORS.green} radius={[0, 4, 4, 0]} name="Passed" />
+                <BarChart
+                  data={funnel}
+                  margin={{ top: 16, right: 8, bottom: 0, left: -16 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 11, fill: "#94a3b8" }}
+                    interval={0}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: "#94a3b8" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: "#f8fafc" }} />
+                  <Bar dataKey="entered" radius={[5, 5, 0, 0]} name="Entered">
+                    {funnel.map((stage, idx) => (
+                      <Cell key={stage.name} fill={funnelBarColor(stage.name, idx)} />
+                    ))}
+                    <LabelList
+                      dataKey="entered"
+                      position="top"
+                      style={{ fontSize: 11, fontWeight: 600, fill: "#475569" }}
+                    />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -364,71 +401,68 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Row 3: Time to Hire + Budget */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Time to Hire Trend</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {timeToHire.trend.length === 0 || timeToHire.trend.every((t) => t.avgDays === 0) ? (
-              <div className="flex h-[250px] items-center justify-center">
-                <p className="text-sm text-slate-400">No hiring data yet</p>
+{/* Row 3: AI Insights — placed between primary charts and tables per
+          design-system-v2/ui-kit/01-Dashboard.html */}
+      <Card className="overflow-hidden">
+        <div className="h-0.5 bg-gradient-to-r from-purple-500 via-indigo-500 to-cyan-500" />
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            <CardTitle className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 to-indigo-600">
+                <Sparkles className="h-3.5 w-3.5 text-white" />
               </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={250}>
-                <AreaChart data={timeToHire.trend}>
-                  <defs>
-                    <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={CHART_COLORS.indigo} stopOpacity={0.2} />
-                      <stop offset="100%" stopColor={CHART_COLORS.indigo} stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Area
-                    type="monotone"
-                    dataKey="avgDays"
-                    stroke={CHART_COLORS.indigo}
-                    strokeWidth={2}
-                    fill="url(#areaGradient)"
-                    name="Avg Days"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              AI Insights
+            </CardTitle>
+            {insightsGeneratedAt && (
+              <span className="flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-500">
+                <CalendarClock className="h-3 w-3" />
+                Generated {formatGeneratedDate(insightsGeneratedAt)}
+                {insightsGeneratedBy && (
+                  <span className="text-slate-400">by {insightsGeneratedBy}</span>
+                )}
+              </span>
             )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Budget vs Actual</CardTitle>
-            <Button variant="ghost" size="icon-sm" onClick={() => exportCsv(cost, "budget")}>
-              <Download className="h-3.5 w-3.5" />
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {cost.length === 0 ? (
-              <div className="flex h-[250px] items-center justify-center">
-                <p className="text-sm text-slate-400">No cost data</p>
+          </div>
+          <Button
+            variant="ai"
+            size="sm"
+            onClick={handleGenerateInsights}
+            disabled={generatingInsights}
+          >
+            {generatingInsights ? (
+              <Spinner size="xs" tone="white" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" />
+            )}
+            {generatingInsights ? "Analyzing..." : insights.length > 0 ? "Regenerate" : "Generate Insights"}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {insights.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100">
+                <Sparkles className="h-6 w-6 text-slate-400" />
               </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={cost.slice(0, 6)} barGap={4}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="title" tick={{ fontSize: 10, fill: "#94a3b8" }} interval={0} angle={-20} textAnchor="end" height={60} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="budgetMax" fill={CHART_COLORS.indigoLight} radius={[4, 4, 0, 0]} name="Budget Max" />
-                  <Bar dataKey="avgOfferCtc" fill={CHART_COLORS.indigo} radius={[4, 4, 0, 0]} name="Avg Offer" />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+              <p className="mt-3 text-sm text-slate-500">
+                Click &quot;Generate Insights&quot; to get AI-powered hiring recommendations.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {insights.map((insight, i) => (
+                <AiInsightCard
+                  key={i}
+                  severity={normaliseSeverity(insight.severity)}
+                  title={insight.title}
+                  description={insight.description}
+                  recommendation={insight.recommendation}
+                  category={insight.category}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Row 4: Interviewers + Sources */}
       <div className="grid gap-4 lg:grid-cols-2">
@@ -524,67 +558,71 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Row 5: AI Insights */}
-      <Card className="overflow-hidden">
-        <div className="h-0.5 bg-gradient-to-r from-purple-500 via-indigo-500 to-cyan-500" />
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div className="flex items-center gap-3">
-            <CardTitle className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 to-indigo-600">
-                <Sparkles className="h-3.5 w-3.5 text-white" />
+      {/* Row 5: Time to Hire + Budget — secondary analytics */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Time to Hire Trend</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {timeToHire.trend.length === 0 || timeToHire.trend.every((t) => t.avgDays === 0) ? (
+              <div className="flex h-[250px] items-center justify-center">
+                <p className="text-sm text-slate-400">No hiring data yet</p>
               </div>
-              AI Insights
-            </CardTitle>
-            {insightsGeneratedAt && (
-              <span className="flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-500">
-                <CalendarClock className="h-3 w-3" />
-                Generated {formatGeneratedDate(insightsGeneratedAt)}
-                {insightsGeneratedBy && (
-                  <span className="text-slate-400">by {insightsGeneratedBy}</span>
-                )}
-              </span>
-            )}
-          </div>
-          <Button
-            variant="ai"
-            size="sm"
-            onClick={handleGenerateInsights}
-            disabled={generatingInsights}
-          >
-            {generatingInsights ? (
-              <Spinner size="xs" tone="white" />
             ) : (
-              <Sparkles className="h-3.5 w-3.5" />
+              <ResponsiveContainer width="100%" height={250}>
+                <AreaChart data={timeToHire.trend}>
+                  <defs>
+                    <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={CHART_COLORS.indigo} stopOpacity={0.2} />
+                      <stop offset="100%" stopColor={CHART_COLORS.indigo} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="avgDays"
+                    stroke={CHART_COLORS.indigo}
+                    strokeWidth={2}
+                    fill="url(#areaGradient)"
+                    name="Avg Days"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             )}
-            {generatingInsights ? "Analyzing..." : insights.length > 0 ? "Regenerate" : "Generate Insights"}
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {insights.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100">
-                <Sparkles className="h-6 w-6 text-slate-400" />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Budget vs Actual</CardTitle>
+            <Button variant="ghost" size="icon-sm" onClick={() => exportCsv(cost, "budget")}>
+              <Download className="h-3.5 w-3.5" />
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {cost.length === 0 ? (
+              <div className="flex h-[250px] items-center justify-center">
+                <p className="text-sm text-slate-400">No cost data</p>
               </div>
-              <p className="mt-3 text-sm text-slate-500">
-                Click &quot;Generate Insights&quot; to get AI-powered hiring recommendations.
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {insights.map((insight, i) => (
-                <AiInsightCard
-                  key={i}
-                  severity={normaliseSeverity(insight.severity)}
-                  title={insight.title}
-                  description={insight.description}
-                  recommendation={insight.recommendation}
-                  category={insight.category}
-                />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            ) : (
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={cost.slice(0, 6)} barGap={4}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="title" tick={{ fontSize: 10, fill: "#94a3b8" }} interval={0} angle={-20} textAnchor="end" height={60} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="budgetMax" fill={CHART_COLORS.indigoLight} radius={[4, 4, 0, 0]} name="Budget Max" />
+                  <Bar dataKey="avgOfferCtc" fill={CHART_COLORS.indigo} radius={[4, 4, 0, 0]} name="Avg Offer" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
