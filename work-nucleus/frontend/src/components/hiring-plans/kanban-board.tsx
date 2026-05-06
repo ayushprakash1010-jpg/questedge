@@ -210,6 +210,7 @@ export function KanbanBoard({
       <div className="flex gap-3 overflow-x-auto pb-4">
         {filteredStages.map((stage) => {
           const Icon = stageTypeIcon[stage.stageType] ?? Settings;
+          const isOffer = stage.stageType === "OFFER";
           const slaCls = stage.maxDurationDays
             ? slaBadgeClass(stage.avgDaysInStage, stage.maxDurationDays)
             : "text-slate-500";
@@ -217,28 +218,71 @@ export function KanbanBoard({
           return (
             <div
               key={stage.id}
-              className="flex w-[268px] shrink-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
+              className={cn(
+                "flex w-[268px] shrink-0 flex-col overflow-hidden rounded-xl border",
+                // OFFER columns get a green-tinted treatment per
+                // design-system-v2/ui-kit/03-Pipeline-Kanban.html
+                isOffer
+                  ? "border-emerald-200 bg-emerald-50/40"
+                  : "border-slate-200 bg-slate-100"
+              )}
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, stage.id)}
             >
               {/* Header */}
-              <div className="flex items-center justify-between border-b border-slate-200 bg-white px-3.5 py-3">
+              <div
+                className={cn(
+                  "flex items-center justify-between border-b px-3.5 py-3",
+                  isOffer
+                    ? "border-emerald-100 bg-emerald-50/60"
+                    : "border-slate-200 bg-white"
+                )}
+              >
                 <div className="flex items-center gap-2">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50">
-                    <Icon className="h-3.5 w-3.5 text-indigo-600" />
+                  <div
+                    className={cn(
+                      "flex h-7 w-7 items-center justify-center rounded-lg",
+                      isOffer ? "bg-emerald-100" : "bg-indigo-50"
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        "h-3.5 w-3.5",
+                        isOffer ? "text-emerald-600" : "text-indigo-600"
+                      )}
+                    />
                   </div>
-                  <span className="text-sm font-semibold text-slate-800">
+                  <span
+                    className={cn(
+                      "text-sm font-semibold",
+                      isOffer ? "text-emerald-800" : "text-slate-800"
+                    )}
+                  >
                     {stage.name}
                   </span>
                 </div>
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-500">
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-xs font-semibold",
+                    isOffer
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-slate-100 text-slate-500"
+                  )}
+                >
                   {stage.candidateCount}
                 </span>
               </div>
 
               {/* SLA meta row */}
               {(stage.avgDaysInStage > 0 || stage.maxDurationDays) && (
-                <div className="border-b border-slate-100 bg-white px-3.5 py-1.5">
+                <div
+                  className={cn(
+                    "border-b px-3.5 py-1.5",
+                    isOffer
+                      ? "border-emerald-100 bg-emerald-50/60"
+                      : "border-slate-100 bg-white"
+                  )}
+                >
                   <span
                     className={cn(
                       "rounded px-1 text-[10px] font-medium",
@@ -271,11 +315,35 @@ export function KanbanBoard({
                   />
                 ))}
                 {stage.candidates.length === 0 && (
-                  <p className="py-8 text-center text-xs text-slate-400">
-                    No candidates
-                  </p>
+                  <div className="flex flex-col items-center gap-1 px-3 py-8 text-center">
+                    {isOffer ? (
+                      <>
+                        <FileText className="h-6 w-6 text-emerald-300" />
+                        <p className="text-[11px] text-emerald-700/70">
+                          No candidates yet
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-xs text-slate-400">No candidates</p>
+                    )}
+                  </div>
                 )}
               </div>
+
+              {/* Add candidate (dashed) */}
+              <button
+                type="button"
+                onClick={() => setShowAddDialog(true)}
+                className={cn(
+                  "m-2 flex items-center justify-center gap-1.5 rounded-lg border border-dashed py-2 text-xs font-medium transition-colors",
+                  isOffer
+                    ? "border-emerald-200 text-emerald-700/70 hover:border-emerald-300 hover:bg-white hover:text-emerald-700"
+                    : "border-slate-200 text-slate-400 hover:border-indigo-200 hover:bg-white hover:text-indigo-600"
+                )}
+              >
+                <Plus className="h-3 w-3" />
+                Add candidate
+              </button>
             </div>
           );
         })}
