@@ -95,7 +95,7 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         userType: actualUserType,
         isProvisioned: false,
       };
-      this.authCache.set(auth0Sub, { profile: unprovisioned, expiry: Date.now() + 60000 });
+      // Do not cache unprovisioned profiles so that immediately after creation, the next request sees the new profile
       return unprovisioned;
     }
 
