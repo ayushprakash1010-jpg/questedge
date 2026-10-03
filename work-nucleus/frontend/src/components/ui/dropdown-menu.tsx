@@ -11,8 +11,8 @@ import { cn } from "@/lib/utils";
 interface DropdownMenuContextValue {
   open: boolean;
   setOpen: (open: boolean) => void;
-  contentRef: React.RefObject<HTMLDivElement | null>;
-  triggerRef: React.RefObject<HTMLButtonElement | null>;
+  contentRef: React.MutableRefObject<HTMLDivElement | null>;
+  triggerRef: React.MutableRefObject<HTMLButtonElement | null>;
 }
 
 const DropdownMenuContext = React.createContext<DropdownMenuContextValue | null>(
