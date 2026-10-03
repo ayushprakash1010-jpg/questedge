@@ -85,7 +85,7 @@ export default function RecruiterProfilePage() {
         experienceYears: form.experienceYears ? parseInt(form.experienceYears, 10) : undefined,
       });
       toast.success(isNew ? "Profile created! Welcome aboard 🎉" : "Profile updated!");
-      if (isNew) router.push("/recruiter/dashboard");
+      if (isNew) window.location.href = "/recruiter/dashboard"; // Forces a hard reload to pick up new session claims
     } catch (err: any) {
       console.error("Save profile error:", err);
       toast.error(err.message || "Failed to save profile. Please try again.");

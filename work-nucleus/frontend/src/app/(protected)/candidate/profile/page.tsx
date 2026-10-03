@@ -234,7 +234,11 @@ export default function CandidateProfilePage() {
       setSaved(true);
       setTimeout(() => {
         setSaved(false);
-        router.push("/candidate/dashboard");
+        if (isNew) {
+           window.location.href = "/candidate/dashboard";
+        } else {
+           router.push("/candidate/dashboard");
+        }
       }, 1500);
     } catch (err) {
       console.error(err);
