@@ -59,6 +59,24 @@ export default function ProtectedLayout({
     if (profile && !profile.isProvisioned && !isRecruiterOrCandidate) {
       if (!pathname.includes("/profile") && !pathname.includes("/onboarding")) {
         router.push("/onboarding");
+        return;
+      }
+    }
+
+    // Role-based routing enforcement
+    if (profile && profile.isProvisioned) {
+      const uType = (profile as any).userType;
+      if (uType === "RECRUITER" && !pathname.startsWith("/recruiter")) {
+        router.push("/recruiter/dashboard");
+        return;
+      }
+      if (uType === "CANDIDATE" && !pathname.startsWith("/candidate")) {
+        router.push("/candidate/dashboard");
+        return;
+      }
+      if (uType === "COMPANY_USER" && (pathname.startsWith("/recruiter") || pathname.startsWith("/candidate"))) {
+        router.push("/dashboard");
+        return;
       }
     }
   }, [user, profile, authLoading, profileLoading, router, pathname]);
