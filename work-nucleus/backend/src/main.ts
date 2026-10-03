@@ -39,6 +39,7 @@ async function bootstrap() {
     origin: [
       'http://localhost:3001', // frontend
       'http://localhost:3002', // admin
+      'https://questedge.vercel.app', // production frontend
     ],
     credentials: true,
   });
