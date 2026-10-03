@@ -96,6 +96,25 @@ export class AnalyticsService {
         trend.push({ month: monthKey, count });
       }
 
+      // Marketplace KPIs
+      const [activeMandates, pendingReferrals, rewardCommitmentsAgg, recentPendingReferrals] = await Promise.all([
+        this.prisma.mandate.count({ where: { orgId, status: 'ACTIVE' } }),
+        this.prisma.referral.count({ where: { mandate: { orgId }, status: 'CANDIDATE_ACCEPTED' } }),
+        this.prisma.rewardTracking.aggregate({
+          where: { orgId, status: 'POTENTIAL' },
+          _sum: { rewardAmount: true },
+        }),
+        this.prisma.referral.findMany({
+          where: { mandate: { orgId }, status: 'CANDIDATE_ACCEPTED' },
+          orderBy: { updatedAt: 'desc' },
+          take: 5,
+          include: {
+            candidateProfile: { select: { name: true, currentDesignation: true } },
+            mandate: { select: { title: true } },
+          }
+        }),
+      ]);
+
       return {
         activePlans,
         totalRoles,
@@ -107,6 +126,10 @@ export class AnalyticsService {
         rejectedCount,
         avgTimeToHire,
         trend,
+        activeMandates,
+        pendingReferrals,
+        rewardCommitments: rewardCommitmentsAgg._sum.rewardAmount?.toNumber() || 0,
+        recentPendingReferrals,
       };
     });
   }

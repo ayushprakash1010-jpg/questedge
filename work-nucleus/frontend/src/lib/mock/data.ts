@@ -1,5 +1,5 @@
 // =============================================================
-// Mock Data for Work Nucleus — used when NEXT_PUBLIC_USE_MOCK_DATA=true
+// Mock Data for QuestEdge — used when NEXT_PUBLIC_USE_MOCK_DATA=true
 // =============================================================
 
 // ── Fixed IDs ──────────────────────────────────────────────────

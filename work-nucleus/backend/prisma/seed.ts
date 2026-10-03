@@ -153,6 +153,178 @@ async function main() {
   const created = await prisma.skill.createMany({ data: skills });
 
   console.log(`Seeded ${created.count} skills`);
+
+  console.log('Seeding Referral Hire Marketplace data...');
+
+  // 1. Create Companies (Organizations)
+  const techCorp = await prisma.organization.create({
+    data: {
+      name: 'TechCorp Global',
+      industry: 'Software Engineering',
+      users: {
+        create: {
+          email: 'admin@techcorp.com',
+          name: 'Alice Admin',
+          auth0Sub: 'auth0|techcorp_admin',
+          role: 'ADMIN',
+          userType: 'COMPANY_ADMIN',
+          isActive: true,
+        }
+      }
+    }
+  });
+
+  const fintechInc = await prisma.organization.create({
+    data: {
+      name: 'Fintech Innovators Inc',
+      industry: 'Finance',
+      users: {
+        create: {
+          email: 'admin@fintech-inc.com',
+          name: 'Bob Banker',
+          auth0Sub: 'auth0|fintech_admin',
+          role: 'ADMIN',
+          userType: 'COMPANY_ADMIN',
+          isActive: true,
+        }
+      }
+    }
+  });
+
+  // 2. Create Candidate Profiles
+  const candidates = [];
+  for (let i = 1; i <= 5; i++) {
+    candidates.push(await prisma.candidateProfile.create({
+      data: {
+        email: `candidate${i}@example.com`,
+        emailHash: `hash_candidate${i}`,
+        name: `Candidate User ${i}`,
+        auth0Sub: `auth0|candidate_${i}`,
+        headline: i % 2 === 0 ? 'Senior Backend Engineer' : 'Frontend Developer',
+        experienceYears: i * 2,
+        currentCompany: i % 2 === 0 ? 'OldTech Corp' : 'Startup XYZ',
+        currentDesignation: 'Software Engineer',
+        skills: ['JavaScript', 'TypeScript', 'Node.js', 'React'],
+        isProfileComplete: true,
+      }
+    }));
+  }
+
+  // 3. Create Recruiter Profiles
+  const recruiters = [];
+  for (let i = 1; i <= 3; i++) {
+    recruiters.push(await prisma.recruiterProfile.create({
+      data: {
+        email: `recruiter${i}@example.com`,
+        name: `Pro Recruiter ${i}`,
+        auth0Sub: `auth0|recruiter_${i}`,
+        headline: 'Technical Talent Acquisition Specialist',
+        experienceYears: i * 3,
+        isVerified: true,
+        verifiedAt: new Date(),
+      }
+    }));
+  }
+
+  // 4. Create Mandates
+  const mandate1 = await prisma.mandate.create({
+    data: {
+      orgId: techCorp.id,
+      title: 'Senior Backend Engineer',
+      department: 'Engineering',
+      description: 'We are looking for a Senior Backend Engineer to join our core infrastructure team. Must have experience with Node.js and PostgreSQL.',
+      requiredExperience: '5-8 years',
+      mandatorySkills: ['Node.js', 'PostgreSQL', 'TypeScript'],
+      numberOfOpenings: 2,
+      location: 'San Francisco, CA (Hybrid)',
+      workModel: 'Hybrid',
+      employmentType: 'Full-time',
+      compensationMin: 150000,
+      compensationMax: 180000,
+      currency: 'USD',
+      acceptsReferrals: true,
+      referralRewardAmount: 5000,
+      referralRewardType: 'FIXED',
+      status: 'ACTIVE',
+      publishedAt: new Date(),
+    }
+  });
+
+  const mandate2 = await prisma.mandate.create({
+    data: {
+      orgId: fintechInc.id,
+      title: 'Frontend React Developer',
+      department: 'Product',
+      description: 'Join our product team to build the next generation of financial dashboards using React and Next.js.',
+      requiredExperience: '3-5 years',
+      mandatorySkills: ['React', 'TypeScript', 'Next.js'],
+      numberOfOpenings: 1,
+      location: 'New York, NY (Remote)',
+      workModel: 'Remote',
+      employmentType: 'Full-time',
+      compensationMin: 120000,
+      compensationMax: 140000,
+      currency: 'USD',
+      acceptsReferrals: true,
+      referralRewardAmount: 3000,
+      referralRewardType: 'FIXED',
+      status: 'ACTIVE',
+      publishedAt: new Date(),
+    }
+  });
+
+  // 5. Create some sample referrals
+  // Referral 1: Recruiter 1 refers Candidate 1 to Mandate 1 (Pending Consent)
+  await prisma.referral.create({
+    data: {
+      mandateId: mandate1.id,
+      recruiterId: recruiters[0].id,
+      candidateProfileId: candidates[0].id,
+      status: 'PENDING_CONSENT',
+      recruiterNote: 'Great backend engineer I worked with previously.',
+      consentToken: 'mock-token-1',
+    }
+  });
+
+  // Referral 2: Recruiter 2 refers Candidate 2 to Mandate 2 (Candidate Accepted & Activated)
+  const referral2 = await prisma.referral.create({
+    data: {
+      mandateId: mandate2.id,
+      recruiterId: recruiters[1].id,
+      candidateProfileId: candidates[1].id,
+      status: 'ACTIVATED',
+      recruiterNote: 'Solid React developer looking for remote work.',
+      consentToken: 'mock-token-2',
+      consentRequestedAt: new Date(Date.now() - 86400000 * 2), // 2 days ago
+      activatedAt: new Date(Date.now() - 86400000), // 1 day ago
+      consent: {
+        create: {
+          candidateProfileId: candidates[1].id,
+          status: 'ACCEPTED',
+          consentToken: 'mock-token-2',
+          requestedAt: new Date(Date.now() - 86400000 * 2),
+          respondedAt: new Date(Date.now() - 86400000),
+          expiresAt: new Date(Date.now() + 86400000 * 5),
+        }
+      }
+    }
+  });
+
+  // Give Recruiter 2 ownership
+  await prisma.claimScope.create({
+    data: {
+      candidateProfileId: candidates[1].id,
+      mandateId: mandate2.id,
+      orgId: fintechInc.id,
+      referralId: referral2.id,
+      sourceType: 'RECRUITER_REFERRAL',
+      ownedByRecruiterId: recruiters[1].id,
+      status: 'ACTIVE',
+      ownershipExpiresAt: new Date(Date.now() + 86400000 * 90), // 90 days
+    }
+  });
+
+  console.log('Marketplace seed data successfully created!');
 }
 
 main()

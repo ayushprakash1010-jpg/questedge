@@ -1,4 +1,4 @@
-# Shared Composites — Work Nucleus
+# Shared Composites — QuestEdge
 
 Cross-page composite components. These compose primitives from `../ui/` into the recurring page-level patterns the v2 mockups specify (KPI grids, AI-insight rows, page headers, data tables, kanban candidate cards).
 

@@ -2,8 +2,10 @@ import time
 import logging
 from typing import Any
 
-import anthropic
+from google import genai
+from google.genai import types
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from google.genai.errors import APIError
 
 from app.config import settings
 from app.models.agent_log import AIAgentLog
@@ -13,17 +15,17 @@ logger = logging.getLogger(__name__)
 
 
 class BaseAgent:
-    """Base class for all AI agents. Provides Claude API calls with retry, logging, and tracking."""
+    """Base class for all AI agents. Provides Gemini API calls with retry, logging, and tracking."""
 
     def __init__(self, agent_name: str):
         self.agent_name = agent_name
-        self.client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-        self.model = settings.CLAUDE_MODEL
+        self.client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        self.model = settings.GEMINI_MODEL
 
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=1, max=10),
-        retry=retry_if_exception_type((anthropic.APIConnectionError, anthropic.RateLimitError)),
+        retry=retry_if_exception_type((APIError,)),
         reraise=True,
     )
     async def call_claude(
@@ -41,23 +43,28 @@ class BaseAgent:
         tokens_output = None
 
         try:
-            kwargs: dict[str, Any] = {
-                "model": self.model,
-                "max_tokens": max_tokens,
-                "system": system_prompt,
-                "messages": [{"role": "user", "content": user_prompt}],
-                "timeout": 30.0,
-            }
+            kwargs = {}
             if temperature is not None:
                 kwargs["temperature"] = temperature
-            response = self.client.messages.create(**kwargs)
+            
+            response = self.client.models.generate_content(
+                model=self.model,
+                contents=user_prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    max_output_tokens=max_tokens,
+                    **kwargs
+                )
+            )
 
-            tokens_input = response.usage.input_tokens
-            tokens_output = response.usage.output_tokens
+            tokens_input = response.usage_metadata.prompt_token_count if response.usage_metadata else None
+            tokens_output = response.usage_metadata.candidates_token_count if response.usage_metadata else None
+            
+            # Match the expected output format for compatibility with existing code
             response_data = {
-                "content": response.content[0].text if response.content else "",
-                "model": response.model,
-                "stop_reason": response.stop_reason,
+                "content": response.text if response.text else "",
+                "model": self.model,
+                "stop_reason": "end_turn",
             }
 
             return response_data
@@ -65,7 +72,7 @@ class BaseAgent:
         except Exception as e:
             status = "error"
             error_message = str(e)
-            logger.error(f"[{self.agent_name}] Claude call failed: {e}")
+            logger.error(f"[{self.agent_name}] Gemini call failed: {e}")
             raise
 
         finally:

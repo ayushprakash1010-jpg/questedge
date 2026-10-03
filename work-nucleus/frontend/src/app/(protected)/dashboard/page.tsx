@@ -7,8 +7,9 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import {
   ClipboardList, Users, TrendingUp, Clock, Sparkles,
-  Download, RefreshCw, CalendarClock,
+  Download, RefreshCw, CalendarClock, Gift, UserPlus, FileCheck, ExternalLink
 } from "lucide-react";
+import Link from "next/link";
 import {
   BarChart, Bar, Cell, LabelList, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Area, AreaChart,
@@ -38,6 +39,10 @@ interface Overview {
   rejectedCount: number;
   avgTimeToHire: number;
   trend: { month: string; count: number }[];
+  activeMandates: number;
+  pendingReferrals: number;
+  rewardCommitments: number;
+  recentPendingReferrals: any[];
 }
 
 interface FunnelStage {
@@ -315,6 +320,63 @@ export default function DashboardPage() {
           accent="emerald"
           trend={{ label: `${overview?.selectedCount ?? 0} selected`, direction: "up" }}
         />
+      </div>
+
+      {/* Marketplace & Referrals Row */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2 grid gap-4 sm:grid-cols-2">
+          <KpiCard
+            title="Active Mandates"
+            value={overview?.activeMandates ?? 0}
+            icon={<ClipboardList />}
+            accent="indigo"
+          />
+          <KpiCard
+            title="Pending Reviews"
+            value={overview?.pendingReferrals ?? 0}
+            icon={<FileCheck />}
+            accent="amber"
+          />
+          <KpiCard
+            title="Reward Commitments"
+            value={`₹${(overview?.rewardCommitments ?? 0).toLocaleString()}`}
+            icon={<Gift />}
+            accent="emerald"
+          />
+          <KpiCard
+            title="Referrals in Pipeline"
+            value={overview?.recentPendingReferrals?.length ?? 0}
+            icon={<UserPlus />}
+            accent="cyan"
+          />
+        </div>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle>Review New Referrals</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!overview?.recentPendingReferrals?.length ? (
+              <div className="flex h-[150px] items-center justify-center">
+                <p className="text-sm text-slate-400">No pending referrals</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {overview.recentPendingReferrals.map((ref: any) => (
+                  <div key={ref.id} className="flex items-center justify-between p-2 rounded-lg border border-slate-100 hover:bg-slate-50">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">{ref.candidateProfile?.name}</p>
+                      <p className="text-xs text-slate-500 truncate max-w-[150px]">for {ref.mandate?.title}</p>
+                    </div>
+                    <Link href={`/mandates/${ref.mandateId}`} className="text-xs font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+                      Review <ExternalLink className="h-3 w-3" />
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Row 2: Pipeline Funnel + Hiring Progress */}

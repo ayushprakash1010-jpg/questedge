@@ -64,4 +64,4 @@
 - Auth0 enterprise support: from 1Password vault entry "Auth0 Enterprise"
 - Anthropic incident contact: `support@anthropic.com`
 - Cloud provider: AWS Enterprise Support
-- Legal / DPO: `dpo@worknucleus.in`
+- Legal / DPO: `dpo@questedge.in`

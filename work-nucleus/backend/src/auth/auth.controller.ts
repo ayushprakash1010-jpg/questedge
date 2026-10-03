@@ -40,7 +40,12 @@ export class AuthController {
       throw new BadRequestException('Auth0 identity not found in token');
     }
 
-    return this.authService.provision(user.auth0Sub, user.email, dto);
+    const email = user.email || dto.email;
+    if (!email) {
+      throw new BadRequestException('Email not found in token or payload');
+    }
+
+    return this.authService.provision(user.auth0Sub, email, dto);
   }
 
   @Get('me')
@@ -52,17 +57,29 @@ export class AuthController {
       throw new BadRequestException('Auth0 identity not found in token');
     }
 
+    // First check company users table
     const profile = await this.authService.getMe(user.auth0Sub);
-
-    if (!profile) {
-      return {
-        isProvisioned: false,
-        auth0Sub: user.auth0Sub,
-        email: user.email,
-      };
+    if (profile) {
+      return { isProvisioned: true, userType: 'COMPANY_USER', ...profile };
     }
 
-    return { isProvisioned: true, ...profile };
+    // Check recruiter profiles table
+    const recruiterProfile = await this.authService.getRecruiterMe(user.auth0Sub);
+    if (recruiterProfile) {
+      return { isProvisioned: true, userType: 'RECRUITER', ...recruiterProfile };
+    }
+
+    // Check candidate profiles table
+    const candidateProfile = await this.authService.getCandidateMe(user.auth0Sub);
+    if (candidateProfile) {
+      return { isProvisioned: true, userType: 'CANDIDATE', ...candidateProfile };
+    }
+
+    return {
+      isProvisioned: false,
+      auth0Sub: user.auth0Sub,
+      email: user.email,
+    };
   }
 
   @Post('sync')

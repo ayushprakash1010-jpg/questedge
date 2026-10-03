@@ -1,5 +1,5 @@
 {
-  "name": "work-nucleus-frontend",
+  "name": "questedge-frontend",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -21,11 +21,14 @@
     "autoprefixer": "^10.4.27",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.1",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.6.0",
     "next": "^14.2.35",
+    "next-themes": "^0.4.6",
+    "pdfjs-dist": "^3.11.174",
     "postcss": "^8.5.8",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

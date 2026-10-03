@@ -6,12 +6,12 @@ import { ApplicationsService } from './applications.service';
 import { AddToPipelineDto } from './dto/add-to-pipeline.dto';
 import { MoveCandidateDto } from './dto/move-candidate.dto';
 import { UpdateApplicationStatusDto } from './dto/update-status.dto';
-import { Roles } from '../../auth/decorators/roles.decorator';
-import { Role } from '@prisma/client';
+import { UserTypes } from '../../auth/decorators/user-types.decorator';
+import { UserType, Role } from '@prisma/client';
 
 @ApiTags('Applications')
 @ApiBearerAuth()
-@Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER)
+@UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
 @Controller()
 export class ApplicationsController {
   constructor(private readonly applicationsService: ApplicationsService) {}

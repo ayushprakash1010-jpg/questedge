@@ -11,13 +11,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Work Nucleus",
-  description: "AI-Powered HR & Hiring Management Platform",
+  title: "QuestEdge",
+  description: "The Referral-Based Hiring Marketplace",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Work Nucleus",
+    title: "QuestEdge",
   },
 };
 
@@ -25,16 +25,27 @@ export const viewport: Viewport = {
   themeColor: "#4f46e5",
 };
 
+import { ThemeProvider } from "@/components/theme-provider";
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body>
-        <Auth0Provider>{children}</Auth0Provider>
-        <Toaster />
+        <Auth0Provider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+            <Toaster />
+          </ThemeProvider>
+        </Auth0Provider>
       </body>
     </html>
   );

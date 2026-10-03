@@ -24,7 +24,7 @@ export class OfferRenderService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {
-    this.bucket = this.config.get<string>('S3_OFFERS_BUCKET', 'work-nucleus-offers');
+    this.bucket = this.config.get<string>('S3_OFFERS_BUCKET', 'questedge-offers');
     this.s3 = new S3Client({
       endpoint: this.config.get<string>('S3_ENDPOINT', 'http://localhost:9000'),
       region: this.config.get<string>('S3_REGION', 'us-east-1'),

@@ -2,11 +2,11 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    # Anthropic
-    ANTHROPIC_API_KEY: str
+    # Gemini
+    GEMINI_API_KEY: str
 
     # Database (for ai_agent_logs)
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/work_nucleus"
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/questedge"
 
     # Internal API key for backend -> AI service calls
     INTERNAL_API_KEY: str = "dev-internal-key"
@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     # Server
     PORT: int = 8000
 
-    # Claude model
-    CLAUDE_MODEL: str = "claude-sonnet-4-20250514"
+    # Gemini model
+    GEMINI_MODEL: str = "gemini-2.5-flash"
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "GDPR Compliance | Work Nucleus",
+  title: "GDPR Compliance | QuestEdge",
 };
 
 export default function GDPRPage() {
@@ -21,7 +21,7 @@ export default function GDPRPage() {
               1. Our Commitment
             </h2>
             <p className="mt-3">
-              Work Nucleus is committed to complying with the General Data
+              QuestEdge is committed to complying with the General Data
               Protection Regulation (GDPR) for all users in the European
               Economic Area (EEA), United Kingdom, and Switzerland. This page
               explains how we handle personal data under GDPR requirements.
@@ -33,14 +33,14 @@ export default function GDPRPage() {
               2. Data Controller & Processor
             </h2>
             <p className="mt-3">
-              When you use Work Nucleus, your organization acts as the{" "}
+              When you use QuestEdge, your organization acts as the{" "}
               <strong>Data Controller</strong> for candidate and hiring data.
-              Work Nucleus acts as the <strong>Data Processor</strong>,
+              QuestEdge acts as the <strong>Data Processor</strong>,
               processing data on your behalf according to your instructions and
               our Data Processing Agreement (DPA).
             </p>
             <p className="mt-3">
-              For account and usage data, Work Nucleus acts as the Data
+              For account and usage data, QuestEdge acts as the Data
               Controller.
             </p>
           </section>
@@ -55,7 +55,7 @@ export default function GDPRPage() {
             <ul className="mt-3 list-disc space-y-2 pl-5">
               <li>
                 <strong>Contract performance</strong> — processing necessary to
-                provide the Work Nucleus service as agreed in our Terms of
+                provide the QuestEdge service as agreed in our Terms of
                 Service
               </li>
               <li>
@@ -152,7 +152,7 @@ export default function GDPRPage() {
               5. AI Processing & Automated Decisions
             </h2>
             <p className="mt-3">
-              Work Nucleus uses AI to generate suggestions such as candidate
+              QuestEdge uses AI to generate suggestions such as candidate
               scores and feedback summaries. These are{" "}
               <strong>recommendations only</strong> — no hiring decisions are
               made automatically by the platform. Human oversight is required for
@@ -160,7 +160,7 @@ export default function GDPRPage() {
             </p>
             <p className="mt-3">
               Under GDPR Article 22, you have the right not to be subject to
-              decisions based solely on automated processing. Work Nucleus is
+              decisions based solely on automated processing. QuestEdge is
               designed so that all AI outputs require human review before action
               is taken.
             </p>
@@ -186,10 +186,10 @@ export default function GDPRPage() {
               For GDPR-related inquiries, you can contact our data protection
               team at{" "}
               <a
-                href="mailto:dpo@worknucleus.com"
+                href="mailto:dpo@questedge.com"
                 className="text-indigo-600 hover:underline"
               >
-                dpo@worknucleus.com
+                dpo@questedge.com
               </a>
               .
             </p>
@@ -203,10 +203,10 @@ export default function GDPRPage() {
               Enterprise customers can request a Data Processing Agreement (DPA)
               that details our obligations as a data processor. Contact{" "}
               <a
-                href="mailto:legal@worknucleus.com"
+                href="mailto:legal@questedge.com"
                 className="text-indigo-600 hover:underline"
               >
-                legal@worknucleus.com
+                legal@questedge.com
               </a>{" "}
               to request a DPA.
             </p>

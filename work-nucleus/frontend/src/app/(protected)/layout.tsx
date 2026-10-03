@@ -1,7 +1,7 @@
 "use client";
 
 import { useUser } from "@auth0/nextjs-auth0/client";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { TopBar } from "@/components/top-bar";
@@ -9,6 +9,15 @@ import { useProfile } from "@/hooks/use-profile";
 import { registerServiceWorker } from "@/lib/pwa";
 
 const IS_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+
+// Map userType from backend → sidebar theme
+function resolveSidebarUserType(
+  userType?: string
+): "company" | "recruiter" | "candidate" {
+  if (userType === "RECRUITER") return "recruiter";
+  if (userType === "CANDIDATE") return "candidate";
+  return "company";
+}
 
 export default function ProtectedLayout({
   children,
@@ -18,6 +27,7 @@ export default function ProtectedLayout({
   const { user, isLoading: authLoading } = useUser();
   const { profile, isLoading: profileLoading } = useProfile();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     void registerServiceWorker();
@@ -34,10 +44,19 @@ export default function ProtectedLayout({
     }
 
     // Logged in but not provisioned — redirect to onboarding
-    if (profile && !profile.isProvisioned) {
-      router.push("/onboarding");
+    // (unless they are already on a role-specific profile setup page)
+    const isRecruiterOrCandidate =
+      (profile as any)?.userType === "RECRUITER" ||
+      (profile as any)?.userType === "CANDIDATE";
+
+    if (profile && !profile.isProvisioned && !isRecruiterOrCandidate) {
+      if (!pathname.includes("/profile") && !pathname.includes("/onboarding")) {
+        router.push("/onboarding");
+      }
     }
-  }, [user, profile, authLoading, profileLoading, router]);
+  }, [user, profile, authLoading, profileLoading, router, pathname]);
+
+  const sidebarUserType = resolveSidebarUserType((profile as any)?.userType);
 
   if (IS_MOCK) {
     if (profileLoading) {
@@ -49,7 +68,7 @@ export default function ProtectedLayout({
     }
     return (
       <div className="flex h-screen">
-        <Sidebar userRole={profile?.role} />
+        <Sidebar userType={sidebarUserType} />
         <div className="flex flex-1 flex-col overflow-hidden">
           <TopBar />
           <main className="flex-1 overflow-y-auto bg-background p-6">{children}</main>
@@ -70,7 +89,7 @@ export default function ProtectedLayout({
 
   return (
     <div className="flex h-screen">
-      <Sidebar userRole={profile?.role} />
+      <Sidebar userType={sidebarUserType} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
         <main className="flex-1 overflow-y-auto bg-background p-6">{children}</main>

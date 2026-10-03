@@ -579,7 +579,7 @@ function BgvDetailRail({
           </p>
           <p className="mb-3 text-[11px] leading-relaxed text-slate-600">
             By submitting this form, I,{" "}
-            <strong>{row.candidate.name}</strong>, authorise WorkNucleus and
+            <strong>{row.candidate.name}</strong>, authorise QuestEdge and
             its authorised BGV partner to conduct background checks as part of
             the pre-employment process.
           </p>

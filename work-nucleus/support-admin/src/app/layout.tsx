@@ -6,7 +6,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Work Nucleus — Support Admin",
+  title: "QuestEdge — Support Admin",
   description: "Internal support administration portal",
 };
 

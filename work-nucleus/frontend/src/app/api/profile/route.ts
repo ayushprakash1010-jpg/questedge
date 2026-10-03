@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
 import { getApiUrl } from "@/lib/api-url";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const session = await auth0.getSession();
@@ -14,6 +16,7 @@ export async function GET() {
 
     const res = await fetch(`${apiUrl}/api/v1/auth/me`, {
       headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
     });
 
     const data = await res.json();

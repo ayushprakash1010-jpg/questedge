@@ -74,14 +74,14 @@ export default function SupportAdminLoginPage() {
 
           <div className="mt-6 rounded-lg border border-slate-800 bg-slate-800/50 px-4 py-3">
             <p className="text-xs leading-relaxed text-slate-500">
-              This portal is restricted to Work Nucleus support staff.
+              This portal is restricted to QuestEdge support staff.
               Unauthorized access attempts are logged.
             </p>
           </div>
         </div>
 
         <p className="mt-6 text-center text-xs text-slate-600">
-          Work Nucleus Support Admin &middot; All sessions are audited
+          QuestEdge Support Admin &middot; All sessions are audited
         </p>
       </div>
     </div>

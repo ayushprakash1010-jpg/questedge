@@ -1,7 +1,8 @@
 "use client";
 
 import { useUser } from "@auth0/nextjs-auth0/client";
-import { LogOut, User, Settings, ChevronDown } from "lucide-react";
+import { useTheme } from "next-themes";
+import { LogOut, User, Settings, ChevronDown, Moon, Sun } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -20,6 +21,7 @@ export function TopBar() {
 
   const displayName = IS_MOCK ? "Priya Sharma" : user?.name;
   const displayPicture = IS_MOCK ? undefined : user?.picture || undefined;
+  const { theme, setTheme } = useTheme();
 
   const initials = displayName
     ? displayName
@@ -38,10 +40,19 @@ export function TopBar() {
       <GlobalSearch />
 
       <div className="flex items-center gap-3">
+        <button
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          aria-label="Toggle theme"
+        >
+          <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+          <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+        </button>
+
         <NotificationBell />
 
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center gap-2 rounded-xl px-2 py-1.5 transition-colors hover:bg-slate-50">
+          <DropdownMenuTrigger className="flex items-center gap-2 rounded-xl px-2 py-1.5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800">
             <Avatar size="sm">
               <AvatarImage src={displayPicture} />
               <AvatarFallback className="text-xs">{initials}</AvatarFallback>

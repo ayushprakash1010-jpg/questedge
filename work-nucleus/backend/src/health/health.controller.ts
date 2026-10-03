@@ -12,7 +12,7 @@ export class HealthController {
     return {
       status: 'ok',
       timestamp: new Date().toISOString(),
-      service: 'work-nucleus-backend',
+      service: 'questedge-backend',
     };
   }
 }

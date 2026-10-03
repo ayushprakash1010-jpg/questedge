@@ -1,4 +1,4 @@
-// k6 load-test scenarios for Work Nucleus.
+// k6 load-test scenarios for QuestEdge.
 // Run with: BASE=http://localhost:3000 k6 run scenarios.js --env SCENARIO=self_assessment
 //
 // Targets called out in plan-v2:

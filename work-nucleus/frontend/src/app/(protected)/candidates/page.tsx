@@ -92,7 +92,8 @@ function scoreBadgeClass(score: number): string {
   return "text-red-700 bg-red-50 border-red-200";
 }
 
-function getBestScore(applications: Application[]): number | null {
+function getBestScore(applications?: Application[]): number | null {
+  if (!applications) return null;
   const scores = applications
     .map((a) => (a.aiMatchScore ? Number(a.aiMatchScore) : null))
     .filter((s): s is number => s !== null);
@@ -141,7 +142,12 @@ export default function CandidatesPage() {
       const res = await fetch(`/api/candidates?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        setCandidates(data.data || []);
+        setCandidates(
+          (data.data || []).map((c: any) => ({
+            ...c,
+            applications: c.applications || [],
+          }))
+        );
         setMeta(data.meta || null);
       }
     } catch {

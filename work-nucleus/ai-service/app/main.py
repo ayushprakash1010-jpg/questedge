@@ -50,7 +50,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Work Nucleus AI Service",
+    title="QuestEdge AI Service",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -60,7 +60,7 @@ app = FastAPI(
 async def health():
     return {
         "status": "ok",
-        "service": "work-nucleus-ai",
+        "service": "questedge-ai",
         "model": settings.CLAUDE_MODEL,
     }
 

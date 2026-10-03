@@ -11,8 +11,9 @@ interface Auth0JwtPayload {
   name?: string;
   picture?: string;
   // Namespaced custom claims added via Auth0 Login Action
-  'https://api.work-nucleus.com/email'?: string;
-  'https://api.work-nucleus.com/name'?: string;
+  'https://api.questedge.com/email'?: string;
+  'https://api.questedge.com/name'?: string;
+  'https://api.questedge.com/user_type'?: string;
 }
 
 @Injectable()
@@ -38,42 +39,79 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
   }
 
+  private authCache = new Map<string, { profile: any; expiry: number }>();
+
   async validate(payload: Auth0JwtPayload) {
     const auth0Sub = payload.sub;
+    const userType = payload['https://api.questedge.com/user_type'] || 'COMPANY_USER';
 
     if (!auth0Sub) {
       throw new UnauthorizedException('Invalid token: missing sub claim');
     }
 
-    const user = await this.prisma.user.findUnique({
-      where: { auth0Sub },
-      include: { organization: true },
-    });
-
-    // User not provisioned yet — return minimal info for /auth/provision
-    // Email comes from namespaced custom claim (Auth0 Login Action) or standard claim
-    if (!user) {
-      return {
-        auth0Sub,
-        email: payload['https://api.work-nucleus.com/email'] || payload.email,
-        name: payload['https://api.work-nucleus.com/name'] || payload.name,
-        isProvisioned: false,
-      };
+    // Check cache
+    const cached = this.authCache.get(auth0Sub);
+    if (cached && cached.expiry > Date.now()) {
+      if (cached.profile.isActive === false) {
+        throw new UnauthorizedException('User account is deactivated');
+      }
+      return cached.profile;
     }
 
-    if (!user.isActive) {
+    let resolvedProfile: any = null;
+    let actualUserType = userType;
+
+    if (userType === 'CANDIDATE') {
+      resolvedProfile = await this.prisma.candidateProfile.findUnique({ where: { auth0Sub } });
+    } else if (userType === 'RECRUITER') {
+      resolvedProfile = await this.prisma.recruiterProfile.findUnique({ where: { auth0Sub } });
+    } else {
+      // Defaulted to COMPANY_USER, but let's double check if they are actually a Recruiter or Candidate
+      resolvedProfile = await this.prisma.user.findUnique({
+        where: { auth0Sub },
+        include: { organization: true },
+      });
+      
+      if (!resolvedProfile) {
+        const recruiterProfile = await this.prisma.recruiterProfile.findUnique({ where: { auth0Sub } });
+        if (recruiterProfile) {
+          resolvedProfile = recruiterProfile;
+          actualUserType = 'RECRUITER';
+        } else {
+          const candidateProfile = await this.prisma.candidateProfile.findUnique({ where: { auth0Sub } });
+          if (candidateProfile) {
+            resolvedProfile = candidateProfile;
+            actualUserType = 'CANDIDATE';
+          }
+        }
+      }
+    }
+
+    if (!resolvedProfile) {
+      const unprovisioned = {
+        auth0Sub,
+        email: payload['https://api.questedge.com/email'] || payload.email || `${auth0Sub}@placeholder.com`,
+        name: payload['https://api.questedge.com/name'] || payload.name,
+        userType: actualUserType,
+        isProvisioned: false,
+      };
+      this.authCache.set(auth0Sub, { profile: unprovisioned, expiry: Date.now() + 60000 });
+      return unprovisioned;
+    }
+
+    if (resolvedProfile.isActive === false) {
       throw new UnauthorizedException('User account is deactivated');
     }
 
-    return {
-      id: user.id,
-      orgId: user.orgId,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      auth0Sub: user.auth0Sub,
-      organization: user.organization,
+    const finalProfile = {
+      ...resolvedProfile,
+      userType: actualUserType,
       isProvisioned: true,
     };
+
+    // Cache the resolved profile for 60 seconds
+    this.authCache.set(auth0Sub, { profile: finalProfile, expiry: Date.now() + 60000 });
+
+    return finalProfile;
   }
 }

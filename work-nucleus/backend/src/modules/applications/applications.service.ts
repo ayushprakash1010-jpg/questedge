@@ -5,9 +5,14 @@ import { MoveCandidateDto } from './dto/move-candidate.dto';
 import { UpdateApplicationStatusDto } from './dto/update-status.dto';
 import { ApplicationStatus } from '@prisma/client';
 
+import { RewardsService } from '../rewards/rewards.service';
+
 @Injectable()
 export class ApplicationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly rewardsService: RewardsService
+  ) {}
 
   async addToPipeline(hiringPlanId: string, dto: AddToPipelineDto) {
     // Get the first stage
@@ -119,12 +124,19 @@ export class ApplicationsService {
       throw new BadRequestException('Can only move active applications');
     }
 
-    // Validate target stage is in the same hiring plan
+    // Validate target stage is in the same hiring plan or mandate
     const targetStage = await this.prisma.pipelineStage.findUnique({
       where: { id: dto.targetStageId },
     });
-    if (!targetStage || targetStage.hiringPlanId !== application.hiringPlanId) {
-      throw new BadRequestException('Invalid target stage');
+    if (!targetStage) {
+      throw new BadRequestException('Target stage not found');
+    }
+
+    const isValidHiringPlan = application.hiringPlanId && targetStage.hiringPlanId === application.hiringPlanId;
+    const isValidMandate = application.mandateId && targetStage.mandateId === application.mandateId;
+
+    if (!isValidHiringPlan && !isValidMandate) {
+      throw new BadRequestException('Invalid target stage for this application');
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -167,7 +179,7 @@ export class ApplicationsService {
     });
     if (!application) throw new NotFoundException('Application not found');
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const updateData: any = {
         status: dto.status,
       };
@@ -219,6 +231,14 @@ export class ApplicationsService {
 
       return this.getDetail(applicationId);
     });
+
+    if (dto.status === ApplicationStatus.SELECTED && application.referralId) {
+      await this.rewardsService.triggerRewardEligibility(application.referralId).catch(err => {
+        console.error('Failed to trigger reward eligibility:', err);
+      });
+    }
+
+    return result;
   }
 
   async getDetail(applicationId: string) {

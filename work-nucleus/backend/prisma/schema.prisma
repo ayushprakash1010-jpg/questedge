@@ -403,6 +403,78 @@ enum SecurityEventType {
   CONFIG_CHANGED
 }
 
+// ── Referral Hire Marketplace Enums ─────────────────────────────
+
+enum UserType {
+  CANDIDATE
+  RECRUITER
+  COMPANY_ADMIN
+  COMPANY_USER
+  PLATFORM_ADMIN
+}
+
+enum MandateStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  FILLED
+  CLOSED
+}
+
+enum MandateParticipationType {
+  OPEN
+  LIMITED
+  APPROVAL_BASED
+  INVITE_ONLY
+}
+
+enum ReferralStatus {
+  PENDING_CONSENT
+  CONSENT_REQUESTED
+  CANDIDATE_ACCEPTED
+  CANDIDATE_DECLINED
+  ACTIVATED
+  UNDER_REVIEW
+  SHORTLISTED
+  INTERVIEW
+  SELECTED
+  REJECTED
+  HIRED
+  WITHDRAWN
+}
+
+enum ConsentStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+enum SourceType {
+  DIRECT_APPLICATION
+  RECRUITER_REFERRAL
+  EMPLOYEE_REFERRAL
+  PLATFORM_SOURCING
+  INTERNAL_SOURCING
+}
+
+enum RewardStatus {
+  POTENTIAL
+  ELIGIBLE
+  PENDING_APPROVAL
+  APPROVED
+  PAID
+  DISPUTED
+  CANCELLED
+}
+
+enum OwnershipStatus {
+  ACTIVE
+  EXPIRED
+  DISPUTED
+  OVERRIDDEN
+}
+
 // ── Core Models ─────────────────────────────────────────────────
 
 model Organization {
@@ -412,30 +484,33 @@ model Organization {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users            User[]
-  hiringPlans      HiringPlan[]
-  candidates       Candidate[]
-  trainingModules  TrainingModule[]
-  notifications    Notification[]
-  auditLogs        AuditLog[]
-  settings           OrgSettings?
-  healthMetrics      OrgHealthMetric[]
-  jobPublishings     JobPublishing[]
-  supportTickets     SupportTicket[]
-  supportSessions    SupportSession[]
-  dashboardInsights  DashboardInsight[]
-  offerTemplates     OfferTemplate[]
-  offers             Offer[]
-  joiningChecklists  JoiningChecklist[]
-  bgvProfiles        BgvProfile[]
-  appraisalCycles    AppraisalCycle[]
-  orgGoals           OrgGoal[]
-  appraisalBudgets   AppraisalBudget[]
+  users                 User[]
+  hiringPlans           HiringPlan[]
+  candidates            Candidate[]
+  trainingModules       TrainingModule[]
+  notifications         Notification[]
+  auditLogs             AuditLog[]
+  settings              OrgSettings?
+  healthMetrics         OrgHealthMetric[]
+  jobPublishings        JobPublishing[]
+  supportTickets        SupportTicket[]
+  supportSessions       SupportSession[]
+  dashboardInsights     DashboardInsight[]
+  offerTemplates        OfferTemplate[]
+  offers                Offer[]
+  joiningChecklists     JoiningChecklist[]
+  bgvProfiles           BgvProfile[]
+  appraisalCycles       AppraisalCycle[]
+  orgGoals              OrgGoal[]
+  appraisalBudgets      AppraisalBudget[]
   compensationRevisions CompensationRevision[]
-  reportDefinitions  ReportDefinition[]
-  notificationLogs   NotificationLog[]
-  securityLogs       SecurityLog[]
-  aiCallLogs         AiCallLog[]
+  reportDefinitions     ReportDefinition[]
+  notificationLogs      NotificationLog[]
+  securityLogs          SecurityLog[]
+  aiCallLogs            AiCallLog[]
+
+  // ── Referral Hire Marketplace Relations ──
+  mandates Mandate[]
 
   @@map("organizations")
 }
@@ -447,6 +522,7 @@ model User {
   auth0Sub  String   @unique @map("auth0_sub")
   name      String
   role      Role     @default(VIEWER)
+  userType  UserType @default(COMPANY_USER) @map("user_type")
   avatarUrl String?  @map("avatar_url")
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now())
@@ -454,41 +530,41 @@ model User {
 
   organization Organization @relation(fields: [orgId], references: [id])
 
-  managedHiringPlans HiringPlan[] @relation("HiringManager")
-  createdHiringPlans HiringPlan[] @relation("PlanCreator")
-  createdJobDescriptions  JobDescription[] @relation("JdCreator")
-  approvedJobDescriptions JobDescription[] @relation("JdApprover")
+  managedHiringPlans      HiringPlan[]               @relation("HiringManager")
+  createdHiringPlans      HiringPlan[]               @relation("PlanCreator")
+  createdJobDescriptions  JobDescription[]           @relation("JdCreator")
+  approvedJobDescriptions JobDescription[]           @relation("JdApprover")
   stageAssignments        PipelineStageInterviewer[]
   interviewFeedbacks      InterviewFeedback[]
-  decisionsDecided        SelectionDecision[]  @relation("DecisionDecider")
-  decisionsApproved       SelectionDecision[]  @relation("DecisionApprover")
+  decisionsDecided        SelectionDecision[]        @relation("DecisionDecider")
+  decisionsApproved       SelectionDecision[]        @relation("DecisionApprover")
   trainingCompletions     TrainingCompletion[]
   notifications           Notification[]
   auditLogs               AuditLog[]
-  assignedTickets         SupportTicket[]      @relation("TicketAssignee")
-  supportNotes            SupportNote[]        @relation("NoteAuthor")
-  escalationsCreated      SupportEscalation[]  @relation("EscalationCreator")
-  supportSessions         SupportSession[]     @relation("SupportSessionUser")
-  targetedBySessions      SupportSession[]     @relation("SupportSessionTarget")
+  assignedTickets         SupportTicket[]            @relation("TicketAssignee")
+  supportNotes            SupportNote[]              @relation("NoteAuthor")
+  escalationsCreated      SupportEscalation[]        @relation("EscalationCreator")
+  supportSessions         SupportSession[]           @relation("SupportSessionUser")
+  targetedBySessions      SupportSession[]           @relation("SupportSessionTarget")
   dashboardInsights       DashboardInsight[]
-  createdOfferTemplates   OfferTemplate[]      @relation("OfferTemplateCreator")
-  createdOffers           Offer[]              @relation("OfferCreator")
-  buddyForJoinings        CandidateJoining[]   @relation("JoiningBuddy")
-  managerForJoinings      CandidateJoining[]   @relation("JoiningReportingManager")
-  goalsAsEmployee         Goal[]               @relation("GoalEmployee")
-  goalsAsManager          Goal[]               @relation("GoalManager")
-  ownedOrgGoals           OrgGoal[]            @relation("OrgGoalOwner")
-  selfAssessments         AppraisalAssessment[] @relation("AssessmentEmployee")
-  managedAssessments      AppraisalAssessment[] @relation("AssessmentManager")
-  peerFeedbackAsSubject   PeerFeedbackRequest[] @relation("PeerSubject")
-  peerFeedbackAsReviewer  PeerFeedbackRequest[] @relation("PeerReviewer")
-  peerFeedbackRequested   PeerFeedbackRequest[] @relation("PeerRequester")
-  facilitatedCalibrations CalibrationSession[] @relation("CalibrationFacilitator")
-  approvedBudgets         AppraisalBudget[]    @relation("BudgetApprover")
-  comprevisionsAsEmployee CompensationRevision[] @relation("RevisionEmployee")
+  createdOfferTemplates   OfferTemplate[]            @relation("OfferTemplateCreator")
+  createdOffers           Offer[]                    @relation("OfferCreator")
+  buddyForJoinings        CandidateJoining[]         @relation("JoiningBuddy")
+  managerForJoinings      CandidateJoining[]         @relation("JoiningReportingManager")
+  goalsAsEmployee         Goal[]                     @relation("GoalEmployee")
+  goalsAsManager          Goal[]                     @relation("GoalManager")
+  ownedOrgGoals           OrgGoal[]                  @relation("OrgGoalOwner")
+  selfAssessments         AppraisalAssessment[]      @relation("AssessmentEmployee")
+  managedAssessments      AppraisalAssessment[]      @relation("AssessmentManager")
+  peerFeedbackAsSubject   PeerFeedbackRequest[]      @relation("PeerSubject")
+  peerFeedbackAsReviewer  PeerFeedbackRequest[]      @relation("PeerReviewer")
+  peerFeedbackRequested   PeerFeedbackRequest[]      @relation("PeerRequester")
+  facilitatedCalibrations CalibrationSession[]       @relation("CalibrationFacilitator")
+  approvedBudgets         AppraisalBudget[]          @relation("BudgetApprover")
+  comprevisionsAsEmployee CompensationRevision[]     @relation("RevisionEmployee")
   pushSubscriptions       PushSubscription[]
   notificationPrefs       UserNotificationPref[]
-  reportDefinitions       ReportDefinition[]   @relation("ReportCreator")
+  reportDefinitions       ReportDefinition[]         @relation("ReportCreator")
   notificationLogs        NotificationLog[]
 
   @@index([orgId])
@@ -504,8 +580,8 @@ model Skill {
   isGlobal  Boolean       @default(false) @map("is_global")
   createdAt DateTime      @default(now())
 
-  hiringPlanSkills    HiringPlanSkill[]
-  feedbackRatings     FeedbackSkillRating[]
+  hiringPlanSkills HiringPlanSkill[]
+  feedbackRatings  FeedbackSkillRating[]
 
   @@map("skills")
 }
@@ -536,14 +612,14 @@ model HiringPlan {
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
 
-  organization   Organization      @relation(fields: [orgId], references: [id])
-  hiringManager  User              @relation("HiringManager", fields: [hiringManagerId], references: [id])
-  createdBy      User              @relation("PlanCreator", fields: [createdById], references: [id])
-  skills           HiringPlanSkill[]
-  jobDescriptions  JobDescription[]
-  pipelineStages   PipelineStage[]
-  applications     CandidateApplication[]
-  publishings      JobPublishing[]
+  organization    Organization           @relation(fields: [orgId], references: [id])
+  hiringManager   User                   @relation("HiringManager", fields: [hiringManagerId], references: [id])
+  createdBy       User                   @relation("PlanCreator", fields: [createdById], references: [id])
+  skills          HiringPlanSkill[]
+  jobDescriptions JobDescription[]
+  pipelineStages  PipelineStage[]
+  applications    CandidateApplication[]
+  publishings     JobPublishing[]
 
   @@index([orgId])
   @@index([status])
@@ -566,20 +642,20 @@ model HiringPlanSkill {
 }
 
 model JobDescription {
-  id                   String   @id @default(uuid()) @db.Uuid
-  hiringPlanId         String   @map("hiring_plan_id") @db.Uuid
-  version              Int      @default(1)
-  content              Json     @default("{}")
-  fitmentMapping       Json     @default("{}") @map("fitment_mapping")
-  evaluationParameters Json     @default("{}") @map("evaluation_parameters")
-  generatedByAi        Boolean  @default(true) @map("generated_by_ai")
-  aiPromptUsed         String?  @map("ai_prompt_used")
-  status               JdStatus @default(DRAFT)
-  createdById          String   @map("created_by_id") @db.Uuid
-  approvedById         String?  @map("approved_by_id") @db.Uuid
+  id                   String    @id @default(uuid()) @db.Uuid
+  hiringPlanId         String    @map("hiring_plan_id") @db.Uuid
+  version              Int       @default(1)
+  content              Json      @default("{}")
+  fitmentMapping       Json      @default("{}") @map("fitment_mapping")
+  evaluationParameters Json      @default("{}") @map("evaluation_parameters")
+  generatedByAi        Boolean   @default(true) @map("generated_by_ai")
+  aiPromptUsed         String?   @map("ai_prompt_used")
+  status               JdStatus  @default(DRAFT)
+  createdById          String    @map("created_by_id") @db.Uuid
+  approvedById         String?   @map("approved_by_id") @db.Uuid
   approvedAt           DateTime? @map("approved_at")
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   hiringPlan  HiringPlan      @relation(fields: [hiringPlanId], references: [id], onDelete: Cascade)
   createdBy   User            @relation("JdCreator", fields: [createdById], references: [id])
@@ -603,13 +679,18 @@ model PipelineStage {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  hiringPlan   HiringPlan                @relation(fields: [hiringPlanId], references: [id], onDelete: Cascade)
+  hiringPlan   HiringPlan                 @relation(fields: [hiringPlanId], references: [id], onDelete: Cascade)
   interviewers PipelineStageInterviewer[]
-  applications CandidateApplication[]    @relation("CurrentStage")
+  applications CandidateApplication[]     @relation("CurrentStage")
   stageHistory CandidateStageHistory[]
   feedbacks    InterviewFeedback[]
 
+  // Referral Hire: Optional link to Mandate
+  mandateId String?  @map("mandate_id") @db.Uuid
+  mandate   Mandate? @relation("MandatePipeline", fields: [mandateId], references: [id])
+
   @@index([hiringPlanId])
+  @@index([mandateId])
   @@map("pipeline_stages")
 }
 
@@ -627,21 +708,21 @@ model PipelineStageInterviewer {
 }
 
 model Candidate {
-  id              String          @id @default(uuid()) @db.Uuid
-  orgId           String          @db.Uuid
-  name            String
-  email           String
-  phone           String?
-  resumeUrl       String?         @map("resume_url")
-  source          CandidateSource
-  currentCompany  String?         @map("current_company")
-  currentRole     String?         @map("current_role")
-  experienceYears Decimal?        @map("experience_years") @db.Decimal(4, 1)
-  expectedCtc     Decimal?        @map("expected_ctc") @db.Decimal(12, 2)
-  noticePeriodDays Int?           @map("notice_period_days")
-  notes           String?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  id               String          @id @default(uuid()) @db.Uuid
+  orgId            String          @db.Uuid
+  name             String
+  email            String
+  phone            String?
+  resumeUrl        String?         @map("resume_url")
+  source           CandidateSource
+  currentCompany   String?         @map("current_company")
+  currentRole      String?         @map("current_role")
+  experienceYears  Decimal?        @map("experience_years") @db.Decimal(4, 1)
+  expectedCtc      Decimal?        @map("expected_ctc") @db.Decimal(12, 2)
+  noticePeriodDays Int?            @map("notice_period_days")
+  notes            String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
   organization Organization           @relation(fields: [orgId], references: [id])
   applications CandidateApplication[]
@@ -669,17 +750,26 @@ model CandidateApplication {
   aiMatchScore    Decimal?          @map("ai_match_score") @db.Decimal(5, 2)
   aiMatchSummary  String?           @map("ai_match_summary")
 
-  candidate    Candidate               @relation(fields: [candidateId], references: [id])
-  hiringPlan   HiringPlan              @relation(fields: [hiringPlanId], references: [id], onDelete: Cascade)
-  currentStage PipelineStage?          @relation("CurrentStage", fields: [currentStageId], references: [id])
-  stageHistory CandidateStageHistory[]
-  feedbacks    InterviewFeedback[]
-  decision     SelectionDecision?
-  offer        Offer?
+  // ── Referral Hire Marketplace Fields ──
+  mandateId          String?     @map("mandate_id") @db.Uuid
+  candidateProfileId String?     @map("candidate_profile_id") @db.Uuid
+  sourceType         SourceType? @map("source_type")
+  referralId         String?     @map("referral_id") @db.Uuid
+
+  candidate        Candidate               @relation(fields: [candidateId], references: [id])
+  hiringPlan       HiringPlan              @relation(fields: [hiringPlanId], references: [id], onDelete: Cascade)
+  currentStage     PipelineStage?          @relation("CurrentStage", fields: [currentStageId], references: [id])
+  mandate          Mandate?                @relation(fields: [mandateId], references: [id])
+  candidateProfile CandidateProfile?       @relation(fields: [candidateProfileId], references: [id])
+  stageHistory     CandidateStageHistory[]
+  feedbacks        InterviewFeedback[]
+  decision         SelectionDecision?
+  offer            Offer?
 
   @@unique([candidateId, hiringPlanId])
   @@index([hiringPlanId])
   @@index([currentStageId])
+  @@index([mandateId])
   @@map("candidate_applications")
 }
 
@@ -714,9 +804,9 @@ model InterviewFeedback {
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
-  application  CandidateApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  stage        PipelineStage        @relation(fields: [stageId], references: [id])
-  interviewer  User                 @relation(fields: [interviewerId], references: [id])
+  application  CandidateApplication  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  stage        PipelineStage         @relation(fields: [stageId], references: [id])
+  interviewer  User                  @relation(fields: [interviewerId], references: [id])
   skillRatings FeedbackSkillRating[]
 
   @@unique([applicationId, stageId, interviewerId])
@@ -838,9 +928,9 @@ model AuditLog {
 }
 
 model OrgSettings {
-  id       String   @id @default(uuid()) @db.Uuid
-  orgId    String   @unique @db.Uuid
-  settings Json     @default("{}")
+  id        String   @id @default(uuid()) @db.Uuid
+  orgId     String   @unique @db.Uuid
+  settings  Json     @default("{}")
   updatedAt DateTime @updatedAt
 
   organization Organization @relation(fields: [orgId], references: [id])
@@ -915,8 +1005,8 @@ model SupportTicket {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
-  organization Organization      @relation(fields: [orgId], references: [id])
-  assignee     User?             @relation("TicketAssignee", fields: [assigneeId], references: [id])
+  organization Organization        @relation(fields: [orgId], references: [id])
+  assignee     User?               @relation("TicketAssignee", fields: [assigneeId], references: [id])
   notes        SupportNote[]
   escalations  SupportEscalation[]
 
@@ -1074,21 +1164,21 @@ model Compensation {
 }
 
 model ESignRequest {
-  id            String       @id @default(uuid()) @db.Uuid
-  offerId       String       @unique @map("offer_id") @db.Uuid
+  id            String        @id @default(uuid()) @db.Uuid
+  offerId       String        @unique @map("offer_id") @db.Uuid
   provider      ESignProvider @default(DIGIO)
-  providerReqId String       @unique @map("provider_req_id")
-  signerEmail   String       @map("signer_email")
-  signerPhone   String?      @map("signer_phone")
-  status        ESignStatus  @default(PENDING)
-  sentAt        DateTime?    @map("sent_at")
-  signedAt      DateTime?    @map("signed_at")
-  expiresAt     DateTime?    @map("expires_at")
-  auditTrailUrl String?      @map("audit_trail_url")
-  webhookEvents Json         @default("[]") @map("webhook_events")
-  lastPolledAt  DateTime?    @map("last_polled_at")
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  providerReqId String        @unique @map("provider_req_id")
+  signerEmail   String        @map("signer_email")
+  signerPhone   String?       @map("signer_phone")
+  status        ESignStatus   @default(PENDING)
+  sentAt        DateTime?     @map("sent_at")
+  signedAt      DateTime?     @map("signed_at")
+  expiresAt     DateTime?     @map("expires_at")
+  auditTrailUrl String?       @map("audit_trail_url")
+  webhookEvents Json          @default("[]") @map("webhook_events")
+  lastPolledAt  DateTime?     @map("last_polled_at")
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
 
@@ -1107,7 +1197,7 @@ model JoiningChecklist {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organization      Organization      @relation(fields: [orgId], references: [id])
+  organization      Organization       @relation(fields: [orgId], references: [id])
   candidateJoinings CandidateJoining[]
 
   @@index([orgId, isDefault])
@@ -1115,17 +1205,17 @@ model JoiningChecklist {
 }
 
 model CandidateJoining {
-  id              String        @id @default(uuid()) @db.Uuid
-  offerId         String        @unique @map("offer_id") @db.Uuid
-  checklistId     String        @map("checklist_id") @db.Uuid
-  joinDate        DateTime      @map("join_date")
-  status          JoiningStatus @default(PENDING)
-  submissions     Json          @default("{}")
-  buddyUserId     String?       @map("buddy_user_id") @db.Uuid
-  reportingMgrId  String?       @map("reporting_mgr_id") @db.Uuid
-  candidateToken  String        @unique @map("candidate_token")
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id             String        @id @default(uuid()) @db.Uuid
+  offerId        String        @unique @map("offer_id") @db.Uuid
+  checklistId    String        @map("checklist_id") @db.Uuid
+  joinDate       DateTime      @map("join_date")
+  status         JoiningStatus @default(PENDING)
+  submissions    Json          @default("{}")
+  buddyUserId    String?       @map("buddy_user_id") @db.Uuid
+  reportingMgrId String?       @map("reporting_mgr_id") @db.Uuid
+  candidateToken String        @unique @map("candidate_token")
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   offer            Offer            @relation(fields: [offerId], references: [id], onDelete: Cascade)
   checklist        JoiningChecklist @relation(fields: [checklistId], references: [id])
@@ -1216,7 +1306,7 @@ model AppraisalCycle {
   createdAt              DateTime    @default(now())
   updatedAt              DateTime    @updatedAt
 
-  organization Organization @relation(fields: [orgId], references: [id])
+  organization Organization          @relation(fields: [orgId], references: [id])
   goals        Goal[]
   assessments  AppraisalAssessment[]
   peerRequests PeerFeedbackRequest[]
@@ -1240,12 +1330,12 @@ model OrgGoal {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  organization Organization    @relation(fields: [orgId], references: [id])
-  cycle        AppraisalCycle  @relation(fields: [cycleId], references: [id], onDelete: Cascade)
-  parent       OrgGoal?        @relation("OrgGoalTree", fields: [parentId], references: [id])
-  children     OrgGoal[]       @relation("OrgGoalTree")
-  owner        User?           @relation("OrgGoalOwner", fields: [ownerId], references: [id])
-  alignedGoals Goal[]          @relation("GoalAlignedOrgGoal")
+  organization Organization   @relation(fields: [orgId], references: [id])
+  cycle        AppraisalCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  parent       OrgGoal?       @relation("OrgGoalTree", fields: [parentId], references: [id])
+  children     OrgGoal[]      @relation("OrgGoalTree")
+  owner        User?          @relation("OrgGoalOwner", fields: [ownerId], references: [id])
+  alignedGoals Goal[]         @relation("GoalAlignedOrgGoal")
 
   @@index([orgId, cycleId])
   @@map("org_goals")
@@ -1270,10 +1360,10 @@ model Goal {
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
 
-  cycle           AppraisalCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
-  employee        User           @relation("GoalEmployee", fields: [employeeId], references: [id])
-  manager         User           @relation("GoalManager", fields: [managerId], references: [id])
-  alignedToOrgGoal OrgGoal?      @relation("GoalAlignedOrgGoal", fields: [alignedToOrgGoalId], references: [id])
+  cycle            AppraisalCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  employee         User           @relation("GoalEmployee", fields: [employeeId], references: [id])
+  manager          User           @relation("GoalManager", fields: [managerId], references: [id])
+  alignedToOrgGoal OrgGoal?       @relation("GoalAlignedOrgGoal", fields: [alignedToOrgGoalId], references: [id])
 
   @@index([cycleId, employeeId])
   @@index([managerId])
@@ -1392,40 +1482,40 @@ model AppraisalBudget {
 }
 
 model CompensationRevision {
-  id               String         @id @default(uuid()) @db.Uuid
-  orgId            String         @db.Uuid
-  cycleId          String         @map("cycle_id") @db.Uuid
-  budgetId         String         @map("budget_id") @db.Uuid
-  employeeId       String         @map("employee_id") @db.Uuid
-  currentFixed     Decimal        @map("current_fixed") @db.Decimal(12, 2)
-  currentVariable  Decimal        @default(0) @map("current_variable") @db.Decimal(12, 2)
-  rating           Decimal?       @db.Decimal(3, 2)
-  computedHikePct  Decimal        @default(0) @map("computed_hike_pct") @db.Decimal(5, 2)
-  computedHikeINR  Decimal        @default(0) @map("computed_hike_inr") @db.Decimal(12, 2)
-  computedBonusINR Decimal        @default(0) @map("computed_bonus_inr") @db.Decimal(12, 2)
-  finalHikePct     Decimal        @default(0) @map("final_hike_pct") @db.Decimal(5, 2)
-  finalHikeINR     Decimal        @default(0) @map("final_hike_inr") @db.Decimal(12, 2)
-  finalBonusINR    Decimal        @default(0) @map("final_bonus_inr") @db.Decimal(12, 2)
-  newFixed         Decimal        @default(0) @map("new_fixed") @db.Decimal(12, 2)
-  newVariable      Decimal        @default(0) @map("new_variable") @db.Decimal(12, 2)
-  effectiveDate    DateTime       @map("effective_date")
-  managerComment   String?        @map("manager_comment")
-  overrideReason   String?        @map("override_reason")
-  approvalChain    Json           @default("[]") @map("approval_chain")
-  retentionTier    String?        @map("retention_tier")
-  scopeKey         String?        @map("scope_key")
-  letterUrl        String?        @map("letter_url")
+  id               String           @id @default(uuid()) @db.Uuid
+  orgId            String           @db.Uuid
+  cycleId          String           @map("cycle_id") @db.Uuid
+  budgetId         String           @map("budget_id") @db.Uuid
+  employeeId       String           @map("employee_id") @db.Uuid
+  currentFixed     Decimal          @map("current_fixed") @db.Decimal(12, 2)
+  currentVariable  Decimal          @default(0) @map("current_variable") @db.Decimal(12, 2)
+  rating           Decimal?         @db.Decimal(3, 2)
+  computedHikePct  Decimal          @default(0) @map("computed_hike_pct") @db.Decimal(5, 2)
+  computedHikeINR  Decimal          @default(0) @map("computed_hike_inr") @db.Decimal(12, 2)
+  computedBonusINR Decimal          @default(0) @map("computed_bonus_inr") @db.Decimal(12, 2)
+  finalHikePct     Decimal          @default(0) @map("final_hike_pct") @db.Decimal(5, 2)
+  finalHikeINR     Decimal          @default(0) @map("final_hike_inr") @db.Decimal(12, 2)
+  finalBonusINR    Decimal          @default(0) @map("final_bonus_inr") @db.Decimal(12, 2)
+  newFixed         Decimal          @default(0) @map("new_fixed") @db.Decimal(12, 2)
+  newVariable      Decimal          @default(0) @map("new_variable") @db.Decimal(12, 2)
+  effectiveDate    DateTime         @map("effective_date")
+  managerComment   String?          @map("manager_comment")
+  overrideReason   String?          @map("override_reason")
+  approvalChain    Json             @default("[]") @map("approval_chain")
+  retentionTier    String?          @map("retention_tier")
+  scopeKey         String?          @map("scope_key")
+  letterUrl        String?          @map("letter_url")
   letterStatus     CompLetterStatus @default(PENDING) @map("letter_status")
-  letterIssuedAt   DateTime?      @map("letter_issued_at")
-  oneOnOneAt       DateTime?      @map("one_on_one_at")
-  acknowledgedAt   DateTime?      @map("acknowledged_at")
-  status           RevisionStatus @default(DRAFT)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  letterIssuedAt   DateTime?        @map("letter_issued_at")
+  oneOnOneAt       DateTime?        @map("one_on_one_at")
+  acknowledgedAt   DateTime?        @map("acknowledged_at")
+  status           RevisionStatus   @default(DRAFT)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
-  organization Organization     @relation(fields: [orgId], references: [id])
-  budget       AppraisalBudget  @relation(fields: [budgetId], references: [id], onDelete: Cascade)
-  employee     User             @relation("RevisionEmployee", fields: [employeeId], references: [id])
+  organization Organization    @relation(fields: [orgId], references: [id])
+  budget       AppraisalBudget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  employee     User            @relation("RevisionEmployee", fields: [employeeId], references: [id])
 
   @@unique([cycleId, employeeId])
   @@index([orgId, status])
@@ -1451,21 +1541,21 @@ model CompensationSnapshot {
 // ── Phase 5: Reports / Notifications / Security / Perf ──────────
 
 model ReportDefinition {
-  id             String              @id @default(uuid()) @db.Uuid
-  orgId          String              @db.Uuid
-  name           String
-  description    String?
-  dataSource     ReportSource        @map("data_source")
-  filters        Json                @default("{}")
-  groupBy        String[]            @default([]) @map("group_by")
-  metrics        Json                @default("[]")
-  visualization  ReportVisualization @default(TABLE)
-  scheduleCron   String?             @map("schedule_cron")
-  scheduleTargets Json               @default("[]") @map("schedule_targets")
-  createdById    String              @map("created_by_id") @db.Uuid
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
-  lastRunAt      DateTime?           @map("last_run_at")
+  id              String              @id @default(uuid()) @db.Uuid
+  orgId           String              @db.Uuid
+  name            String
+  description     String?
+  dataSource      ReportSource        @map("data_source")
+  filters         Json                @default("{}")
+  groupBy         String[]            @default([]) @map("group_by")
+  metrics         Json                @default("[]")
+  visualization   ReportVisualization @default(TABLE)
+  scheduleCron    String?             @map("schedule_cron")
+  scheduleTargets Json                @default("[]") @map("schedule_targets")
+  createdById     String              @map("created_by_id") @db.Uuid
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  lastRunAt       DateTime?           @map("last_run_at")
 
   organization Organization @relation(fields: [orgId], references: [id])
   createdBy    User         @relation("ReportCreator", fields: [createdById], references: [id])
@@ -1489,20 +1579,20 @@ model UserNotificationPref {
 }
 
 model NotificationLog {
-  id          String                     @id @default(uuid()) @db.Uuid
-  orgId       String                     @db.Uuid
-  userId      String?                    @map("user_id") @db.Uuid
-  channel     NotificationChannel
-  templateKey String                     @map("template_key")
-  toAddress   String                     @map("to_address")
-  payload     Json                       @default("{}")
-  status      NotificationDeliveryStatus @default(QUEUED)
-  providerId  String?                    @map("provider_id")
-  costInPaise Int?                       @map("cost_in_paise")
-  sentAt      DateTime?                  @map("sent_at")
-  deliveredAt DateTime?                  @map("delivered_at")
-  errorMessage String?                   @map("error_message")
-  createdAt   DateTime                   @default(now())
+  id           String                     @id @default(uuid()) @db.Uuid
+  orgId        String                     @db.Uuid
+  userId       String?                    @map("user_id") @db.Uuid
+  channel      NotificationChannel
+  templateKey  String                     @map("template_key")
+  toAddress    String                     @map("to_address")
+  payload      Json                       @default("{}")
+  status       NotificationDeliveryStatus @default(QUEUED)
+  providerId   String?                    @map("provider_id")
+  costInPaise  Int?                       @map("cost_in_paise")
+  sentAt       DateTime?                  @map("sent_at")
+  deliveredAt  DateTime?                  @map("delivered_at")
+  errorMessage String?                    @map("error_message")
+  createdAt    DateTime                   @default(now())
 
   organization Organization @relation(fields: [orgId], references: [id])
   user         User?        @relation(fields: [userId], references: [id])
@@ -1528,16 +1618,16 @@ model PushSubscription {
 }
 
 model SecurityLog {
-  id         String            @id @default(uuid()) @db.Uuid
-  orgId      String            @db.Uuid
-  eventType  SecurityEventType @map("event_type")
-  userId     String?           @map("user_id") @db.Uuid
-  ipAddress  String?           @map("ip_address")
-  userAgent  String?           @map("user_agent")
-  payload    Json              @default("{}")
-  prevHash   String?           @map("prev_hash")
-  hash       String
-  createdAt  DateTime          @default(now())
+  id        String            @id @default(uuid()) @db.Uuid
+  orgId     String            @db.Uuid
+  eventType SecurityEventType @map("event_type")
+  userId    String?           @map("user_id") @db.Uuid
+  ipAddress String?           @map("ip_address")
+  userAgent String?           @map("user_agent")
+  payload   Json              @default("{}")
+  prevHash  String?           @map("prev_hash")
+  hash      String
+  createdAt DateTime          @default(now())
 
   organization Organization @relation(fields: [orgId], references: [id])
 
@@ -1571,7 +1661,7 @@ model AiCallLog {
 model DashboardInsight {
   id          String   @id @default(uuid()) @db.Uuid
   orgId       String   @db.Uuid
-  generatedBy String   @db.Uuid @map("generated_by")
+  generatedBy String   @map("generated_by") @db.Uuid
   insights    Json
   generatedAt DateTime @default(now()) @map("generated_at")
 
@@ -1580,4 +1670,248 @@ model DashboardInsight {
 
   @@index([orgId, generatedAt(sort: Desc)])
   @@map("dashboard_insights")
+}
+
+// ── Referral Hire: Candidate Profile (Global Identity, BRD §8) ──
+
+model CandidateProfile {
+  id                  String   @id @default(uuid()) @db.Uuid
+  auth0Sub            String?  @unique @map("auth0_sub")
+  email               String   @unique
+  emailHash           String   @unique @map("email_hash")
+  phone               String?
+  phoneHash           String?  @unique @map("phone_hash")
+  name                String
+  headline            String?
+  currentCompany      String?  @map("current_company")
+  currentDesignation  String?  @map("current_designation")
+  experienceYears     Decimal? @map("experience_years") @db.Decimal(4, 1)
+  skills              Json     @default("[]")
+  education           Json     @default("[]")
+  certifications      Json     @default("[]")
+  currentLocation     String?  @map("current_location")
+  preferredLocations  Json     @default("[]") @map("preferred_locations")
+  currentCtc          Decimal? @map("current_ctc") @db.Decimal(12, 2)
+  expectedCtc         Decimal? @map("expected_ctc") @db.Decimal(12, 2)
+  noticePeriodDays    Int?     @map("notice_period_days")
+  preferredRoles      Json     @default("[]") @map("preferred_roles")
+  preferredIndustries Json     @default("[]") @map("preferred_industries")
+  workModel           String?  @map("work_model")
+  resumeUrl           String?  @map("resume_url")
+  profileLinks        Json     @default("{}") @map("profile_links")
+  isProfileComplete   Boolean  @default(false) @map("is_profile_complete")
+  isActive            Boolean  @default(true) @map("is_active")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  referrals    Referral[]
+  consents     CandidateConsent[]
+  applications CandidateApplication[]
+  savedJobs    SavedJob[]
+
+  @@map("candidate_profiles")
+}
+
+// ── Referral Hire: Recruiter Profile (BRD §3, §6) ──────────────
+
+model RecruiterProfile {
+  id              String    @id @default(uuid()) @db.Uuid
+  auth0Sub        String    @unique @map("auth0_sub")
+  email           String    @unique
+  name            String
+  phone           String?
+  headline        String?
+  specializations Json      @default("[]")
+  experienceYears Int?      @map("experience_years")
+  linkedinUrl     String?   @map("linkedin_url")
+  isVerified      Boolean   @default(false) @map("is_verified")
+  verifiedAt      DateTime? @map("verified_at")
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  referrals      Referral[]
+  participations MandateParticipation[]
+  rewards        RewardTracking[]
+
+  @@map("recruiter_profiles")
+}
+
+// ── Referral Hire: Mandate (Public Job Posting, BRD §5) ─────────
+
+model Mandate {
+  id                   String                   @id @default(uuid()) @db.Uuid
+  orgId                String                   @db.Uuid
+  title                String
+  department           String?
+  description          String                   @db.Text
+  requiredExperience   String?                  @map("required_experience")
+  mandatorySkills      Json                     @default("[]") @map("mandatory_skills")
+  preferredSkills      Json                     @default("[]") @map("preferred_skills")
+  numberOfOpenings     Int                      @default(1) @map("number_of_openings")
+  location             String?
+  workModel            String?                  @map("work_model")
+  employmentType       String?                  @map("employment_type")
+  compensationMin      Decimal?                 @map("compensation_min") @db.Decimal(12, 2)
+  compensationMax      Decimal?                 @map("compensation_max") @db.Decimal(12, 2)
+  currency             String                   @default("INR")
+  noticePeriodPref     String?                  @map("notice_period_pref")
+  interviewProcess     Json                     @default("[]") @map("interview_process")
+  expectedTimeline     String?                  @map("expected_timeline")
+  applicationDeadline  DateTime?                @map("application_deadline")
+  acceptsDirectApply   Boolean                  @default(true) @map("accepts_direct_apply")
+  acceptsReferrals     Boolean                  @default(true) @map("accepts_referrals")
+  participationType    MandateParticipationType @default(OPEN) @map("participation_type")
+  referralRewardAmount Decimal?                 @map("referral_reward_amount") @db.Decimal(12, 2)
+  referralRewardType   String?                  @map("referral_reward_type")
+  ownershipPeriodDays  Int                      @default(180) @map("ownership_period_days")
+  status               MandateStatus            @default(DRAFT)
+  publishedAt          DateTime?                @map("published_at")
+  filledAt             DateTime?                @map("filled_at")
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+
+  organization     Organization           @relation(fields: [orgId], references: [id])
+  participations   MandateParticipation[]
+  referrals        Referral[]
+  applications     CandidateApplication[]
+  savedByCandidate SavedJob[]
+  pipelineStages   PipelineStage[]        @relation("MandatePipeline")
+
+  @@index([orgId, status])
+  @@index([status])
+  @@map("mandates")
+}
+
+// ── Referral Hire: Mandate Participation (BRD §6) ───────────────
+
+model MandateParticipation {
+  id          String   @id @default(uuid()) @db.Uuid
+  mandateId   String   @map("mandate_id") @db.Uuid
+  recruiterId String   @map("recruiter_id") @db.Uuid
+  status      String   @default("ACTIVE")
+  joinedAt    DateTime @default(now()) @map("joined_at")
+
+  mandate   Mandate          @relation(fields: [mandateId], references: [id], onDelete: Cascade)
+  recruiter RecruiterProfile @relation(fields: [recruiterId], references: [id])
+
+  @@unique([mandateId, recruiterId])
+  @@map("mandate_participations")
+}
+
+// ── Referral Hire: Referral (BRD §7) ────────────────────────────
+
+model Referral {
+  id                 String         @id @default(uuid()) @db.Uuid
+  mandateId          String         @map("mandate_id") @db.Uuid
+  recruiterId        String         @map("recruiter_id") @db.Uuid
+  candidateProfileId String         @map("candidate_profile_id") @db.Uuid
+  status             ReferralStatus @default(PENDING_CONSENT)
+  recruiterNote      String?        @map("recruiter_note")
+  consentToken       String         @unique @map("consent_token")
+  consentRequestedAt DateTime?      @map("consent_requested_at")
+  activatedAt        DateTime?      @map("activated_at")
+  aiSummary          String?        @map("ai_summary")
+  aiMatchScore       Decimal?       @map("ai_match_score") @db.Decimal(5, 2)
+  aiMatchSummary     String?        @map("ai_match_summary")
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  mandate          Mandate           @relation(fields: [mandateId], references: [id])
+  recruiter        RecruiterProfile  @relation(fields: [recruiterId], references: [id])
+  candidateProfile CandidateProfile  @relation(fields: [candidateProfileId], references: [id])
+  consent          CandidateConsent?
+  reward           RewardTracking?
+  claimScope       ClaimScope?
+
+  @@unique([mandateId, candidateProfileId])
+  @@index([recruiterId])
+  @@index([status])
+  @@map("referrals")
+}
+
+// ── Referral Hire: Candidate Consent (BRD §7, §23) ──────────────
+
+model CandidateConsent {
+  id                 String        @id @default(uuid()) @db.Uuid
+  referralId         String        @unique @map("referral_id") @db.Uuid
+  candidateProfileId String        @map("candidate_profile_id") @db.Uuid
+  status             ConsentStatus @default(PENDING)
+  consentToken       String        @unique @map("consent_token")
+  requestedAt        DateTime      @default(now()) @map("requested_at")
+  respondedAt        DateTime?     @map("responded_at")
+  ipAddress          String?       @map("ip_address")
+  expiresAt          DateTime      @map("expires_at")
+
+  referral         Referral         @relation(fields: [referralId], references: [id], onDelete: Cascade)
+  candidateProfile CandidateProfile @relation(fields: [candidateProfileId], references: [id])
+
+  @@index([candidateProfileId])
+  @@map("candidate_consents")
+}
+
+// ── Referral Hire: Claim Scope / Ownership Lock (BRD §10) ───────
+
+model ClaimScope {
+  id                 String          @id @default(uuid()) @db.Uuid
+  candidateProfileId String          @map("candidate_profile_id") @db.Uuid
+  mandateId          String          @map("mandate_id") @db.Uuid
+  orgId              String          @db.Uuid
+  referralId         String?         @unique @map("referral_id") @db.Uuid
+  sourceType         SourceType      @map("source_type")
+  ownedByRecruiterId String?         @map("owned_by_recruiter_id") @db.Uuid
+  status             OwnershipStatus @default(ACTIVE)
+  ownershipStartsAt  DateTime        @default(now()) @map("ownership_starts_at")
+  ownershipExpiresAt DateTime        @map("ownership_expires_at")
+  createdAt          DateTime        @default(now())
+
+  referral Referral? @relation(fields: [referralId], references: [id])
+
+  @@unique([candidateProfileId, mandateId])
+  @@index([orgId])
+  @@map("claim_scopes")
+}
+
+// ── Referral Hire: Reward Tracking (BRD §14) ────────────────────
+
+model RewardTracking {
+  id           String       @id @default(uuid()) @db.Uuid
+  referralId   String       @unique @map("referral_id") @db.Uuid
+  recruiterId  String       @map("recruiter_id") @db.Uuid
+  mandateId    String       @map("mandate_id") @db.Uuid
+  orgId        String       @db.Uuid
+  rewardAmount Decimal      @map("reward_amount") @db.Decimal(12, 2)
+  currency     String       @default("INR")
+  status       RewardStatus @default(POTENTIAL)
+  hiredAt      DateTime?    @map("hired_at")
+  joinedAt     DateTime?    @map("joined_at")
+  eligibleAt   DateTime?    @map("eligible_at")
+  approvedAt   DateTime?    @map("approved_at")
+  paidAt       DateTime?    @map("paid_at")
+  paymentRef   String?      @map("payment_ref")
+  notes        String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  referral  Referral         @relation(fields: [referralId], references: [id])
+  recruiter RecruiterProfile @relation(fields: [recruiterId], references: [id])
+
+  @@index([recruiterId, status])
+  @@index([orgId])
+  @@map("reward_tracking")
+}
+
+// ── Referral Hire: Saved Jobs (BRD §4) ──────────────────────────
+
+model SavedJob {
+  id                 String   @id @default(uuid()) @db.Uuid
+  candidateProfileId String   @map("candidate_profile_id") @db.Uuid
+  mandateId          String   @map("mandate_id") @db.Uuid
+  savedAt            DateTime @default(now()) @map("saved_at")
+
+  candidateProfile CandidateProfile @relation(fields: [candidateProfileId], references: [id])
+  mandate          Mandate          @relation(fields: [mandateId], references: [id], onDelete: Cascade)
+
+  @@unique([candidateProfileId, mandateId])
+  @@map("saved_jobs")
 }

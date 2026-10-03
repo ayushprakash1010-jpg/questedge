@@ -57,6 +57,6 @@ export function useProfile() {
   return {
     profile,
     isLoading: IS_MOCK ? isLoading : auth0Loading || isLoading,
-    user: IS_MOCK ? ({ email: "support@worknucleus.com", name: "Support Admin" } as typeof user) : user,
+    user: IS_MOCK ? ({ email: "support@questedge.com", name: "Support Admin" } as typeof user) : user,
   };
 }

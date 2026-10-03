@@ -1,4 +1,4 @@
-// Service worker for Work Nucleus PWA.
+// Service worker for QuestEdge PWA.
 // Strategy: NetworkFirst for HTML, StaleWhileRevalidate for API GETs,
 // CacheFirst for static assets. Mirrors next-pwa workbox defaults — keeping
 // hand-rolled until next-pwa is added to package.json.
@@ -38,7 +38,7 @@ self.addEventListener("fetch", (event) => {
 self.addEventListener("push", (event) => {
   const data = event.data ? event.data.json() : {};
   event.waitUntil(
-    self.registration.showNotification(data.title || "Work Nucleus", {
+    self.registration.showNotification(data.title || "QuestEdge", {
       body: data.body,
       icon: "/icon-192.png",
       data: { url: data.url || "/" },

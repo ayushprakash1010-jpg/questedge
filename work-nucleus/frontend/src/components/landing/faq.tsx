@@ -6,44 +6,36 @@ import { ChevronDown } from "lucide-react";
 
 const faqs = [
   {
-    question: "What is Work Nucleus?",
-    answer:
-      "Work Nucleus is an AI-powered HR tech platform designed to modernize your entire people operations. We're launching with a full-featured Hiring & Recruitment module, with more HR modules — onboarding, performance management, leave & attendance, and employee engagement — on the roadmap.",
+    question: "What is QuestEdge?",
+    answer: "QuestEdge is a referral-based hiring marketplace that connects companies with independent recruiters. Companies post hiring mandates and set referral rewards. Recruiters browse the marketplace and refer candidates from their trusted networks. Candidates receive a secure consent link before their profile is shared with any company.",
   },
   {
-    question: "What AI model does Work Nucleus use?",
-    answer:
-      "Work Nucleus is powered by Anthropic's Claude, one of the most capable and safe AI models available. Our AI agents handle JD generation, feedback summarization, candidate scoring, and communication drafting — with more agents planned for every HR module.",
+    question: "How does the referral reward system work?",
+    answer: "Companies set a referral reward amount when posting a mandate — typically a fixed fee or a percentage of the candidate's annual CTC. When a referred candidate is hired and completes a defined tenure (e.g., 90 days), the reward is released to the recruiter's wallet. No hire = no payment.",
   },
   {
-    question: "How secure is my data?",
-    answer:
-      "We take security seriously. All data is encrypted at rest and in transit. We use Auth0 for enterprise-grade authentication. Your data is never used to train AI models. Full audit logging is available for compliance and oversight.",
+    question: "Who can become a recruiter on QuestEdge?",
+    answer: "Any independent recruiter, talent consultant, or professional with a strong network in their domain can apply to join. We verify identity and professional background before granting marketplace access. A verified badge on your profile signals trust to companies and candidates.",
   },
   {
-    question: "Can I try Work Nucleus before committing?",
-    answer:
-      "Absolutely! Our Starter plan is free and includes 5 users, 3 hiring plans, and AI-powered job description generation. No credit card required. You can upgrade to Professional anytime.",
+    question: "How does candidate consent work?",
+    answer: "When a recruiter refers a candidate, the candidate receives a secure consent link via email. The link shows the full role details — company name, JD, salary range, and who referred them. The candidate can accept or decline. Their profile is only shared with the company after explicit acceptance.",
   },
   {
-    question: "Which modules are available right now?",
-    answer:
-      "The Hiring & Recruitment module is available now with features like hiring plan builder, AI job descriptions, Kanban pipelines, AI feedback & scoring, analytics, interviewer training, and more. Additional HR modules are in active development.",
+    question: "When do recruiters get paid?",
+    answer: "Rewards are tracked as 'potential' when a candidate accepts the referral, 'pending' when the candidate is hired, and 'confirmed' once the tenure period is completed. Payment is processed to the recruiter's registered account within 7 business days of confirmation.",
   },
   {
-    question: "Does Work Nucleus replace my existing HR tools?",
-    answer:
-      "Work Nucleus is designed to be a comprehensive HR platform. You can start with hiring and expand as new modules launch. We are actively building integrations — Enterprise customers can work with us on custom onboarding for their existing tech stack.",
+    question: "What happens if a hired candidate leaves before the tenure period?",
+    answer: "Each mandate specifies a tenure period (e.g., 90 days). If the candidate leaves before completing that period, the reward status moves to 'cancelled' and no payment is made. This protects companies from paying for short-tenure hires.",
   },
   {
-    question: "Can I customize the hiring pipeline stages?",
-    answer:
-      "Yes! The Kanban pipeline is fully customizable. You can define your own stages and configure the workflow to match your team's process.",
+    question: "Is my data safe and private as a candidate?",
+    answer: "Absolutely. Your profile is never visible to companies without your explicit consent. You can review the full role details before deciding. If you decline, your information is not retained by the company. All data is encrypted at rest and in transit, with Auth0 enterprise-grade authentication.",
   },
   {
-    question: "Do you support multiple organizations or departments?",
-    answer:
-      "Yes. Each organization can have multiple departments with separate hiring plans. Role-based access control (RBAC) ensures team members only see what they need to.",
+    question: "How is QuestEdge different from traditional recruitment agencies?",
+    answer: "Traditional agencies charge large upfront retainers or flat percentages regardless of outcome. QuestEdge is performance-only — companies pay only on successful hires. Recruiters are independent professionals with real networks (not cold callers), and candidates get full transparency before any company sees their profile.",
   },
 ];
 

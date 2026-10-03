@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Work Nucleus",
+  title: "Privacy Policy | QuestEdge",
 };
 
 export default function PrivacyPolicyPage() {
@@ -21,7 +21,7 @@ export default function PrivacyPolicyPage() {
               1. Introduction
             </h2>
             <p className="mt-3">
-              Work Nucleus (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;)
+              QuestEdge (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;)
               is committed to protecting the privacy of our users. This Privacy
               Policy explains how we collect, use, disclose, and safeguard your
               information when you use our AI-powered hiring platform.
@@ -67,7 +67,7 @@ export default function PrivacyPolicyPage() {
             </h2>
             <ul className="mt-3 list-disc space-y-2 pl-5">
               <li>
-                To provide and maintain the Work Nucleus platform and its
+                To provide and maintain the QuestEdge platform and its
                 features
               </li>
               <li>
@@ -91,7 +91,7 @@ export default function PrivacyPolicyPage() {
               4. AI Data Processing
             </h2>
             <p className="mt-3">
-              Work Nucleus uses Anthropic&apos;s Claude AI to power features
+              QuestEdge uses Anthropic&apos;s Claude AI to power features
               like JD generation and feedback summarization. Your data is
               processed by AI solely to deliver the requested service output.
               Your data is never used to train AI models.
@@ -157,10 +157,10 @@ export default function PrivacyPolicyPage() {
               withdraw consent for data processing. To exercise these rights,
               contact us at{" "}
               <a
-                href="mailto:privacy@worknucleus.com"
+                href="mailto:privacy@questedge.com"
                 className="text-indigo-600 hover:underline"
               >
-                privacy@worknucleus.com
+                privacy@questedge.com
               </a>
               .
             </p>
@@ -185,10 +185,10 @@ export default function PrivacyPolicyPage() {
               If you have questions about this Privacy Policy, please contact us
               at{" "}
               <a
-                href="mailto:privacy@worknucleus.com"
+                href="mailto:privacy@questedge.com"
                 className="text-indigo-600 hover:underline"
               >
-                privacy@worknucleus.com
+                privacy@questedge.com
               </a>
               .
             </p>

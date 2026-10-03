@@ -1,5 +1,5 @@
 // =============================================================
-// Mock Data for Work Nucleus Support Admin
+// Mock Data for QuestEdge Support Admin
 // =============================================================
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -7,11 +7,11 @@
 export const PROFILE = {
   isProvisioned: true,
   id: "sup-001",
-  email: "support@worknucleus.com",
+  email: "support@questedge.com",
   name: "Support Admin",
   role: "SUPPORT_ADMIN",
   avatarUrl: null,
-  organization: { id: "org-internal", name: "Work Nucleus", industry: "Technology" },
+  organization: { id: "org-internal", name: "QuestEdge", industry: "Technology" },
 };
 
 // =============================================================
@@ -255,8 +255,8 @@ export const SUPPORT_ANALYTICS = {
     ],
   },
   repPerformance: [
-    { id: "sup-001", name: "Ravi Support", email: "ravi@worknucleus.com", totalTickets: 28, resolvedTickets: 22, resolutionRate: 79, avgResponseHours: 4 },
-    { id: "sup-002", name: "Meera Support Admin", email: "meera@worknucleus.com", totalTickets: 16, resolvedTickets: 14, resolutionRate: 88, avgResponseHours: 2 },
+    { id: "sup-001", name: "Ravi Support", email: "ravi@questedge.com", totalTickets: 28, resolvedTickets: 22, resolutionRate: 79, avgResponseHours: 4 },
+    { id: "sup-002", name: "Meera Support Admin", email: "meera@questedge.com", totalTickets: 16, resolvedTickets: 14, resolutionRate: 88, avgResponseHours: 2 },
   ],
 };
 

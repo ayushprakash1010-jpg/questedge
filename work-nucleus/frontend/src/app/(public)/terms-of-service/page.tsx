@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms of Service | Work Nucleus",
+  title: "Terms of Service | QuestEdge",
 };
 
 export default function TermsOfServicePage() {
@@ -21,7 +21,7 @@ export default function TermsOfServicePage() {
               1. Acceptance of Terms
             </h2>
             <p className="mt-3">
-              By accessing or using Work Nucleus (&quot;the Platform&quot;), you
+              By accessing or using QuestEdge (&quot;the Platform&quot;), you
               agree to be bound by these Terms of Service. If you are using the
               Platform on behalf of an organization, you represent that you have
               authority to bind that organization to these terms.
@@ -33,7 +33,7 @@ export default function TermsOfServicePage() {
               2. Description of Service
             </h2>
             <p className="mt-3">
-              Work Nucleus is an AI-powered hiring management platform that
+              QuestEdge is an AI-powered hiring management platform that
               provides tools for creating hiring plans, generating job
               descriptions, managing interview pipelines, collecting feedback,
               scoring candidates, drafting communications, and analyzing hiring
@@ -171,7 +171,7 @@ export default function TermsOfServicePage() {
             </h2>
             <p className="mt-3">
               The Platform, including its design, features, AI models, and
-              branding, is the intellectual property of Work Nucleus. You may not
+              branding, is the intellectual property of QuestEdge. You may not
               copy, modify, distribute, or create derivative works based on the
               Platform without written permission.
             </p>
@@ -194,7 +194,7 @@ export default function TermsOfServicePage() {
               10. Limitation of Liability
             </h2>
             <p className="mt-3">
-              To the maximum extent permitted by law, Work Nucleus shall not be
+              To the maximum extent permitted by law, QuestEdge shall not be
               liable for any indirect, incidental, special, consequential, or
               punitive damages arising from your use of the Platform. Our total
               liability shall not exceed the amount you paid us in the twelve
@@ -233,10 +233,10 @@ export default function TermsOfServicePage() {
             <p className="mt-3">
               For questions about these Terms, contact us at{" "}
               <a
-                href="mailto:legal@worknucleus.com"
+                href="mailto:legal@questedge.com"
                 className="text-indigo-600 hover:underline"
               >
-                legal@worknucleus.com
+                legal@questedge.com
               </a>
               .
             </p>

@@ -2,218 +2,135 @@
 
 import { motion } from "framer-motion";
 import {
-  ClipboardList,
-  FileText,
-  Kanban,
-  MessageSquare,
-  BarChart3,
-  GraduationCap,
-  Mail,
-  ShieldCheck,
-  Users,
-  Calendar,
-  Target,
-  Briefcase,
+  Building2, Target, UserCircle,
+  FileText, Gift, Search, BarChart3, ShieldCheck, Inbox,
+  Network, DollarSign, Sparkles, Bell, Eye, CheckCircle,
 } from "lucide-react";
 
-const hiringFeatures = [
+const companyFeatures = [
+  { icon: FileText, title: "Post Mandates in Minutes", description: "Define roles, required skills, salary range, and referral rewards in a structured form. Go live instantly." },
+  { icon: Gift, title: "Set Referral Rewards", description: "Offer performance-based rewards. Pay only when a referred candidate joins and completes their tenure." },
+  { icon: Inbox, title: "Referral Inbox", description: "Review referred candidates in one place. Accept, reject, or move them through your hiring pipeline." },
+  { icon: Sparkles, title: "AI Candidate Screening", description: "Auto-score every referred candidate against your mandate criteria before your team reviews them." },
+  { icon: BarChart3, title: "Hiring Analytics", description: "Track mandates, active referrals, reward commitments, and pipeline velocity in your real-time dashboard." },
+];
+
+const recruiterFeatures = [
+  { icon: Search, title: "Browse the Marketplace", description: "Filter open mandates by domain, skills, location, reward amount, and experience level." },
+  { icon: Network, title: "One-Click Candidate Referral", description: "Submit candidates from your network in seconds. The platform handles consent collection automatically." },
+  { icon: Sparkles, title: "AI Match Engine", description: "Get instant AI suggestions of past candidates from your network who fit a new mandate's requirements." },
+  { icon: DollarSign, title: "Earnings Tracker & Wallet", description: "See potential, pending, and confirmed earnings. Track the status of every referral reward in real time." },
+  { icon: Bell, title: "Status Notifications", description: "Get notified the moment a candidate you referred is accepted, moves to interview, or is hired." },
+];
+
+const candidateFeatures = [
+  { icon: CheckCircle, title: "Receive Referral Invites", description: "A recruiter refers you to a role that matches your profile. You get a secure consent link via email." },
+  { icon: Eye, title: "Review Before You Consent", description: "See full role details — company, JD, salary band — before deciding whether to accept the referral." },
+  { icon: ShieldCheck, title: "Privacy-First Consent", description: "Your profile is only shared with the company after you explicitly accept. Decline anytime, no strings attached." },
+  { icon: BarChart3, title: "Track Your Journey", description: "Follow your application status across every stage in real time — interview, offer, onboarding." },
+  { icon: UserCircle, title: "Portable Profile", description: "Build a rich profile once. Recruiters can refer you to multiple mandates with your permission." },
+];
+
+const roles = [
   {
-    icon: ClipboardList,
-    title: "Hiring Plan Builder",
-    description:
-      "Create structured workforce plans with budgets, timelines, skill requirements, and team hierarchies — all in one place.",
+    id: "for-companies",
+    icon: Building2,
+    role: "For Companies",
+    tagline: "Hire faster with the power of trusted networks",
     color: "from-indigo-500 to-indigo-600",
+    accent: "text-indigo-600",
+    border: "border-indigo-100",
+    bg: "bg-indigo-50/40",
+    features: companyFeatures,
   },
   {
-    icon: FileText,
-    title: "AI Job Description Generator",
-    description:
-      "Generate compelling, bias-free job descriptions in seconds with Claude AI. Customize tone, format, and requirements.",
-    color: "from-cyan-500 to-cyan-600",
-  },
-  {
-    icon: Kanban,
-    title: "Kanban Interview Pipeline",
-    description:
-      "Drag-and-drop candidate tracking across customizable stages. Real-time visibility for the entire hiring team.",
-    color: "from-indigo-500 to-cyan-500",
-  },
-  {
-    icon: MessageSquare,
-    title: "AI Feedback & Scoring",
-    description:
-      "Structured interview feedback with AI-powered summarization and automated candidate scoring across multiple dimensions.",
-    color: "from-amber-500 to-amber-600",
-  },
-  {
-    icon: Mail,
-    title: "AI-Drafted Communications",
-    description:
-      "Generate offer letters and rejection emails with AI. Professional, personalized, and on-brand — saving hours of manual drafting.",
-    color: "from-indigo-600 to-indigo-700",
-  },
-  {
-    icon: BarChart3,
-    title: "Analytics Dashboard",
-    description:
-      "Real-time hiring metrics: time-to-fill, pipeline velocity, source effectiveness, diversity tracking, and team performance.",
-    color: "from-cyan-500 to-indigo-500",
-  },
-  {
-    icon: GraduationCap,
-    title: "Interviewer Training",
-    description:
-      "Built-in training modules on structured interviewing, bias reduction, and legal compliance. Track completion and scores.",
-    color: "from-indigo-400 to-cyan-400",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Admin Panel & Audit Logging",
-    description:
-      "Full admin dashboard with user management, organization settings, role-based access control, and detailed audit logs for compliance.",
-    color: "from-slate-600 to-slate-700",
-  },
-];
-
-const upcomingModules = [
-  {
-    icon: Users,
-    title: "Employee Onboarding",
-    description:
-      "Streamline new hire onboarding with automated workflows, document collection, and task tracking.",
-    color: "from-emerald-500 to-emerald-600",
-  },
-  {
+    id: "for-recruiters",
     icon: Target,
-    title: "Performance Management",
-    description:
-      "Set goals, track OKRs, conduct reviews, and provide continuous feedback — all powered by AI insights.",
+    role: "For Recruiters",
+    tagline: "Monetise your network. Earn on every successful placement",
     color: "from-violet-500 to-violet-600",
+    accent: "text-violet-600",
+    border: "border-violet-100",
+    bg: "bg-violet-50/40",
+    features: recruiterFeatures,
   },
   {
-    icon: Calendar,
-    title: "Leave & Attendance",
-    description:
-      "Manage time-off requests, track attendance, and automate leave policies across your organization.",
-    color: "from-rose-500 to-rose-600",
-  },
-  {
-    icon: Briefcase,
-    title: "Employee Engagement",
-    description:
-      "Pulse surveys, sentiment analysis, and AI-driven insights to keep your team motivated and aligned.",
-    color: "from-amber-500 to-orange-500",
+    id: "for-candidates",
+    icon: UserCircle,
+    role: "For Candidates",
+    tagline: "Get referred into roles that actually match your career",
+    color: "from-emerald-500 to-emerald-600",
+    accent: "text-emerald-600",
+    border: "border-emerald-100",
+    bg: "bg-emerald-50/40",
+    features: candidateFeatures,
   },
 ];
 
-const container = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.08 } },
-};
-
-const item = {
-  hidden: { opacity: 0, y: 24 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.5 } },
-};
+const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
+const item = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.45 } } };
 
 export function Features() {
   return (
     <section id="features" className="bg-white py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
+        {/* Section header */}
         <div className="mx-auto max-w-2xl text-center">
           <span className="text-sm font-semibold uppercase tracking-wider text-indigo-600">
-            Platform Modules
+            Everything You Need
           </span>
           <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            One platform for{" "}
-            <span className="text-indigo-600">all of HR</span>
+            Built for every role in the{" "}
+            <span className="text-indigo-600">referral loop</span>
           </h2>
           <p className="mt-4 text-lg text-slate-600">
-            Work Nucleus is a modular HR platform. Start with AI-powered hiring
-            today — with more modules launching soon to cover your entire
-            people operations.
+            QuestEdge is the only platform designed from the ground up for all three sides of referral-based hiring.
           </p>
         </div>
 
-        {/* Hiring Module */}
-        <div className="mt-16">
-          <div className="flex items-center gap-3 mb-8">
-            <span className="rounded-full bg-indigo-100 px-4 py-1.5 text-sm font-semibold text-indigo-700">
-              Available Now
-            </span>
-            <h3 className="text-xl font-bold text-slate-900">
-              Hiring & Recruitment
-            </h3>
-          </div>
-          <motion.div
-            className="grid gap-6 md:grid-cols-2 lg:grid-cols-4"
-            variants={container}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, margin: "-100px" }}
-          >
-            {hiringFeatures.map((feature) => (
-              <motion.div
-                key={feature.title}
-                variants={item}
-                className="group relative rounded-2xl border border-slate-200 bg-white p-8 shadow-sm transition-all hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-100/50"
-              >
-                <div
-                  className={`inline-flex rounded-xl bg-gradient-to-br ${feature.color} p-3 shadow-sm`}
-                >
-                  <feature.icon className="h-5 w-5 text-white" />
+        {/* Role panels */}
+        <div className="mt-20 space-y-20">
+          {roles.map((role, ri) => (
+            <div key={role.id} id={role.id}>
+              {/* Role header */}
+              <div className="mb-8 flex items-center gap-4">
+                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${role.color} shadow-sm`}>
+                  <role.icon className="h-6 w-6 text-white" />
                 </div>
-                <h3 className="mt-5 text-lg font-semibold text-slate-900">
-                  {feature.title}
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                  {feature.description}
-                </p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
+                <div>
+                  <span className={`text-xs font-bold uppercase tracking-widest ${role.accent}`}>
+                    {role.role}
+                  </span>
+                  <h3 className="text-xl font-bold text-slate-900">{role.tagline}</h3>
+                </div>
+              </div>
 
-        {/* Upcoming Modules */}
-        <div className="mt-20">
-          <div className="flex items-center gap-3 mb-8">
-            <span className="rounded-full bg-slate-100 px-4 py-1.5 text-sm font-semibold text-slate-500">
-              Coming Soon
-            </span>
-            <h3 className="text-xl font-bold text-slate-900">
-              More Modules on the Way
-            </h3>
-          </div>
-          <motion.div
-            className="grid gap-6 md:grid-cols-2 lg:grid-cols-4"
-            variants={container}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, margin: "-100px" }}
-          >
-            {upcomingModules.map((feature) => (
               <motion.div
-                key={feature.title}
-                variants={item}
-                className="group relative rounded-2xl border border-dashed border-slate-300 bg-slate-50/50 p-8 transition-all"
+                className="grid gap-5 sm:grid-cols-2 lg:grid-cols-5"
+                variants={container}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, margin: "-80px" }}
               >
-                <div
-                  className={`inline-flex rounded-xl bg-gradient-to-br ${feature.color} p-3 shadow-sm opacity-60`}
-                >
-                  <feature.icon className="h-5 w-5 text-white" />
-                </div>
-                <h3 className="mt-5 text-lg font-semibold text-slate-700">
-                  {feature.title}
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                  {feature.description}
-                </p>
+                {role.features.map((feat) => (
+                  <motion.div
+                    key={feat.title}
+                    variants={item}
+                    className={`rounded-2xl border ${role.border} ${role.bg} p-5 transition-all hover:shadow-md`}
+                  >
+                    <div className={`inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br ${role.color} shadow-sm`}>
+                      <feat.icon className="h-4 w-4 text-white" />
+                    </div>
+                    <h4 className="mt-3 text-sm font-semibold text-slate-900">{feat.title}</h4>
+                    <p className="mt-1.5 text-xs leading-relaxed text-slate-500">{feat.description}</p>
+                  </motion.div>
+                ))}
               </motion.div>
-            ))}
-          </motion.div>
+            </div>
+          ))}
         </div>
       </div>
     </section>
   );
 }
+

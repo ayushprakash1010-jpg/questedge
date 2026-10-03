@@ -16,4 +16,9 @@ export class ProvisionDto {
   @IsString()
   @IsNotEmpty()
   name: string;
+
+  @ApiPropertyOptional({ description: 'User email (if not in token)' })
+  @IsString()
+  @IsOptional()
+  email?: string;
 }

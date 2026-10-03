@@ -121,7 +121,7 @@ A well-crafted job description (JD) is the foundation of an effective hiring pro
 - Review with the hiring manager before publishing
 
 ## Using AI-Generated JDs
-Work Nucleus generates JDs based on your hiring plan data. Always review and customize:
+QuestEdge generates JDs based on your hiring plan data. Always review and customize:
 1. Verify technical requirements match actual needs
 2. Adjust tone to match company culture
 3. Add team-specific details the AI may not know`,
@@ -232,10 +232,10 @@ Use **Situation, Task, Action, Result** to structure behavioral questions:
 4. Submit within 24 hours of the interview`,
       },
       {
-        title: 'Work Nucleus Hiring Process Overview',
+        title: 'QuestEdge Hiring Process Overview',
         category: TrainingCategory.HIRING_PROCESS,
         estimatedMinutes: 20,
-        contentMarkdown: `# Work Nucleus Hiring Process Overview
+        contentMarkdown: `# QuestEdge Hiring Process Overview
 
 ## The Hiring Pipeline
 

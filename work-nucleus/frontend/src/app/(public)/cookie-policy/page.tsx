@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Cookie Policy | Work Nucleus",
+  title: "Cookie Policy | QuestEdge",
 };
 
 export default function CookiePolicyPage() {
@@ -23,7 +23,7 @@ export default function CookiePolicyPage() {
             <p className="mt-3">
               Cookies are small text files stored on your device when you visit a
               website. They help the website remember your preferences and
-              improve your browsing experience. Work Nucleus uses cookies and
+              improve your browsing experience. QuestEdge uses cookies and
               similar technologies to operate and improve the platform.
             </p>
           </section>
@@ -161,10 +161,10 @@ export default function CookiePolicyPage() {
             <p className="mt-3">
               If you have questions about our use of cookies, contact us at{" "}
               <a
-                href="mailto:privacy@worknucleus.com"
+                href="mailto:privacy@questedge.com"
                 className="text-indigo-600 hover:underline"
               >
-                privacy@worknucleus.com
+                privacy@questedge.com
               </a>
               .
             </p>

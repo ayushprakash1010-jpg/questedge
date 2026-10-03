@@ -1,4 +1,4 @@
-# UI Primitives — Work Nucleus
+# UI Primitives — QuestEdge
 
 Low-level building blocks consumed by every page. Each primitive is a thin wrapper that owns the v2 visual contract — callers should _not_ re-style them with ad-hoc Tailwind classes when a variant or prop already covers the case.
 

@@ -644,7 +644,7 @@ function LetterPreviewColumn({
               className="text-[17px] font-bold text-slate-900"
               style={{ fontFamily: "var(--font-sans)" }}
             >
-              Work<span className="text-indigo-600">Nucleus</span> Technologies
+              Quest<span className="text-indigo-600">Edge</span> Technologies
               Pvt. Ltd.
             </span>
           </header>
@@ -701,7 +701,7 @@ function LetterPreviewColumn({
           ) : (
             <p className="mb-4 text-sm leading-loose text-slate-700">
               We are delighted to extend this offer of employment to you for the
-              position of <strong>{plan.designation}</strong> at WorkNucleus
+              position of <strong>{plan.designation}</strong> at QuestEdge
               Technologies Pvt. Ltd. This offer is contingent upon successful
               completion of background verification and submission of relevant
               documents.
@@ -770,7 +770,7 @@ function LetterPreviewColumn({
           )}
           <p className="mb-4 text-sm leading-loose text-slate-700">
             We look forward to having you on the team and are confident you will
-            make a significant contribution to WorkNucleus.
+            make a significant contribution to QuestEdge.
           </p>
 
           {/* Signature */}
@@ -787,7 +787,7 @@ function LetterPreviewColumn({
               className="text-xs text-slate-400"
               style={{ fontFamily: "var(--font-sans)" }}
             >
-              WorkNucleus Technologies
+              QuestEdge Technologies
             </p>
           </div>
 

@@ -19,25 +19,9 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { AuditModule } from './modules/audit/audit.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { SearchModule } from './modules/search/search.module';
-import { SupportModule } from './modules/support/support.module';
 import { FileUploadModule } from './modules/file-upload/file-upload.module';
-import { PublishingModule } from './modules/publishing/publishing.module';
 import { PublicApplyModule } from './modules/public-apply/public-apply.module';
 import { JobQueueModule } from './modules/job-queue/job-queue.module';
-import { OfferTemplatesModule } from './modules/offer-templates/offer-templates.module';
-import { CompensationModule } from './modules/compensation/compensation.module';
-import { OffersModule } from './modules/offers/offers.module';
-import { JoiningModule } from './modules/joining/joining.module';
-import { ESignModule } from './integrations/esign/esign.module';
-import { BgvIntegrationsModule } from './integrations/bgv/bgv.module';
-import { BgvModule } from './modules/bgv/bgv.module';
-import { AppraisalCyclesModule } from './modules/appraisal-cycles/appraisal-cycles.module';
-import { GoalsModule } from './modules/goals/goals.module';
-import { AssessmentsModule } from './modules/assessments/assessments.module';
-import { PeerFeedbackModule } from './modules/peer-feedback/peer-feedback.module';
-import { CalibrationModule } from './modules/calibration/calibration.module';
-import { CompBudgetModule } from './modules/comp-budget/comp-budget.module';
-import { CompRevisionsModule } from './modules/comp-revisions/comp-revisions.module';
 import { Msg91Module } from './integrations/msg91/msg91.module';
 import { CommsModule } from './modules/comms/comms.module';
 import { ReportsModule } from './modules/reports/reports.module';
@@ -47,6 +31,14 @@ import { AiCostModule } from './modules/ai-cost/ai-cost.module';
 import { PushModule } from './modules/push/push.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
+import { MandatesModule } from './modules/mandates/mandates.module';
+import { RecruiterModule } from './modules/recruiter/recruiter.module';
+import { ReferralsModule } from './modules/referrals/referrals.module';
+import { CandidatePortalModule } from './modules/candidate-portal/candidate-portal.module';
+import { ClaimScopeModule } from './modules/claim-scope/claim-scope.module';
+import { RewardsModule } from './modules/rewards/rewards.module';
+import { AiScreeningModule } from './modules/ai-screening/ai-screening.module';
+import { EmailModule } from './modules/email/email.module';
 
 @Module({
   imports: [
@@ -70,25 +62,9 @@ import { RolesGuard } from './auth/guards/roles.guard';
     AuditModule,
     SettingsModule,
     SearchModule,
-    SupportModule,
     FileUploadModule,
-    PublishingModule,
     PublicApplyModule,
     JobQueueModule,
-    ESignModule,
-    OfferTemplatesModule,
-    CompensationModule,
-    OffersModule,
-    JoiningModule,
-    BgvIntegrationsModule,
-    BgvModule,
-    AppraisalCyclesModule,
-    GoalsModule,
-    AssessmentsModule,
-    PeerFeedbackModule,
-    CalibrationModule,
-    CompBudgetModule,
-    CompRevisionsModule,
     Msg91Module,
     CommsModule,
     ReportsModule,
@@ -97,6 +73,14 @@ import { RolesGuard } from './auth/guards/roles.guard';
     AiCostModule,
     PushModule,
     HealthModule,
+    MandatesModule,
+    RecruiterModule,
+    ReferralsModule,
+    CandidatePortalModule,
+    ClaimScopeModule,
+    RewardsModule,
+    AiScreeningModule,
+    EmailModule,
   ],
   providers: [
     {

@@ -91,6 +91,46 @@ export class AuthService {
     };
   }
 
+  async getRecruiterMe(auth0Sub: string) {
+    const recruiter = await this.prisma.recruiterProfile.findUnique({
+      where: { auth0Sub },
+    });
+
+    if (!recruiter) {
+      return null;
+    }
+
+    return {
+      id: recruiter.id,
+      email: recruiter.email,
+      name: recruiter.name,
+      phone: recruiter.phone,
+      headline: recruiter.headline,
+      specializations: recruiter.specializations,
+      experienceYears: recruiter.experienceYears,
+      linkedinUrl: recruiter.linkedinUrl,
+      isVerified: recruiter.isVerified,
+      isActive: recruiter.isActive,
+    };
+  }
+
+  async getCandidateMe(auth0Sub: string) {
+    const candidate = await this.prisma.candidateProfile.findUnique({
+      where: { auth0Sub },
+    });
+
+    if (!candidate) {
+      return null;
+    }
+
+    return {
+      id: candidate.id,
+      email: candidate.email,
+      name: candidate.name,
+      isActive: candidate.isActive,
+    };
+  }
+
   async syncFromAuth0(dto: SyncDto, webhookSecret: string) {
     if (!this.syncSecret || webhookSecret !== this.syncSecret) {
       throw new UnauthorizedException('Invalid webhook secret');

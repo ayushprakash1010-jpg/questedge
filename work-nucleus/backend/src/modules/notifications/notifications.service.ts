@@ -1,9 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(NotificationsService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
+  ) {}
 
   async create(data: {
     userId: string;
@@ -15,7 +21,26 @@ export class NotificationsService {
     entityId?: string;
     actionUrl?: string;
   }) {
-    return this.prisma.notification.create({ data });
+    const notification = await this.prisma.notification.create({ data });
+
+    try {
+      const user = await this.prisma.user.findUnique({ where: { id: data.userId } });
+      if (user?.email) {
+        // Fire and forget email dispatch
+        this.emailService.sendNotificationEmail(
+          user.email,
+          data.title,
+          data.body,
+          data.actionUrl,
+        ).catch(err => {
+          this.logger.error(`Email dispatch failed for ${user.email}: ${err.message}`);
+        });
+      }
+    } catch (err) {
+      this.logger.error(`Failed to send email notification: ${err.message}`);
+    }
+
+    return notification;
   }
 
   async findAll(

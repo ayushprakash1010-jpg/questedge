@@ -1,4 +1,4 @@
-# Work Nucleus — Build, Deploy & Maintain Cost Estimate
+# QuestEdge — Build, Deploy & Maintain Cost Estimate
 
 > **Audience:** Founders, investors, leadership, hiring managers
 > **Prepared:** 2026-05-04
@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary
 
-Work Nucleus is an AI-first HR Tech platform. The hiring module is the first vertical; appraisal and compensation are the next. This document estimates the **time, team, and money** required to take the platform from its current state to a production-grade, multi-tenant SaaS covering the full employee lifecycle.
+QuestEdge is an AI-first HR Tech platform. The hiring module is the first vertical; appraisal and compensation are the next. This document estimates the **time, team, and money** required to take the platform from its current state to a production-grade, multi-tenant SaaS covering the full employee lifecycle.
 
 | Metric | Value |
 |---|---|
@@ -318,7 +318,7 @@ Running 50 small tenants on shared infra:
 
 | Approach | 3-Year Cost | Trade-off |
 |---|---|---|
-| **Build with Work Nucleus path (above)** | ₹11 – 21 Cr | Full IP, AI-first, customisable |
+| **Build with QuestEdge path (above)** | ₹11 – 21 Cr | Full IP, AI-first, customisable |
 | Buy Darwinbox / Keka / ZingHR | ₹15 – 50 lakh / year | No IP, integration limits, no AI moat |
 | Build from absolute zero (no AI, classic stack) | ₹15 – 25 Cr | Slower, no AI advantage, similar team size |
 | Outsource to large IT services firm | ₹20 – 40 Cr | Quality risk, no in-house product muscle |

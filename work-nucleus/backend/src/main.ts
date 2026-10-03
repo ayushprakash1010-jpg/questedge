@@ -24,9 +24,7 @@ async function bootstrap() {
   // Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,
       transform: true,
-      forbidNonWhitelisted: true,
     }),
   );
 
@@ -47,8 +45,8 @@ async function bootstrap() {
 
   // Swagger
   const config = new DocumentBuilder()
-    .setTitle('Work Nucleus API')
-    .setDescription('Work Nucleus HR Platform API')
+    .setTitle('QuestEdge API')
+    .setDescription('QuestEdge HR Platform API')
     .setVersion('1.0')
     .addBearerAuth()
     .build();

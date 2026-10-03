@@ -24,7 +24,7 @@ export class FileUploadService implements OnModuleInit {
   private readonly logger = new Logger(FileUploadService.name);
 
   constructor(private readonly config: ConfigService) {
-    this.bucket = this.config.get<string>('S3_BUCKET', 'work-nucleus-resumes');
+    this.bucket = this.config.get<string>('S3_BUCKET', 'questedge-resumes');
     this.s3 = new S3Client({
       endpoint: this.config.get<string>('S3_ENDPOINT', 'http://localhost:9000'),
       region: this.config.get<string>('S3_REGION', 'us-east-1'),

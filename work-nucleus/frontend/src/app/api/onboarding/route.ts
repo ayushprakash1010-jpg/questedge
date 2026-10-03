@@ -9,9 +9,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const { token: accessToken } = await auth0.getAccessToken();
+    console.log("[Onboarding API] Session found:", !!session);
+
+    let accessToken;
+    try {
+      const tokenObj = await auth0.getAccessToken();
+      accessToken = tokenObj.token;
+      console.log("[Onboarding API] Access token fetched. Length:", accessToken?.length);
+    } catch (e: any) {
+      console.error("[Onboarding API] getAccessToken error:", e);
+      return NextResponse.json({ error: "getAccessToken error: " + e.message }, { status: 400 });
+    }
+
     const body = await req.json();
     const apiUrl = getApiUrl();
+    const payload = {
+      ...body,
+      email: session.user.email,
+    };
+    console.log("[Onboarding API] Sending to backend:", apiUrl, "with payload:", payload);
 
     const res = await fetch(`${apiUrl}/api/v1/auth/provision`, {
       method: "POST",
@@ -19,10 +35,20 @@ export async function POST(req: NextRequest) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
     });
 
-    const data = await res.json();
+    console.log("[Onboarding API] Backend responded with status:", res.status);
+    
+    const text = await res.text();
+    console.log("[Onboarding API] Backend response text:", text);
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      data = { message: text };
+    }
 
     if (!res.ok) {
       return NextResponse.json(
@@ -32,9 +58,10 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(data);
-  } catch {
+  } catch (err: any) {
+    console.error("[Onboarding API] Catch-all error:", err);
     return NextResponse.json(
-      { error: "Failed to provision organization" },
+      { error: "Failed to provision organization: " + err.message },
       { status: 500 }
     );
   }
