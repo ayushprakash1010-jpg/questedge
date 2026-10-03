@@ -10,27 +10,10 @@ import {
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "@/components/ui/toaster";
-
-// ── Stat card ─────────────────────────────────────────────────────
-
-function StatCard({ label, value, icon: Icon, gradient, sub }: {
-  label: string; value: number | string; icon: any; gradient: string; sub?: string;
-}) {
-  return (
-    <div className={`relative overflow-hidden rounded-2xl p-5 text-white ${gradient} shadow-lg`}>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium opacity-80">{label}</p>
-          <p className="text-3xl font-bold mt-1">{value}</p>
-          {sub && <p className="text-xs opacity-70 mt-0.5">{sub}</p>}
-        </div>
-        <div className="bg-white/20 rounded-xl p-2.5">
-          <Icon className="h-5 w-5" />
-        </div>
-      </div>
-    </div>
-  );
-}
+import { PageHeader } from "@/components/shared/page-header";
+import { KpiCard } from "@/components/shared/kpi-card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 // ── Consent card ──────────────────────────────────────────────────
 
@@ -210,77 +193,65 @@ export default function CandidateDashboardPage() {
   const profileCompletion = calculateCompletion(profile);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-emerald-50/20">
-      {/* Hero header */}
-      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white px-6 py-8 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute -top-8 -right-8 w-64 h-64 rounded-full bg-white" />
-          <div className="absolute -bottom-12 -left-4 w-40 h-40 rounded-full bg-white" />
-        </div>
-        <div className="max-w-7xl mx-auto relative">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <p className="text-emerald-200 text-sm font-medium mb-1">Candidate Portal</p>
-              <h1 className="text-2xl md:text-3xl font-bold">Welcome back, {profile.name} 👋</h1>
-              <p className="text-emerald-100 mt-2 text-sm">
-                {profile.headline || "Complete your profile to stand out to recruiters."}
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-              {/* Profile completion meter */}
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20 min-w-[160px]">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-emerald-100">Profile strength</span>
-                  <span className="text-xs font-bold text-white">{profileCompletion}%</span>
-                </div>
-                <div className="w-full h-2 bg-white/20 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-white rounded-full transition-all duration-500"
-                    style={{ width: `${profileCompletion}%` }}
-                  />
-                </div>
-                <button
-                  onClick={() => router.push("/candidate/profile")}
-                  className="mt-2 text-xs text-emerald-200 hover:text-white transition-colors flex items-center gap-1"
-                >
-                  {profileCompletion < 100 ? "Complete profile" : "Edit profile"} <ArrowRight className="h-3 w-3" />
-                </button>
+    <>
+      <PageHeader
+        title={`Welcome back, ${profile.name} 👋`}
+        subtitle={profile.headline || "Complete your profile to stand out to recruiters."}
+        eyebrow="Candidate Portal"
+        actions={
+          <div className="flex items-center gap-4">
+            <div className="bg-white rounded-xl p-4 border border-slate-200 min-w-[160px] shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-slate-500">Profile strength</span>
+                <span className="text-xs font-bold text-emerald-600">{profileCompletion}%</span>
               </div>
+              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                  style={{ width: `${profileCompletion}%` }}
+                />
+              </div>
+              <button
+                onClick={() => router.push("/candidate/profile")}
+                className="mt-2 text-xs text-emerald-600 hover:text-emerald-700 transition-colors flex items-center gap-1 font-medium"
+              >
+                {profileCompletion < 100 ? "Complete profile" : "Edit profile"} <ArrowRight className="h-3 w-3" />
+              </button>
             </div>
           </div>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="space-y-8 pb-8">
         {/* Stats row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatCard
-            label="Pending Consents"
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <KpiCard
+            title="Pending Consents"
             value={consents.length}
-            icon={Bell}
-            gradient="bg-gradient-to-br from-amber-500 to-orange-500"
-            sub={consents.length > 0 ? "Action required" : "All clear"}
+            icon={<Bell />}
+            accent="amber"
+            subValue={consents.length > 0 ? "Action required" : "All clear"}
           />
-          <StatCard
-            label="Active Referrals"
+          <KpiCard
+            title="Active Referrals"
             value={profile._count?.referrals ?? 0}
-            icon={Users}
-            gradient="bg-gradient-to-br from-indigo-500 to-violet-600"
-            sub="Recruiters working for you"
+            icon={<Users />}
+            accent="indigo"
+            subValue="Recruiters working for you"
           />
-          <StatCard
-            label="Saved Jobs"
+          <KpiCard
+            title="Saved Jobs"
             value={savedJobs.length}
-            icon={Bookmark}
-            gradient="bg-gradient-to-br from-rose-500 to-pink-600"
-            sub="Explore when ready"
+            icon={<Bookmark />}
+            accent="red"
+            subValue="Explore when ready"
           />
-          <StatCard
-            label="Applications"
+          <KpiCard
+            title="Applications"
             value={profile._count?.applications ?? 0}
-            icon={FileText}
-            gradient="bg-gradient-to-br from-sky-500 to-cyan-600"
-            sub="Submitted so far"
+            icon={<FileText />}
+            accent="cyan"
+            subValue="Submitted so far"
           />
         </div>
 
@@ -288,20 +259,19 @@ export default function CandidateDashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left: Pending Consents */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-slate-100 mb-4">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                  <h3 className="font-semibold text-slate-800">Pending Consent Requests</h3>
+                  {consents.length > 0 && <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />}
+                  <CardTitle>Pending Consent Requests</CardTitle>
                   {consents.length > 0 && (
-                    <span className="bg-amber-100 text-amber-700 text-xs font-medium px-2 py-0.5 rounded-full">
+                    <span className="bg-amber-100 text-amber-700 text-xs font-medium px-2 py-0.5 rounded-full ml-2">
                       {consents.length} new
                     </span>
                   )}
                 </div>
-              </div>
-
-              <div className="p-6">
+              </CardHeader>
+              <CardContent>
                 {consents.length === 0 ? (
                   <div className="text-center py-10">
                     <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
@@ -311,7 +281,7 @@ export default function CandidateDashboardPage() {
                     <p className="text-sm text-slate-400 mt-1">No pending referral consent requests.</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-4 mt-2">
                     {consents.map((consent) => (
                       <ConsentCard
                         key={consent.id}
@@ -321,14 +291,14 @@ export default function CandidateDashboardPage() {
                     ))}
                   </div>
                 )}
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {/* Profile completeness tips */}
             {profileCompletion < 100 && (
-              <div className="bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-100 rounded-2xl p-6">
+              <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-6">
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center shrink-0">
                     <TrendingUp className="h-5 w-5 text-indigo-600" />
                   </div>
                   <div>
@@ -342,12 +312,14 @@ export default function CandidateDashboardPage() {
                         Add your {field}
                       </div>
                     ))}
-                    <button
+                    <Button
+                      variant="default"
+                      size="sm"
                       onClick={() => router.push("/candidate/profile")}
-                      className="mt-3 inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                      className="mt-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs"
                     >
-                      Complete Profile <ArrowRight className="h-3.5 w-3.5" />
-                    </button>
+                      Complete Profile <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -357,14 +329,14 @@ export default function CandidateDashboardPage() {
           {/* Right: Saved Jobs + Profile preview */}
           <div className="space-y-6">
             {/* Saved Jobs */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-                <h3 className="font-semibold text-slate-800">Saved Jobs</h3>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-slate-100 mb-4">
+                <CardTitle>Saved Jobs</CardTitle>
                 <Link href="/candidate/jobs" className="text-sm font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
                   Browse all <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
-              </div>
-              <div className="p-4 space-y-3">
+              </CardHeader>
+              <CardContent className="space-y-3">
                 {savedJobs.length === 0 ? (
                   <div className="text-center py-8">
                     <Bookmark className="h-7 w-7 text-slate-300 mx-auto mb-2" />
@@ -378,21 +350,21 @@ export default function CandidateDashboardPage() {
                     <SavedJobCard key={job.id} job={job} />
                   ))
                 )}
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {/* Quick profile snapshot */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-                <h3 className="font-semibold text-slate-800">Your Profile</h3>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-slate-100 mb-4">
+                <CardTitle>Your Profile</CardTitle>
                 <button
                   onClick={() => router.push("/candidate/profile")}
                   className="text-sm font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
                 >
                   <Eye className="h-3.5 w-3.5" /> Edit
                 </button>
-              </div>
-              <div className="p-5 space-y-3">
+              </CardHeader>
+              <CardContent className="space-y-3">
                 {[
                   { label: "Experience", value: profile.experienceYears ? `${profile.experienceYears} years` : null, icon: Briefcase },
                   { label: "Location", value: profile.currentLocation, icon: MapPin },
@@ -400,8 +372,8 @@ export default function CandidateDashboardPage() {
                   { label: "Work mode", value: profile.workModel, icon: TrendingUp },
                 ].map(({ label, value, icon: Icon }) => (
                   <div key={label} className="flex items-center gap-2.5 text-sm">
-                    <div className="w-7 h-7 bg-emerald-50 rounded-lg flex items-center justify-center shrink-0">
-                      <Icon className="h-3.5 w-3.5 text-emerald-600" />
+                    <div className="w-7 h-7 bg-slate-50 rounded-lg flex items-center justify-center shrink-0 border border-slate-100">
+                      <Icon className="h-3.5 w-3.5 text-slate-500" />
                     </div>
                     <span className="text-slate-500 w-24 shrink-0">{label}</span>
                     <span className={`font-medium truncate ${value ? "text-slate-800" : "text-slate-300 italic"}`}>
@@ -410,11 +382,11 @@ export default function CandidateDashboardPage() {
                   </div>
                 ))}
                 {profile.skills?.length > 0 && (
-                  <div className="pt-2 border-t border-slate-100">
+                  <div className="pt-3 mt-3 border-t border-slate-100">
                     <p className="text-xs font-semibold text-slate-500 mb-2">Top Skills</p>
                     <div className="flex flex-wrap gap-1.5">
                       {profile.skills.slice(0, 6).map((s: string) => (
-                        <span key={s} className="bg-emerald-50 text-emerald-700 text-xs px-2 py-0.5 rounded-full border border-emerald-100">
+                        <span key={s} className="bg-slate-50 text-slate-700 text-xs px-2 py-0.5 rounded-full border border-slate-200">
                           {s}
                         </span>
                       ))}
@@ -424,12 +396,12 @@ export default function CandidateDashboardPage() {
                     </div>
                   </div>
                 )}
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
