@@ -42,7 +42,7 @@ export function useProfile() {
 
     async function fetchProfile() {
       try {
-        const res = await fetch("/api/profile");
+        const res = await fetch(`/api/profile?t=${Date.now()}`);
         const data = await res.json();
         setProfile(data);
       } catch {
