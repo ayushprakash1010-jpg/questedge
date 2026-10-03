@@ -112,6 +112,47 @@ export default function ProtectedLayout({
 
   if (!user) return null;
 
+  const isRecruiterOrCandidate =
+    (profile as any)?.userType === "RECRUITER" ||
+    (profile as any)?.userType === "CANDIDATE";
+
+  // If the useEffect is about to redirect to onboarding, show a spinner to prevent flashing
+  if (profile && !profile.isProvisioned && !isRecruiterOrCandidate) {
+    if (!pathname.includes("/profile") && !pathname.includes("/onboarding")) {
+      return (
+        <div className="flex h-screen items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        </div>
+      );
+    }
+  }
+
+  // If the useEffect is about to redirect to a specific role dashboard, show a spinner
+  if (profile && profile.isProvisioned) {
+    const uType = (profile as any).userType;
+    if (uType === "RECRUITER" && !pathname.startsWith("/recruiter")) {
+      return (
+        <div className="flex h-screen items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        </div>
+      );
+    }
+    if (uType === "CANDIDATE" && !pathname.startsWith("/candidate")) {
+      return (
+        <div className="flex h-screen items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        </div>
+      );
+    }
+    if (uType === "COMPANY_USER" && (pathname.startsWith("/recruiter") || pathname.startsWith("/candidate"))) {
+      return (
+        <div className="flex h-screen items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        </div>
+      );
+    }
+  }
+
   return (
     <div className="flex h-screen">
       <Sidebar userType={sidebarUserType} />
