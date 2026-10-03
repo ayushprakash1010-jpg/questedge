@@ -167,16 +167,16 @@ export function Hero() {
 
         {/* Stats */}
         <motion.div
-          className="mt-16 grid grid-cols-3 gap-8 border-t border-slate-200/60 pt-12"
+          className="mt-16 grid grid-cols-3 gap-8 border-t border-white/20 pt-12"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.7 }}
         >
           {stats.map((stat) => (
             <div key={stat.label} className="text-center">
-              <div className="text-3xl font-extrabold text-indigo-600 sm:text-4xl">{stat.value}</div>
-              <div className="mt-1 text-sm font-semibold text-slate-700">{stat.label}</div>
-              <div className="mt-0.5 text-xs text-slate-400">{stat.sub}</div>
+              <div className="text-3xl font-extrabold text-indigo-400 sm:text-4xl">{stat.value}</div>
+              <div className="mt-1 text-sm font-semibold text-white">{stat.label}</div>
+              <div className="mt-0.5 text-xs text-slate-300">{stat.sub}</div>
             </div>
           ))}
           <p className="col-span-3 mt-2 text-[11px] text-slate-400 text-center">
