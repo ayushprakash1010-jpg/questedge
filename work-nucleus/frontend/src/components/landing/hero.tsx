@@ -54,11 +54,11 @@ const trustItems = [
 
 export function Hero() {
   return (
-    <section className="dot-grid relative overflow-hidden bg-gradient-to-br from-slate-800 via-slate-700 to-indigo-900">
+    <section className="dot-grid relative overflow-hidden bg-gradient-to-b from-indigo-50 via-white to-white">
       {/* Gradient orbs */}
-      <div className="absolute -top-40 right-0 h-96 w-96 rounded-full bg-indigo-400/20 blur-3xl" />
-      <div className="absolute bottom-0 left-0 h-80 w-80 rounded-full bg-violet-400/15 blur-3xl" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-64 w-64 rounded-full bg-emerald-400/10 blur-3xl" />
+      <div className="absolute -top-40 right-0 h-96 w-96 rounded-full bg-indigo-200/50 blur-3xl" />
+      <div className="absolute bottom-0 left-0 h-80 w-80 rounded-full bg-violet-200/50 blur-3xl" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-64 w-64 rounded-full bg-emerald-200/40 blur-3xl" />
 
       <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8 lg:py-36">
         <div className="mx-auto max-w-4xl text-center">
@@ -68,14 +68,14 @@ export function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <span className="inline-flex items-center gap-2 rounded-full border border-indigo-400/50 bg-indigo-500/20 px-4 py-1.5 text-sm font-medium text-indigo-200">
+            <span className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-1.5 text-sm font-medium text-indigo-700">
               ✦ Referral-Based Hiring Marketplace
             </span>
           </motion.div>
 
           {/* Headline */}
           <motion.h1
-            className="mt-6 text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl"
+            className="mt-6 text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
@@ -86,7 +86,7 @@ export function Hero() {
 
           {/* Subheadline */}
           <motion.p
-            className="mt-6 text-lg leading-relaxed text-slate-200 sm:text-xl max-w-2xl mx-auto"
+            className="mt-6 text-lg leading-relaxed text-slate-600 sm:text-xl max-w-2xl mx-auto"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
@@ -115,7 +115,7 @@ export function Hero() {
             </Link>
             <Link
               href="#how-it-works"
-              className="flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-7 py-3.5 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:border-white/60 hover:bg-white/20"
+              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-7 py-3.5 text-sm font-semibold text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50"
             >
               See How It Works
             </Link>
@@ -129,7 +129,7 @@ export function Hero() {
             transition={{ duration: 0.5, delay: 0.4 }}
           >
             {trustItems.map((item) => (
-              <span key={item.label} className="flex items-center gap-1.5 text-xs font-medium text-slate-300">
+              <span key={item.label} className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
                 <item.icon className={`h-3.5 w-3.5 ${item.color}`} />
                 {item.label}
               </span>
@@ -147,16 +147,16 @@ export function Hero() {
           {roleCards.map((card) => (
             <div
               key={card.role}
-              className={`group relative rounded-2xl border bg-white/10 p-6 backdrop-blur-sm shadow-sm transition-all duration-300 border-white/20 hover:border-white/40 hover:bg-white/15 hover:shadow-lg`}
+              className={`group relative rounded-2xl border bg-white p-6 shadow-sm transition-all duration-300 border-slate-200 hover:border-indigo-200 hover:shadow-lg`}
             >
               <div className={`inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${card.color} shadow-sm`}>
                 <card.icon className="h-5 w-5 text-white" />
               </div>
-              <h3 className="mt-4 text-base font-bold text-white">{card.role}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-300">{card.description}</p>
+              <h3 className="mt-4 text-base font-bold text-slate-900">{card.role}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">{card.description}</p>
               <Link
                 href={card.href}
-                className={`mt-4 inline-flex items-center gap-1.5 text-sm font-semibold transition-all group-hover:gap-2.5 text-indigo-300 hover:text-indigo-200`}
+                className={`mt-4 inline-flex items-center gap-1.5 text-sm font-semibold transition-all group-hover:gap-2.5 text-indigo-600 hover:text-indigo-700`}
               >
                 {card.cta}
                 <ArrowRight className="h-3.5 w-3.5" />
@@ -167,19 +167,19 @@ export function Hero() {
 
         {/* Stats */}
         <motion.div
-          className="mt-16 grid grid-cols-3 gap-8 border-t border-white/20 pt-12"
+          className="mt-16 grid grid-cols-3 gap-8 border-t border-slate-200 pt-12"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.7 }}
         >
           {stats.map((stat) => (
             <div key={stat.label} className="text-center">
-              <div className="text-3xl font-extrabold text-indigo-400 sm:text-4xl">{stat.value}</div>
-              <div className="mt-1 text-sm font-semibold text-white">{stat.label}</div>
-              <div className="mt-0.5 text-xs text-slate-300">{stat.sub}</div>
+              <div className="text-3xl font-extrabold text-indigo-600 sm:text-4xl">{stat.value}</div>
+              <div className="mt-1 text-sm font-semibold text-slate-900">{stat.label}</div>
+              <div className="mt-0.5 text-xs text-slate-600">{stat.sub}</div>
             </div>
           ))}
-          <p className="col-span-3 mt-2 text-[11px] text-slate-400 text-center">
+          <p className="col-span-3 mt-2 text-[11px] text-slate-500 text-center">
             *Based on early adopter data. Results may vary.
           </p>
         </motion.div>
