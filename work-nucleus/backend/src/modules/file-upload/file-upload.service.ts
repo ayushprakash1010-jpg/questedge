@@ -42,8 +42,12 @@ export class FileUploadService implements OnModuleInit {
       this.logger.log(`Bucket "${this.bucket}" exists`);
     } catch {
       this.logger.log(`Creating bucket "${this.bucket}"...`);
-      await this.s3.send(new CreateBucketCommand({ Bucket: this.bucket }));
-      this.logger.log(`Bucket "${this.bucket}" created`);
+      try {
+        await this.s3.send(new CreateBucketCommand({ Bucket: this.bucket }));
+        this.logger.log(`Bucket "${this.bucket}" created`);
+      } catch (err) {
+        this.logger.warn(`Failed to create bucket "${this.bucket}": ${err.message}. File uploads will fail until configured.`);
+      }
     }
   }
 
