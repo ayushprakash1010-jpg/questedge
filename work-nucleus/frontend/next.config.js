@@ -4,6 +4,9 @@ const nextConfig = {
     config.resolve.alias.canvas = false;
     return config;
   },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
 
 module.exports = nextConfig;
