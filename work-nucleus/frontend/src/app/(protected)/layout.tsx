@@ -10,10 +10,17 @@ import { registerServiceWorker } from "@/lib/pwa";
 
 const IS_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
 
-// Map userType from backend → sidebar theme
+// Map userType from backend OR current URL path → sidebar theme
 function resolveSidebarUserType(
-  userType?: string
+  userType?: string,
+  pathname?: string
 ): "company" | "recruiter" | "candidate" {
+  // If we are currently setting up a profile, force the sidebar to match the route
+  if (pathname?.startsWith("/recruiter")) return "recruiter";
+  if (pathname?.startsWith("/candidate")) return "candidate";
+  if (pathname?.startsWith("/company") || pathname?.startsWith("/dashboard")) return "company";
+
+  // Fallback to the userType from the database
   if (userType === "RECRUITER") return "recruiter";
   if (userType === "CANDIDATE") return "candidate";
   return "company";
@@ -56,7 +63,7 @@ export default function ProtectedLayout({
     }
   }, [user, profile, authLoading, profileLoading, router, pathname]);
 
-  const sidebarUserType = resolveSidebarUserType((profile as any)?.userType);
+  const sidebarUserType = resolveSidebarUserType((profile as any)?.userType, pathname);
 
   if (IS_MOCK) {
     if (profileLoading) {
