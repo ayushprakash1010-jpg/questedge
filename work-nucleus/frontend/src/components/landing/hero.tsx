@@ -54,7 +54,7 @@ const trustItems = [
 
 export function Hero() {
   return (
-    <section className="dot-grid relative overflow-hidden bg-gradient-to-br from-slate-50 via-indigo-50/40 to-violet-50/30">
+    <section className="dot-grid relative overflow-hidden bg-gradient-to-br from-slate-800 via-slate-700 to-indigo-900">
       {/* Gradient orbs */}
       <div className="absolute -top-40 right-0 h-96 w-96 rounded-full bg-indigo-400/20 blur-3xl" />
       <div className="absolute bottom-0 left-0 h-80 w-80 rounded-full bg-violet-400/15 blur-3xl" />
@@ -68,14 +68,14 @@ export function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <span className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-1.5 text-sm font-medium text-indigo-700">
+            <span className="inline-flex items-center gap-2 rounded-full border border-indigo-400/50 bg-indigo-500/20 px-4 py-1.5 text-sm font-medium text-indigo-200">
               ✦ Referral-Based Hiring Marketplace
             </span>
           </motion.div>
 
           {/* Headline */}
           <motion.h1
-            className="mt-6 text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl"
+            className="mt-6 text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
@@ -86,7 +86,7 @@ export function Hero() {
 
           {/* Subheadline */}
           <motion.p
-            className="mt-6 text-lg leading-relaxed text-slate-600 sm:text-xl max-w-2xl mx-auto"
+            className="mt-6 text-lg leading-relaxed text-slate-200 sm:text-xl max-w-2xl mx-auto"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
@@ -115,7 +115,7 @@ export function Hero() {
             </Link>
             <Link
               href="#how-it-works"
-              className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-7 py-3.5 text-sm font-semibold text-slate-700 transition-all hover:border-indigo-300 hover:bg-indigo-50"
+              className="flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-7 py-3.5 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:border-white/60 hover:bg-white/20"
             >
               See How It Works
             </Link>
@@ -129,7 +129,7 @@ export function Hero() {
             transition={{ duration: 0.5, delay: 0.4 }}
           >
             {trustItems.map((item) => (
-              <span key={item.label} className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+              <span key={item.label} className="flex items-center gap-1.5 text-xs font-medium text-slate-300">
                 <item.icon className={`h-3.5 w-3.5 ${item.color}`} />
                 {item.label}
               </span>
@@ -147,16 +147,16 @@ export function Hero() {
           {roleCards.map((card) => (
             <div
               key={card.role}
-              className={`group relative rounded-2xl border bg-white/80 p-6 backdrop-blur-sm shadow-sm transition-all duration-300 ${card.border} ${card.bg} hover:shadow-lg`}
+              className={`group relative rounded-2xl border bg-white/10 p-6 backdrop-blur-sm shadow-sm transition-all duration-300 border-white/20 hover:border-white/40 hover:bg-white/15 hover:shadow-lg`}
             >
               <div className={`inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${card.color} shadow-sm`}>
                 <card.icon className="h-5 w-5 text-white" />
               </div>
-              <h3 className="mt-4 text-base font-bold text-slate-900">{card.role}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-500">{card.description}</p>
+              <h3 className="mt-4 text-base font-bold text-white">{card.role}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-300">{card.description}</p>
               <Link
                 href={card.href}
-                className={`mt-4 inline-flex items-center gap-1.5 text-sm font-semibold transition-all group-hover:gap-2.5 ${card.ctaColor}`}
+                className={`mt-4 inline-flex items-center gap-1.5 text-sm font-semibold transition-all group-hover:gap-2.5 text-indigo-300 hover:text-indigo-200`}
               >
                 {card.cta}
                 <ArrowRight className="h-3.5 w-3.5" />
