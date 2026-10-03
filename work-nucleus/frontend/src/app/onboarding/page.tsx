@@ -80,10 +80,10 @@ export default function OnboardingPage() {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-400 shadow-lg mb-4">
             <span className="text-xl font-bold text-white">W</span>
           </div>
-          <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+          <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
             Welcome to QuestEdge
           </h2>
-          <p className="mt-2 text-slate-600 dark:text-slate-300">
+          <p className="mt-2 text-slate-600">
             Let's get your account set up. How will you be using the platform?
           </p>
         </motion.div>
