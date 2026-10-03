@@ -7,7 +7,7 @@ export const auth0 = new Auth0Client({
   authorizationParameters: {
     audience: process.env.AUTH0_AUDIENCE,
   },
-  appBaseUrl: process.env.APP_BASE_URL || process.env.AUTH0_BASE_URL,
+  appBaseUrl: process.env.APP_BASE_URL || process.env.AUTH0_BASE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined),
   routes: {
     callback: "/auth/callback",
     login: "/auth/login",
