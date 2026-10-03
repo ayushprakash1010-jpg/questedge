@@ -75,15 +75,15 @@ export default function OnboardingPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
+          className="text-center mb-8 relative z-10"
         >
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-400 shadow-lg mb-4">
             <span className="text-xl font-bold text-white">W</span>
           </div>
-          <h2 className="text-3xl font-extrabold text-white tracking-tight">
+          <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             Welcome to QuestEdge
           </h2>
-          <p className="mt-2 text-indigo-100">
+          <p className="mt-2 text-slate-600 dark:text-slate-300">
             Let's get your account set up. How will you be using the platform?
           </p>
         </motion.div>
