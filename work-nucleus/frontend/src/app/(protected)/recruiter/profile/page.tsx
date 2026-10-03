@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getRecruiterProfile, createRecruiterProfile } from "@/lib/marketplace-api";
+import { getRecruiterProfile, createRecruiterProfile, updateRecruiterProfile } from "@/lib/marketplace-api";
 import { User, Briefcase, Link as LinkIcon, Check, Loader, Save } from "lucide-react";
 import { toast } from "sonner";
 
@@ -76,14 +76,20 @@ export default function RecruiterProfilePage() {
     try {
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
-      await createRecruiterProfile(accessToken, {
+      const payload = {
         name: form.name.trim(),
         phone: form.phone.trim() || undefined,
         headline: form.headline.trim() || undefined,
         linkedinUrl: form.linkedinUrl.trim() || undefined,
         specializations: form.specializations.length > 0 ? form.specializations : undefined,
         experienceYears: form.experienceYears ? parseInt(form.experienceYears, 10) : undefined,
-      });
+      };
+      
+      if (isNew) {
+        await createRecruiterProfile(accessToken, payload);
+      } else {
+        await updateRecruiterProfile(accessToken, payload);
+      }
       toast.success(isNew ? "Profile created! Welcome aboard 🎉" : "Profile updated!");
       if (isNew) window.location.href = "/recruiter/dashboard"; // Forces a hard reload to pick up new session claims
     } catch (err: any) {

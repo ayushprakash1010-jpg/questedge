@@ -175,6 +175,14 @@ export async function createRecruiterProfile(token: string, payload: any): Promi
   });
 }
 
+export async function updateRecruiterProfile(token: string, payload: any): Promise<any> {
+  return apiClient("/api/v1/recruiter/profile", {
+    method: "PATCH",
+    token,
+    body: JSON.stringify(payload),
+  });
+}
+
 // ── Candidate Portal APIs ────────────────────────────────────────
 
 export async function getCandidateProfile(token: string): Promise<any> {
