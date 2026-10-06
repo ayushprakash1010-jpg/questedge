@@ -5,13 +5,12 @@ import { getCandidateProfile, getPendingConsents, getSavedJobs } from "@/lib/mar
 import {
   Loader2, AlertCircle, FileText, Bookmark, Users, ArrowRight,
   CheckCircle2, XCircle, Clock, MapPin, Building2, Briefcase,
-  TrendingUp, UserCircle, ChevronRight, Sparkles, Bell, Eye
+  TrendingUp, UserCircle, ChevronRight, Sparkles, Bell, Eye,
+  Zap, Shield, Star, Target
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "@/components/ui/toaster";
-import { PageHeader } from "@/components/shared/page-header";
-import { KpiCard } from "@/components/shared/kpi-card";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -193,66 +192,88 @@ export default function CandidateDashboardPage() {
   const profileCompletion = calculateCompletion(profile);
 
   return (
-    <>
-      <PageHeader
-        title={`Welcome back, ${profile.name} 👋`}
-        subtitle={profile.headline || "Complete your profile to stand out to recruiters."}
-        eyebrow="Candidate Portal"
-        actions={
-          <div className="flex items-center gap-4">
-            <div className="bg-white rounded-xl p-4 border border-slate-200 min-w-[160px] shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-slate-500">Profile strength</span>
-                <span className="text-xs font-bold text-emerald-600">{profileCompletion}%</span>
+    <div className="min-h-screen bg-slate-50">
+      {/* ── Premium Dark Hero Banner ────────────────────────── */}
+      <div className="relative overflow-hidden bg-slate-900 px-6 py-10 md:py-14">
+        {/* Background Effects */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/20 via-slate-900 to-slate-900" />
+        <div className="absolute -left-20 -top-20 h-[300px] w-[300px] rounded-full bg-emerald-500/10 blur-[80px]" />
+        <div className="absolute right-0 bottom-0 h-[200px] w-[200px] rounded-full bg-teal-500/10 blur-[60px]" />
+
+        <div className="relative mx-auto max-w-7xl">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30">
+                  <Sparkles className="h-4 w-4" />
+                </div>
+                <span className="text-emerald-400 text-xs font-bold uppercase tracking-wider">Candidate Portal</span>
               </div>
-              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                  style={{ width: `${profileCompletion}%` }}
-                />
+              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-2">
+                Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400">{profile.name}</span> 👋
+              </h1>
+              <p className="text-slate-400 text-sm md:text-base max-w-xl">
+                {profile.headline || "Complete your profile to stand out to recruiters and get referred to top companies."}
+              </p>
+            </div>
+
+            {/* Glassmorphic Profile Strength Card */}
+            <div className="w-full md:w-auto">
+              <div className="relative group">
+                <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-r from-emerald-500/30 to-teal-500/30 blur opacity-40 group-hover:opacity-70 transition duration-500" />
+                <div className="relative bg-slate-900/80 backdrop-blur-md rounded-xl ring-1 ring-white/10 p-5 min-w-[200px]">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-medium text-slate-400">Profile Strength</span>
+                    <span className={`text-sm font-bold ${profileCompletion >= 80 ? 'text-emerald-400' : profileCompletion >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
+                      {profileCompletion}%
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-700 ${
+                        profileCompletion >= 80 ? 'bg-gradient-to-r from-emerald-500 to-teal-400' :
+                        profileCompletion >= 50 ? 'bg-gradient-to-r from-amber-500 to-yellow-400' :
+                        'bg-gradient-to-r from-red-500 to-orange-400'
+                      }`}
+                      style={{ width: `${profileCompletion}%` }}
+                    />
+                  </div>
+                  <button
+                    onClick={() => router.push("/candidate/profile")}
+                    className="mt-3 text-xs text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1 font-medium"
+                  >
+                    {profileCompletion < 100 ? "Complete profile" : "Edit profile"} <ArrowRight className="h-3 w-3" />
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={() => router.push("/candidate/profile")}
-                className="mt-2 text-xs text-emerald-600 hover:text-emerald-700 transition-colors flex items-center gap-1 font-medium"
-              >
-                {profileCompletion < 100 ? "Complete profile" : "Edit profile"} <ArrowRight className="h-3 w-3" />
-              </button>
             </div>
           </div>
-        }
-      />
+        </div>
+      </div>
 
-      <div className="space-y-8 pb-8">
+      <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
         {/* Stats row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard
-            title="Pending Consents"
-            value={consents.length}
-            icon={<Bell />}
-            accent="amber"
-            subValue={consents.length > 0 ? "Action required" : "All clear"}
-          />
-          <KpiCard
-            title="Active Referrals"
-            value={profile._count?.referrals ?? 0}
-            icon={<Users />}
-            accent="indigo"
-            subValue="Recruiters working for you"
-          />
-          <KpiCard
-            title="Saved Jobs"
-            value={savedJobs.length}
-            icon={<Bookmark />}
-            accent="red"
-            subValue="Explore when ready"
-          />
-          <KpiCard
-            title="Applications"
-            value={profile._count?.applications ?? 0}
-            icon={<FileText />}
-            accent="cyan"
-            subValue="Submitted so far"
-          />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 -mt-10 relative z-10">
+          {[
+            { title: "Pending Consents", value: consents.length, icon: Bell, color: "amber", sub: consents.length > 0 ? "Action required" : "All clear" },
+            { title: "Active Referrals", value: profile._count?.referrals ?? 0, icon: Users, color: "indigo", sub: "Recruiters working for you" },
+            { title: "Saved Jobs", value: savedJobs.length, icon: Bookmark, color: "rose", sub: "Explore when ready" },
+            { title: "Applications", value: profile._count?.applications ?? 0, icon: FileText, color: "cyan", sub: "Submitted so far" },
+          ].map(({ title, value, icon: Icon, color, sub }) => (
+            <div key={title} className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+              <div className={`absolute top-0 right-0 w-24 h-24 rounded-full blur-3xl -mr-8 -mt-8 opacity-30 group-hover:opacity-50 transition-opacity bg-${color}-200`} />
+              <div className="relative">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">{title}</span>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-${color}-50`}>
+                    <Icon className={`h-4 w-4 text-${color}-500`} />
+                  </div>
+                </div>
+                <p className="text-2xl font-bold text-slate-900">{value}</p>
+                <p className="text-xs text-slate-400 mt-1">{sub}</p>
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Main content grid */}
@@ -273,12 +294,23 @@ export default function CandidateDashboardPage() {
               </CardHeader>
               <CardContent>
                 {consents.length === 0 ? (
-                  <div className="text-center py-10">
-                    <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                      <CheckCircle2 className="h-7 w-7 text-emerald-500" />
+                  <div className="text-center py-12">
+                    <div className="relative mx-auto w-20 h-20 mb-4">
+                      <div className="absolute inset-0 bg-emerald-100 rounded-3xl rotate-6 opacity-60" />
+                      <div className="relative w-20 h-20 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-3xl flex items-center justify-center border border-emerald-100">
+                        <CheckCircle2 className="h-9 w-9 text-emerald-500" />
+                      </div>
                     </div>
-                    <p className="font-medium text-slate-700">You're all caught up!</p>
-                    <p className="text-sm text-slate-400 mt-1">No pending referral consent requests.</p>
+                    <p className="font-semibold text-slate-800 text-base">You're all caught up!</p>
+                    <p className="text-sm text-slate-400 mt-1 max-w-xs mx-auto">No pending referral consent requests. Browse jobs to get discovered by recruiters.</p>
+                    <button
+                      onClick={() => router.push("/candidate/jobs")}
+                      className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
+                    >
+                      <Target className="h-4 w-4" />
+                      Browse open positions
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 ) : (
                   <div className="space-y-4 mt-2">
@@ -294,32 +326,38 @@ export default function CandidateDashboardPage() {
               </CardContent>
             </Card>
 
-            {/* Profile completeness tips */}
+            {/* Premium Boost Profile CTA */}
             {profileCompletion < 100 && (
-              <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-6">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center shrink-0">
-                    <TrendingUp className="h-5 w-5 text-indigo-600" />
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 md:p-8 border border-slate-700/50 shadow-xl">
+                {/* Background decorative elements */}
+                <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-emerald-500/10 blur-[60px]" />
+                <div className="absolute -left-5 -bottom-5 w-32 h-32 rounded-full bg-teal-500/10 blur-[50px]" />
+                
+                <div className="relative flex items-start gap-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/20">
+                    <Zap className="h-6 w-6 text-white" />
                   </div>
-                  <div>
-                    <h4 className="font-semibold text-indigo-900 mb-1">Boost your profile</h4>
-                    <p className="text-sm text-indigo-700 mb-3">
-                      Profiles with complete information are <strong>3x more likely</strong> to be referred by top recruiters.
+                  <div className="flex-1">
+                    <h4 className="font-bold text-white text-lg mb-1">Boost your profile</h4>
+                    <p className="text-sm text-slate-400 mb-4">
+                      Profiles with complete information are <span className="text-emerald-400 font-semibold">3x more likely</span> to be referred by top recruiters.
                     </p>
-                    {getMissingFields(profile).slice(0, 3).map((field) => (
-                      <div key={field} className="flex items-center gap-2 text-sm text-indigo-600 mb-1">
-                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-                        Add your {field}
-                      </div>
-                    ))}
-                    <Button
-                      variant="default"
-                      size="sm"
+                    <div className="space-y-2 mb-5">
+                      {getMissingFields(profile).slice(0, 3).map((field) => (
+                        <div key={field} className="flex items-center gap-2.5 text-sm text-slate-300">
+                          <div className="w-5 h-5 rounded-md bg-slate-700 flex items-center justify-center">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                          </div>
+                          Add your {field}
+                        </div>
+                      ))}
+                    </div>
+                    <button
                       onClick={() => router.push("/candidate/profile")}
-                      className="mt-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs"
+                      className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 hover:-translate-y-0.5"
                     >
-                      Complete Profile <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                    </Button>
+                      Complete Profile <ArrowRight className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -339,8 +377,13 @@ export default function CandidateDashboardPage() {
               <CardContent className="space-y-3">
                 {savedJobs.length === 0 ? (
                   <div className="text-center py-8">
-                    <Bookmark className="h-7 w-7 text-slate-300 mx-auto mb-2" />
-                    <p className="text-sm text-slate-500">No saved jobs yet</p>
+                    <div className="relative mx-auto w-14 h-14 mb-3">
+                      <div className="absolute inset-0 bg-slate-100 rounded-2xl rotate-3" />
+                      <div className="relative w-14 h-14 bg-white rounded-2xl flex items-center justify-center border border-slate-200">
+                        <Bookmark className="h-6 w-6 text-slate-300" />
+                      </div>
+                    </div>
+                    <p className="text-sm font-medium text-slate-600">No saved jobs yet</p>
                     <Link href="/candidate/jobs" className="text-xs text-emerald-600 hover:underline mt-1 inline-block">
                       Browse open positions →
                     </Link>
@@ -354,54 +397,57 @@ export default function CandidateDashboardPage() {
             </Card>
 
             {/* Quick profile snapshot */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-slate-100 mb-4">
-                <CardTitle>Your Profile</CardTitle>
-                <button
-                  onClick={() => router.push("/candidate/profile")}
-                  className="text-sm font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
-                >
-                  <Eye className="h-3.5 w-3.5" /> Edit
-                </button>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {[
-                  { label: "Experience", value: profile.experienceYears ? `${profile.experienceYears} years` : null, icon: Briefcase },
-                  { label: "Location", value: profile.currentLocation, icon: MapPin },
-                  { label: "Notice period", value: profile.noticePeriodDays ? `${profile.noticePeriodDays} days` : null, icon: Clock },
-                  { label: "Work mode", value: profile.workModel, icon: TrendingUp },
-                ].map(({ label, value, icon: Icon }) => (
-                  <div key={label} className="flex items-center gap-2.5 text-sm">
-                    <div className="w-7 h-7 bg-slate-50 rounded-lg flex items-center justify-center shrink-0 border border-slate-100">
-                      <Icon className="h-3.5 w-3.5 text-slate-500" />
+            <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-full blur-3xl -mr-10 -mt-10 opacity-50" />
+              <div className="relative p-5">
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                  <h3 className="text-sm font-bold text-slate-800">Your Profile</h3>
+                  <button
+                    onClick={() => router.push("/candidate/profile")}
+                    className="text-sm font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                  >
+                    <Eye className="h-3.5 w-3.5" /> Edit
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {[
+                    { label: "Experience", value: profile.experienceYears ? `${profile.experienceYears} years` : null, icon: Briefcase },
+                    { label: "Location", value: profile.currentLocation, icon: MapPin },
+                    { label: "Notice period", value: profile.noticePeriodDays ? `${profile.noticePeriodDays} days` : null, icon: Clock },
+                    { label: "Work mode", value: profile.workModel, icon: TrendingUp },
+                  ].map(({ label, value, icon: Icon }) => (
+                    <div key={label} className="flex items-center gap-2.5 text-sm">
+                      <div className="w-7 h-7 bg-slate-50 rounded-lg flex items-center justify-center shrink-0 border border-slate-100">
+                        <Icon className="h-3.5 w-3.5 text-slate-500" />
+                      </div>
+                      <span className="text-slate-500 w-24 shrink-0">{label}</span>
+                      <span className={`font-medium truncate ${value ? "text-slate-800" : "text-slate-300 italic"}`}>
+                        {value || "Not set"}
+                      </span>
                     </div>
-                    <span className="text-slate-500 w-24 shrink-0">{label}</span>
-                    <span className={`font-medium truncate ${value ? "text-slate-800" : "text-slate-300 italic"}`}>
-                      {value || "Not set"}
-                    </span>
-                  </div>
-                ))}
-                {profile.skills?.length > 0 && (
-                  <div className="pt-3 mt-3 border-t border-slate-100">
-                    <p className="text-xs font-semibold text-slate-500 mb-2">Top Skills</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {profile.skills.slice(0, 6).map((s: string) => (
-                        <span key={s} className="bg-slate-50 text-slate-700 text-xs px-2 py-0.5 rounded-full border border-slate-200">
-                          {s}
-                        </span>
-                      ))}
-                      {profile.skills.length > 6 && (
-                        <span className="text-xs text-slate-400">+{profile.skills.length - 6}</span>
-                      )}
+                  ))}
+                  {profile.skills?.length > 0 && (
+                    <div className="pt-3 mt-3 border-t border-slate-100">
+                      <p className="text-xs font-semibold text-slate-500 mb-2">Top Skills</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {profile.skills.slice(0, 6).map((s: string) => (
+                          <span key={s} className="bg-emerald-50 text-emerald-700 text-xs px-2 py-0.5 rounded-full border border-emerald-100">
+                            {s}
+                          </span>
+                        ))}
+                        {profile.skills.length > 6 && (
+                          <span className="text-xs text-slate-400">+{profile.skills.length - 6}</span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 

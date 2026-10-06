@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { getPendingConsents } from "@/lib/marketplace-api";
 import {
   Loader2, CheckCircle2, XCircle, Clock, Building2, MapPin,
-  Users, AlertCircle, ArrowLeft
+  Users, AlertCircle, ArrowLeft, Sparkles, Shield, TrendingUp, ArrowRight
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -57,21 +57,38 @@ export default function CandidateReferralsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="bg-white border-b border-slate-200 px-6 py-6">
-        <div className="max-w-4xl mx-auto">
+      {/* ── Premium Dark Hero Banner ────────────────────────── */}
+      <div className="relative overflow-hidden bg-slate-900 px-6 py-10 md:py-14">
+        {/* Background Effects */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/20 via-slate-900 to-slate-900" />
+        <div className="absolute -left-20 -top-20 h-[300px] w-[300px] rounded-full bg-emerald-500/10 blur-[80px]" />
+        <div className="absolute right-10 bottom-0 h-[200px] w-[200px] rounded-full bg-teal-500/8 blur-[60px]" />
+
+        <div className="relative mx-auto max-w-4xl">
           <button
             onClick={() => router.push("/candidate/dashboard")}
-            className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-4"
+            className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-200 mb-5 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" /> Back to Dashboard
           </button>
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">My Referrals</h1>
-              <p className="text-sm text-slate-500 mt-1">Manage consent requests from recruiters who want to refer you.</p>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30">
+                  <Shield className="h-4 w-4" />
+                </div>
+                <span className="text-emerald-400 text-xs font-bold uppercase tracking-wider">Referral Center</span>
+              </div>
+              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-2">
+                My <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400">Referrals</span>
+              </h1>
+              <p className="text-slate-400 text-sm md:text-base max-w-xl">
+                Manage consent requests from recruiters who want to refer you to top companies.
+              </p>
             </div>
             {consents.length > 0 && (
-              <span className="bg-amber-100 text-amber-700 font-semibold text-sm px-3 py-1.5 rounded-full">
+              <span className="shrink-0 inline-flex items-center gap-1.5 bg-amber-500/20 text-amber-400 font-semibold text-sm px-3.5 py-1.5 rounded-full ring-1 ring-amber-500/30">
+                <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                 {consents.length} pending
               </span>
             )}
@@ -82,23 +99,57 @@ export default function CandidateReferralsPage() {
       <div className="max-w-4xl mx-auto px-6 py-8">
         {loading ? (
           <div className="flex justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-emerald-500 mx-auto mb-3" />
+              <p className="text-sm text-slate-400">Loading your referrals...</p>
+            </div>
           </div>
         ) : consents.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center shadow-sm">
-            <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Users className="h-8 w-8 text-emerald-400" />
+          /* Premium empty state */
+          <div className="relative overflow-hidden bg-white border border-slate-200 rounded-2xl p-12 md:p-16 text-center shadow-sm">
+            {/* Decorative background */}
+            <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-50 rounded-full blur-3xl -mr-16 -mt-16 opacity-60" />
+            <div className="absolute bottom-0 left-0 w-40 h-40 bg-teal-50 rounded-full blur-3xl -ml-12 -mb-12 opacity-60" />
+            
+            <div className="relative">
+              <div className="relative mx-auto w-24 h-24 mb-6">
+                <div className="absolute inset-0 bg-emerald-100 rounded-3xl rotate-6 scale-105 opacity-40" />
+                <div className="absolute inset-0 bg-teal-50 rounded-3xl -rotate-3 scale-102 opacity-60" />
+                <div className="relative w-24 h-24 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-3xl flex items-center justify-center border border-emerald-100 shadow-inner">
+                  <Users className="h-10 w-10 text-emerald-400" />
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">No pending referrals</h3>
+              <p className="text-slate-500 mb-8 max-w-sm mx-auto">
+                When a recruiter refers you to a company, you'll see their request here to review and accept or decline.
+              </p>
+
+              {/* How it works - mini steps */}
+              <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-8">
+                {[
+                  { step: "1", label: "Complete your profile", icon: Sparkles },
+                  { step: "2", label: "Get discovered by recruiters", icon: TrendingUp },
+                  { step: "3", label: "Accept & get referred", icon: CheckCircle2 },
+                ].map(({ step, label, icon: Icon }, i) => (
+                  <div key={step} className="flex items-center gap-3">
+                    {i > 0 && <div className="hidden md:block w-8 h-px bg-slate-200" />}
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-xs font-bold text-emerald-600">
+                        {step}
+                      </div>
+                      <span className="text-sm text-slate-600 font-medium">{label}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => router.push("/candidate/jobs")}
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-lg shadow-emerald-200 hover:shadow-emerald-300 hover:-translate-y-0.5"
+              >
+                Browse Open Jobs <ArrowRight className="h-4 w-4" />
+              </button>
             </div>
-            <h3 className="text-lg font-bold text-slate-900 mb-2">No pending referrals</h3>
-            <p className="text-slate-500 mb-6 max-w-sm mx-auto">
-              When a recruiter refers you to a company, you'll see their request here to review and accept or decline.
-            </p>
-            <Link
-              href="/candidate/jobs"
-              className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
-            >
-              Browse Open Jobs
-            </Link>
           </div>
         ) : (
           <div className="space-y-4">
