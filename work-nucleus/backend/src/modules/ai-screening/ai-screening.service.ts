@@ -105,10 +105,14 @@ export class AiScreeningService {
     }
   }
   async generateMandate(prompt: string): Promise<any> {
+    const rawKey = this.configService.get<string>('GEMINI_API_KEY');
+    const trimmedKey = rawKey ? rawKey.trim() : null;
+    this.logger.log(`GEMINI_API_KEY present: ${!!trimmedKey}, starts with: ${trimmedKey?.substring(0, 8)}`);
+
     try {
       this.logger.log('Generating mandate from prompt');
       
-      if (!this.configService.get<string>('GEMINI_API_KEY')) {
+      if (!trimmedKey) {
         return {
           title: 'Senior Developer (Generated)',
           department: 'Engineering',
@@ -139,8 +143,11 @@ export class AiScreeningService {
         }
       `;
 
+      const modelToUse = this.configService.get<string>('GEMINI_MODEL') || 'gemini-1.5-flash';
+      this.logger.log(`Using model: ${modelToUse}`);
+
       const response = await this.ai.models.generateContent({
-        model: this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.5-flash',
+        model: modelToUse,
         contents: prompt,
         config: {
           systemInstruction: systemPrompt,
@@ -155,7 +162,7 @@ export class AiScreeningService {
       }
       throw new Error('Failed to generate mandate');
     } catch (error) {
-      this.logger.error('Failed to generate mandate', error);
+      this.logger.error('Failed to generate mandate. Full error:', JSON.stringify(error, null, 2));
       throw new HttpException(
         error.message || 'Failed to generate mandate. Please check your Gemini API key.',
         HttpStatus.BAD_REQUEST
