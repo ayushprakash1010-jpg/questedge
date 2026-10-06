@@ -175,7 +175,14 @@ export default function CreateMandatePage() {
         },
         body: JSON.stringify({ prompt: aiPrompt })
       });
-      if (!res.ok) throw new Error("Failed to generate mandate");
+      if (!res.ok) {
+        let errStr = "Failed to generate mandate";
+        try {
+          const errData = await res.json();
+          errStr = errData.message || errStr;
+        } catch (_) {}
+        throw new Error(errStr);
+      }
       const data = await res.json();
       
       setForm((f) => ({
