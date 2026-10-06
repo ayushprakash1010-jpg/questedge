@@ -38,7 +38,7 @@ export class BgvAiService {
       const ai = new GoogleGenAI({ apiKey: trimmedKey });
       const prompt = `Analyze this Background Verification (BGV) report and return exactly JSON with "overall_recommendation" ("PROCEED" | "PROCEED_WITH_CAUTION" | "BLOCK"), "key_findings" (string array), "discrepancies" (array of { check, severity, recommended_action }), and "executive_summary". Context: ${JSON.stringify(payload)}`;
       const response = await ai.models.generateContent({
-        model: this.config.get<string>('GEMINI_MODEL') || 'gemini-3.6-flash',
+        model: this.config.get<string>('GEMINI_MODEL') || 'gemini-1.5-flash',
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: { responseMimeType: 'application/json', temperature: 0.2 },
       });

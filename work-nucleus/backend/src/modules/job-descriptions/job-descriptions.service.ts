@@ -79,7 +79,7 @@ export class JobDescriptionsService {
         const { GoogleGenAI } = require('@google/genai');
         const ai = new GoogleGenAI({ apiKey: trimmedKey });
         const response = await ai.models.generateContent({
-          model: this.config.get<string>('GEMINI_MODEL') || 'gemini-3.6-flash',
+          model: this.config.get<string>('GEMINI_MODEL') || 'gemini-1.5-flash',
           contents: [{ role: 'user', parts: [{ text: `Generate a detailed, professional Job Description. Return exactly a JSON object with a single "content" field containing HTML. The HTML should use <h1>, <h2>, <ul>, <li>, and <p> tags. Use this context: ${JSON.stringify(aiPayload)}` }] }],
           config: { responseMimeType: 'application/json', temperature: 0.7 },
         });
