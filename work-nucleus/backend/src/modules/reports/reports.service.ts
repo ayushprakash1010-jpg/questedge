@@ -4,21 +4,30 @@ import { Prisma, ReportSource, ReportVisualization } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateReportDefinitionDto, UpdateReportDefinitionDto } from './dto/report.dto';
 import { listAvailableFields, ReportRunner, ReportPlan } from './report-runner';
+import { GoogleGenAI } from '@google/genai';
 
 @Injectable()
 export class ReportsService {
   private readonly logger = new Logger(ReportsService.name);
   private readonly runner: ReportRunner;
-  private readonly aiServiceUrl: string;
-  private readonly internalApiKey: string;
+  private readonly ai: GoogleGenAI;
+  private readonly model: string;
+  private readonly hasApiKey: boolean;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {
     this.runner = new ReportRunner(prisma);
-    this.aiServiceUrl = this.config.get<string>('AI_SERVICE_URL', 'http://localhost:8000');
-    this.internalApiKey = this.config.get<string>('INTERNAL_API_KEY', 'dev-internal-key');
+    
+    const rawKey = this.config.get<string>('GEMINI_API_KEY');
+    const trimmedKey = rawKey ? rawKey.trim() : null;
+    this.hasApiKey = !!trimmedKey;
+    this.model = this.config.get<string>('GEMINI_MODEL') || 'gemini-3.6-flash';
+    
+    this.ai = new GoogleGenAI({
+      apiKey: trimmedKey || 'dummy-key',
+    });
   }
 
   async create(orgId: string, userId: string, dto: CreateReportDefinitionDto) {
@@ -97,14 +106,45 @@ export class ReportsService {
   }
 
   async naturalLanguageDraft(prompt: string) {
+    if (!this.hasApiKey) {
+      this.logger.warn('GEMINI_API_KEY not set. Using fallback plan.');
+      return this.fallbackPlan(prompt);
+    }
+
     try {
-      const res = await fetch(`${this.aiServiceUrl}/ai/report-builder`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Internal-API-Key': this.internalApiKey },
-        body: JSON.stringify({ prompt }),
+      const systemPrompt = `
+        You are an expert HR data analyst assistant. 
+        Your task is to take a natural language prompt from an HR manager and convert it into a JSON report configuration.
+        
+        Valid Data Sources (ReportSource enum): HIRING, APPRAISAL, COMPENSATION, BGV, ATTRITION.
+        Valid Visualizations (ReportVisualization enum): TABLE, BAR, LINE, PIE.
+        
+        Output valid JSON with exactly the following structure:
+        {
+          "name": "A short, clear name for the report",
+          "dataSource": "HIRING", // Choose the best fitting data source
+          "filters": [], // Array of filter objects (leave empty if none)
+          "groupBy": ["department"], // Array of strings representing fields to group by
+          "metrics": [{"field": "count", "agg": "count"}], // Array of metric objects
+          "visualization": "BAR" // Choose the best fitting visualization
+        }
+      `;
+
+      const response = await this.ai.models.generateContent({
+        model: this.model,
+        contents: prompt,
+        config: {
+          systemInstruction: systemPrompt,
+          responseMimeType: 'application/json',
+        }
       });
-      if (!res.ok) throw new Error(`AI ${res.status}`);
-      return await res.json();
+
+      const content = response.text;
+      if (content) {
+        const cleaned = content.replace(/```json/gi, '').replace(/```/g, '').trim();
+        return JSON.parse(cleaned);
+      }
+      throw new Error('AI returned an empty response.');
     } catch (err) {
       this.logger.warn(`NL→Report fallback (${err})`);
       return this.fallbackPlan(prompt);
