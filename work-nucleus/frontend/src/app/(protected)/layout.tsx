@@ -17,8 +17,8 @@ function resolveSidebarUserType(
 ): "company" | "recruiter" | "candidate" {
   // If we are currently setting up a profile, force the sidebar to match the route
   if (pathname?.startsWith("/recruiter")) return "recruiter";
-  if (pathname?.startsWith("/candidate")) return "candidate";
-  if (pathname?.startsWith("/company") || pathname?.startsWith("/dashboard")) return "company";
+  if (pathname === "/candidate" || pathname?.startsWith("/candidate/")) return "candidate";
+  if (pathname?.startsWith("/company") || pathname?.startsWith("/dashboard") || pathname?.startsWith("/candidates")) return "company";
 
   // Fallback to the userType from the database
   if (userType === "RECRUITER") return "recruiter";
