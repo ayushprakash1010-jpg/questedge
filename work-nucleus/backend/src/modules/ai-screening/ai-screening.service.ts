@@ -84,7 +84,8 @@ export class AiScreeningService {
 
       const content = response.text;
       if (content) {
-        const parsed = JSON.parse(content);
+        const cleaned = content.replace(/```json/gi, '').replace(/```/g, '').trim();
+        const parsed = JSON.parse(cleaned);
         await this.prisma.referral.update({
           where: { id: referralId },
           data: {
@@ -148,7 +149,8 @@ export class AiScreeningService {
 
       const content = response.text;
       if (content) {
-        return JSON.parse(content);
+        const cleaned = content.replace(/```json/gi, '').replace(/```/g, '').trim();
+        return JSON.parse(cleaned);
       }
       throw new Error('Failed to generate mandate');
     } catch (error) {
@@ -200,7 +202,8 @@ export class AiScreeningService {
 
       const content = response.text;
       if (content) {
-        return JSON.parse(content);
+        const cleaned = content.replace(/```json/gi, '').replace(/```/g, '').trim();
+        return JSON.parse(cleaned);
       }
       throw new Error('Failed to parse resume');
     } catch (error) {
