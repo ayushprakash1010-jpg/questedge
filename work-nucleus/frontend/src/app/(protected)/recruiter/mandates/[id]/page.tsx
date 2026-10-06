@@ -156,6 +156,27 @@ export default function RecruiterMandateDetail() {
               ))}
             </div>
           </div>
+
+          {(mandate.hiringManagerName || mandate.teamDescription) && (
+            <div className="bg-white rounded-xl border border-slate-200 p-6">
+              <h3 className="font-semibold text-slate-900 mb-4">Team & Reporting</h3>
+              {mandate.hiringManagerName && (
+                <div className="mb-4">
+                  <span className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Reports To</span>
+                  <div className="font-medium text-slate-900">{mandate.hiringManagerName}</div>
+                  {mandate.hiringManagerTitle && (
+                    <div className="text-sm text-slate-500">{mandate.hiringManagerTitle}</div>
+                  )}
+                </div>
+              )}
+              {mandate.teamDescription && (
+                <div>
+                  <span className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">About the Team</span>
+                  <div className="text-sm text-slate-600 whitespace-pre-wrap">{mandate.teamDescription}</div>
+                </div>
+              )}
+            </div>
+          )}
           
           <div className="bg-slate-100 rounded-xl border border-slate-200 p-6 text-center">
             <h3 className="font-semibold text-slate-700 mb-2">Your Referrals</h3>

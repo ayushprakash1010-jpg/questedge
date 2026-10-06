@@ -137,4 +137,19 @@ export class CreateMandateDto {
   @IsOptional()
   @IsString()
   noticePeriodPref?: string;
+
+  @ApiPropertyOptional({ description: 'Hiring Manager Name', example: 'John Doe' })
+  @IsOptional()
+  @IsString()
+  hiringManagerName?: string;
+
+  @ApiPropertyOptional({ description: 'Hiring Manager Title', example: 'Engineering Lead' })
+  @IsOptional()
+  @IsString()
+  hiringManagerTitle?: string;
+
+  @ApiPropertyOptional({ description: 'Team Description', example: 'You will join a dynamic 5-person squad' })
+  @IsOptional()
+  @IsString()
+  teamDescription?: string;
 }

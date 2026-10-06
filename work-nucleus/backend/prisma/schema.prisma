@@ -1758,6 +1758,9 @@ model Mandate {
   noticePeriodPref     String?                  @map("notice_period_pref")
   interviewProcess     Json                     @default("[]") @map("interview_process")
   expectedTimeline     String?                  @map("expected_timeline")
+  hiringManagerName    String?                  @map("hiring_manager_name")
+  hiringManagerTitle   String?                  @map("hiring_manager_title")
+  teamDescription      String?                  @map("team_description") @db.Text
   applicationDeadline  DateTime?                @map("application_deadline")
   acceptsDirectApply   Boolean                  @default(true) @map("accepts_direct_apply")
   acceptsReferrals     Boolean                  @default(true) @map("accepts_referrals")

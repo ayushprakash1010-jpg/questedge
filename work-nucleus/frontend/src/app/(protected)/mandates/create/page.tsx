@@ -155,6 +155,9 @@ export default function CreateMandatePage() {
     ownershipPeriodDays: 180,
     expectedTimeline: "",
     noticePeriodPref: "",
+    hiringManagerName: "",
+    hiringManagerTitle: "",
+    teamDescription: "",
   });
 
   const update = (key: string, value: any) => setForm((f) => ({ ...f, [key]: value }));
@@ -379,6 +382,27 @@ export default function CreateMandatePage() {
                   className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
                 />
               </FormField>
+
+              <div className="pt-4 border-t border-slate-100">
+                <h4 className="text-sm font-bold text-slate-800 mb-4">Reporting & Team Details</h4>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <FormField label="Hiring Manager Name" hint="Who will they report to?">
+                    <Input value={form.hiringManagerName} onChange={(e) => update("hiringManagerName", e.target.value)} placeholder="e.g. Rahul Sharma" />
+                  </FormField>
+                  <FormField label="Hiring Manager Title">
+                    <Input value={form.hiringManagerTitle} onChange={(e) => update("hiringManagerTitle", e.target.value)} placeholder="e.g. VP of Engineering" />
+                  </FormField>
+                </div>
+                <FormField label="Team Description" hint="Briefly describe the team size, goals, or culture.">
+                  <textarea
+                    value={form.teamDescription}
+                    onChange={(e) => update("teamDescription", e.target.value)}
+                    rows={3}
+                    placeholder="e.g. You'll be joining a fast-paced 5-person squad building our core payments infrastructure..."
+                    className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
+                  />
+                </FormField>
+              </div>
             </>
           )}
 
