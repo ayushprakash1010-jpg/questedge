@@ -163,7 +163,7 @@ export class AiScreeningService {
         {
           "title": "Professional Job Title",
           "department": "Engineering/Sales/etc",
-          "description": "A fully formatted, professional 2-3 paragraph job description. Use HTML tags like <p> and <ul> if helpful for formatting.",
+          "description": "A fully formatted, professional 2-3 paragraph job description. Use Markdown for formatting. DO NOT use HTML tags.",
           "requiredExperience": "e.g., 3-5 years",
           "mandatorySkills": ["list", "of", "skills"],
           "preferredSkills": ["list", "of", "skills"],
