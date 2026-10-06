@@ -7,17 +7,43 @@ import { GoogleGenAI } from '@google/genai';
 export class AiScreeningService {
   private readonly logger = new Logger(AiScreeningService.name);
   private ai: GoogleGenAI;
+  private readonly model: string;
+  private readonly hasApiKey: boolean;
 
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
   ) {
     const rawKey = this.configService.get<string>('GEMINI_API_KEY');
+    const trimmedKey = rawKey ? rawKey.trim() : null;
+    this.hasApiKey = !!trimmedKey;
+    this.model = this.configService.get<string>('GEMINI_MODEL') || 'gemini-3.6-flash';
+
+    this.logger.log(`AI Service initialized. Key present: ${this.hasApiKey}, Model: ${this.model}`);
+
     this.ai = new GoogleGenAI({
-      apiKey: rawKey ? rawKey.trim() : 'dummy-key',
+      apiKey: trimmedKey || 'dummy-key',
     });
   }
 
+  // ── Parse AI JSON response safely ─────────────────────────────
+  private parseAiResponse(text: string): any {
+    const cleaned = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+    return JSON.parse(cleaned);
+  }
+
+  // ── Extract a clean error message from Google's error format ──
+  private extractErrorMessage(error: any): string {
+    const raw = error?.message || 'An unknown AI error occurred.';
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed?.error?.message || raw;
+    } catch (_) {
+      return raw;
+    }
+  }
+
+  // ── 1. Evaluate Referral Fit (background task) ────────────────
   async evaluateReferralFit(referralId: string): Promise<void> {
     try {
       this.logger.log(`Starting AI evaluation for referral ${referralId}`);
@@ -35,9 +61,8 @@ export class AiScreeningService {
         return;
       }
 
-      // Check if API key is real. If dummy, just mock it.
-      if (!this.configService.get<string>('GEMINI_API_KEY')) {
-        this.logger.warn('GEMINI_API_KEY not found. Using mock evaluation.');
+      if (!this.hasApiKey) {
+        this.logger.warn('GEMINI_API_KEY not set. Using mock evaluation.');
         await this.prisma.referral.update({
           where: { id: referralId },
           data: {
@@ -76,17 +101,16 @@ export class AiScreeningService {
       `;
 
       const response = await this.ai.models.generateContent({
-        model: this.configService.get<string>('GEMINI_MODEL') || 'gemini-3.6-flash',
+        model: this.model,
         contents: prompt,
         config: {
           responseMimeType: 'application/json',
-        }
+        },
       });
 
       const content = response.text;
       if (content) {
-        const cleaned = content.replace(/```json/gi, '').replace(/```/g, '').trim();
-        const parsed = JSON.parse(cleaned);
+        const parsed = this.parseAiResponse(content);
         await this.prisma.referral.update({
           where: { id: referralId },
           data: {
@@ -101,30 +125,30 @@ export class AiScreeningService {
         this.logger.log(`Successfully evaluated referral ${referralId}`);
       }
     } catch (error) {
-      this.logger.error(`Failed to evaluate referral ${referralId}`, error);
+      this.logger.error(`Failed to evaluate referral ${referralId}: ${this.extractErrorMessage(error)}`);
+      // Don't rethrow — this is a background task, failure should be silent
     }
   }
+
+  // ── 2. Generate Mandate from Prompt ──────────────────────────
   async generateMandate(prompt: string): Promise<any> {
-    const rawKey = this.configService.get<string>('GEMINI_API_KEY');
-    const trimmedKey = rawKey ? rawKey.trim() : null;
-    this.logger.log(`GEMINI_API_KEY present: ${!!trimmedKey}, starts with: ${trimmedKey?.substring(0, 8)}`);
+    this.logger.log(`Generating mandate. Key present: ${this.hasApiKey}, Model: ${this.model}`);
+
+    if (!this.hasApiKey) {
+      this.logger.warn('GEMINI_API_KEY not set. Returning mock mandate.');
+      return {
+        title: 'Senior Developer (Generated)',
+        department: 'Engineering',
+        description: 'This is a mocked generated job description since the Gemini API key is missing. We are looking for an experienced developer to join our fast-paced team to build amazing scalable products.',
+        requiredExperience: '5-8 years',
+        mandatorySkills: ['React', 'Node.js', 'TypeScript'],
+        preferredSkills: ['AWS', 'Docker'],
+        workModel: 'Remote',
+        employmentType: 'Full-time',
+      };
+    }
 
     try {
-      this.logger.log('Generating mandate from prompt');
-      
-      if (!trimmedKey) {
-        return {
-          title: 'Senior Developer (Generated)',
-          department: 'Engineering',
-          description: 'This is a mocked generated job description since the Gemini API key is missing. We are looking for an experienced developer to join our fast-paced team to build amazing scalable products.',
-          requiredExperience: '5-8 years',
-          mandatorySkills: ['React', 'Node.js', 'TypeScript'],
-          preferredSkills: ['AWS', 'Docker'],
-          workModel: 'Remote',
-          employmentType: 'Full-time',
-        };
-      }
-
       const systemPrompt = `
         You are an expert technical recruiter and HR business partner.
         A hiring manager will provide a brief sentence describing their hiring needs.
@@ -143,53 +167,45 @@ export class AiScreeningService {
         }
       `;
 
-      const modelToUse = this.configService.get<string>('GEMINI_MODEL') || 'gemini-3.6-flash';
-      this.logger.log(`Using model: ${modelToUse}`);
-
       const response = await this.ai.models.generateContent({
-        model: modelToUse,
+        model: this.model,
         contents: prompt,
         config: {
           systemInstruction: systemPrompt,
           responseMimeType: 'application/json',
-        }
+        },
       });
 
       const content = response.text;
       if (content) {
-        const cleaned = content.replace(/```json/gi, '').replace(/```/g, '').trim();
-        return JSON.parse(cleaned);
+        return this.parseAiResponse(content);
       }
-      throw new Error('Failed to generate mandate');
+      throw new Error('AI returned an empty response.');
     } catch (error) {
-      this.logger.error('Failed to generate mandate. Full error:', JSON.stringify(error, null, 2));
-      let errMsg = error.message || 'Failed to generate mandate. Please check your Gemini API key.';
-      try {
-        const parsed = JSON.parse(error.message);
-        if (parsed.error && parsed.error.message) {
-          errMsg = parsed.error.message;
-        }
-      } catch (e) {}
-      
-      throw new HttpException(errMsg, HttpStatus.BAD_REQUEST);
+      const msg = this.extractErrorMessage(error);
+      this.logger.error(`generateMandate failed: ${msg}`);
+      throw new HttpException(msg, HttpStatus.BAD_REQUEST);
     }
   }
 
+  // ── 3. Parse Resume to Profile ────────────────────────────────
   async parseResumeToProfile(resumeText: string): Promise<any> {
-    try {
-      if (!this.configService.get<string>('GEMINI_API_KEY')) {
-        this.logger.warn('GEMINI_API_KEY not found. Using mock parsing.');
-        return {
-          name: "Mock Candidate",
-          email: "mock@example.com",
-          phone: "+1 555 123 4567",
-          currentDesignation: "Software Engineer",
-          experienceYears: 4,
-          skills: ["JavaScript", "TypeScript", "React"],
-          currentLocation: "San Francisco, CA"
-        };
-      }
+    this.logger.log(`Parsing resume. Key present: ${this.hasApiKey}, Model: ${this.model}`);
 
+    if (!this.hasApiKey) {
+      this.logger.warn('GEMINI_API_KEY not set. Returning mock profile.');
+      return {
+        name: 'Mock Candidate',
+        email: 'mock@example.com',
+        phone: '+1 555 123 4567',
+        currentDesignation: 'Software Engineer',
+        experienceYears: 4,
+        skills: ['JavaScript', 'TypeScript', 'React'],
+        currentLocation: 'San Francisco, CA',
+      };
+    }
+
+    try {
       const systemPrompt = `
         You are an expert technical recruiter and resume parser.
         You will receive raw text extracted from a candidate's PDF resume.
@@ -197,9 +213,9 @@ export class AiScreeningService {
         
         Output valid JSON with exactly the following structure:
         {
-          "name": "Candidate Full Name (or empty if not found)",
-          "email": "Candidate Email (or empty if not found)",
-          "phone": "Candidate Phone Number (or empty if not found)",
+          "name": "Candidate Full Name (or empty string if not found)",
+          "email": "Candidate Email (or empty string if not found)",
+          "phone": "Candidate Phone Number (or empty string if not found)",
           "currentDesignation": "Their current or most recent job title",
           "experienceYears": integer representing total years of experience (estimate if necessary),
           "skills": ["list", "of", "top", "skills", "found"],
@@ -208,23 +224,23 @@ export class AiScreeningService {
       `;
 
       const response = await this.ai.models.generateContent({
-        model: this.configService.get<string>('GEMINI_MODEL') || 'gemini-3.6-flash',
+        model: this.model,
         contents: resumeText,
         config: {
           systemInstruction: systemPrompt,
           responseMimeType: 'application/json',
-        }
+        },
       });
 
       const content = response.text;
       if (content) {
-        const cleaned = content.replace(/```json/gi, '').replace(/```/g, '').trim();
-        return JSON.parse(cleaned);
+        return this.parseAiResponse(content);
       }
-      throw new Error('Failed to parse resume');
+      throw new Error('AI returned an empty response.');
     } catch (error) {
-      this.logger.error('Failed to parse resume', error);
-      throw error;
+      const msg = this.extractErrorMessage(error);
+      this.logger.error(`parseResumeToProfile failed: ${msg}`);
+      throw new HttpException(msg, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 }
