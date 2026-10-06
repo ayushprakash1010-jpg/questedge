@@ -240,6 +240,32 @@ export class FeedbackService {
     } else {
       const { GoogleGenAI } = require('@google/genai');
       const ai = new GoogleGenAI({ apiKey: trimmedKey });
+      
+      const payload = {
+        applicationContext: {
+          candidateName: application.candidate.name,
+          role: application.hiringPlan.designation,
+          department: application.hiringPlan.department,
+          planTitle: application.hiringPlan.title,
+        },
+        feedbacks: feedbacks.map((fb) => ({
+          interviewer: fb.interviewer.name,
+          stage: fb.stage.name,
+          stageType: fb.stage.stageType,
+          overallRating: fb.overallRating,
+          recommendation: fb.recommendation,
+          strengths: fb.strengths,
+          concerns: fb.concerns,
+          qualitativeNotes: fb.qualitativeNotes,
+          skillRatings: fb.skillRatings.map((sr) => ({
+            skillName: sr.skill.name,
+            category: sr.skill.category,
+            rating: sr.rating,
+            notes: sr.notes,
+          })),
+        })),
+      };
+
       const prompt = `Summarize this interview feedback into a structured JSON candidate scorecard. Context: ${JSON.stringify(payload)}`;
       try {
         const response = await ai.models.generateContent({
@@ -295,6 +321,38 @@ export class FeedbackService {
     } else {
       const { GoogleGenAI } = require('@google/genai');
       const ai = new GoogleGenAI({ apiKey: trimmedKey });
+
+      const payload = {
+        applicationContext: {
+          candidateName: application.candidate.name,
+          role: application.hiringPlan.designation,
+          department: application.hiringPlan.department,
+          planTitle: application.hiringPlan.title,
+        },
+        feedbacks: feedbacks.map((fb) => ({
+          interviewer: fb.interviewer.name,
+          stage: fb.stage.name,
+          stageType: fb.stage.stageType,
+          overallRating: fb.overallRating,
+          recommendation: fb.recommendation,
+          strengths: fb.strengths,
+          concerns: fb.concerns,
+          qualitativeNotes: fb.qualitativeNotes,
+          skillRatings: fb.skillRatings.map((sr) => ({
+            skillName: sr.skill.name,
+            category: sr.skill.category,
+            rating: sr.rating,
+            notes: sr.notes,
+          })),
+        })),
+        scoringWeights: {
+          technical: 40,
+          leadership: 25,
+          behavioural: 20,
+          communication: 15,
+        },
+      };
+
       const prompt = `Calculate a final objective score (0-100) for this candidate based on the feedback and scoring weights. Return JSON with a "score" number and "reasoning" string. Context: ${JSON.stringify(payload)}`;
       try {
         const response = await ai.models.generateContent({
