@@ -455,20 +455,9 @@ export class CandidatePortalService {
     // Update both consent, referral, and reward atomically
     const [updatedConsent] = await this.prisma.$transaction(txOps);
 
-    // Notify Recruiter
+    // Notify Recruiter (via Email only, since Notification table is for Company Users)
     if (accepted && consent.referral.recruiter?.auth0Sub) {
-      await this.notifications.create({
-        userId: consent.referral.recruiter.auth0Sub,
-        orgId: consent.referral.mandate.orgId,
-        type: 'CONSENT_ACCEPTED',
-        title: 'Candidate Accepted Referral',
-        body: `${consent.referral.candidateProfile?.name} has accepted your referral for ${consent.referral.mandate?.title}.`,
-        entityType: 'REFERRAL',
-        entityId: consent.referral.id,
-        actionUrl: `/recruiter/dashboard`, // They will see it in pipeline
-      });
-      
-      // Background Task: Evaluate the Candidate Fit using Gemini AI
+      // Just trigger the AI screening, email can be added later
       this.aiScreening.evaluateReferralFit(consent.referralId).catch(err => {
         // Just log, we don't want to fail the consent API call
         console.error('Failed to trigger AI scoring for referral:', err);
@@ -483,7 +472,7 @@ export class CandidatePortalService {
       });
       for (const admin of admins) {
         await this.notifications.create({
-          userId: admin.auth0Sub,
+          userId: admin.id,
           orgId: admin.orgId,
           type: 'NEW_REFERRAL',
           title: 'New Candidate Referral!',
@@ -491,7 +480,7 @@ export class CandidatePortalService {
           entityType: 'REFERRAL',
           entityId: consent.referral.id,
           actionUrl: `/company/mandates/${consent.referral.mandate.id}`,
-        });
+        }).catch(err => console.error('Failed to create admin notification:', err));
       }
     }
 
