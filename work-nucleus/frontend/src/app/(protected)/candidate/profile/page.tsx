@@ -141,7 +141,7 @@ function Select({ value, onChange, children, className = "" }: {
 
 const emptyProfile = {
   name: "", phone: "", headline: "", currentCompany: "",
-  currentDesignation: "", experienceYears: "", skills: [] as string[],
+  currentDesignation: "", experienceYears: "", skills: [] as string[], education: [] as string[],
   currentLocation: "", preferredLocations: [] as string[],
   currentCtc: "", expectedCtc: "", noticePeriodDays: "",
   preferredRoles: [] as string[], preferredIndustries: [] as string[],
@@ -177,6 +177,7 @@ export default function CandidateProfilePage() {
           currentDesignation: parsedData.currentDesignation || p.currentDesignation,
           experienceYears: parsedData.experienceYears !== undefined && parsedData.experienceYears !== null ? String(parsedData.experienceYears) : p.experienceYears,
           skills: parsedData.skills && parsedData.skills.length > 0 ? parsedData.skills : p.skills,
+          education: parsedData.education && parsedData.education.length > 0 ? parsedData.education : p.education,
           currentLocation: parsedData.currentLocation || p.currentLocation,
           headline: parsedData.currentDesignation ? `${parsedData.currentDesignation} ${parsedData.experienceYears ? `with ${parsedData.experienceYears} years experience` : ''}`.trim() : p.headline,
           profileLinks: {
@@ -211,6 +212,7 @@ export default function CandidateProfilePage() {
             currentDesignation: data.currentDesignation || "",
             experienceYears: data.experienceYears?.toString() || "",
             skills: data.skills || [],
+            education: data.education || [],
             currentLocation: data.currentLocation || "",
             preferredLocations: data.preferredLocations || [],
             currentCtc: data.currentCtc?.toString() || "",
@@ -454,6 +456,12 @@ export default function CandidateProfilePage() {
                 <p className="text-xs text-emerald-600">Use exact skill names like "React 18", "PostgreSQL", "System Design" to match more job requirements.</p>
               </div>
               <TagInput
+                label="Education"
+                values={profile.education}
+                onChange={(v) => set("education", v)}
+                placeholder="e.g. B.Tech Computer Science - VIT (2026)"
+              />
+              <TagInput
                 label="Preferred Roles"
                 values={profile.preferredRoles}
                 onChange={(v) => set("preferredRoles", v)}
@@ -513,6 +521,17 @@ export default function CandidateProfilePage() {
                         : <span className="text-slate-400 italic">No CTC set</span>}
                     </span>
                   </div>
+                  {profile.education.length > 0 && (
+                    <div className="flex items-start gap-2 text-slate-600 col-span-2 mt-1">
+                      <GraduationCap className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                      <div className="flex flex-col gap-1">
+                        {profile.education.slice(0, 2).map((edu, i) => (
+                          <span key={i} className="text-xs">{edu}</span>
+                        ))}
+                        {profile.education.length > 2 && <span className="text-xs text-slate-400">+{profile.education.length - 2} more</span>}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 {profile.skills.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 pt-1">
