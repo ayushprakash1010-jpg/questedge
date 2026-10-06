@@ -157,6 +157,7 @@ export default function CandidateProfilePage() {
   const [saved, setSaved] = useState(false);
   const [isNew, setIsNew] = useState(true);
   const [isParsing, setIsParsing] = useState(false);
+  const [showAllSkills, setShowAllSkills] = useState(false);
 
   const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -535,11 +536,26 @@ export default function CandidateProfilePage() {
                 </div>
                 {profile.skills.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 pt-1">
-                    {profile.skills.slice(0, 8).map((s) => (
+                    {(showAllSkills ? profile.skills : profile.skills.slice(0, 8)).map((s) => (
                       <span key={s} className="bg-emerald-100 text-emerald-700 text-xs px-2 py-0.5 rounded-full">{s}</span>
                     ))}
-                    {profile.skills.length > 8 && (
-                      <span className="text-xs text-slate-400">+{profile.skills.length - 8} more</span>
+                    {!showAllSkills && profile.skills.length > 8 && (
+                      <button 
+                        type="button" 
+                        onClick={() => setShowAllSkills(true)}
+                        className="text-xs text-slate-400 hover:text-emerald-600 transition-colors focus:outline-none"
+                      >
+                        +{profile.skills.length - 8} more
+                      </button>
+                    )}
+                    {showAllSkills && profile.skills.length > 8 && (
+                      <button 
+                        type="button" 
+                        onClick={() => setShowAllSkills(false)}
+                        className="text-xs text-slate-400 hover:text-emerald-600 transition-colors focus:outline-none"
+                      >
+                        Show less
+                      </button>
                     )}
                   </div>
                 )}
