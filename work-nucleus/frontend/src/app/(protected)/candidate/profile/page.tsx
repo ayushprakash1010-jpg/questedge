@@ -159,11 +159,17 @@ export default function CandidateProfilePage() {
           ...p,
           name: parsedData.name || p.name,
           phone: parsedData.phone || p.phone,
+          currentCompany: parsedData.currentCompany || p.currentCompany,
           currentDesignation: parsedData.currentDesignation || p.currentDesignation,
-          experienceYears: parsedData.experienceYears ? String(parsedData.experienceYears) : p.experienceYears,
+          experienceYears: parsedData.experienceYears !== undefined && parsedData.experienceYears !== null ? String(parsedData.experienceYears) : p.experienceYears,
           skills: parsedData.skills && parsedData.skills.length > 0 ? parsedData.skills : p.skills,
           currentLocation: parsedData.currentLocation || p.currentLocation,
-          headline: parsedData.currentDesignation ? `${parsedData.currentDesignation} with ${parsedData.experienceYears || ''} years experience` : p.headline
+          headline: parsedData.currentDesignation ? `${parsedData.currentDesignation} ${parsedData.experienceYears ? `with ${parsedData.experienceYears} years experience` : ''}`.trim() : p.headline,
+          profileLinks: {
+            linkedin: parsedData.linkedin || p.profileLinks.linkedin,
+            github: parsedData.github || p.profileLinks.github,
+            portfolio: parsedData.portfolio || p.profileLinks.portfolio,
+          }
         }));
       }
     } catch (err) {
