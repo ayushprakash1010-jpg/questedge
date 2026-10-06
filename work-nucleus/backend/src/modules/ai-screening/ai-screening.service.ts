@@ -225,6 +225,7 @@ export class AiScreeningService {
           "currentCompany": "Their current or most recent company name (or empty string)",
           "experienceYears": integer representing total years of experience (estimate if necessary, use 0 for freshers),
           "skills": ["list", "of", "top", "skills", "found"],
+          "education": ["Degree from Institution (Year)", "Another Degree..."],
           "currentLocation": "City, State or Country",
           "linkedin": "LinkedIn URL if present in text, else empty string",
           "github": "GitHub URL if present in text, else empty string",
