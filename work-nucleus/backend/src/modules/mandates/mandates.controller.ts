@@ -54,6 +54,12 @@ export class MandatesController {
 
   // ── Company: Generate Mandate ────────────────────────────────
 
+  @Get('test-ai')
+  @Public()
+  async testAi() {
+    return this.aiScreening.generateMandate('We need a Senior Full-Stack Engineer with React and Node.');
+  }
+
   @Post('generate')
   @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
   @ApiOperation({ summary: 'Company: Generate a mandate using AI' })
