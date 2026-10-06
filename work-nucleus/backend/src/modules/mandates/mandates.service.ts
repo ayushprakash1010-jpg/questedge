@@ -43,6 +43,7 @@ export interface MandateWithStats extends Mandate {
 
 import { EmailService } from '../comms/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { WhatsappService } from '../notifications/whatsapp.service';
 
 @Injectable()
 export class MandatesService {
@@ -50,6 +51,7 @@ export class MandatesService {
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
     private readonly notifications: NotificationsService,
+    private readonly whatsappService: WhatsappService,
   ) {}
 
   // ── Helpers ────────────────────────────────────────────────────
@@ -287,11 +289,24 @@ export class MandatesService {
       throw new BadRequestException('Mandate must have a title, description, and at least one required skill before publishing.');
     }
 
-    return this.prisma.mandate.update({
+    const updated = await this.prisma.mandate.update({
       where: { id },
       data: { status: 'ACTIVE', publishedAt: new Date() },
       include: { organization: { select: { id: true, name: true } } },
     });
+
+    if (updated.hiringManagerName) {
+      // Mock WhatsApp notification to the manager
+      const appLink = `https://questedge.com/mandates/${updated.id}`;
+      this.whatsappService.sendWhatsAppNotification(
+        updated.hiringManagerName,
+        updated.title,
+        'ACTIVE',
+        appLink
+      ).catch(e => console.error(e));
+    }
+
+    return updated;
   }
 
   async pause(orgId: string, id: string): Promise<Mandate> {

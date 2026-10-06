@@ -217,14 +217,22 @@ export default function CreateMandatePage() {
     setSaving(true);
     try {
       const token = await getToken();
-      const mandate = await createMandate(token, {
+      const payload = {
         ...form,
         compensationMin: form.compensationMin ? Number(form.compensationMin) : undefined,
         compensationMax: form.compensationMax ? Number(form.compensationMax) : undefined,
         referralRewardAmount: form.referralRewardAmount ? Number(form.referralRewardAmount) : undefined,
-        numberOfOpenings: Number(form.numberOfOpenings),
-        ownershipPeriodDays: Number(form.ownershipPeriodDays),
-      });
+        numberOfOpenings: form.numberOfOpenings ? Number(form.numberOfOpenings) : undefined,
+        ownershipPeriodDays: form.ownershipPeriodDays ? Number(form.ownershipPeriodDays) : undefined,
+        applicationDeadline: form.applicationDeadline || undefined,
+        expectedTimeline: form.expectedTimeline || undefined,
+        noticePeriodPref: form.noticePeriodPref || undefined,
+        hiringManagerName: form.hiringManagerName || undefined,
+        hiringManagerTitle: form.hiringManagerTitle || undefined,
+        teamDescription: form.teamDescription || undefined,
+      };
+      
+      const mandate = await createMandate(token, payload);
       setSavedId(mandate.id);
       router.push(`/mandates/${mandate.id}`);
     } catch (err) {
@@ -240,14 +248,21 @@ export default function CreateMandatePage() {
       const token = await getToken();
       let id = savedId;
       if (!id) {
-        const mandate = await createMandate(token, {
+        const payload = {
           ...form,
           compensationMin: form.compensationMin ? Number(form.compensationMin) : undefined,
           compensationMax: form.compensationMax ? Number(form.compensationMax) : undefined,
           referralRewardAmount: form.referralRewardAmount ? Number(form.referralRewardAmount) : undefined,
-          numberOfOpenings: Number(form.numberOfOpenings),
-          ownershipPeriodDays: Number(form.ownershipPeriodDays),
-        });
+          numberOfOpenings: form.numberOfOpenings ? Number(form.numberOfOpenings) : undefined,
+          ownershipPeriodDays: form.ownershipPeriodDays ? Number(form.ownershipPeriodDays) : undefined,
+          applicationDeadline: form.applicationDeadline || undefined,
+          expectedTimeline: form.expectedTimeline || undefined,
+          noticePeriodPref: form.noticePeriodPref || undefined,
+          hiringManagerName: form.hiringManagerName || undefined,
+          hiringManagerTitle: form.hiringManagerTitle || undefined,
+          teamDescription: form.teamDescription || undefined,
+        };
+        const mandate = await createMandate(token, payload);
         id = mandate.id;
       }
       await publishMandate(token, id);
