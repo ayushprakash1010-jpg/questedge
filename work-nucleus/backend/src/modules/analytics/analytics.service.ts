@@ -97,7 +97,7 @@ export class AnalyticsService {
       }
 
       // Marketplace KPIs
-      const [activeMandates, pendingReferrals, rewardCommitmentsAgg, recentPendingReferrals] = await Promise.all([
+      const [activeMandates, pendingReferrals, rewardCommitmentsAgg, recentPendingReferrals, recentActivityRaw] = await Promise.all([
         this.prisma.mandate.count({ where: { orgId, status: 'ACTIVE' } }),
         this.prisma.referral.count({ where: { mandate: { orgId }, status: 'CANDIDATE_ACCEPTED' } }),
         this.prisma.rewardTracking.aggregate({
@@ -113,6 +113,16 @@ export class AnalyticsService {
             mandate: { select: { title: true } },
           }
         }),
+        this.prisma.referral.findMany({
+          where: { mandate: { orgId } },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          include: {
+            candidateProfile: { select: { name: true } },
+            referrer: { select: { name: true } },
+            mandate: { select: { title: true } }
+          }
+        })
       ]);
 
       return {
@@ -130,6 +140,12 @@ export class AnalyticsService {
         pendingReferrals,
         rewardCommitments: rewardCommitmentsAgg._sum.rewardAmount?.toNumber() || 0,
         recentPendingReferrals,
+        recentActivity: recentActivityRaw.map(r => ({
+          id: `ref-${r.id}`,
+          type: 'referral',
+          title: `${r.referrer?.name || 'Someone'} referred ${r.candidateProfile?.name || 'a candidate'} for ${r.mandate?.title || 'a role'}`,
+          timestamp: r.createdAt.toISOString()
+        }))
       };
     });
   }

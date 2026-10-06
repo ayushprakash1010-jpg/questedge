@@ -10,6 +10,7 @@ import {
   Download, RefreshCw, CalendarClock, Gift, UserPlus, FileCheck, ExternalLink
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   BarChart, Bar, Cell, LabelList, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Area, AreaChart,
@@ -43,6 +44,7 @@ interface Overview {
   pendingReferrals: number;
   rewardCommitments: number;
   recentPendingReferrals: any[];
+  recentActivity?: any[];
 }
 
 interface FunnelStage {
@@ -175,6 +177,7 @@ function normaliseSeverity(s: string): "info" | "warning" | "critical" {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [overview, setOverview] = useState<Overview | null>(null);
   const [funnel, setFunnel] = useState<FunnelStage[]>([]);
   const [progress, setProgress] = useState<HiringProgressItem[]>([]);
@@ -336,6 +339,7 @@ export default function DashboardPage() {
             value={overview?.pendingReferrals ?? 0}
             icon={<FileCheck />}
             accent="amber"
+            onClick={() => router.push('/candidates?status=PENDING_REVIEW')}
           />
           <KpiCard
             title="Reward Commitments"
@@ -351,32 +355,62 @@ export default function DashboardPage() {
           />
         </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle>Review New Referrals</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {!overview?.recentPendingReferrals?.length ? (
-              <div className="flex h-[150px] items-center justify-center">
-                <p className="text-sm text-slate-400">No pending referrals</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {overview.recentPendingReferrals.map((ref: any) => (
-                  <div key={ref.id} className="flex items-center justify-between p-2 rounded-lg border border-slate-100 hover:bg-slate-50">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-800">{ref.candidateProfile?.name}</p>
-                      <p className="text-xs text-slate-500 truncate max-w-[150px]">for {ref.mandate?.title}</p>
+        <div className="flex flex-col gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle>Review New Referrals</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!overview?.recentPendingReferrals?.length ? (
+                <div className="flex h-[150px] flex-col items-center justify-center gap-3">
+                  <p className="text-sm text-slate-400">No pending referrals</p>
+                  <Button variant="outline" size="sm" onClick={() => router.push('/mandates')}>Post a Mandate</Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {overview.recentPendingReferrals.map((ref: any) => (
+                    <div key={ref.id} className="flex items-center justify-between p-2 rounded-lg border border-slate-100 hover:bg-slate-50">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">{ref.candidateProfile?.name}</p>
+                        <p className="text-xs text-slate-500 truncate max-w-[150px]">for {ref.mandate?.title}</p>
+                      </div>
+                      <Link href={`/mandates/${ref.mandateId}`} className="text-xs font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+                        Review <ExternalLink className="h-3 w-3" />
+                      </Link>
                     </div>
-                    <Link href={`/mandates/${ref.mandateId}`} className="text-xs font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
-                      Review <ExternalLink className="h-3 w-3" />
-                    </Link>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle>Recent Activity</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!overview?.recentActivity?.length ? (
+                <div className="flex h-[150px] flex-col items-center justify-center gap-3">
+                  <p className="text-sm text-slate-400">No recent activity</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                  {overview.recentActivity.map((act: any) => (
+                    <div key={act.id} className="flex items-start gap-3 py-2 border-b border-slate-50 last:border-0">
+                      <div className="h-8 w-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-500 shrink-0 mt-0.5">
+                        {act.type === 'referral' ? <UserPlus className="h-3.5 w-3.5 text-indigo-500" /> : <ClipboardList className="h-3.5 w-3.5 text-emerald-500" />}
+                      </div>
+                      <div>
+                        <p className="text-sm text-slate-700 font-medium leading-tight">{act.title}</p>
+                        <p className="text-xs text-slate-400 mt-1">{formatGeneratedDate(act.timestamp)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Row 2: Pipeline Funnel + Hiring Progress */}
@@ -390,8 +424,9 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             {funnel.length === 0 ? (
-              <div className="flex h-[250px] items-center justify-center">
+              <div className="flex h-[250px] flex-col items-center justify-center gap-3">
                 <p className="text-sm text-slate-400">No pipeline data yet</p>
+                <Button variant="outline" size="sm" onClick={() => router.push('/admin/hiring-plans')}>Create Hiring Plan</Button>
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={250}>
