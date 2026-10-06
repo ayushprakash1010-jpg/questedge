@@ -1,6 +1,7 @@
 import { Hero } from "@/components/landing/hero";
 import { MarketplaceStats } from "@/components/landing/marketplace-stats";
 import { TrustStrip } from "@/components/landing/trust-strip";
+import { AIAgents } from "@/components/landing/ai-agents";
 import { Features } from "@/components/landing/features";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { Pricing } from "@/components/landing/pricing";
@@ -14,6 +15,7 @@ export default function LandingPage() {
       <Hero />
       <MarketplaceStats />
       <TrustStrip />
+      <AIAgents />
       <Features />
       <HowItWorks />
       <Testimonials />
