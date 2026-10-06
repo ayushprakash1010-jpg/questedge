@@ -173,7 +173,7 @@ export class PeerFeedbackService {
       
       const prompt = `Summarize the following peer feedback responses into key themes and extract a few notable quotes. Return exactly a JSON object with "themes" (array of strings) and "quotes" (array of strings). Responses: ${JSON.stringify(forms)}`;
       const response = await ai.models.generateContent({
-        model: this.config.get<string>('GEMINI_MODEL') || 'gemini-3.6-flash',
+        model: this.config.get<string>('GEMINI_MODEL') || 'gemini-1.5-flash',
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: { responseMimeType: 'application/json', temperature: 0.2 },
       });

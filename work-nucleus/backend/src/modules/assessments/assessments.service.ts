@@ -152,7 +152,7 @@ export class AssessmentsService {
       const ai = new GoogleGenAI({ apiKey: trimmedKey });
       const prompt = `Provide an appraisal summary based on self and manager reviews. Return exactly JSON with "strengths" (string array), "growth_areas" (string array), "suggested_rating_range" (number array like [3, 4]), and "suggested_comment". Context: ${JSON.stringify({ self: data.self, manager: data.manager, goals: data.goals, peerFeedbackCount: data.peerFeedbackCount })}`;
       const response = await ai.models.generateContent({
-        model: this.config.get<string>('GEMINI_MODEL') || 'gemini-3.6-flash',
+        model: this.config.get<string>('GEMINI_MODEL') || 'gemini-1.5-flash',
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: { responseMimeType: 'application/json', temperature: 0.2 },
       });
