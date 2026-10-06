@@ -109,27 +109,48 @@ export default function RecruiterDiscoverPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-sky-600 to-cyan-600 text-white px-6 py-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center gap-3 mb-2">
-            <Compass className="h-6 w-6 text-sky-200" />
-            <span className="text-sky-200 text-sm font-medium uppercase tracking-wide">Marketplace</span>
-          </div>
-          <h1 className="text-3xl font-bold mb-1">Discover Mandates</h1>
-          <p className="text-sky-100 text-sm">
-            {total > 0 ? `${total} active mandates waiting for top talent` : "Browse companies looking to hire"}
-          </p>
+      {/* Premium Hero Banner */}
+      <div className="relative overflow-hidden bg-slate-900 px-6 py-12 md:py-16">
+        {/* Background Gradients */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-sky-500/20 via-slate-900 to-slate-900" />
+        <div className="absolute -left-20 -top-20 h-[300px] w-[300px] rounded-full bg-cyan-500/10 blur-[80px]" />
+        
+        <div className="relative mx-auto max-w-7xl">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30">
+                  <Compass className="h-4 w-4" />
+                </div>
+                <span className="text-sky-400 text-xs font-bold uppercase tracking-wider">Talent Marketplace</span>
+              </div>
+              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-2">
+                Discover <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-cyan-400">High-Reward</span> Mandates
+              </h1>
+              <p className="text-slate-400 text-sm md:text-base max-w-xl">
+                {total > 0 
+                  ? `Browse ${total} active jobs waiting for top talent. Refer your network and earn massive placement rewards.` 
+                  : "Browse top companies actively looking to hire and earn rewards for successful referrals."}
+              </p>
+            </div>
 
-          {/* Search bar */}
-          <div className="mt-5 relative max-w-2xl">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by job title, company, or skill..."
-              className="w-full pl-11 pr-4 py-3 rounded-xl bg-white text-slate-900 text-sm shadow-lg border-0 focus:outline-none focus:ring-2 focus:ring-sky-300 placeholder:text-slate-400"
-            />
+            {/* Glassmorphic Search Bar */}
+            <div className="w-full md:w-[400px] lg:w-[450px]">
+              <div className="relative group">
+                <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-r from-sky-500/30 to-cyan-500/30 blur opacity-30 group-focus-within:opacity-100 transition duration-500"></div>
+                <div className="relative flex items-center w-full bg-slate-900/80 backdrop-blur-md rounded-xl ring-1 ring-white/10 overflow-hidden shadow-2xl transition-all focus-within:ring-sky-500/50">
+                  <div className="pl-4 pr-2 text-slate-400">
+                    <Search className="h-4 w-4" />
+                  </div>
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search by job title, company, or skill..."
+                    className="w-full py-3.5 bg-transparent border-0 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:ring-0"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

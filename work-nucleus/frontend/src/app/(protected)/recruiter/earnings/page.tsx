@@ -3,8 +3,11 @@
 import { useEffect, useState } from "react";
 import { DollarSign, TrendingUp, Clock, AlertCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 export default function EarningsDashboard() {
+  const router = useRouter();
   const [data, setData] = useState<{ rewards: any[]; pipelinePotential: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -95,9 +98,15 @@ export default function EarningsDashboard() {
         </div>
         
         {(!data?.rewards || data.rewards.length === 0) ? (
-          <div className="p-12 flex flex-col items-center justify-center text-slate-400">
-            <AlertCircle className="h-10 w-10 mb-4 opacity-50" />
-            <p>No rewards triggered yet. When your referred candidates get hired, they will appear here!</p>
+          <div className="p-12 flex flex-col items-center justify-center text-slate-500">
+            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
+              <AlertCircle className="h-8 w-8 text-slate-400" />
+            </div>
+            <p className="text-sm font-semibold text-slate-800 mb-1">No rewards triggered yet</p>
+            <p className="text-sm mb-6 text-center max-w-sm">When your referred candidates get hired, your earned rewards will appear here.</p>
+            <Button onClick={() => router.push("/recruiter/discover")}>
+              Discover High-Reward Jobs
+            </Button>
           </div>
         ) : (
           <table className="w-full text-left border-collapse">
