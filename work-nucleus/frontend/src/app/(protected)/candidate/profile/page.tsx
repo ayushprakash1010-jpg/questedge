@@ -20,6 +20,20 @@ async function extractTextFromPDF(file: File): Promise<string> {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
     text += content.items.map((item: any) => item.str).join(" ") + " ";
+    
+    // Extract hidden hyperlinks from the PDF (e.g., behind text like "GitHub")
+    try {
+      const annotations = await page.getAnnotations();
+      const links = annotations
+        .filter((anno: any) => anno.subtype === 'Link' && anno.url)
+        .map((anno: any) => anno.url)
+        .join(" ");
+      if (links) {
+        text += "\n[Hidden Links in PDF: " + links + "]\n";
+      }
+    } catch (e) {
+      console.warn("Failed to parse annotations", e);
+    }
   }
   return text;
 }
