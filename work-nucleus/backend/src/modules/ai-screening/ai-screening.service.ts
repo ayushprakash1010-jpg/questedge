@@ -17,7 +17,7 @@ export class AiScreeningService {
     const rawKey = this.configService.get<string>('GEMINI_API_KEY');
     const trimmedKey = rawKey ? rawKey.trim() : null;
     this.hasApiKey = !!trimmedKey;
-    this.model = this.configService.get<string>('GEMINI_MODEL') || 'gemini-1.5-flash';
+    this.model = this.configService.get<string>('GEMINI_MODEL') || 'gemini-3.5-flash';
 
     this.logger.log(`AI Service initialized. Key present: ${this.hasApiKey}, Model: ${this.model}`);
 

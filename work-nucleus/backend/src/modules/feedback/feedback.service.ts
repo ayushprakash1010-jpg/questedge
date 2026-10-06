@@ -269,7 +269,7 @@ export class FeedbackService {
       const prompt = `Summarize this interview feedback into a structured JSON candidate scorecard. Context: ${JSON.stringify(payload)}`;
       try {
         const response = await ai.models.generateContent({
-          model: this.config.get<string>('GEMINI_MODEL') || 'gemini-1.5-flash',
+          model: this.config.get<string>('GEMINI_MODEL') || 'gemini-3.5-flash',
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           config: { responseMimeType: 'application/json', temperature: 0.2 },
         });
@@ -356,7 +356,7 @@ export class FeedbackService {
       const prompt = `Calculate a final objective score (0-100) for this candidate based on the feedback and scoring weights. Return JSON with a "score" number and "reasoning" string. Context: ${JSON.stringify(payload)}`;
       try {
         const response = await ai.models.generateContent({
-          model: this.config.get<string>('GEMINI_MODEL') || 'gemini-1.5-flash',
+          model: this.config.get<string>('GEMINI_MODEL') || 'gemini-3.5-flash',
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           config: { responseMimeType: 'application/json', temperature: 0.2 },
         });
