@@ -24,6 +24,9 @@ export interface Mandate {
   referralRewardAmount?: number;
   referralRewardType?: string;
   ownershipPeriodDays: number;
+  hiringManagerName?: string;
+  hiringManagerTitle?: string;
+  teamDescription?: string;
   status: "DRAFT" | "ACTIVE" | "PAUSED" | "FILLED" | "CLOSED";
   publishedAt?: string;
   createdAt: string;
