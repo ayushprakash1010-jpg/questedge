@@ -37,7 +37,14 @@ export class CandidatePortalService {
       ? crypto.createHash('sha256').update(dto.phone).digest('hex')
       : undefined;
 
-    const existing = await this.prisma.candidateProfile.findUnique({ where: { auth0Sub } });
+    const existing = await this.prisma.candidateProfile.findFirst({ 
+      where: { 
+        OR: [
+          { auth0Sub },
+          { email }
+        ]
+      } 
+    });
 
     const data = {
       name: dto.name,
@@ -61,10 +68,11 @@ export class CandidatePortalService {
     };
 
     if (existing) {
-      // Update existing
+      // Update existing and ensure auth0Sub is linked (for profiles created via referrals)
       return this.prisma.candidateProfile.update({
         where: { id: existing.id },
         data: {
+          auth0Sub,
           ...data,
           phoneHash: phoneHash ?? existing.phoneHash,
           isProfileComplete: this.isProfileComplete(dto),
