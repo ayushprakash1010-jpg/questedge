@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sparkles, Plus, Play } from "lucide-react";
+import { Sparkles, Plus, Play, X } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +47,7 @@ export default function ReportsPage() {
   const [prompt, setPrompt] = useState("");
   const [aiResult, setAiResult] = useState<any>(null);
   const [busy, setBusy] = useState(false);
+  const [activeReportResult, setActiveReportResult] = useState<any>(null);
 
   async function load() {
     const res = await fetch("/api/v2/reports");
@@ -100,6 +102,16 @@ export default function ReportsPage() {
       const res = await fetch(`/api/v2/reports/${id}/run`, { method: "POST" });
       if (!res.ok) throw new Error("Run failed");
       const data = await res.json();
+      
+      const flattenedRows = data.rows.map((row: any) => ({
+        ...row.group,
+        ...row.metrics
+      }));
+      
+      setActiveReportResult({
+        definition: data.definition,
+        rows: flattenedRows,
+      });
       toast.success(`Report returned ${data.rows.length} rows`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Run failed");
@@ -222,6 +234,91 @@ export default function ReportsPage() {
           )}
         </CardContent>
       </Card>
+
+      {activeReportResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/50">
+              <div>
+                <h3 className="font-semibold text-slate-900 text-lg">{activeReportResult.definition.name}</h3>
+                {activeReportResult.definition.description && (
+                  <p className="text-sm text-slate-500">{activeReportResult.definition.description}</p>
+                )}
+              </div>
+              <button onClick={() => setActiveReportResult(null)} className="text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 p-2 transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 flex-1 overflow-auto bg-slate-50/30">
+              {activeReportResult.rows.length === 0 ? (
+                <div className="text-center text-slate-500 py-20 flex flex-col items-center">
+                  <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                    <Sparkles className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <h4 className="font-semibold text-slate-700">No data found</h4>
+                  <p className="text-sm mt-1">The query executed successfully but returned 0 rows.</p>
+                </div>
+              ) : activeReportResult.definition.visualization === "BAR" ? (
+                <div className="h-[400px] w-full p-4 bg-white rounded-xl border border-slate-200">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={activeReportResult.rows} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                      <XAxis 
+                        dataKey={activeReportResult.definition.groupBy?.[0] || "group"} 
+                        tick={{ fill: '#64748b', fontSize: 12 }}
+                        tickLine={false}
+                        axisLine={{ stroke: '#e2e8f0' }}
+                      />
+                      <YAxis 
+                        tick={{ fill: '#64748b', fontSize: 12 }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                        cursor={{ fill: '#f1f5f9' }}
+                      />
+                      <Bar 
+                        dataKey={Object.keys(activeReportResult.rows[0]).find(k => k !== activeReportResult.definition.groupBy?.[0]) || "count"} 
+                        fill="#6366f1" 
+                        radius={[4, 4, 0, 0]} 
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-600">
+                      <tr>
+                        {Object.keys(activeReportResult.rows[0]).map((k) => (
+                          <th key={k} className="px-6 py-4 font-semibold uppercase tracking-wider text-xs">{k.replace(/_/g, ' ')}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {activeReportResult.rows.map((row: any, i: number) => (
+                        <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                          {Object.values(row).map((v: any, j: number) => (
+                            <td key={j} className="px-6 py-4 text-slate-700">
+                              {v === null || v === undefined ? (
+                                <span className="text-slate-300 italic">None</span>
+                              ) : (
+                                String(v)
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
