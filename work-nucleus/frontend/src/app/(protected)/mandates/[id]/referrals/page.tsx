@@ -247,7 +247,7 @@ function ReferralCard({
       </div>
 
       {/* AI Score (If available) */}
-      {referral.aiMatchScore !== undefined && (
+      {referral.aiMatchScore != null && (
         <div className="mx-5 mb-3 rounded-lg border border-indigo-100 bg-indigo-50/50 p-4">
           <div className="flex items-center gap-2 mb-2">
             <Star className="h-4 w-4 text-indigo-600 fill-indigo-600" />

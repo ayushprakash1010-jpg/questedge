@@ -277,4 +277,17 @@ export class MandatesController {
   ) {
     return this.mandatesService.updateReferralStatus(user.orgId, id, referralId, body.status, body.notes);
   }
+
+  @Post(':id/referrals/:referralId/trigger-ai')
+  @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Company: Retry AI Scoring for a Referral' })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
+  @ApiParam({ name: 'referralId', type: 'string', format: 'uuid' })
+  async retryAiScoring(
+    @Param('referralId', ParseUUIDPipe) referralId: string,
+  ) {
+    await this.aiScreening.evaluateReferralFit(referralId);
+    return { success: true };
+  }
 }

@@ -74,7 +74,11 @@ export default function ProtectedLayout({
         router.push("/candidate/dashboard");
         return;
       }
-      if (uType === "COMPANY_USER" && (pathname.startsWith("/recruiter") || pathname.startsWith("/candidate"))) {
+      if ((uType === "COMPANY_USER" || uType === "COMPANY_ADMIN") && (
+        pathname.startsWith("/recruiter") || 
+        pathname === "/candidate" || 
+        pathname.startsWith("/candidate/")
+      )) {
         router.push("/dashboard");
         return;
       }
