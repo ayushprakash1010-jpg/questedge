@@ -39,7 +39,22 @@ import { ClaimScopeModule } from './modules/claim-scope/claim-scope.module';
 import { RewardsModule } from './modules/rewards/rewards.module';
 import { AiScreeningModule } from './modules/ai-screening/ai-screening.module';
 import { EmailModule } from './modules/email/email.module';
-
+import { BgvIntegrationsModule } from './integrations/bgv/bgv.module';
+import { ESignModule } from './integrations/esign/esign.module';
+import { AppraisalCyclesModule } from './modules/appraisal-cycles/appraisal-cycles.module';
+import { AssessmentsModule } from './modules/assessments/assessments.module';
+import { BgvModule } from './modules/bgv/bgv.module';
+import { CalibrationModule } from './modules/calibration/calibration.module';
+import { CompBudgetModule } from './modules/comp-budget/comp-budget.module';
+import { CompRevisionsModule } from './modules/comp-revisions/comp-revisions.module';
+import { CompensationModule } from './modules/compensation/compensation.module';
+import { GoalsModule } from './modules/goals/goals.module';
+import { JoiningModule } from './modules/joining/joining.module';
+import { OfferTemplatesModule } from './modules/offer-templates/offer-templates.module';
+import { OffersModule } from './modules/offers/offers.module';
+import { PeerFeedbackModule } from './modules/peer-feedback/peer-feedback.module';
+import { PublishingModule } from './modules/publishing/publishing.module';
+import { SupportModule } from './modules/support/support.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -81,6 +96,22 @@ import { EmailModule } from './modules/email/email.module';
     RewardsModule,
     AiScreeningModule,
     EmailModule,
+    BgvIntegrationsModule,
+    ESignModule,
+    AppraisalCyclesModule,
+    AssessmentsModule,
+    BgvModule,
+    CalibrationModule,
+    CompBudgetModule,
+    CompRevisionsModule,
+    CompensationModule,
+    GoalsModule,
+    JoiningModule,
+    OfferTemplatesModule,
+    OffersModule,
+    PeerFeedbackModule,
+    PublishingModule,
+    SupportModule,
   ],
   providers: [
     {
