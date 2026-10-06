@@ -221,10 +221,14 @@ export class AiScreeningService {
           "name": "Candidate Full Name (or empty string if not found)",
           "email": "Candidate Email (or empty string if not found)",
           "phone": "Candidate Phone Number (or empty string if not found)",
-          "currentDesignation": "Their current or most recent job title",
-          "experienceYears": integer representing total years of experience (estimate if necessary),
+          "currentDesignation": "Their current or most recent job title (or empty string)",
+          "currentCompany": "Their current or most recent company name (or empty string)",
+          "experienceYears": integer representing total years of experience (estimate if necessary, use 0 for freshers),
           "skills": ["list", "of", "top", "skills", "found"],
-          "currentLocation": "City, State or Country"
+          "currentLocation": "City, State or Country",
+          "linkedin": "LinkedIn URL if present in text, else empty string",
+          "github": "GitHub URL if present in text, else empty string",
+          "portfolio": "Portfolio/Website URL if present, else empty string"
         }
       `;
 
