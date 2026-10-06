@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GoogleGenAI } from '@google/genai';
@@ -12,8 +12,9 @@ export class AiScreeningService {
     private prisma: PrismaService,
     private configService: ConfigService,
   ) {
+    const rawKey = this.configService.get<string>('GEMINI_API_KEY');
     this.ai = new GoogleGenAI({
-      apiKey: this.configService.get<string>('GEMINI_API_KEY') || 'dummy-key',
+      apiKey: rawKey ? rawKey.trim() : 'dummy-key',
     });
   }
 
@@ -155,7 +156,10 @@ export class AiScreeningService {
       throw new Error('Failed to generate mandate');
     } catch (error) {
       this.logger.error('Failed to generate mandate', error);
-      throw error;
+      throw new HttpException(
+        error.message || 'Failed to generate mandate. Please check your Gemini API key.',
+        HttpStatus.BAD_REQUEST
+      );
     }
   }
 
