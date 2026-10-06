@@ -125,19 +125,19 @@ export class ReferralsService {
       return referral;
     });
 
-    // 7. Dispatch Email
-    await this.emailService.sendConsentRequest({
+    // 7. Dispatch Email (Fire and forget, don't await so the frontend doesn't hang)
+    this.emailService.sendConsentRequest({
       toEmail: candidate.email,
       candidateName: candidate.name,
       recruiterName: recruiter.name,
       companyName: mandate.organization.name,
       mandateTitle: mandate.title,
       consentToken: token,
-    });
+    }).catch(e => console.error("Email sending failed:", e));
 
     // 8. Create Notification for Candidate (if they are registered)
     if (candidate.auth0Sub) {
-      await this.notificationsService.create({
+      this.notificationsService.create({
         userId: candidate.auth0Sub,
         orgId: mandate.orgId,
         type: 'CONSENT_REQUESTED',
