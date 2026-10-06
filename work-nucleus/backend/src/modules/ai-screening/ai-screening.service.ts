@@ -163,10 +163,15 @@ export class AiScreeningService {
       throw new Error('Failed to generate mandate');
     } catch (error) {
       this.logger.error('Failed to generate mandate. Full error:', JSON.stringify(error, null, 2));
-      throw new HttpException(
-        error.message || 'Failed to generate mandate. Please check your Gemini API key.',
-        HttpStatus.BAD_REQUEST
-      );
+      let errMsg = error.message || 'Failed to generate mandate. Please check your Gemini API key.';
+      try {
+        const parsed = JSON.parse(error.message);
+        if (parsed.error && parsed.error.message) {
+          errMsg = parsed.error.message;
+        }
+      } catch (e) {}
+      
+      throw new HttpException(errMsg, HttpStatus.BAD_REQUEST);
     }
   }
 
