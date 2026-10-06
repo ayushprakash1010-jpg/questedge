@@ -31,20 +31,18 @@ export class BgvAiService {
     }>;
   }): Promise<BgvAiSummary> {
     try {
-      const res = await fetch(`${this.aiServiceUrl}/ai/bgv-summarise`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Internal-API-Key': this.internalApiKey,
-        },
-        body: JSON.stringify(payload),
+      const rawKey = this.config.get<string>('GEMINI_API_KEY');
+      const trimmedKey = rawKey ? rawKey.trim() : null;
+      if (!trimmedKey) return this.fallback(payload.checks);
+      const { GoogleGenAI } = require('@google/genai');
+      const ai = new GoogleGenAI({ apiKey: trimmedKey });
+      const prompt = `Analyze this Background Verification (BGV) report and return exactly JSON with "overall_recommendation" ("PROCEED" | "PROCEED_WITH_CAUTION" | "BLOCK"), "key_findings" (string array), "discrepancies" (array of { check, severity, recommended_action }), and "executive_summary". Context: ${JSON.stringify(payload)}`;
+      const response = await ai.models.generateContent({
+        model: this.config.get<string>('GEMINI_MODEL') || 'gemini-3.6-flash',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: { responseMimeType: 'application/json', temperature: 0.2 },
       });
-      if (!res.ok) {
-        const text = await res.text();
-        this.logger.error(`AI service error ${res.status}: ${text}`);
-        return this.fallback(payload.checks);
-      }
-      const data: any = await res.json();
+      const data = JSON.parse((response.text || "{}").replace(/```json/g, '').replace(/```/g, '').trim());
       return data as BgvAiSummary;
     } catch (err) {
       this.logger.error(`BGV AI service call failed: ${err}`);

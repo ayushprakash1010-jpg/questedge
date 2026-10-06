@@ -164,13 +164,22 @@ export class PeerFeedbackService {
 
   private async summariseThemes(forms: any[]): Promise<{ themes: string[]; quotes: string[] }> {
     try {
-      const res = await fetch(`${this.aiServiceUrl}/ai/peer-feedback-summary`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Internal-API-Key': this.internalApiKey },
-        body: JSON.stringify({ responses: forms }),
+      const rawKey = this.config.get<string>('GEMINI_API_KEY');
+      const trimmedKey = rawKey ? rawKey.trim() : null;
+      if (!trimmedKey) throw new Error("No API key");
+      
+      const { GoogleGenAI } = require('@google/genai');
+      const ai = new GoogleGenAI({ apiKey: trimmedKey });
+      
+      const prompt = `Summarize the following peer feedback responses into key themes and extract a few notable quotes. Return exactly a JSON object with "themes" (array of strings) and "quotes" (array of strings). Responses: ${JSON.stringify(forms)}`;
+      const response = await ai.models.generateContent({
+        model: this.config.get<string>('GEMINI_MODEL') || 'gemini-3.6-flash',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: { responseMimeType: 'application/json', temperature: 0.2 },
       });
-      if (!res.ok) throw new Error(`AI ${res.status}`);
-      const data: any = await res.json();
+      
+      const rawResponse = response.text || "{}";
+      const data = JSON.parse(rawResponse.replace(/```json/g, '').replace(/```/g, '').trim());
       return { themes: data.themes ?? [], quotes: data.quotes ?? [] };
     } catch (err) {
       this.logger.warn(`Peer feedback theme AI failed: ${err}; using rule-based`);

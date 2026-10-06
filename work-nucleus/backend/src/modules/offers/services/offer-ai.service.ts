@@ -64,20 +64,24 @@ export class OfferAiService {
     };
 
     try {
-      const res = await fetch(`${this.aiServiceUrl}/ai/draft-communication`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Internal-API-Key': this.internalApiKey,
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        this.logger.error(`AI service error ${res.status}: ${text}`);
+      const rawKey = this.config.get<string>('GEMINI_API_KEY');
+      const trimmedKey = rawKey ? rawKey.trim() : null;
+      if (!trimmedKey) {
         return this.fallback(offer.application.candidate.name, offer.application.hiringPlan.designation);
       }
-      const data: any = await res.json();
+      const { GoogleGenAI } = require('@google/genai');
+      const ai = new GoogleGenAI({ apiKey: trimmedKey });
+      
+      const prompt = `Draft a professional ${tone} offer letter body for ${payload.candidate.name} joining as ${payload.role} at ${payload.company}. Return valid JSON with a single "body" field containing the draft. Context: ${JSON.stringify(payload)}`;
+      
+      const response = await ai.models.generateContent({
+        model: this.config.get<string>('GEMINI_MODEL') || 'gemini-3.6-flash',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: { responseMimeType: 'application/json', temperature: 0.7 },
+      });
+      
+      const rawResponse = response.text || "{}";
+      const data = JSON.parse(rawResponse.replace(/```json/g, '').replace(/```/g, '').trim());
       const body = typeof data?.body === 'string' ? data.body : '';
       return { body };
     } catch (err) {

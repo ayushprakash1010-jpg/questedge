@@ -135,19 +135,22 @@ export class DecisionsService {
     }
 
     try {
-      const res = await fetch(`${aiServiceUrl}/ai/draft-communication`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Internal-API-Key': apiKey },
-        body: JSON.stringify(payload),
+      const rawKey = this.config.get<string>('GEMINI_API_KEY');
+      const trimmedKey = rawKey ? rawKey.trim() : null;
+      if (!trimmedKey) return;
+      const { GoogleGenAI } = require('@google/genai');
+      const ai = new GoogleGenAI({ apiKey: trimmedKey });
+      const prompt = `Draft a communication email for a candidate based on this decision context: ${JSON.stringify(payload)}. Return JSON with "subject" and "body".`;
+      const response = await ai.models.generateContent({
+        model: this.config.get<string>('GEMINI_MODEL') || 'gemini-3.6-flash',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: { responseMimeType: 'application/json', temperature: 0.7 },
       });
-
-      if (res.ok) {
-        const draft = await res.json();
-        await this.prisma.selectionDecision.update({
-          where: { id: decisionId },
-          data: { communicationDraft: draft },
-        });
-      }
+      const draft = JSON.parse((response.text || "{}").replace(/```json/g, '').replace(/```/g, '').trim());
+      await this.prisma.selectionDecision.update({
+        where: { id: decisionId },
+        data: { communicationDraft: draft },
+      });
     } catch {
       // AI service unavailable — draft can be added manually
     }

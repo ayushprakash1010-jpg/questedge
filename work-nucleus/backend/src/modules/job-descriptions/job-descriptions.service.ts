@@ -71,22 +71,21 @@ export class JobDescriptionsService {
 
     let aiResponse: any;
     try {
-      const res = await fetch(`${this.aiServiceUrl}/ai/generate-jd`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Internal-API-Key': this.internalApiKey,
-        },
-        body: JSON.stringify(aiPayload),
-      });
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        this.logger.error(`AI service error: ${res.status} - ${errorText}`);
-        throw new BadRequestException('Failed to generate JD from AI service');
+      const rawKey = this.config.get<string>('GEMINI_API_KEY');
+      const trimmedKey = rawKey ? rawKey.trim() : null;
+      if (!trimmedKey) {
+        aiResponse = { content: "<h1>Mock Job Description</h1><p>Please configure GEMINI_API_KEY to generate real JDs.</p>" };
+      } else {
+        const { GoogleGenAI } = require('@google/genai');
+        const ai = new GoogleGenAI({ apiKey: trimmedKey });
+        const response = await ai.models.generateContent({
+          model: this.config.get<string>('GEMINI_MODEL') || 'gemini-3.6-flash',
+          contents: [{ role: 'user', parts: [{ text: `Generate a detailed, professional Job Description. Return exactly a JSON object with a single "content" field containing HTML. The HTML should use <h1>, <h2>, <ul>, <li>, and <p> tags. Use this context: ${JSON.stringify(aiPayload)}` }] }],
+          config: { responseMimeType: 'application/json', temperature: 0.7 },
+        });
+        const rawResponse = response.text || "{}";
+        aiResponse = JSON.parse(rawResponse.replace(/```json/g, '').replace(/```/g, '').trim());
       }
-
-      aiResponse = await res.json();
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
       this.logger.error(`AI service call failed: ${error}`);

@@ -145,20 +145,18 @@ export class AssessmentsService {
   async aiSuggest(orgId: string, cycleId: string, employeeId: string) {
     const data = await this.sideBySide(orgId, cycleId, employeeId);
     try {
-      const res = await fetch(`${this.aiServiceUrl}/ai/appraisal-summary`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Internal-API-Key': this.internalApiKey },
-        body: JSON.stringify({
-          cycleId,
-          employeeId,
-          self: data.self,
-          manager: data.manager,
-          goals: data.goals,
-          peerFeedbackCount: data.peerFeedbackCount,
-        }),
+      const rawKey = this.config.get<string>('GEMINI_API_KEY');
+      const trimmedKey = rawKey ? rawKey.trim() : null;
+      if (!trimmedKey) throw new Error("No API key");
+      const { GoogleGenAI } = require('@google/genai');
+      const ai = new GoogleGenAI({ apiKey: trimmedKey });
+      const prompt = `Provide an appraisal summary based on self and manager reviews. Return exactly JSON with "strengths" (string array), "growth_areas" (string array), "suggested_rating_range" (number array like [3, 4]), and "suggested_comment". Context: ${JSON.stringify({ self: data.self, manager: data.manager, goals: data.goals, peerFeedbackCount: data.peerFeedbackCount })}`;
+      const response = await ai.models.generateContent({
+        model: this.config.get<string>('GEMINI_MODEL') || 'gemini-3.6-flash',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: { responseMimeType: 'application/json', temperature: 0.2 },
       });
-      if (!res.ok) throw new Error(`AI ${res.status}`);
-      return await res.json();
+      return JSON.parse((response.text || "{}").replace(/```json/g, '').replace(/```/g, '').trim());
     } catch (err) {
       this.logger.warn(`Appraisal AI suggest failed (${err}); returning rule-based summary`);
       return this.fallbackSummary(data);
