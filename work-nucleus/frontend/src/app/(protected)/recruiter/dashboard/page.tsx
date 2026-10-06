@@ -13,6 +13,7 @@ import {
   Loader2,
   AlertCircle,
   ChevronRight,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -221,6 +222,13 @@ export default function RecruiterDashboardPage() {
                   {totalReferrals > 0 ? Math.round((stats.activePipeline / totalReferrals) * 100) : 0}%
                 </span>
               </div>
+              {totalReferrals === 0 && (
+                <div className="pt-2">
+                  <Button variant="outline" className="w-full text-sky-600 border-sky-200 hover:bg-sky-50" onClick={() => router.push("/recruiter/discover")}>
+                    Discover Jobs
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -235,8 +243,12 @@ export default function RecruiterDashboardPage() {
             <CardContent>
               {recentReferrals.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <Users className="h-10 w-10 text-slate-200 mb-2" />
-                  <p className="text-sm text-slate-400">No referrals yet. Start referring candidates!</p>
+                  <Users className="h-10 w-10 text-slate-200 mb-3" />
+                  <p className="text-sm font-medium text-slate-800">No referrals yet</p>
+                  <p className="text-xs text-slate-500 mt-1 mb-4 max-w-[200px]">Browse active mandates and submit your first referral to start earning.</p>
+                  <Button size="sm" onClick={() => router.push("/recruiter/discover")}>
+                    Browse Mandates
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-3 mt-2">
@@ -264,14 +276,15 @@ export default function RecruiterDashboardPage() {
         </div>
 
         {/* Top mandates */}
-        {topMandates.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-slate-800">My Active Mandates</h3>
-              <Button variant="ghost" size="sm" onClick={() => router.push("/recruiter/discover")} className="h-8 text-xs text-sky-600">
-                Browse more <ChevronRight className="ml-1 h-3 w-3" />
-              </Button>
-            </div>
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-slate-800">My Active Mandates</h3>
+            <Button variant="ghost" size="sm" onClick={() => router.push("/recruiter/discover")} className="h-8 text-xs text-sky-600">
+              Browse more <ChevronRight className="ml-1 h-3 w-3" />
+            </Button>
+          </div>
+          
+          {topMandates.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {topMandates.map((m: any) => (
                 <MandateCard
@@ -283,8 +296,21 @@ export default function RecruiterDashboardPage() {
                 />
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="border border-dashed border-slate-200 rounded-xl bg-slate-50 p-8 flex flex-col items-center text-center">
+              <div className="h-12 w-12 rounded-full bg-white flex items-center justify-center shadow-sm mb-3">
+                <Search className="h-6 w-6 text-slate-400" />
+              </div>
+              <p className="text-sm font-semibold text-slate-800">No Active Mandates</p>
+              <p className="text-xs text-slate-500 mt-1 mb-4 max-w-sm">
+                You haven't joined any mandates yet. Discover high-reward jobs and join them to start referring candidates.
+              </p>
+              <Button onClick={() => router.push("/recruiter/discover")}>
+                Discover High-Reward Jobs
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </>
   );
