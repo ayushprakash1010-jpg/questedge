@@ -32,19 +32,15 @@ export class CandidatePortalService {
     email: string,
     dto: UpsertCandidateProfileDto,
   ): Promise<CandidateProfile> {
+    if (!email) throw new BadRequestException('Email is required to create a profile.');
+    
     const emailHash = crypto.createHash('sha256').update(email.toLowerCase()).digest('hex');
     const phoneHash = dto.phone
       ? crypto.createHash('sha256').update(dto.phone).digest('hex')
       : undefined;
 
-    const existing = await this.prisma.candidateProfile.findFirst({ 
-      where: { 
-        OR: [
-          { auth0Sub },
-          { email }
-        ]
-      } 
-    });
+    const existingBySub = await this.prisma.candidateProfile.findUnique({ where: { auth0Sub } });
+    const existingByEmail = await this.prisma.candidateProfile.findUnique({ where: { email } });
 
     const data = {
       name: dto.name,
@@ -66,6 +62,22 @@ export class CandidatePortalService {
       workModel: dto.workModel,
       profileLinks: dto.profileLinks ?? {},
     };
+
+    if (existingBySub && existingByEmail && existingBySub.id !== existingByEmail.id) {
+      // Merge scenario: Delete the garbage profile created with a placeholder email
+      await this.prisma.candidateProfile.delete({ where: { id: existingBySub.id } });
+      return this.prisma.candidateProfile.update({
+        where: { id: existingByEmail.id },
+        data: {
+          auth0Sub,
+          ...data,
+          phoneHash: phoneHash ?? existingByEmail.phoneHash,
+          isProfileComplete: this.isProfileComplete(dto),
+        },
+      });
+    }
+
+    const existing = existingByEmail || existingBySub;
 
     if (existing) {
       // Update existing and ensure auth0Sub is linked (for profiles created via referrals)

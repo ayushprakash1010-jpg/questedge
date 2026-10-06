@@ -40,7 +40,8 @@ export class CandidatePortalController {
   @Post('profile')
   @ApiOperation({ summary: 'Create or update global candidate profile (idempotent upsert)' })
   async upsertProfile(@CurrentUser() user: any, @Body() dto: UpsertCandidateProfileDto) {
-    return this.candidatePortalService.upsertProfile(user.auth0Sub, user.email, dto);
+    const emailToUse = user.email && !user.email.includes('@placeholder.com') ? user.email : dto.fallbackEmail;
+    return this.candidatePortalService.upsertProfile(user.auth0Sub, emailToUse, dto);
   }
 
   @Post('profile/parse-resume')

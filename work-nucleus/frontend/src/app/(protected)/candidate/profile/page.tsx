@@ -245,8 +245,13 @@ export default function CandidateProfilePage() {
     try {
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
+      
+      const meRes = await fetch("/api/auth/me");
+      const meData = await meRes.json();
+
       const payload = {
         ...profile,
+        fallbackEmail: meData.email,
         experienceYears: profile.experienceYears ? parseFloat(profile.experienceYears) : undefined,
         currentCtc: profile.currentCtc ? parseInt(profile.currentCtc) : undefined,
         expectedCtc: profile.expectedCtc ? parseInt(profile.expectedCtc) : undefined,

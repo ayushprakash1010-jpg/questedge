@@ -16,6 +16,10 @@ export class UpsertCandidateProfileDto {
   @IsString()
   name: string;
 
+  @IsOptional()
+  @IsString()
+  fallbackEmail?: string;
+
   @ApiPropertyOptional({ example: '+91-9876543210' })
   @IsOptional()
   @IsString()
