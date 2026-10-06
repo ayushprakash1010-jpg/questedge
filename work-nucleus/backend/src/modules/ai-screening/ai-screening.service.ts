@@ -76,7 +76,7 @@ export class AiScreeningService {
       `;
 
       const response = await this.ai.models.generateContent({
-        model: this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.5-flash',
+        model: this.configService.get<string>('GEMINI_MODEL') || 'gemini-3.8-flash',
         contents: prompt,
         config: {
           responseMimeType: 'application/json',
@@ -143,7 +143,7 @@ export class AiScreeningService {
         }
       `;
 
-      const modelToUse = this.configService.get<string>('GEMINI_MODEL') || 'gemini-1.5-flash';
+      const modelToUse = this.configService.get<string>('GEMINI_MODEL') || 'gemini-3.8-flash';
       this.logger.log(`Using model: ${modelToUse}`);
 
       const response = await this.ai.models.generateContent({
@@ -203,7 +203,7 @@ export class AiScreeningService {
       `;
 
       const response = await this.ai.models.generateContent({
-        model: this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.5-flash',
+        model: this.configService.get<string>('GEMINI_MODEL') || 'gemini-3.8-flash',
         contents: resumeText,
         config: {
           systemInstruction: systemPrompt,
