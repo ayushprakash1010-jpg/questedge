@@ -483,12 +483,7 @@ export class AnalyticsService {
       this.getSourceEffectiveness(orgId),
     ]);
 
-    const aiServiceUrl = this.config.get('AI_SERVICE_URL', 'http://localhost:8000');
-    const apiKey = this.config.get('INTERNAL_API_KEY', 'dev-internal-key');
-
-    // Get org name
     const org = await this.prisma.organization.findFirst({ where: { id: orgId } });
-
     const payload = {
       companyName: org?.name || 'Company',
       overview,
@@ -499,19 +494,63 @@ export class AnalyticsService {
       sourceEffectiveness: sources,
     };
 
-    const res = await fetch(`${aiServiceUrl}/ai/dashboard-insights`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Internal-API-Key': apiKey },
-      body: JSON.stringify(payload),
-    });
+    let insightsData: any[] = [];
+    const rawKey = this.config.get<string>('GEMINI_API_KEY');
+    const trimmedKey = rawKey ? rawKey.trim() : null;
 
-    if (!res.ok) {
-      const error = await res.text();
-      throw new BadRequestException(`AI insights failed: ${error}`);
+    if (!trimmedKey) {
+      // Fallback
+      insightsData = [
+        {
+          title: "Hiring Funnel Needs Data",
+          description: "Not enough data across the pipeline to identify bottlenecks.",
+          severity: "info",
+          category: "funnel",
+          recommendation: "Ensure hiring managers are actively updating candidate stages."
+        }
+      ];
+    } else {
+      try {
+        const { GoogleGenAI } = require('@google/genai');
+        const ai = new GoogleGenAI({ apiKey: trimmedKey });
+        
+        const systemPrompt = `You are an expert HR Data Analyst. Analyze the following hiring metrics for ${payload.companyName}.
+Return exactly a JSON array of objects representing actionable insights.
+Format:
+[
+  {
+    "title": "Short descriptive title",
+    "description": "Detailed explanation of what the data shows",
+    "severity": "info" | "warning" | "critical",
+    "category": "funnel" | "cost" | "sourcing" | "interviewing",
+    "recommendation": "Actionable next step"
+  }
+]
+Do not return any markdown formatting outside of the JSON block.`;
+
+        const response = await ai.models.generateContent({
+          model: this.config.get<string>('GEMINI_MODEL') || 'gemini-3.6-flash',
+          contents: [
+            { role: 'user', parts: [{ text: `Here is the data:\n${JSON.stringify(payload)}` }] }
+          ],
+          config: {
+            systemInstruction: systemPrompt,
+            responseMimeType: 'application/json',
+            temperature: 0.3,
+          },
+        });
+
+        const rawResponse = response.text || "[]";
+        try {
+          const parsed = JSON.parse(rawResponse.replace(/```json/g, '').replace(/```/g, '').trim());
+          insightsData = Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+          throw new BadRequestException("AI returned invalid JSON");
+        }
+      } catch (e) {
+        throw new BadRequestException(`AI insights generation failed: ${e.message}`);
+      }
     }
-
-    const aiResponse = await res.json();
-    const insightsData = aiResponse.insights || aiResponse;
 
     // Persist to database
     const record = await this.prisma.dashboardInsight.create({
