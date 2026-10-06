@@ -75,7 +75,7 @@ export class OfferAiService {
       const prompt = `Draft a professional ${tone} offer letter body for ${payload.candidate.name} joining as ${payload.role} at ${payload.company}. Return valid JSON with a single "body" field containing the draft. Context: ${JSON.stringify(payload)}`;
       
       const response = await ai.models.generateContent({
-        model: this.config.get<string>('GEMINI_MODEL') || 'gemini-1.5-flash',
+        model: this.config.get<string>('GEMINI_MODEL') || 'gemini-3.6-flash',
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: { responseMimeType: 'application/json', temperature: 0.7 },
       });

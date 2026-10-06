@@ -545,7 +545,7 @@ Format:
 Do not return any markdown formatting outside of the JSON block.`;
 
         const response = await ai.models.generateContent({
-          model: this.config.get<string>('GEMINI_MODEL') || 'gemini-1.5-flash',
+          model: this.config.get<string>('GEMINI_MODEL') || 'gemini-3.6-flash',
           contents: [
             { role: 'user', parts: [{ text: `Here is the data:\n${JSON.stringify(payload)}` }] }
           ],

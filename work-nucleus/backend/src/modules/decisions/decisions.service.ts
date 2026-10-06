@@ -142,7 +142,7 @@ export class DecisionsService {
       const ai = new GoogleGenAI({ apiKey: trimmedKey });
       const prompt = `Draft a communication email for a candidate based on this decision context: ${JSON.stringify(payload)}. Return JSON with "subject" and "body".`;
       const response = await ai.models.generateContent({
-        model: this.config.get<string>('GEMINI_MODEL') || 'gemini-1.5-flash',
+        model: this.config.get<string>('GEMINI_MODEL') || 'gemini-3.6-flash',
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: { responseMimeType: 'application/json', temperature: 0.7 },
       });

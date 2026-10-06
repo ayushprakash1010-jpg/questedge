@@ -151,7 +151,7 @@ export class ResumeScoringWorker implements OnModuleInit {
         const prompt = `Score this candidate's resume against the Job Description. Return exactly JSON with "matchScore" (number 0-100) and "summary" (string). JD: ${jd.content}, Skills: ${JSON.stringify(plan.skills)}`;
         
         const response = await ai.models.generateContent({
-          model: this.config.get<string>('GEMINI_MODEL') || 'gemini-1.5-flash',
+          model: this.config.get<string>('GEMINI_MODEL') || 'gemini-3.6-flash',
           contents: [{ role: 'user', parts: [
             { inlineData: { data: b64, mimeType: contentType } },
             { text: prompt }
