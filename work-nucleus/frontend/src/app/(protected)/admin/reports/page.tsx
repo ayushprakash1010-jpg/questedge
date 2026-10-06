@@ -38,13 +38,13 @@ const SOURCES = [
 
 export default function ReportsPage() {
   const [reports, setReports] = useState<ReportDef[]>([]);
-  const [draft, setDraft] = useState({
+  const [draft, setDraft] = useState<any>({
     name: "",
     description: "",
     dataSource: "HIRING",
   });
   const [prompt, setPrompt] = useState("");
-  const [aiResult, setAiResult] = useState<unknown>(null);
+  const [aiResult, setAiResult] = useState<any>(null);
   const [busy, setBusy] = useState(false);
 
   async function load() {
@@ -67,6 +67,7 @@ export default function ReportsPage() {
       if (!res.ok) throw new Error("Save failed");
       await load();
       setDraft({ name: "", description: "", dataSource: "HIRING" });
+      setAiResult(null);
       toast.success("Report saved");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Save failed");
@@ -84,7 +85,11 @@ export default function ReportsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
       });
-      if (res.ok) setAiResult(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        setAiResult(data);
+        setDraft((prev: any) => ({ ...prev, ...data }));
+      }
     } finally {
       setBusy(false);
     }
