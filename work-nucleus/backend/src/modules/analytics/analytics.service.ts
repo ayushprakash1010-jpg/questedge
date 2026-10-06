@@ -119,7 +119,7 @@ export class AnalyticsService {
           take: 5,
           include: {
             candidateProfile: { select: { name: true } },
-            referrer: { select: { name: true } },
+            recruiter: { select: { name: true } },
             mandate: { select: { title: true } }
           }
         })
@@ -143,7 +143,7 @@ export class AnalyticsService {
         recentActivity: recentActivityRaw.map(r => ({
           id: `ref-${r.id}`,
           type: 'referral',
-          title: `${r.referrer?.name || 'Someone'} referred ${r.candidateProfile?.name || 'a candidate'} for ${r.mandate?.title || 'a role'}`,
+          title: `${r.recruiter?.name || 'Someone'} referred ${r.candidateProfile?.name || 'a candidate'} for ${r.mandate?.title || 'a role'}`,
           timestamp: r.createdAt.toISOString()
         }))
       };
