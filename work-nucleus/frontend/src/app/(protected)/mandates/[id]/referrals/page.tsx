@@ -184,10 +184,12 @@ function StatusBadge({ status }: { status: string }) {
 
 function ReferralCard({
   referral,
+  mandateId,
   onStatusChange,
   updating,
 }: {
   referral: Referral;
+  mandateId: string;
   onStatusChange: (referralId: string, newStatus: string) => void;
   updating: boolean;
 }) {
@@ -305,7 +307,7 @@ function ReferralCard({
                  const tokenRes = await fetch("/api/auth/token");
                  const { accessToken } = await tokenRes.json();
                  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-                 await fetch(`${API_URL}/api/v1/mandates/${referral.mandateId}/referrals/${referral.id}/trigger-ai`, {
+                 await fetch(`${API_URL}/api/v1/mandates/${mandateId}/referrals/${referral.id}/trigger-ai`, {
                    method: 'POST',
                    headers: { Authorization: `Bearer ${accessToken}` }
                  });
@@ -645,6 +647,7 @@ export default function MandateReferralsPage() {
               <ReferralCard
                 key={referral.id}
                 referral={referral}
+                mandateId={id}
                 onStatusChange={handleStatusChange}
                 updating={updating}
               />
