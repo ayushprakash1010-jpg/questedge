@@ -314,15 +314,20 @@ function ReferralCard({
                    method: 'POST',
                    headers: { Authorization: `Bearer ${accessToken}` }
                  });
-                 window.location.reload();
+                 // Use a soft refresh instead of a full page reload for a smoother experience
+                 window.location.href = window.location.href; // Fallback, but let's try to just refresh the data
                } catch (err) {
                  console.error(err);
                  setIsRetrying(false);
                }
              }}
-             className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded shadow-sm hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+             className={`flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded shadow-sm transition-colors disabled:cursor-not-allowed ${
+               isRetrying 
+                 ? "bg-indigo-600 text-white border border-indigo-600 shadow-md" 
+                 : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+             }`}
            >
-             {isRetrying && <Loader2 className="h-3 w-3 animate-spin" />}
+             {isRetrying && <Loader2 className="h-3 w-3 animate-spin text-white" />}
              {isRetrying ? "Evaluating..." : "Retry AI Match"}
            </button>
         </div>
