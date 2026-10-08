@@ -16,6 +16,7 @@ import {
   BadgeCheck,
   Briefcase,
   Star,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -254,11 +255,37 @@ function ReferralCard({
       {/* AI Score (If available) */}
       {referral.aiMatchScore != null ? (
         <div className="mx-5 mb-3 rounded-lg border border-indigo-100 bg-indigo-50/50 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Star className="h-4 w-4 text-indigo-600 fill-indigo-600" />
-            <span className="text-sm font-bold text-indigo-900">
-              {referral.aiMatchScore}% AI Match
-            </span>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Star className="h-4 w-4 text-indigo-600 fill-indigo-600" />
+              <span className="text-sm font-bold text-indigo-900">
+                {referral.aiMatchScore}% AI Match
+              </span>
+            </div>
+            <button
+              disabled={isRetrying}
+              onClick={async () => {
+                try {
+                  setIsRetrying(true);
+                  const tokenRes = await fetch("/api/auth/token");
+                  const { accessToken } = await tokenRes.json();
+                  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+                  await fetch(`${API_URL}/api/v1/mandates/${mandateId}/referrals/${referral.id}/trigger-ai`, {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${accessToken}` }
+                  });
+                  await onRefresh();
+                  setIsRetrying(false);
+                } catch (err) {
+                  console.error(err);
+                  setIsRetrying(false);
+                }
+              }}
+              className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1 font-medium disabled:opacity-50"
+            >
+              {isRetrying ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              {isRetrying ? "..." : "Re-evaluate"}
+            </button>
           </div>
           {referral.aiMatchSummary && (
             <p className="text-xs text-indigo-700/80 leading-relaxed mb-3">
