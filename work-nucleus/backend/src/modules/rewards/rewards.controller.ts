@@ -22,7 +22,7 @@ export class RewardsController {
   }
 
   @Post('company/:id/approve')
-  @UserTypes(UserType.COMPANY_ADMIN)
+  @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
   @ApiOperation({ summary: 'Company: Approve a reward payout' })
   async approveReward(
     @CurrentUser() user: any,
