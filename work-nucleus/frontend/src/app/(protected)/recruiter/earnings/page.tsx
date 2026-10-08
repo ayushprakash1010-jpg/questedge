@@ -5,6 +5,7 @@ import { DollarSign, TrendingUp, Clock, AlertCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { withdrawReward } from "@/lib/marketplace-api";
 
 export default function EarningsDashboard() {
   const router = useRouter();
@@ -43,18 +44,13 @@ export default function EarningsDashboard() {
       setWithdrawingId(rewardId);
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
       
-      const res = await fetch(`${API_URL}/api/v1/rewards/recruiter/${rewardId}/withdraw`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      
-      if (!res.ok) throw new Error("Failed to withdraw");
+      await withdrawReward(accessToken, rewardId);
       
       await fetchEarnings();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error("Withdraw Error:", err);
+      alert(`Failed to withdraw: ${err.message || "Unknown error"}`);
     } finally {
       setWithdrawingId(null);
     }

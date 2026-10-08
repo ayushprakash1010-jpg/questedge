@@ -178,6 +178,13 @@ export async function createRecruiterProfile(token: string, payload: any): Promi
   });
 }
 
+export async function withdrawReward(token: string, rewardId: string): Promise<any> {
+  return apiClient(`/api/v1/rewards/recruiter/${rewardId}/withdraw`, {
+    method: "POST",
+    token,
+  });
+}
+
 export async function updateRecruiterProfile(token: string, payload: any): Promise<any> {
   return apiClient("/api/v1/recruiter/profile", {
     method: "PATCH",
