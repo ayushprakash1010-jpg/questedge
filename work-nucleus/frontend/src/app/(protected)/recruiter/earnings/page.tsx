@@ -16,7 +16,11 @@ export default function EarningsDashboard() {
       try {
         const tokenRes = await fetch("/api/auth/token");
         const { accessToken } = await tokenRes.json();
-        
+        // Fix any missing rewards before loading
+        await fetch("/api/v1/rewards/fix", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }).catch(console.error);
+
         const res = await fetch("/api/v1/rewards/recruiter", {
           headers: { Authorization: `Bearer ${accessToken}` },
         });

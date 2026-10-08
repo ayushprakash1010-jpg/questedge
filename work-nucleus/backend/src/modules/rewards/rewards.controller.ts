@@ -37,4 +37,10 @@ export class RewardsController {
   async getRecruiterRewards(@CurrentUser() user: any) {
     return this.rewardsService.getRecruiterRewards(user.auth0Sub);
   }
+
+  @Get('fix')
+  @UserTypes(UserType.RECRUITER, UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
+  async fixRewards() {
+    return this.rewardsService.fixMissingRewards();
+  }
 }

@@ -133,4 +133,36 @@ export class RewardsService {
       },
     });
   }
+
+  async fixMissingRewards() {
+    const hiredReferrals = await this.prisma.referral.findMany({
+      where: { status: 'HIRED' },
+      include: { mandate: true }
+    });
+
+    let fixedCount = 0;
+    for (const ref of hiredReferrals) {
+      const existing = await this.prisma.rewardTracking.findUnique({
+        where: { referralId: ref.id }
+      });
+
+      if (!existing) {
+        await this.prisma.rewardTracking.create({
+          data: {
+            referralId: ref.id,
+            recruiterId: ref.recruiterId,
+            mandateId: ref.mandateId,
+            orgId: ref.mandate.orgId,
+            rewardAmount: ref.mandate.referralRewardAmount || 20000,
+            currency: ref.mandate.currency || 'INR',
+            status: 'PENDING_APPROVAL',
+            hiredAt: ref.updatedAt,
+            eligibleAt: ref.updatedAt
+          }
+        });
+        fixedCount++;
+      }
+    }
+    return { success: true, fixedCount };
+  }
 }
