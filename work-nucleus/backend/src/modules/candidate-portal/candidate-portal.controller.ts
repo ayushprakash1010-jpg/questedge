@@ -10,10 +10,15 @@ import {
   HttpCode,
   HttpStatus,
   Req,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiConsumes } from '@nestjs/swagger';
 import { Request } from 'express';
 import { CandidatePortalService } from './candidate-portal.service';
+import { FileUploadService } from '../file-upload/file-upload.service';
 import {
   UpsertCandidateProfileDto,
   DirectApplyDto,
@@ -30,7 +35,10 @@ import { RolesGuard } from '../../auth/guards/roles.guard';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('api/v1/candidate')
 export class CandidatePortalController {
-  constructor(private readonly candidatePortalService: CandidatePortalService) {}
+  constructor(
+    private readonly candidatePortalService: CandidatePortalService,
+    private readonly fileUploadService: FileUploadService,
+  ) {}
 
   // ── Profile ──────────────────────────────────────────────────────
   // No @UserTypes restriction — any authenticated user can manage their own
@@ -62,6 +70,21 @@ export class CandidatePortalController {
   async updateResume(@CurrentUser() user: any, @Body('resumeUrl') resumeUrl: string) {
     const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub);
     return this.candidatePortalService.updateResume(profile.id, resumeUrl);
+  }
+
+  @Post('profile/upload-resume')
+  @ApiOperation({ summary: 'Upload resume PDF/DOCX directly — stores to S3 and saves URL' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('resume'))
+  async uploadResumeDirect(
+    @CurrentUser() user: any,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException('No file uploaded');
+    const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub);
+    const resumeKey = await this.fileUploadService.uploadResume(file, profile.id);
+    await this.candidatePortalService.updateResume(profile.id, resumeKey);
+    return { resumeUrl: resumeKey, message: 'Resume uploaded successfully' };
   }
 
   // ── Job Discovery ─────────────────────────────────────────────────

@@ -158,6 +158,9 @@ export default function CandidateProfilePage() {
   const [isNew, setIsNew] = useState(true);
   const [isParsing, setIsParsing] = useState(false);
   const [showAllSkills, setShowAllSkills] = useState(false);
+  const [resumeUrl, setResumeUrl] = useState<string | null>(null);
+  const [isUploadingResume, setIsUploadingResume] = useState(false);
+  const [resumeUploadStatus, setResumeUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -197,6 +200,37 @@ export default function CandidateProfilePage() {
     }
   };
 
+  const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsUploadingResume(true);
+      setResumeUploadStatus('idle');
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+      const formData = new FormData();
+      formData.append('resume', file);
+      const res = await fetch(`${API_URL}/api/v1/candidate/profile/upload-resume`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: formData,
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      setResumeUrl(data.resumeUrl);
+      setResumeUploadStatus('success');
+      setTimeout(() => setResumeUploadStatus('idle'), 4000);
+    } catch (err) {
+      console.error('Resume upload failed', err);
+      setResumeUploadStatus('error');
+      setTimeout(() => setResumeUploadStatus('idle'), 4000);
+    } finally {
+      setIsUploadingResume(false);
+      e.target.value = '';
+    }
+  };
+
   useEffect(() => {
     (async () => {
       try {
@@ -205,6 +239,7 @@ export default function CandidateProfilePage() {
         const data = await getCandidateProfile(accessToken);
         if (data?.name) {
           setIsNew(false);
+          setResumeUrl(data.resumeUrl || null);
           setProfile({
             name: data.name || "",
             phone: data.phone || "",
@@ -408,6 +443,60 @@ export default function CandidateProfilePage() {
               <div>
                 <h2 className="text-lg font-bold text-slate-900">Professional Background</h2>
                 <p className="text-sm text-slate-500 mt-1">Tell us about your current role and experience.</p>
+              </div>
+
+              {/* Resume Upload Card */}
+              <div className={`rounded-xl border p-5 transition-all ${
+                resumeUploadStatus === 'success' ? 'bg-emerald-50 border-emerald-200' :
+                resumeUploadStatus === 'error' ? 'bg-red-50 border-red-200' :
+                'bg-slate-50 border-slate-200'
+              }`}>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${
+                      resumeUploadStatus === 'success' ? 'bg-emerald-100' :
+                      resumeUrl ? 'bg-indigo-100' : 'bg-slate-100'
+                    }`}>
+                      {isUploadingResume ? (
+                        <Loader2 className="h-5 w-5 animate-spin text-indigo-500" />
+                      ) : resumeUploadStatus === 'success' ? (
+                        <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                      ) : (
+                        <FileText className={`h-5 w-5 ${resumeUrl ? 'text-indigo-600' : 'text-slate-400'}`} />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-800">
+                        {resumeUploadStatus === 'success' ? 'Resume Uploaded!' :
+                         resumeUploadStatus === 'error' ? 'Upload Failed' :
+                         resumeUrl ? 'Resume on File' : 'No Resume Uploaded'}
+                      </p>
+                      <p className="text-xs text-slate-500 truncate">
+                        {resumeUploadStatus === 'success' ? 'Your resume is saved and ready for AI analysis.' :
+                         resumeUploadStatus === 'error' ? 'Something went wrong. Please try again.' :
+                         resumeUrl ? resumeUrl.split('/').pop() : 'Upload your PDF so the AI can fully evaluate your fit for jobs.'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="relative shrink-0">
+                    <input
+                      type="file"
+                      accept="application/pdf,.docx"
+                      onChange={handleResumeUpload}
+                      disabled={isUploadingResume}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                    />
+                    <div className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                      isUploadingResume
+                        ? 'bg-slate-200 text-slate-500'
+                        : resumeUrl
+                        ? 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                        : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm'
+                    }`}>
+                      {isUploadingResume ? 'Uploading...' : resumeUrl ? 'Replace Resume' : 'Upload Resume'}
+                    </div>
+                  </div>
+                </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <Field label="Current Company">
