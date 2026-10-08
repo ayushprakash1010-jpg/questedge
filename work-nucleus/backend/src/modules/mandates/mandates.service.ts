@@ -676,6 +676,7 @@ export class MandatesService {
     }
 
     if (
+      referral.status !== 'ACCEPTED' &&
       referral.status !== 'CANDIDATE_ACCEPTED' &&
       referral.status !== 'ACTIVATED' &&
       referral.status !== 'UNDER_REVIEW' &&
