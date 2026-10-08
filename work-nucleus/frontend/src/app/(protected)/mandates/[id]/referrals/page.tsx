@@ -247,7 +247,7 @@ function ReferralCard({
       </div>
 
       {/* AI Score (If available) */}
-      {referral.aiMatchScore != null && (
+      {referral.aiMatchScore != null ? (
         <div className="mx-5 mb-3 rounded-lg border border-indigo-100 bg-indigo-50/50 p-4">
           <div className="flex items-center gap-2 mb-2">
             <Star className="h-4 w-4 text-indigo-600 fill-indigo-600" />
@@ -294,6 +294,30 @@ function ReferralCard({
               return null;
             }
           })()}
+        </div>
+      ) : (
+        <div className="mx-5 mb-3 rounded-lg border border-slate-200 bg-slate-50 p-4 flex flex-col items-center justify-center text-center">
+           <Star className="h-5 w-5 text-slate-300 mb-2" />
+           <p className="text-xs text-slate-500 mb-3">AI Evaluation Failed or Pending</p>
+           <button 
+             onClick={async () => {
+               try {
+                 const tokenRes = await fetch("/api/auth/token");
+                 const { accessToken } = await tokenRes.json();
+                 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+                 await fetch(`${API_URL}/api/v1/mandates/${referral.mandateId}/referrals/${referral.id}/trigger-ai`, {
+                   method: 'POST',
+                   headers: { Authorization: `Bearer ${accessToken}` }
+                 });
+                 window.location.reload();
+               } catch (err) {
+                 console.error(err);
+               }
+             }}
+             className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded shadow-sm hover:bg-slate-50 transition-colors"
+           >
+             Retry AI Match
+           </button>
         </div>
       )}
 
@@ -350,46 +374,7 @@ function ReferralCard({
         </div>
       )}
 
-      {/* AI Screening row */}
-      {referral.aiMatchScore != null && (
-        <div className="px-5 py-3 bg-indigo-50/50 border-t border-slate-100">
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-xl bg-white border border-indigo-100 shadow-sm">
-              <span className={`text-sm font-bold ${referral.aiMatchScore >= 80 ? 'text-emerald-600' : referral.aiMatchScore >= 60 ? 'text-amber-500' : 'text-red-500'}`}>
-                {referral.aiMatchScore}%
-              </span>
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5 mb-0.5">
-                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                <span className="text-xs font-semibold text-slate-800">AI Match Assessment</span>
-              </div>
-              <p className="text-xs text-slate-600 font-medium">
-                {referral.aiMatchSummary}
-              </p>
-              {referral.aiSummary && (
-                <div className="mt-1.5 flex flex-wrap gap-2 text-[10px]">
-                  {(() => {
-                    try {
-                      const details = JSON.parse(referral.aiSummary);
-                      return (
-                        <>
-                          {details.strengths?.slice(0, 2).map((s: string) => (
-                            <span key={s} className="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-700">✓ {s}</span>
-                          ))}
-                          {details.missingSkills?.slice(0, 2).map((m: string) => (
-                            <span key={m} className="px-1.5 py-0.5 rounded-md bg-red-100 text-red-700">✗ {m}</span>
-                          ))}
-                        </>
-                      );
-                    } catch { return null; }
-                  })()}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Actions */}
       {isActionable && (
