@@ -10,31 +10,56 @@ export default function EarningsDashboard() {
   const router = useRouter();
   const [data, setData] = useState<{ rewards: any[]; pipelinePotential: number } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
+
+  const fetchEarnings = async () => {
+    try {
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+      // Fix any missing rewards before loading
+      await fetch(`${API_URL}/api/v1/rewards/fix`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }).catch(console.error);
+
+      const res = await fetch(`${API_URL}/api/v1/rewards/recruiter`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const json = await res.json();
+      setData(json);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function fetchEarnings() {
-      try {
-        const tokenRes = await fetch("/api/auth/token");
-        const { accessToken } = await tokenRes.json();
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-        // Fix any missing rewards before loading
-        await fetch(`${API_URL}/api/v1/rewards/fix`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }).catch(console.error);
-
-        const res = await fetch(`${API_URL}/api/v1/rewards/recruiter`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-        const json = await res.json();
-        setData(json);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    }
     fetchEarnings();
   }, []);
+
+  const handleWithdraw = async (rewardId: string) => {
+    try {
+      setWithdrawingId(rewardId);
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+      
+      const res = await fetch(`${API_URL}/api/v1/rewards/recruiter/${rewardId}/withdraw`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      
+      if (!res.ok) throw new Error("Failed to withdraw");
+      
+      await fetchEarnings();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setWithdrawingId(null);
+    }
+  };
+
 
   if (loading) {
     return (
@@ -48,8 +73,12 @@ export default function EarningsDashboard() {
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val);
   };
 
-  const totalEarned = data?.rewards
-    .filter(r => r.status === "APPROVED" || r.status === "PAID")
+  const availableToWithdraw = data?.rewards
+    .filter(r => r.status === "APPROVED")
+    .reduce((sum, r) => sum + Number(r.rewardAmount), 0) || 0;
+
+  const totalWithdrawn = data?.rewards
+    .filter(r => r.status === "PAID")
     .reduce((sum, r) => sum + Number(r.rewardAmount), 0) || 0;
 
   const totalPending = data?.rewards
@@ -61,7 +90,7 @@ export default function EarningsDashboard() {
       <h1 className="text-2xl font-bold text-slate-900 mb-8">Earnings & Rewards</h1>
 
       {/* Metrics Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm relative overflow-hidden group hover:border-emerald-200 transition-all">
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-100 rounded-full blur-3xl -mr-10 -mt-10 opacity-50 group-hover:opacity-70 transition-opacity"></div>
           <div className="relative">
@@ -69,7 +98,18 @@ export default function EarningsDashboard() {
               <div className="p-2 bg-emerald-50 rounded-lg"><DollarSign className="h-5 w-5" /></div>
               <span className="font-semibold text-sm">Available to Withdraw</span>
             </div>
-            <p className="text-3xl font-bold text-slate-900">{formatCurrency(totalEarned)}</p>
+            <p className="text-3xl font-bold text-slate-900">{formatCurrency(availableToWithdraw)}</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm relative overflow-hidden group hover:border-indigo-200 transition-all">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-100 rounded-full blur-3xl -mr-10 -mt-10 opacity-50 group-hover:opacity-70 transition-opacity"></div>
+          <div className="relative">
+            <div className="flex items-center gap-3 mb-2 text-indigo-600">
+              <div className="p-2 bg-indigo-50 rounded-lg"><DollarSign className="h-5 w-5" /></div>
+              <span className="font-semibold text-sm">Total Withdrawn</span>
+            </div>
+            <p className="text-3xl font-bold text-slate-900">{formatCurrency(totalWithdrawn)}</p>
           </div>
         </div>
 
@@ -122,6 +162,7 @@ export default function EarningsDashboard() {
                 <th className="p-4 text-xs font-semibold text-slate-500 uppercase">Status</th>
                 <th className="p-4 text-xs font-semibold text-slate-500 uppercase">Amount</th>
                 <th className="p-4 text-xs font-semibold text-slate-500 uppercase">Date Triggered</th>
+                <th className="p-4 text-xs font-semibold text-slate-500 uppercase text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -149,6 +190,18 @@ export default function EarningsDashboard() {
                   </td>
                   <td className="p-4 text-sm text-slate-500">
                     {reward.eligibleAt ? formatDistanceToNow(new Date(reward.eligibleAt), { addSuffix: true }) : '-'}
+                  </td>
+                  <td className="p-4 text-right">
+                    {reward.status === 'APPROVED' && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleWithdraw(reward.id)}
+                        disabled={withdrawingId === reward.id}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                      >
+                        {withdrawingId === reward.id ? 'Withdrawing...' : 'Withdraw'}
+                      </Button>
+                    )}
                   </td>
                 </tr>
               ))}

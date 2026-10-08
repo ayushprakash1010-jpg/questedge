@@ -43,4 +43,14 @@ export class RewardsController {
   async fixRewards() {
     return this.rewardsService.fixMissingRewards();
   }
+
+  @Post('recruiter/:id/withdraw')
+  @UserTypes(UserType.RECRUITER)
+  @ApiOperation({ summary: 'Recruiter: Withdraw an approved reward' })
+  async withdrawReward(
+    @CurrentUser() user: any,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.rewardsService.withdrawReward(user.auth0Sub, id);
+  }
 }

@@ -165,4 +165,30 @@ export class RewardsService {
     }
     return { success: true, fixedCount };
   }
+
+  async withdrawReward(auth0Sub: string, rewardId: string) {
+    const recruiter = await this.prisma.recruiterProfile.findUnique({
+      where: { auth0Sub },
+    });
+    if (!recruiter) throw new NotFoundException('Recruiter not found');
+
+    const reward = await this.prisma.rewardTracking.findUnique({
+      where: { id: rewardId },
+    });
+
+    if (!reward) throw new NotFoundException('Reward not found');
+    if (reward.recruiterId !== recruiter.id) throw new BadRequestException('Unauthorized');
+    if (reward.status !== RewardStatus.APPROVED) {
+      throw new BadRequestException('Reward is not available for withdrawal');
+    }
+
+    return this.prisma.rewardTracking.update({
+      where: { id: rewardId },
+      data: {
+        status: RewardStatus.PAID,
+        paidAt: new Date(),
+        paymentRef: `PAY-${Date.now().toString().slice(-6)}`,
+      },
+    });
+  }
 }
