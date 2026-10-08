@@ -1,6 +1,7 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
+import { FileUploadService } from '../file-upload/file-upload.service';
 import { GoogleGenAI } from '@google/genai';
 
 @Injectable()
@@ -13,6 +14,7 @@ export class AiScreeningService {
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
+    private fileUpload: FileUploadService,
   ) {
     const rawKey = this.configService.get<string>('GEMINI_API_KEY');
     const trimmedKey = rawKey ? rawKey.trim() : null;
@@ -82,34 +84,74 @@ export class AiScreeningService {
         return;
       }
 
-      const prompt = `
-        Evaluate the fit between a candidate and a job mandate.
+      const { mandate, candidateProfile } = referral;
+
+      // ── Build the prompt text ──────────────────────────────────
+      const promptText = `
+        You are an expert technical recruiter. Evaluate the fit between a candidate and a job mandate.
+        ${candidateProfile.resumeUrl ? 'The candidate\'s full resume is attached as a document — use it as the primary source of truth for their skills and experience.' : 'No resume was uploaded; evaluate based on their profile data only.'}
         
         Job Mandate:
-        Title: ${referral.mandate.title}
-        Description: ${referral.mandate.description}
-        Mandatory Skills: ${JSON.stringify(referral.mandate.mandatorySkills)}
+        Title: ${mandate.title}
+        Description: ${mandate.description}
+        Mandatory Skills: ${JSON.stringify(mandate.mandatorySkills)}
+        Required Experience: ${(mandate as any).requiredExperience ?? 'Not specified'}
         
         Candidate Profile:
-        Name: ${referral.candidateProfile.name}
-        Headline: ${referral.candidateProfile.headline}
-        Experience: ${referral.candidateProfile.experienceYears} years
-        Skills: ${JSON.stringify(referral.candidateProfile.skills)}
+        Name: ${candidateProfile.name}
+        Headline: ${candidateProfile.headline ?? 'N/A'}
+        Current Role: ${candidateProfile.currentDesignation ?? 'N/A'} at ${(candidateProfile as any).currentCompany ?? 'N/A'}
+        Experience: ${candidateProfile.experienceYears ?? 'N/A'} years
+        Location: ${(candidateProfile as any).currentLocation ?? 'N/A'}
+        Self-reported Skills: ${JSON.stringify(candidateProfile.skills ?? [])}
         
-        Output valid JSON with the following structure:
+        Output ONLY valid JSON with this exact structure:
         {
           "matchScore": number (0 to 100),
-          "matchSummary": "1-2 sentence summary of why they fit or don't fit",
-          "strengths": ["list", "of", "strengths"],
-          "missingSkills": ["list", "of", "missing", "skills"]
+          "matchSummary": "2-3 sentence summary of why they fit or don't fit, referencing specific evidence from the resume if available",
+          "strengths": ["specific strength 1", "specific strength 2"],
+          "missingSkills": ["specific missing skill 1", "specific missing skill 2"]
         }
       `;
 
+      // ── Try to attach resume PDF if available ─────────────────
+      let contents: any;
+      const resumeKey = candidateProfile.resumeUrl;
+
+      if (resumeKey) {
+        try {
+          this.logger.log(`Fetching resume for candidate ${candidateProfile.id} from key: ${resumeKey}`);
+          const fileBuffer = await this.fileUpload.getFileBuffer(resumeKey);
+          const mimeType = resumeKey.toLowerCase().endsWith('.pdf')
+            ? 'application/pdf'
+            : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+          const b64 = Buffer.from(fileBuffer).toString('base64');
+
+          // Send resume as an inline part + text prompt
+          contents = [{
+            role: 'user',
+            parts: [
+              { inlineData: { data: b64, mimeType } },
+              { text: promptText },
+            ],
+          }];
+          this.logger.log(`Resume attached for referral ${referralId} — using full document evaluation.`);
+        } catch (fileErr) {
+          // If fetching the resume fails, fall back gracefully to text-only
+          this.logger.warn(`Could not fetch resume for referral ${referralId}: ${fileErr}. Falling back to text-only evaluation.`);
+          contents = promptText;
+        }
+      } else {
+        this.logger.log(`No resume for referral ${referralId} — using profile text-only evaluation.`);
+        contents = promptText;
+      }
+
       const response = await this.ai.models.generateContent({
         model: this.model,
-        contents: prompt,
+        contents,
         config: {
           responseMimeType: 'application/json',
+          temperature: 0.1,
         },
       });
 
@@ -127,7 +169,7 @@ export class AiScreeningService {
             }),
           },
         });
-        this.logger.log(`Successfully evaluated referral ${referralId}`);
+        this.logger.log(`Successfully evaluated referral ${referralId}. Score: ${parsed.matchScore}%`);
       }
     } catch (error) {
       this.logger.error(`Failed to evaluate referral ${referralId}: ${this.extractErrorMessage(error)}`);
