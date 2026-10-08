@@ -28,6 +28,7 @@ const companyNav: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Mandates", href: "/mandates", icon: Briefcase },
   { label: "Candidates", href: "/candidates", icon: Users },
+  { label: "Billing & Escrow", href: "/company/financials", icon: IndianRupee },
   { label: "Reports", href: "/admin/reports", icon: BarChart3 },
   { label: "Admin", href: "/admin/users", icon: Shield },
 ];
