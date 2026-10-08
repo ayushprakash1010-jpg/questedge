@@ -195,6 +195,7 @@ function ReferralCard({
 }) {
   const isActionable = ACTIONABLE_STATUSES.includes(referral.status);
   const [showActions, setShowActions] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
@@ -302,8 +303,10 @@ function ReferralCard({
            <Star className="h-5 w-5 text-slate-300 mb-2" />
            <p className="text-xs text-slate-500 mb-3">AI Evaluation Failed or Pending</p>
            <button 
+             disabled={isRetrying}
              onClick={async () => {
                try {
+                 setIsRetrying(true);
                  const tokenRes = await fetch("/api/auth/token");
                  const { accessToken } = await tokenRes.json();
                  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
@@ -314,11 +317,13 @@ function ReferralCard({
                  window.location.reload();
                } catch (err) {
                  console.error(err);
+                 setIsRetrying(false);
                }
              }}
-             className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded shadow-sm hover:bg-slate-50 transition-colors"
+             className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded shadow-sm hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
            >
-             Retry AI Match
+             {isRetrying && <Loader2 className="h-3 w-3 animate-spin" />}
+             {isRetrying ? "Evaluating..." : "Retry AI Match"}
            </button>
         </div>
       )}
