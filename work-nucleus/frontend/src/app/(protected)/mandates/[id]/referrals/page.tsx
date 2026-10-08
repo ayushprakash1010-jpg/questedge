@@ -186,11 +186,13 @@ function ReferralCard({
   referral,
   mandateId,
   onStatusChange,
+  onRefresh,
   updating,
 }: {
   referral: Referral;
   mandateId: string;
   onStatusChange: (referralId: string, newStatus: string) => void;
+  onRefresh: () => Promise<void>;
   updating: boolean;
 }) {
   const isActionable = ACTIONABLE_STATUSES.includes(referral.status);
@@ -314,8 +316,9 @@ function ReferralCard({
                    method: 'POST',
                    headers: { Authorization: `Bearer ${accessToken}` }
                  });
-                 // Use a soft refresh instead of a full page reload for a smoother experience
-                 window.location.href = window.location.href; // Fallback, but let's try to just refresh the data
+                 // Silently refresh the list without triggering the full page loading state
+                 await onRefresh();
+                 setIsRetrying(false);
                } catch (err) {
                  console.error(err);
                  setIsRetrying(false);
@@ -492,6 +495,17 @@ export default function MandateReferralsPage() {
     }
   }, [id]);
 
+  const refreshSilently = useCallback(async () => {
+    try {
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+      const data = await getMandateReferrals(accessToken, id);
+      setReferrals(data);
+    } catch (err) {
+      console.error("Failed to silently refresh referrals", err);
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchReferrals();
   }, [fetchReferrals]);
@@ -659,6 +673,7 @@ export default function MandateReferralsPage() {
                 referral={referral}
                 mandateId={id}
                 onStatusChange={handleStatusChange}
+                onRefresh={refreshSilently}
                 updating={updating}
               />
             ))}
