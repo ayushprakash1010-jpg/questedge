@@ -162,70 +162,72 @@ export default function CandidateProfilePage() {
   const [isUploadingResume, setIsUploadingResume] = useState(false);
   const [resumeUploadStatus, setResumeUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
-  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUnifiedResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     try {
       setIsParsing(true);
-      const text = await extractTextFromPDF(file);
+      setIsUploadingResume(true);
+      setResumeUploadStatus('idle');
+
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
-      
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
+      // 1. Upload to S3/DB first
+      const formData = new FormData();
+      formData.append('resume', file);
+      const uploadRes = await fetch(`${API_URL}/api/v1/candidate/profile/upload-resume`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: formData,
+      });
+
+      if (!uploadRes.ok) throw new Error(await uploadRes.text());
+      const uploadData = await uploadRes.json();
+      setResumeUrl(uploadData.resumeUrl);
+      setResumeUploadStatus('success');
+
+      // 2. Extract text client-side and parse with AI
+      const text = await extractTextFromPDF(file);
       const parsedData = await parseResumeText(accessToken, text);
+
       if (parsedData) {
-        setProfile(p => ({
+        setProfile((p) => ({
           ...p,
           name: parsedData.name || p.name,
           phone: parsedData.phone || p.phone,
           currentCompany: parsedData.currentCompany || p.currentCompany,
           currentDesignation: parsedData.currentDesignation || p.currentDesignation,
-          experienceYears: parsedData.experienceYears !== undefined && parsedData.experienceYears !== null ? String(parsedData.experienceYears) : p.experienceYears,
+          experienceYears:
+            parsedData.experienceYears !== undefined && parsedData.experienceYears !== null
+              ? String(parsedData.experienceYears)
+              : p.experienceYears,
           skills: parsedData.skills && parsedData.skills.length > 0 ? parsedData.skills : p.skills,
           education: parsedData.education && parsedData.education.length > 0 ? parsedData.education : p.education,
           currentLocation: parsedData.currentLocation || p.currentLocation,
-          headline: parsedData.currentDesignation ? `${parsedData.currentDesignation} ${parsedData.experienceYears ? `with ${parsedData.experienceYears} years experience` : ''}`.trim() : p.headline,
+          headline: parsedData.currentDesignation
+            ? `${parsedData.currentDesignation} ${
+                parsedData.experienceYears ? `with ${parsedData.experienceYears} years experience` : ''
+              }`.trim()
+            : p.headline,
           profileLinks: {
             linkedin: parsedData.linkedin || p.profileLinks.linkedin,
             github: parsedData.github || p.profileLinks.github,
             portfolio: parsedData.portfolio || p.profileLinks.portfolio,
-          }
+          },
         }));
       }
+
+      setTimeout(() => setResumeUploadStatus('idle'), 4000);
     } catch (err) {
-      console.error("Failed to parse resume", err);
-      alert("Failed to extract data from resume. You can still fill it manually.");
+      console.error('Unified resume upload/parse failed', err);
+      setResumeUploadStatus('error');
+      alert('Upload failed or could not extract data. You can still fill it manually.');
+      setTimeout(() => setResumeUploadStatus('idle'), 4000);
     } finally {
       setIsParsing(false);
-      e.target.value = '';
-    }
-  };
-
-  const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      setIsUploadingResume(true);
-      setResumeUploadStatus('idle');
-      const tokenRes = await fetch("/api/auth/token");
-      const { accessToken } = await tokenRes.json();
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-      const formData = new FormData();
-      formData.append('resume', file);
-      const res = await fetch(`${API_URL}/api/v1/candidate/profile/upload-resume`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${accessToken}` },
-        body: formData,
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-      setResumeUrl(data.resumeUrl);
-      setResumeUploadStatus('success');
-      setTimeout(() => setResumeUploadStatus('idle'), 4000);
-    } catch (err) {
-      console.error('Resume upload failed', err);
-      setResumeUploadStatus('error');
-      setTimeout(() => setResumeUploadStatus('idle'), 4000);
-    } finally {
       setIsUploadingResume(false);
       e.target.value = '';
     }
@@ -387,28 +389,52 @@ export default function CandidateProfilePage() {
                 <p className="text-sm text-slate-500 mt-1">Let's start with the basics.</p>
               </div>
 
-              {/* AI Parser Widget */}
+              {/* Unified Upload & AI Parser Widget */}
               <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 flex flex-col sm:flex-row items-center gap-5 relative overflow-hidden group">
                 <div className="absolute inset-0 bg-gradient-to-r from-emerald-100/50 to-teal-50/10 opacity-0 group-hover:opacity-100 transition-opacity" />
                 <div className="h-12 w-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
-                  {isParsing ? <Loader2 className="h-6 w-6 animate-spin" /> : <Sparkles className="h-6 w-6" />}
+                  {isParsing || isUploadingResume ? (
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  ) : resumeUploadStatus === 'success' ? (
+                    <CheckCircle2 className="h-6 w-6" />
+                  ) : (
+                    <Sparkles className="h-6 w-6" />
+                  )}
                 </div>
                 <div className="flex-1 text-center sm:text-left z-10">
-                  <h3 className="text-sm font-bold text-emerald-900">Magic Auto-Fill 🪄</h3>
-                  <p className="text-xs text-emerald-700 mt-0.5">Upload your PDF resume and let our AI instantly populate your profile.</p>
+                  <h3 className="text-sm font-bold text-emerald-900">
+                    {resumeUploadStatus === 'success' ? 'Resume Uploaded & Parsed!' : 'Resume Upload & Auto-Fill 🪄'}
+                  </h3>
+                  <p className="text-xs text-emerald-700 mt-0.5">
+                    {resumeUrl ? (
+                      <span className="flex items-center gap-1 mt-1 justify-center sm:justify-start">
+                        <FileText className="h-3 w-3" /> Resume saved securely.
+                      </span>
+                    ) : (
+                      'Upload your PDF. We will save it for recruiters and let AI instantly populate your profile.'
+                    )}
+                  </p>
                 </div>
                 <div className="z-10 w-full sm:w-auto shrink-0 relative">
                   <input
                     type="file"
                     accept="application/pdf"
-                    onChange={handlePdfUpload}
-                    disabled={isParsing}
+                    onChange={handleUnifiedResumeUpload}
+                    disabled={isParsing || isUploadingResume}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
                   />
                   <div className={`px-4 py-2 rounded-lg font-medium text-sm text-center transition-colors ${
-                    isParsing ? 'bg-emerald-200 text-emerald-700' : 'bg-emerald-600 text-white group-hover:bg-emerald-700 shadow-sm'
+                    isParsing || isUploadingResume
+                      ? 'bg-emerald-200 text-emerald-700'
+                      : resumeUrl
+                      ? 'bg-white border border-emerald-200 text-emerald-700 shadow-sm hover:bg-emerald-50'
+                      : 'bg-emerald-600 text-white group-hover:bg-emerald-700 shadow-sm'
                   }`}>
-                    {isParsing ? 'Parsing Document...' : 'Upload PDF'}
+                    {isParsing || isUploadingResume
+                      ? 'Processing...'
+                      : resumeUrl
+                      ? 'Replace PDF'
+                      : 'Upload PDF'}
                   </div>
                 </div>
               </div>
@@ -445,59 +471,7 @@ export default function CandidateProfilePage() {
                 <p className="text-sm text-slate-500 mt-1">Tell us about your current role and experience.</p>
               </div>
 
-              {/* Resume Upload Card */}
-              <div className={`rounded-xl border p-5 transition-all ${
-                resumeUploadStatus === 'success' ? 'bg-emerald-50 border-emerald-200' :
-                resumeUploadStatus === 'error' ? 'bg-red-50 border-red-200' :
-                'bg-slate-50 border-slate-200'
-              }`}>
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${
-                      resumeUploadStatus === 'success' ? 'bg-emerald-100' :
-                      resumeUrl ? 'bg-indigo-100' : 'bg-slate-100'
-                    }`}>
-                      {isUploadingResume ? (
-                        <Loader2 className="h-5 w-5 animate-spin text-indigo-500" />
-                      ) : resumeUploadStatus === 'success' ? (
-                        <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                      ) : (
-                        <FileText className={`h-5 w-5 ${resumeUrl ? 'text-indigo-600' : 'text-slate-400'}`} />
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-800">
-                        {resumeUploadStatus === 'success' ? 'Resume Uploaded!' :
-                         resumeUploadStatus === 'error' ? 'Upload Failed' :
-                         resumeUrl ? 'Resume on File' : 'No Resume Uploaded'}
-                      </p>
-                      <p className="text-xs text-slate-500 truncate">
-                        {resumeUploadStatus === 'success' ? 'Your resume is saved and ready for AI analysis.' :
-                         resumeUploadStatus === 'error' ? 'Something went wrong. Please try again.' :
-                         resumeUrl ? resumeUrl.split('/').pop() : 'Upload your PDF so the AI can fully evaluate your fit for jobs.'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="relative shrink-0">
-                    <input
-                      type="file"
-                      accept="application/pdf,.docx"
-                      onChange={handleResumeUpload}
-                      disabled={isUploadingResume}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-                    />
-                    <div className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                      isUploadingResume
-                        ? 'bg-slate-200 text-slate-500'
-                        : resumeUrl
-                        ? 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-                        : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm'
-                    }`}>
-                      {isUploadingResume ? 'Uploading...' : resumeUrl ? 'Replace Resume' : 'Upload Resume'}
-                    </div>
-                  </div>
-                </div>
-              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <Field label="Current Company">
                   <Input value={profile.currentCompany} onChange={(e) => set("currentCompany", e.target.value)} placeholder="Google, Flipkart, etc." />
