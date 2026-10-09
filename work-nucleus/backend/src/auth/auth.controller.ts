@@ -82,6 +82,19 @@ export class AuthController {
     };
   }
 
+  @Post('reset-role')
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset a mistakenly chosen role (only if no active associations exist)' })
+  @ApiResponse({ status: 200, description: 'Role reset successfully' })
+  @ApiResponse({ status: 409, description: 'Cannot reset role due to active associations' })
+  async resetRole(@CurrentUser() user: any) {
+    if (!user?.auth0Sub) {
+      throw new BadRequestException('Auth0 identity not found in token');
+    }
+    return this.authService.resetRole(user.auth0Sub);
+  }
+
   @Post('sync')
   @Public()
   @HttpCode(HttpStatus.OK)

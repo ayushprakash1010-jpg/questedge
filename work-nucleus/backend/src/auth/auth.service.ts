@@ -66,6 +66,38 @@ export class AuthService {
     return result;
   }
 
+  async resetRole(auth0Sub: string) {
+    try {
+      // Attempt to delete Company user
+      const user = await this.prisma.user.findUnique({ where: { auth0Sub } });
+      if (user) {
+        await this.prisma.user.delete({ where: { auth0Sub } });
+        const orgUsers = await this.prisma.user.count({ where: { orgId: user.orgId } });
+        if (orgUsers === 0) {
+          await this.prisma.organization.delete({ where: { id: user.orgId } }).catch(() => null);
+        }
+      }
+
+      // Attempt to delete Recruiter
+      const recruiter = await this.prisma.recruiterProfile.findUnique({ where: { auth0Sub } });
+      if (recruiter) {
+        await this.prisma.recruiterProfile.delete({ where: { auth0Sub } });
+      }
+
+      // Attempt to delete Candidate
+      const candidate = await this.prisma.candidateProfile.findUnique({ where: { auth0Sub } });
+      if (candidate) {
+        await this.prisma.candidateProfile.delete({ where: { auth0Sub } });
+      }
+
+      this.logger.log(`Reset role for auth0Sub: ${auth0Sub}`);
+      return { success: true };
+    } catch (err: any) {
+      this.logger.error(`Failed to reset role for ${auth0Sub}: ${err.message}`);
+      throw new ConflictException('Cannot reset role. You have active associations (e.g. referrals or mandates).');
+    }
+  }
+
   async getMe(auth0Sub: string) {
     const user = await this.prisma.user.findUnique({
       where: { auth0Sub },

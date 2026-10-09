@@ -2,7 +2,7 @@
 
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { useTheme } from "next-themes";
-import { LogOut, User, Settings, ChevronDown, Moon, Sun } from "lucide-react";
+import { LogOut, User, Settings, ChevronDown, Moon, Sun, RefreshCw } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -69,6 +69,28 @@ export function TopBar() {
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => (window.location.href = "/admin")}>
               <Settings className="h-4 w-4" /> Admin
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem 
+              onClick={async () => {
+                if (IS_MOCK) return window.location.href = "/onboarding";
+                const confirm = window.confirm("Are you sure you want to reset your account role? You will be redirected to onboarding.");
+                if (!confirm) return;
+                
+                try {
+                  const res = await fetch("/api/auth/reset-role", { method: "POST" });
+                  if (!res.ok) {
+                    const data = await res.json();
+                    alert(data.error || "Cannot change role right now. You might have active associations.");
+                    return;
+                  }
+                  window.location.href = "/onboarding"; // Hard reload to clear session claims cache
+                } catch (err) {
+                  alert("Failed to reset role.");
+                }
+              }}
+            >
+              <RefreshCw className="h-4 w-4" /> Change Role
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
