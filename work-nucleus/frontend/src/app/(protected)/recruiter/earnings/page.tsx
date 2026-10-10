@@ -5,6 +5,7 @@ import { DollarSign, TrendingUp, Clock, AlertCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toaster";
 import { withdrawReward } from "@/lib/marketplace-api";
 
 export default function EarningsDashboard() {
@@ -50,7 +51,7 @@ export default function EarningsDashboard() {
       await fetchEarnings();
     } catch (err: any) {
       console.error("Withdraw Error:", err);
-      alert(`Failed to withdraw: ${err.message || "Unknown error"}`);
+      toast.error(`Failed to withdraw: ${err.message || "Unknown error"}`);
     } finally {
       setWithdrawingId(null);
     }

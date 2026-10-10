@@ -50,7 +50,13 @@ export default function ReportsPage() {
   const [activeReportResult, setActiveReportResult] = useState<any>(null);
 
   async function load() {
-    const res = await fetch("/api/v2/reports");
+    const tokenRes = await fetch("/api/auth/token");
+    const { accessToken } = await tokenRes.json();
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+    
+    const res = await fetch(`${API_URL}/api/v2/reports`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
     if (res.ok) setReports(await res.json());
   }
   useEffect(() => {
@@ -61,9 +67,16 @@ export default function ReportsPage() {
     if (!draft.name) return;
     setBusy(true);
     try {
-      const res = await fetch("/api/v2/reports", {
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+
+      const res = await fetch(`${API_URL}/api/v2/reports`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`
+        },
         body: JSON.stringify(draft),
       });
       if (!res.ok) throw new Error("Save failed");
@@ -82,9 +95,16 @@ export default function ReportsPage() {
     if (prompt.trim().length < 5) return;
     setBusy(true);
     try {
-      const res = await fetch("/api/v2/reports/natural-language", {
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+
+      const res = await fetch(`${API_URL}/api/v2/reports/natural-language`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`
+        },
         body: JSON.stringify({ prompt }),
       });
       if (res.ok) {
@@ -99,7 +119,14 @@ export default function ReportsPage() {
 
   async function runReport(id: string) {
     try {
-      const res = await fetch(`/api/v2/reports/${id}/run`, { method: "POST" });
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+
+      const res = await fetch(`${API_URL}/api/v2/reports/${id}/run`, { 
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
       if (!res.ok) throw new Error("Run failed");
       const data = await res.json();
       

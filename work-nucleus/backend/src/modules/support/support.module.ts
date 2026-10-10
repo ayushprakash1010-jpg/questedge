@@ -3,6 +3,7 @@ import { SupportController } from './support.controller';
 import { SupportService } from './support.service';
 import { TicketsController } from './tickets.controller';
 import { TicketsService } from './tickets.service';
+import { UserTicketsController } from './user-tickets.controller';
 import { SupportAnalyticsController } from './support-analytics.controller';
 import { SupportAnalyticsService } from './support-analytics.service';
 import { SessionsController } from './sessions.controller';
@@ -14,6 +15,7 @@ import { ToolsService } from './tools.service';
   controllers: [
     SupportController,
     TicketsController,
+    UserTicketsController,
     SupportAnalyticsController,
     SessionsController,
     ToolsController,

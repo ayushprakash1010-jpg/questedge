@@ -29,10 +29,14 @@ export default function RecruiterProfilePage() {
     name: "",
     phone: "",
     headline: "",
+    headline: "",
+    bio: "",
     experienceYears: "",
     linkedinUrl: "",
+    portfolioUrl: "",
     specializations: [] as string[],
   });
+  const [isVerified, setIsVerified] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -44,10 +48,13 @@ export default function RecruiterProfilePage() {
           name: profile.name || "",
           phone: profile.phone || "",
           headline: profile.headline || "",
+          bio: profile.bio || "",
           experienceYears: profile.experienceYears?.toString() || "",
           linkedinUrl: profile.linkedinUrl || "",
+          portfolioUrl: profile.portfolioUrl || "",
           specializations: profile.specializations || [],
         });
+        setIsVerified(profile.isVerified || false);
       } catch {
         // No profile yet
         setIsNew(true);
@@ -80,7 +87,9 @@ export default function RecruiterProfilePage() {
         name: form.name.trim(),
         phone: form.phone.trim() || undefined,
         headline: form.headline.trim() || undefined,
+        bio: form.bio.trim() || undefined,
         linkedinUrl: form.linkedinUrl.trim() || undefined,
+        portfolioUrl: form.portfolioUrl.trim() || undefined,
         specializations: form.specializations.length > 0 ? form.specializations : undefined,
         experienceYears: form.experienceYears ? parseInt(form.experienceYears, 10) : undefined,
       };
@@ -117,8 +126,13 @@ export default function RecruiterProfilePage() {
             <User className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">
+            <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
               {isNew ? "Set Up Your Recruiter Profile" : "My Profile"}
+              {isVerified && (
+                <span className="flex items-center gap-1 bg-emerald-100 text-emerald-700 text-xs px-2 py-0.5 rounded-full font-medium">
+                  <Check className="h-3 w-3" /> Verified
+                </span>
+              )}
             </h1>
             <p className="text-sm text-slate-500">
               {isNew
@@ -178,23 +192,46 @@ export default function RecruiterProfilePage() {
                 className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
               />
             </div>
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">About / Bio</label>
+              <textarea
+                value={form.bio}
+                onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
+                placeholder="Tell companies about your background, recruitment style, and track record..."
+                className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent min-h-[100px]"
+              />
+            </div>
           </div>
         </div>
 
         {/* LinkedIn */}
         <div className="bg-white rounded-xl border border-slate-200 p-6">
           <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-4">Online Presence</h2>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-1.5">
-              <LinkIcon className="h-4 w-4 text-sky-600" /> LinkedIn URL
-            </label>
-            <input
-              type="url"
-              value={form.linkedinUrl}
-              onChange={(e) => setForm((f) => ({ ...f, linkedinUrl: e.target.value }))}
-              placeholder="https://linkedin.com/in/your-profile"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
-            />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-1.5">
+                <LinkIcon className="h-4 w-4 text-sky-600" /> LinkedIn URL
+              </label>
+              <input
+                type="url"
+                value={form.linkedinUrl}
+                onChange={(e) => setForm((f) => ({ ...f, linkedinUrl: e.target.value }))}
+                placeholder="https://linkedin.com/in/your-profile"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-1.5">
+                <Briefcase className="h-4 w-4 text-sky-600" /> Portfolio / Past Placements
+              </label>
+              <input
+                type="url"
+                value={form.portfolioUrl}
+                onChange={(e) => setForm((f) => ({ ...f, portfolioUrl: e.target.value }))}
+                placeholder="https://your-portfolio.com"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+              />
+            </div>
           </div>
         </div>
 

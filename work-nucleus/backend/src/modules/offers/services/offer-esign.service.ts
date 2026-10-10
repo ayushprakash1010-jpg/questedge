@@ -4,6 +4,7 @@ import { FileUploadService } from '../../file-upload/file-upload.service';
 import { JobQueueService } from '../../job-queue/job-queue.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { ESignService } from '../../../integrations/esign/esign.service';
+import { BgvService } from '../../bgv/bgv.service';
 import { OfferRenderService } from './offer-render.service';
 
 const JOINING_AUTO_CREATE_QUEUE = 'joining.auto-create';
@@ -18,6 +19,7 @@ export class OfferESignService {
     private readonly render: OfferRenderService,
     private readonly fileUpload: FileUploadService,
     private readonly queue: JobQueueService,
+    private readonly bgvService: BgvService,
   ) {}
 
   async initiate(orgId: string, offerId: string) {
@@ -120,7 +122,10 @@ export class OfferESignService {
     signedAt?: Date,
     auditTrailUrl?: string,
   ) {
-    const req = await this.prisma.eSignRequest.findUnique({ where: { id: requestId } });
+    const req = await this.prisma.eSignRequest.findUnique({ 
+      where: { id: requestId },
+      include: { offer: { include: { application: true } } }
+    });
     if (!req) return null;
 
     const newStatus = (typeof status === 'string' ? status.toUpperCase() : status) as ESignStatus;
@@ -150,6 +155,21 @@ export class OfferESignService {
         await this.queue.enqueue(JOINING_AUTO_CREATE_QUEUE, { offerId: req.offerId });
       } catch (err) {
         this.logger.warn(`Failed to enqueue joining auto-create: ${err}`);
+      }
+
+      // Auto-trigger BGV if configured
+      try {
+        const orgSettings = await this.prisma.orgSettings.findUnique({ where: { orgId: req.offer.orgId } });
+        const settings = (orgSettings?.settings as Record<string, any>) || {};
+        if (settings.autoTriggerBgvOnOfferAccept) {
+          await this.bgvService.initiate(req.offer.orgId, {
+            candidateId: req.offer.application.candidateId,
+            offerId: req.offerId,
+            checkTypes: ['PAN', 'AADHAAR', 'EMPLOYMENT_HISTORY', 'EDUCATION'] as any[],
+          });
+        }
+      } catch (err) {
+        this.logger.warn(`Failed to auto-trigger BGV: ${err}`);
       }
     } else if (newStatus === ESignStatus.EXPIRED) {
       await this.prisma.offer.update({

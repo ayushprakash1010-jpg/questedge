@@ -13,6 +13,8 @@ import {
   UserCircle,
   Heart,
   FileText,
+  LifeBuoy,
+  Trophy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -31,14 +33,17 @@ const companyNav: NavItem[] = [
   { label: "Billing & Escrow", href: "/company/financials", icon: IndianRupee },
   { label: "Reports", href: "/admin/reports", icon: BarChart3 },
   { label: "Admin", href: "/admin/users", icon: Shield },
+  { label: "Support", href: "/support", icon: LifeBuoy },
 ];
 
 const recruiterNav: NavItem[] = [
   { label: "Dashboard", href: "/recruiter/dashboard", icon: LayoutDashboard },
   { label: "Discover Jobs", href: "/recruiter/discover", icon: Compass },
   { label: "My Referrals", href: "/recruiter/referrals", icon: Users },
+  { label: "Leaderboard", href: "/recruiter/leaderboard", icon: Trophy },
   { label: "Earnings", href: "/recruiter/earnings", icon: IndianRupee },
   { label: "Profile", href: "/recruiter/profile", icon: UserCircle },
+  { label: "Support", href: "/support", icon: LifeBuoy },
 ];
 
 const candidateNav: NavItem[] = [

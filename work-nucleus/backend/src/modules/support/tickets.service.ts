@@ -48,6 +48,7 @@ export class TicketsService {
     orgId?: string;
     assigneeId?: string;
     category?: string;
+    reportedBy?: string;
   }) {
     const where: any = {};
     if (query.status) where.status = query.status;
@@ -55,6 +56,7 @@ export class TicketsService {
     if (query.orgId) where.orgId = query.orgId;
     if (query.assigneeId) where.assigneeId = query.assigneeId;
     if (query.category) where.category = query.category;
+    if (query.reportedBy) where.reportedBy = query.reportedBy;
 
     const [tickets, total] = await Promise.all([
       this.prisma.supportTicket.findMany({

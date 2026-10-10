@@ -14,6 +14,7 @@ interface Settings {
   scoringWeights?: Record<string, number>;
   maxInterviewRounds?: number;
   approvalWorkflowEnabled?: boolean;
+  autoTriggerBgvOnOfferAccept?: boolean;
 }
 
 export default function OrgSettingsPage() {
@@ -155,6 +156,25 @@ export default function OrgSettingsPage() {
               </Label>
               <p className="mt-0.5 text-xs text-slate-500">
                 Require approval for decisions before communication is sent
+              </p>
+            </div>
+            <div>
+              <Label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={settings?.autoTriggerBgvOnOfferAccept || false}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      autoTriggerBgvOnOfferAccept: e.target.checked,
+                    })
+                  }
+                  className="rounded border-slate-300"
+                />
+                Auto-trigger Background Verification (BGV)
+              </Label>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Automatically start standard BGV checks when an offer is signed and accepted.
               </p>
             </div>
           </CardContent>

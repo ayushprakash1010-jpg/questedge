@@ -39,7 +39,8 @@ export class RewardsController {
   }
 
   @Get('fix')
-  @UserTypes(UserType.RECRUITER, UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
+  @UserTypes(UserType.COMPANY_ADMIN)
+  @ApiOperation({ summary: 'Internal: Fix missing rewards (Admin only)' })
   async fixRewards() {
     return this.rewardsService.fixMissingRewards();
   }

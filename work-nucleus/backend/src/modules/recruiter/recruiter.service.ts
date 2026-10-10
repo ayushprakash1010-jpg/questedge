@@ -45,6 +45,9 @@ export class RecruiterService {
         name: dto.name,
         phone: dto.phone,
         headline: dto.headline,
+        bio: dto.bio,
+        portfolioUrl: dto.portfolioUrl,
+        avatarUrl: dto.avatarUrl,
         specializations: dto.specializations ?? [],
         experienceYears: dto.experienceYears,
         linkedinUrl: dto.linkedinUrl,
@@ -64,6 +67,9 @@ export class RecruiterService {
         name: dto.name,
         phone: dto.phone,
         headline: dto.headline,
+        bio: dto.bio,
+        portfolioUrl: dto.portfolioUrl,
+        avatarUrl: dto.avatarUrl,
         specializations: dto.specializations ?? undefined,
         experienceYears: dto.experienceYears,
         linkedinUrl: dto.linkedinUrl,
@@ -231,12 +237,11 @@ export class RecruiterService {
         pendingConsents:
           (refCounts['PENDING_CONSENT'] ?? 0) + (refCounts['CONSENT_REQUESTED'] ?? 0),
         activePipeline: refCounts['ACTIVATED'] ?? 0,
-        totalEarnings: earningsMap['PAID'] ?? 0,
+        totalEarnings: (earningsMap['PAID'] ?? 0) + (earningsMap['APPROVED'] ?? 0),
         pendingEarnings:
           (earningsMap['POTENTIAL'] ?? 0) +
           (earningsMap['ELIGIBLE'] ?? 0) +
-          (earningsMap['PENDING_APPROVAL'] ?? 0) +
-          (earningsMap['APPROVED'] ?? 0),
+          (earningsMap['PENDING_APPROVAL'] ?? 0),
         placementSuccessRate,
         reputationTier,
       },
@@ -267,5 +272,35 @@ export class RecruiterService {
     const profile = await this.prisma.recruiterProfile.findUnique({ where: { id } });
     if (!profile) throw new NotFoundException('Recruiter profile not found.');
     return profile;
+  }
+
+  async getLeaderboard() {
+    // Top 10 by number of hired referrals or total earnings.
+    const recruiters = await this.prisma.recruiterProfile.findMany({
+      take: 10,
+      include: {
+        _count: {
+          select: { referrals: { where: { status: 'HIRED' } } }
+        },
+        rewards: {
+          where: { status: { in: ['PAID', 'APPROVED'] } },
+          select: { rewardAmount: true }
+        }
+      }
+    });
+
+    const mapped = recruiters.map(r => ({
+      id: r.id,
+      name: r.name,
+      avatarUrl: r.avatarUrl,
+      isVerified: r.isVerified,
+      reputationTier: r.reputationTier,
+      hiredCount: r._count.referrals,
+      totalEarnings: r.rewards.reduce((sum, rw) => sum + rw.rewardAmount, 0)
+    }));
+
+    // Sort by earnings descending, then hired count
+    mapped.sort((a, b) => b.totalEarnings - a.totalEarnings || b.hiredCount - a.hiredCount);
+    return mapped;
   }
 }

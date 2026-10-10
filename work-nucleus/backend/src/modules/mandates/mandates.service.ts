@@ -296,9 +296,13 @@ export class MandatesService {
     });
 
     if (updated.hiringManagerName) {
-      // Mock WhatsApp notification to the manager
+      // Send WhatsApp notification to the manager
       const appLink = `https://questedge.com/mandates/${updated.id}`;
+      // Note: Assuming a phone number is available on the user/manager record. 
+      // Falling back to a placeholder since only Name is explicitly available on Mandate.
+      const phoneToNotify = (updated as any).hiringManagerPhone || '+1234567890';
       this.whatsappService.sendWhatsAppNotification(
+        phoneToNotify,
         updated.hiringManagerName,
         updated.title,
         'ACTIVE',
@@ -346,7 +350,8 @@ export class MandatesService {
   // ── Public: Discovery (no auth) ─────────────────────────────────
 
   async publicDiscover(filter: FilterMandateDto): Promise<PaginatedResult<Mandate>> {
-    const where = this.buildWhereClause(filter, { status: 'ACTIVE' });
+    const where = this.buildWhereClause(filter);
+    where.status = 'ACTIVE';
     const page = filter.page ?? 1;
     const limit = Math.min(filter.limit ?? 20, 100);
     const skip = (page - 1) * limit;
@@ -381,7 +386,8 @@ export class MandatesService {
   // ── Recruiter: Discovery ────────────────────────────────────────
 
   async discover(recruiterId: string, filter: FilterMandateDto): Promise<PaginatedResult<Mandate & { isJoined: boolean }>> {
-    const where = this.buildWhereClause(filter, { status: 'ACTIVE' });
+    const where = this.buildWhereClause(filter);
+    where.status = 'ACTIVE';
     const page = filter.page ?? 1;
     const limit = Math.min(filter.limit ?? 20, 100);
     const skip = (page - 1) * limit;

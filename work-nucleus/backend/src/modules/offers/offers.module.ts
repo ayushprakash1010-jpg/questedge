@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { BgvModule } from '../bgv/bgv.module';
 import { CompensationModule } from '../compensation/compensation.module';
 import { JobQueueModule } from '../job-queue/job-queue.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -13,7 +14,7 @@ import { OfferESignService } from './services/offer-esign.service';
 import { OfferRenderService } from './services/offer-render.service';
 
 @Module({
-  imports: [CompensationModule, JobQueueModule, NotificationsModule],
+  imports: [BgvModule, CompensationModule, JobQueueModule, NotificationsModule],
   controllers: [OffersController, OffersPublicController, OffersWebhooksController],
   providers: [
     OffersService,

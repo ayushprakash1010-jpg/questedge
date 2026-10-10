@@ -8,6 +8,56 @@ export default function CompanyFinancialsPage() {
   const [rewards, setRewards] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [addingFunds, setAddingFunds] = useState(false);
+
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handleAddFunds = async () => {
+    setAddingFunds(true);
+    try {
+      const res = await loadRazorpayScript();
+      if (!res) {
+        toast.error("Failed to load Razorpay SDK. Check your connection.");
+        return;
+      }
+
+      // Mock options for demo purposes
+      const options = {
+        key: "rzp_test_dummy_key", 
+        amount: 5000000, // 50,000 INR in paise
+        currency: "INR",
+        name: "QuestEdge Escrow",
+        description: "Add funds to your escrow account",
+        handler: function (response: any) {
+          toast.success(`Successfully added funds! Payment ID: ${response.razorpay_payment_id}`);
+          // Here we would typically hit our backend to record the transaction
+        },
+        prefill: {
+          name: "Company Admin",
+          email: "admin@company.com",
+        },
+        theme: {
+          color: "#4f46e5", // Indigo-600
+        },
+      };
+
+      const paymentObject = new (window as any).Razorpay(options);
+      paymentObject.open();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to initiate payment");
+    } finally {
+      setAddingFunds(false);
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -49,8 +99,8 @@ export default function CompanyFinancialsPage() {
   }
 
   // Aggregate stats
-  const totalPaid = rewards.filter((r) => r.status === "PAID").reduce((sum, r) => sum + r.rewardAmount, 0);
-  const totalInEscrow = rewards.filter((r) => r.status !== "PAID" && r.status !== "REJECTED").reduce((sum, r) => sum + r.rewardAmount, 0);
+  const totalPaid = rewards.filter((r) => r.status === "PAID" || r.status === "APPROVED").reduce((sum, r) => sum + r.rewardAmount, 0);
+  const totalInEscrow = rewards.filter((r) => r.status !== "PAID" && r.status !== "APPROVED" && r.status !== "REJECTED").reduce((sum, r) => sum + r.rewardAmount, 0);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -64,9 +114,13 @@ export default function CompanyFinancialsPage() {
             </h1>
             <p className="text-slate-500 mt-2">Manage your deposited bounties and release funds to recruiters.</p>
           </div>
-          <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg font-semibold flex items-center gap-2 transition-colors">
-            <IndianRupee className="h-5 w-5" />
-            Add Funds to Escrow
+          <button 
+            onClick={handleAddFunds}
+            disabled={addingFunds}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg font-semibold flex items-center gap-2 transition-colors disabled:opacity-70"
+          >
+            {addingFunds ? <Loader2 className="h-5 w-5 animate-spin" /> : <IndianRupee className="h-5 w-5" />}
+            {addingFunds ? "Processing..." : "Add Funds to Escrow"}
           </button>
         </div>
       </div>

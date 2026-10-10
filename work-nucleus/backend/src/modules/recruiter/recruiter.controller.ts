@@ -55,6 +55,12 @@ export class RecruiterController {
     return this.recruiterService.getDashboard(user.id);
   }
 
+  @Get('leaderboard')
+  @ApiOperation({ summary: 'Recruiter: Get global leaderboard' })
+  async getLeaderboard() {
+    return this.recruiterService.getLeaderboard();
+  }
+
   @Get(':id/public')
   @ApiOperation({ summary: 'Public: View a recruiter public profile' })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })

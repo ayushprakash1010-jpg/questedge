@@ -23,6 +23,21 @@ export class CreateRecruiterProfileDto {
   @IsString({ each: true })
   specializations?: string[];
 
+  @ApiPropertyOptional({ description: 'Professional bio or about section' })
+  @IsOptional()
+  @IsString()
+  bio?: string;
+
+  @ApiPropertyOptional({ description: 'Link to portfolio or past placements' })
+  @IsOptional()
+  @IsString()
+  portfolioUrl?: string;
+
+  @ApiPropertyOptional({ description: 'Profile picture URL' })
+  @IsOptional()
+  @IsString()
+  avatarUrl?: string;
+
   @ApiPropertyOptional({ description: 'Total years of recruiting experience' })
   @IsOptional()
   @IsInt()

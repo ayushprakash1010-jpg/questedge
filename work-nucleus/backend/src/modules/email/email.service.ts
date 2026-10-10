@@ -7,20 +7,23 @@ export class EmailService {
   private readonly logger = new Logger(EmailService.name);
 
   constructor() {
-    // In production, use a real key. For development, we might not send real emails if key is missing.
-    const key = process.env.RESEND_API_KEY || 're_dummy_key_123';
-    this.resend = new Resend(key);
+    // Safely initialize Resend only if key exists
+    const key = process.env.RESEND_API_KEY;
+    if (key) {
+      this.resend = new Resend(key);
+    }
   }
 
   async sendEmail(to: string, subject: string, html: string) {
-    if (!process.env.RESEND_API_KEY) {
+    if (!this.resend || !process.env.RESEND_API_KEY) {
       this.logger.log(`[MOCK EMAIL to ${to}] Subject: ${subject}`);
       return;
     }
 
     try {
+      const fromAddress = process.env.RESEND_FROM_EMAIL || 'QuestEdge <hello@questedge.com>';
       const { data, error } = await this.resend.emails.send({
-        from: 'QuestEdge <hello@questedge.com>',
+        from: fromAddress,
         to: [to],
         subject,
         html,

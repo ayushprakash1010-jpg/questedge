@@ -1721,6 +1721,9 @@ model RecruiterProfile {
   name            String
   phone           String?
   headline        String?
+  bio             String?   @db.Text
+  portfolioUrl    String?   @map("portfolio_url")
+  avatarUrl       String?   @map("avatar_url")
   specializations Json      @default("[]")
   experienceYears Int?      @map("experience_years")
   linkedinUrl     String?   @map("linkedin_url")
