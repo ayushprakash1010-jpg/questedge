@@ -8,17 +8,20 @@ export class WhatsappService {
     const sid = process.env.TWILIO_ACCOUNT_SID;
     const token = process.env.TWILIO_AUTH_TOKEN;
     const fromPhone = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886';
+    const testRecipient = process.env.TWILIO_TEST_RECIPIENT_PHONE;
+    const actualPhone = testRecipient ? testRecipient : managerPhone;
+
     const message = `Hi ${managerName}, the mandate "${title}" is now ${status}. View it here: ${link}`;
 
     if (!sid || !token) {
-      this.logger.log(`[WhatsApp Mock to ${managerPhone}] ${message}`);
+      this.logger.log(`[WhatsApp Mock to ${actualPhone}] ${message}`);
       return { success: true, mocked: true };
     }
 
     try {
       const url = `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`;
       const params = new URLSearchParams({
-        To: `whatsapp:${managerPhone.startsWith('+') ? managerPhone : '+' + managerPhone}`,
+        To: `whatsapp:${actualPhone.startsWith('+') ? actualPhone : '+' + actualPhone}`,
         From: fromPhone,
         Body: message
       });
@@ -37,7 +40,7 @@ export class WhatsappService {
         throw new Error(`Twilio API Error: ${response.status} - ${errorData}`);
       }
 
-      this.logger.log(`[WhatsApp Real] Successfully sent message to ${managerPhone}`);
+      this.logger.log(`[WhatsApp Real] Successfully sent message to ${actualPhone}`);
       return { success: true };
     } catch (error: any) {
       this.logger.error(`Failed to send WhatsApp notification: ${error.message}`);
