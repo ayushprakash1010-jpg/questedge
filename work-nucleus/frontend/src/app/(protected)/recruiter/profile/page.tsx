@@ -29,7 +29,6 @@ export default function RecruiterProfilePage() {
     name: "",
     phone: "",
     headline: "",
-    headline: "",
     bio: "",
     experienceYears: "",
     linkedinUrl: "",
