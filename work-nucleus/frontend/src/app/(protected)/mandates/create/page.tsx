@@ -157,6 +157,7 @@ export default function CreateMandatePage() {
     noticePeriodPref: "",
     hiringManagerName: "",
     hiringManagerTitle: "",
+    hiringManagerPhone: "",
     teamDescription: "",
   });
 
@@ -229,6 +230,7 @@ export default function CreateMandatePage() {
         noticePeriodPref: form.noticePeriodPref || undefined,
         hiringManagerName: form.hiringManagerName || undefined,
         hiringManagerTitle: form.hiringManagerTitle || undefined,
+        hiringManagerPhone: form.hiringManagerPhone || undefined,
         teamDescription: form.teamDescription || undefined,
       };
       
@@ -260,6 +262,7 @@ export default function CreateMandatePage() {
           noticePeriodPref: form.noticePeriodPref || undefined,
           hiringManagerName: form.hiringManagerName || undefined,
           hiringManagerTitle: form.hiringManagerTitle || undefined,
+          hiringManagerPhone: form.hiringManagerPhone || undefined,
           teamDescription: form.teamDescription || undefined,
         };
         const mandate = await createMandate(token, payload);
@@ -400,12 +403,15 @@ export default function CreateMandatePage() {
 
               <div className="pt-4 border-t border-slate-100">
                 <h4 className="text-sm font-bold text-slate-800 mb-4">Reporting & Team Details</h4>
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <FormField label="Hiring Manager Name" hint="Who will they report to?">
                     <Input value={form.hiringManagerName} onChange={(e) => update("hiringManagerName", e.target.value)} placeholder="e.g. Rahul Sharma" />
                   </FormField>
                   <FormField label="Hiring Manager Title">
                     <Input value={form.hiringManagerTitle} onChange={(e) => update("hiringManagerTitle", e.target.value)} placeholder="e.g. VP of Engineering" />
+                  </FormField>
+                  <FormField label="Hiring Manager Phone" hint="For WhatsApp alerts">
+                    <Input value={form.hiringManagerPhone} onChange={(e) => update("hiringManagerPhone", e.target.value)} placeholder="e.g. +919876543210" />
                   </FormField>
                 </div>
                 <FormField label="Team Description" hint="Briefly describe the team size, goals, or culture.">
