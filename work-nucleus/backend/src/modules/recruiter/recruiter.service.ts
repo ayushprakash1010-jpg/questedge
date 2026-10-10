@@ -289,15 +289,18 @@ export class RecruiterService {
       }
     });
 
-    const mapped = recruiters.map(r => ({
-      id: r.id,
-      name: r.name,
-      avatarUrl: r.avatarUrl,
-      isVerified: r.isVerified,
-      reputationTier: r.reputationTier,
-      hiredCount: r._count.referrals,
-      totalEarnings: r.rewards.reduce((sum, rw) => sum + rw.rewardAmount, 0)
-    }));
+    const mapped = recruiters.map(r => {
+      const hiredCount = r._count.referrals;
+      return {
+        id: r.id,
+        name: r.name,
+        avatarUrl: r.avatarUrl,
+        isVerified: r.isVerified,
+        reputationTier: hiredCount > 10 ? 'Platinum' : hiredCount > 5 ? 'Gold' : hiredCount > 1 ? 'Silver' : 'Bronze',
+        hiredCount,
+        totalEarnings: r.rewards.reduce((sum, rw) => sum + Number(rw.rewardAmount), 0)
+      };
+    });
 
     // Sort by earnings descending, then hired count
     mapped.sort((a, b) => b.totalEarnings - a.totalEarnings || b.hiredCount - a.hiredCount);
