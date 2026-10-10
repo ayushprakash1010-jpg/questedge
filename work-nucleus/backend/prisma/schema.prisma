@@ -1763,6 +1763,7 @@ model Mandate {
   expectedTimeline     String?                  @map("expected_timeline")
   hiringManagerName    String?                  @map("hiring_manager_name")
   hiringManagerTitle   String?                  @map("hiring_manager_title")
+  hiringManagerPhone   String?                  @map("hiring_manager_phone")
   teamDescription      String?                  @map("team_description") @db.Text
   applicationDeadline  DateTime?                @map("application_deadline")
   acceptsDirectApply   Boolean                  @default(true) @map("accepts_direct_apply")

@@ -185,6 +185,7 @@ export class MandatesService {
         interviewProcess: dto.interviewProcess ?? [],
         hiringManagerName: dto.hiringManagerName,
         hiringManagerTitle: dto.hiringManagerTitle,
+        hiringManagerPhone: dto.hiringManagerPhone,
         teamDescription: dto.teamDescription,
         status: 'DRAFT',
       },
@@ -298,16 +299,15 @@ export class MandatesService {
     if (updated.hiringManagerName) {
       // Send WhatsApp notification to the manager
       const appLink = `https://questedge.com/mandates/${updated.id}`;
-      // Note: Assuming a phone number is available on the user/manager record. 
-      // Falling back to a placeholder since only Name is explicitly available on Mandate.
-      const phoneToNotify = (updated as any).hiringManagerPhone || '+1234567890';
-      this.whatsappService.sendWhatsAppNotification(
-        phoneToNotify,
-        updated.hiringManagerName,
-        updated.title,
-        'ACTIVE',
-        appLink
-      ).catch(e => console.error(e));
+      if (updated.hiringManagerPhone) {
+        this.whatsappService.sendWhatsAppNotification(
+          updated.hiringManagerPhone,
+          updated.hiringManagerName,
+          updated.title,
+          'ACTIVE',
+          appLink
+        ).catch(e => console.error(e));
+      }
     }
 
     return updated;

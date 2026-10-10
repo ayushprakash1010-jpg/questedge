@@ -148,6 +148,11 @@ export class CreateMandateDto {
   @IsString()
   hiringManagerTitle?: string;
 
+  @ApiPropertyOptional({ description: 'Hiring Manager Phone', example: '+1234567890' })
+  @IsOptional()
+  @IsString()
+  hiringManagerPhone?: string;
+
   @ApiPropertyOptional({ description: 'Team Description', example: 'You will join a dynamic 5-person squad' })
   @IsOptional()
   @IsString()
