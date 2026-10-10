@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { getCompanyRewards, approveReward } from "@/lib/marketplace-api";
 import { IndianRupee, Loader2, Building, ShieldCheck, FileCheck, History } from "lucide-react";
+import { toast } from "@/components/ui/toaster";
 
 export default function CompanyFinancialsPage() {
   const [rewards, setRewards] = useState<any[]>([]);
