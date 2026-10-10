@@ -19,13 +19,7 @@ import {
   DataTableRow,
 } from "@/components/shared/data-table";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+
 
 export default function SupportPage() {
   const [tickets, setTickets] = useState<any[]>([]);
@@ -154,71 +148,78 @@ export default function SupportPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create Support Ticket</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Title</label>
-              <Input
-                value={form.title}
-                onChange={e => setForm({ ...form, title: e.target.value })}
-                required
-                placeholder="Brief summary of the issue"
-              />
+      {dialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/50">
+              <h3 className="font-bold text-lg text-slate-900">Create Support Ticket</h3>
+              <button onClick={() => setDialogOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <Plus className="h-5 w-5 rotate-45" />
+              </button>
             </div>
-            
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Description</label>
-              <Textarea
-                value={form.description}
-                onChange={e => setForm({ ...form, description: e.target.value })}
-                required
-                rows={4}
-                placeholder="Please describe your issue in detail..."
-              />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">Category</label>
-                <Select
-                  value={form.category}
-                  onChange={e => setForm({ ...form, category: e.target.value })}
-                >
-                  <option value="GENERAL">General Inquiry</option>
-                  <option value="TECHNICAL">Technical Issue</option>
-                  <option value="BILLING">Billing</option>
-                  <option value="FEATURE_REQUEST">Feature Request</option>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">Priority</label>
-                <Select
-                  value={form.priority}
-                  onChange={e => setForm({ ...form, priority: e.target.value })}
-                >
-                  <option value="LOW">Low</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="HIGH">High</option>
-                  <option value="CRITICAL">Critical</option>
-                </Select>
-              </div>
-            </div>
+            <div className="p-6">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Title</label>
+                  <Input
+                    value={form.title}
+                    onChange={e => setForm({ ...form, title: e.target.value })}
+                    required
+                    placeholder="Brief summary of the issue"
+                  />
+                </div>
+                
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Description</label>
+                  <Textarea
+                    value={form.description}
+                    onChange={e => setForm({ ...form, description: e.target.value })}
+                    required
+                    rows={4}
+                    placeholder="Please describe your issue in detail..."
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">Category</label>
+                    <Select
+                      value={form.category}
+                      onChange={e => setForm({ ...form, category: e.target.value })}
+                    >
+                      <option value="GENERAL">General Inquiry</option>
+                      <option value="TECHNICAL">Technical Issue</option>
+                      <option value="BILLING">Billing</option>
+                      <option value="FEATURE_REQUEST">Feature Request</option>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">Priority</label>
+                    <Select
+                      value={form.priority}
+                      onChange={e => setForm({ ...form, priority: e.target.value })}
+                    >
+                      <option value="LOW">Low</option>
+                      <option value="MEDIUM">Medium</option>
+                      <option value="HIGH">High</option>
+                      <option value="CRITICAL">Critical</option>
+                    </Select>
+                  </div>
+                </div>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={saving}>
-                {saving ? "Submitting..." : "Submit Ticket"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+                <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
+                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={saving}>
+                    {saving ? "Submitting..." : "Submit Ticket"}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
