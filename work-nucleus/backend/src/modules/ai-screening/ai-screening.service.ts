@@ -19,7 +19,7 @@ export class AiScreeningService {
     const rawKey = this.configService.get<string>('GEMINI_API_KEY');
     const trimmedKey = rawKey ? rawKey.trim() : null;
     this.hasApiKey = !!trimmedKey;
-    this.model = this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.0-flash';
+    this.model = this.configService.get<string>('GEMINI_MODEL') || 'gemini-3.5-flash';
 
     this.logger.log(`AI Service initialized. Key present: ${this.hasApiKey}, Model: ${this.model}`);
 
@@ -292,9 +292,10 @@ export class AiScreeningService {
 
     const modelsToTry = [
       this.model,
+      'gemini-3.5-flash',
+      'gemini-2.5-flash',
       'gemini-2.0-flash',
       'gemini-1.5-flash',
-      'gemini-2.5-flash',
     ].filter((m, i, arr) => m && arr.indexOf(m) === i);
 
     for (const modelName of modelsToTry) {
