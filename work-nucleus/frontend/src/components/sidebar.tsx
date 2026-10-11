@@ -15,6 +15,9 @@ import {
   FileText,
   LifeBuoy,
   Trophy,
+  Star,
+  ShieldCheck,
+  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +33,9 @@ const companyNav: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Mandates", href: "/mandates", icon: Briefcase },
   { label: "Candidates", href: "/candidates", icon: Users },
+  { label: "Appraisals", href: "/appraisal", icon: Star },
+  { label: "BGV", href: "/bgv", icon: ShieldCheck },
+  { label: "Compensation", href: "/compensation/team", icon: Wallet },
   { label: "Billing & Escrow", href: "/company/financials", icon: IndianRupee },
   { label: "Reports", href: "/admin/reports", icon: BarChart3 },
   { label: "Admin", href: "/admin/users", icon: Shield },
@@ -100,10 +106,10 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
           <div
             className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br ${logoGradient} shadow-[0_2px_6px_rgba(0,0,0,0.15)]`}
           >
-            <span className="text-sm font-extrabold text-white">R</span>
+            <span className="text-sm font-extrabold text-white">Q</span>
           </div>
           <span className="text-base font-bold text-slate-900">
-            Referral<span className={config.accent}>Hire</span>
+            Quest<span className={config.accent}>Edge</span>
           </span>
         </Link>
       </div>
