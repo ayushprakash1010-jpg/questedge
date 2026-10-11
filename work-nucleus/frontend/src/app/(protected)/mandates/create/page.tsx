@@ -183,7 +183,7 @@ export default function CreateMandatePage() {
         let errStr = "Failed to generate mandate";
         try {
           const errData = await res.json();
-          errStr = errData.message || errStr;
+          errStr = errData?.error?.message || errData?.message || errStr;
         } catch (_) {}
         throw new Error(errStr);
       }

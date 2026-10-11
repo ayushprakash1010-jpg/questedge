@@ -19,7 +19,7 @@ export class AiScreeningService {
     const rawKey = this.configService.get<string>('GEMINI_API_KEY');
     const trimmedKey = rawKey ? rawKey.trim() : null;
     this.hasApiKey = !!trimmedKey;
-    this.model = this.configService.get<string>('GEMINI_MODEL') || 'gemini-3.5-flash';
+    this.model = this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.0-flash';
 
     this.logger.log(`AI Service initialized. Key present: ${this.hasApiKey}, Model: ${this.model}`);
 
@@ -177,62 +177,154 @@ export class AiScreeningService {
     }
   }
 
+  // ── Fallback Mandate Generator from Prompt ────────────────────
+  private generateFallbackMandate(prompt: string): any {
+    const cleanPrompt = prompt.trim();
+
+    // 1. Extract role / title
+    let title = cleanPrompt
+      .replace(/^(?:we\s+)?(?:need|looking for|hiring|want|search for|seeking)\s+(?:a|an)\s+/i, '')
+      .replace(/\s+(?:with|having|who has|of)\s+.*$/i, '')
+      .trim();
+
+    if (title.length > 2) {
+      title = title
+        .split(' ')
+        .map((w) => (w.length > 0 ? w[0].toUpperCase() + w.slice(1) : ''))
+        .join(' ');
+    } else {
+      title = 'Senior Software Engineer';
+    }
+
+    // 2. Extract experience
+    const expMatch = cleanPrompt.match(/(\d+(?:\+|-|\s*to\s*\d+)?\s*(?:years?|yrs?))/i);
+    const requiredExperience = expMatch ? `${expMatch[1]} of experience` : '3-5 years';
+
+    // 3. Extract skills & department
+    const skillsList: string[] = [];
+    const lower = cleanPrompt.toLowerCase();
+
+    const techCatalog: Record<string, string[]> = {
+      react: ['React', 'TypeScript', 'JavaScript (ES6+)', 'HTML5/CSS3', 'Next.js', 'Redux'],
+      node: ['Node.js', 'TypeScript', 'Express/NestJS', 'RESTful APIs', 'PostgreSQL', 'Docker'],
+      frontend: ['React', 'TypeScript', 'CSS3/Tailwind', 'Next.js', 'Web Performance'],
+      backend: ['Node.js', 'PostgreSQL', 'RESTful APIs', 'Docker', 'Redis', 'Microservices'],
+      'full-stack': ['React', 'Node.js', 'TypeScript', 'PostgreSQL', 'Tailwind CSS', 'Docker'],
+      fullstack: ['React', 'Node.js', 'TypeScript', 'PostgreSQL', 'Tailwind CSS', 'Docker'],
+      python: ['Python', 'Django/FastAPI', 'PostgreSQL', 'Docker', 'REST APIs'],
+      java: ['Java', 'Spring Boot', 'Microservices', 'PostgreSQL', 'Docker'],
+      devops: ['AWS', 'Docker', 'Kubernetes', 'CI/CD Pipelines', 'Terraform'],
+      aws: ['AWS', 'Docker', 'Kubernetes', 'Terraform', 'CI/CD'],
+      mobile: ['React Native / Flutter', 'TypeScript', 'iOS/Android', 'REST APIs'],
+      flutter: ['Flutter', 'Dart', 'State Management', 'REST APIs'],
+      sales: ['B2B Sales', 'Lead Generation', 'CRM (HubSpot/Salesforce)', 'Negotiation'],
+      marketing: ['Growth Marketing', 'SEO/SEM', 'Content Strategy', 'Google Analytics'],
+      design: ['Figma', 'UI/UX Design', 'Design Systems', 'Wireframing', 'User Research'],
+      product: ['Product Management', 'Roadmapping', 'Agile/Scrum', 'Data Analytics'],
+    };
+
+    let department = 'Engineering';
+    if (lower.includes('sales')) department = 'Sales';
+    else if (lower.includes('marketing')) department = 'Marketing';
+    else if (lower.includes('design') || lower.includes('ui/ux')) department = 'Design';
+    else if (lower.includes('product manager') || lower.includes('product owner')) department = 'Product';
+    else if (lower.includes('hr') || lower.includes('recruiter')) department = 'Human Resources';
+
+    for (const [key, skills] of Object.entries(techCatalog)) {
+      if (lower.includes(key)) {
+        skills.forEach((s) => {
+          if (!skillsList.includes(s)) skillsList.push(s);
+        });
+      }
+    }
+
+    if (skillsList.length === 0) {
+      skillsList.push('Problem Solving', 'Communication', 'Teamwork', 'Agile Workflow');
+    }
+
+    const mandatorySkills = skillsList.slice(0, 4);
+    const preferredSkills = skillsList.length > 4 ? skillsList.slice(4, 8) : ['Git', 'Agile / Scrum', 'CI/CD'];
+
+    let workModel = 'Hybrid';
+    if (lower.includes('remote')) workModel = 'Remote';
+    if (lower.includes('on-site') || lower.includes('onsite')) workModel = 'On-site';
+
+    const description = `We are looking for an exceptional **${title}** to join our fast-growing ${department} team. In this role, you will play a central part in building high-impact products, collaborating across functions, and driving technical excellence.\n\n### Key Responsibilities\n- Design, develop, and deliver high-quality, scalable solutions.\n- Collaborate closely with product managers, designers, and engineering colleagues.\n- Participate actively in code reviews, technical architecture sessions, and sprint planning.\n- Ensure robust system reliability, performance optimization, and clean code standards.\n\n### Requirements\n- **Experience:** ${requiredExperience} in relevant industry roles.\n- **Core Proficiencies:** ${mandatorySkills.join(', ')}.\n- Proven track record of shipping production-grade software or executing high-quality deliverables.\n- Strong problem-solving mindset and excellent cross-team communication.`;
+
+    return {
+      title,
+      department,
+      description,
+      requiredExperience,
+      mandatorySkills,
+      preferredSkills,
+      workModel,
+      employmentType: 'Full-time',
+    };
+  }
+
   // ── 2. Generate Mandate from Prompt ──────────────────────────
   async generateMandate(prompt: string): Promise<any> {
-    this.logger.log(`Generating mandate. Key present: ${this.hasApiKey}, Model: ${this.model}`);
+    this.logger.log(`Generating mandate for prompt: "${prompt}". Key present: ${this.hasApiKey}`);
 
     if (!this.hasApiKey) {
-      this.logger.warn('GEMINI_API_KEY not set. Returning mock mandate.');
-      return {
-        title: 'Senior Developer (Generated)',
-        department: 'Engineering',
-        description: 'This is a mocked generated job description since the Gemini API key is missing. We are looking for an experienced developer to join our fast-paced team to build amazing scalable products.',
-        requiredExperience: '5-8 years',
-        mandatorySkills: ['React', 'Node.js', 'TypeScript'],
-        preferredSkills: ['AWS', 'Docker'],
-        workModel: 'Remote',
-        employmentType: 'Full-time',
-      };
+      this.logger.warn('GEMINI_API_KEY not set. Returning prompt-derived mandate.');
+      return this.generateFallbackMandate(prompt);
     }
 
-    try {
-      const systemPrompt = `
-        You are an expert technical recruiter and HR business partner.
-        A hiring manager will provide a brief sentence describing their hiring needs.
-        Your task is to generate a fully populated, professional Job Mandate.
-        
-        Output valid JSON with exactly the following structure:
-        {
-          "title": "Professional Job Title",
-          "department": "Engineering/Sales/etc",
-          "description": "A fully formatted, professional 2-3 paragraph job description. Use Markdown for formatting. DO NOT use HTML tags.",
-          "requiredExperience": "e.g., 3-5 years",
-          "mandatorySkills": ["list", "of", "skills"],
-          "preferredSkills": ["list", "of", "skills"],
-          "workModel": "Remote/Hybrid/On-site",
-          "employmentType": "Full-time/Contract"
-        }
-      `;
-
-      const response = await this.ai.models.generateContent({
-        model: this.model,
-        contents: prompt,
-        config: {
-          systemInstruction: systemPrompt,
-          responseMimeType: 'application/json',
-        },
-      });
-
-      const content = response.text;
-      if (content) {
-        return this.parseAiResponse(content);
+    const systemPrompt = `
+      You are an expert technical recruiter and HR business partner.
+      A hiring manager will provide a brief sentence describing their hiring needs.
+      Your task is to generate a fully populated, professional Job Mandate.
+      
+      Output valid JSON with exactly the following structure:
+      {
+        "title": "Professional Job Title",
+        "department": "Engineering/Sales/etc",
+        "description": "A fully formatted, professional 2-3 paragraph job description. Use Markdown for formatting. DO NOT use HTML tags.",
+        "requiredExperience": "e.g., 3-5 years",
+        "mandatorySkills": ["list", "of", "skills"],
+        "preferredSkills": ["list", "of", "skills"],
+        "workModel": "Remote/Hybrid/On-site",
+        "employmentType": "Full-time/Contract"
       }
-      throw new Error('AI returned an empty response.');
-    } catch (error) {
-      const msg = this.extractErrorMessage(error);
-      this.logger.error(`generateMandate failed: ${msg}`);
-      throw new HttpException(msg, HttpStatus.BAD_REQUEST);
+    `;
+
+    const modelsToTry = [
+      this.model,
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+      'gemini-2.5-flash',
+    ].filter((m, i, arr) => m && arr.indexOf(m) === i);
+
+    for (const modelName of modelsToTry) {
+      try {
+        this.logger.log(`Attempting generateMandate with model: ${modelName}`);
+        const response = await this.ai.models.generateContent({
+          model: modelName,
+          contents: prompt,
+          config: {
+            systemInstruction: systemPrompt,
+            responseMimeType: 'application/json',
+          },
+        });
+
+        const content = response.text;
+        if (content) {
+          const parsed = this.parseAiResponse(content);
+          if (parsed && parsed.title) {
+            this.logger.log(`Successfully generated mandate using model: ${modelName}`);
+            return parsed;
+          }
+        }
+      } catch (err: any) {
+        const msg = this.extractErrorMessage(err);
+        this.logger.warn(`Model ${modelName} failed in generateMandate: ${msg}`);
+      }
     }
+
+    this.logger.warn('All Gemini models failed or experienced high demand. Returning prompt-derived mandate.');
+    return this.generateFallbackMandate(prompt);
   }
 
   // ── 3. Parse Resume to Profile ────────────────────────────────
