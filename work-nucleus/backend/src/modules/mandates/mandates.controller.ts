@@ -32,6 +32,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 
 import { AiScreeningService } from '../ai-screening/ai-screening.service';
+import { WhatsappService } from '../notifications/whatsapp.service';
 
 @ApiTags('Mandates')
 @ApiBearerAuth()
@@ -41,6 +42,7 @@ export class MandatesController {
   constructor(
     private readonly mandatesService: MandatesService,
     private readonly aiScreening: AiScreeningService,
+    private readonly whatsappService: WhatsappService,
   ) {}
 
   // ── Public: Browse active mandates (no auth required) ─────────
@@ -58,6 +60,20 @@ export class MandatesController {
   @Public()
   async testAi() {
     return this.aiScreening.generateMandate('We need a Senior Full-Stack Engineer with React and Node.');
+  }
+
+  @Get('test-whatsapp')
+  @Public()
+  @ApiOperation({ summary: 'Test WhatsApp message sending via Twilio' })
+  async testWhatsapp(@Query('phone') phone?: string) {
+    const targetPhone = phone || '+919560806582';
+    return this.whatsappService.sendWhatsAppNotification(
+      targetPhone,
+      'Ayush',
+      'Senior React Developer',
+      'ACTIVE',
+      'https://questedge.vercel.app/mandates/c3f50472-0491-45d1-9b15-1f1c673e9219',
+    );
   }
 
   @Post('generate')

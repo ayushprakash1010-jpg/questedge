@@ -20,7 +20,8 @@ export default function CompanyRewardsDashboard() {
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
       
-      const res = await fetch("/api/v1/rewards/company", {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetch(`${apiUrl}/api/v1/rewards/company`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       const data = await res.json();
@@ -37,8 +38,8 @@ export default function CompanyRewardsDashboard() {
     try {
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
-      
-      const res = await fetch(`/api/v1/rewards/company/${rewardId}/approve`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetch(`${apiUrl}/api/v1/rewards/company/${rewardId}/approve`, {
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}` },
       });

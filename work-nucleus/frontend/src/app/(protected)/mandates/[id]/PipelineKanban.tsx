@@ -31,7 +31,8 @@ export function PipelineKanban({ mandateId }: PipelineKanbanProps) {
     try {
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
-      const res = await fetch(`/api/v1/mandates/${mandateId}/pipeline`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetch(`${apiUrl}/api/v1/mandates/${mandateId}/pipeline`, {
         headers: { Authorization: `Bearer ${accessToken}` }
       });
       const data = await res.json();
@@ -78,7 +79,8 @@ export function PipelineKanban({ mandateId }: PipelineKanbanProps) {
     try {
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
-      await fetch(`/api/v1/applications/${draggedAppId}/move`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      await fetch(`${apiUrl}/api/v1/applications/${draggedAppId}/move`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
