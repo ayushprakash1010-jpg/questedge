@@ -7,9 +7,9 @@ export class WhatsappService {
   async sendWhatsAppNotification(managerPhone: string, managerName: string, title: string, status: string, link: string) {
     const sid = process.env.TWILIO_ACCOUNT_SID;
     const token = process.env.TWILIO_AUTH_TOKEN;
-    const fromPhone = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886';
+    const fromPhone = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+17372508034';
     const testRecipient = process.env.TWILIO_TEST_RECIPIENT_PHONE;
-    const contentSid = process.env.TWILIO_CONTENT_SID;
+    const contentSid = process.env.TWILIO_CONTENT_SID || 'HXfe5ab5f00277942d4d4200328b4d403c';
 
     const rawRecipient = testRecipient || managerPhone;
     if (!rawRecipient) {
@@ -38,10 +38,8 @@ export class WhatsappService {
       if (contentSid) {
         bodyParams.ContentSid = contentSid;
         bodyParams.ContentVariables = JSON.stringify({
-          '1': managerName,
-          '2': title,
-          '3': status,
-          '4': link,
+          '1': title,
+          '2': `${status} on QuestEdge (${link})`,
         });
         this.logger.log(`Sending WhatsApp via Twilio ContentSid ${contentSid} to ${formattedTo}`);
       } else {
