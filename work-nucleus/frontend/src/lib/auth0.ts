@@ -7,7 +7,15 @@ export const auth0 = new Auth0Client({
   authorizationParameters: {
     audience: process.env.AUTH0_AUDIENCE,
   },
-  appBaseUrl: (process.env.APP_BASE_URL || process.env.AUTH0_BASE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined))?.trim(),
+  // VERCEL_PROJECT_PRODUCTION_URL is the stable production domain (e.g. questedge.vercel.app)
+  // VERCEL_URL changes per-deployment — never use it as the base URL or Auth0 callbacks break
+  appBaseUrl: (
+    process.env.APP_BASE_URL ||
+    process.env.AUTH0_BASE_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : undefined)
+  )?.trim(),
   routes: {
     callback: "/auth/callback",
     login: "/auth/login",
