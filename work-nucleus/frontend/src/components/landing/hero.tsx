@@ -16,7 +16,7 @@ const roleCards = [
     role: "I'm a Company",
     description: "Post mandates, set referral rewards, and review pre-vetted candidates.",
     cta: "Post a Mandate",
-    href: "/auth/login",
+    href: "/auth/login?returnTo=/dashboard",
     color: "from-indigo-500 to-indigo-600",
     border: "border-indigo-200 hover:border-indigo-400",
     bg: "hover:bg-indigo-50/50",
@@ -27,7 +27,7 @@ const roleCards = [
     role: "I'm a Recruiter",
     description: "Browse open mandates, refer your network, and earn performance-based rewards.",
     cta: "Join as Recruiter",
-    href: "/auth/login",
+    href: "/auth/login?returnTo=/dashboard",
     color: "from-violet-500 to-violet-600",
     border: "border-violet-200 hover:border-violet-400",
     bg: "hover:bg-violet-50/50",
@@ -104,7 +104,7 @@ export function Hero() {
             transition={{ duration: 0.5, delay: 0.3 }}
           >
             <Link
-              href="/auth/login"
+              href="/auth/login?returnTo=/dashboard"
               className="group spring-lift flex items-center gap-2 rounded-xl bg-indigo-600 px-7 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-500/30 relative"
             >
               <div className="absolute inset-0 rounded-xl bg-indigo-400 opacity-0 blur-lg animate-glow group-hover:opacity-40" />

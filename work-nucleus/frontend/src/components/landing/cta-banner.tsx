@@ -31,7 +31,7 @@ export function CTABanner() {
               and pay only when you hire.
             </p>
             <Link
-              href="/auth/login"
+              href="/auth/login?returnTo=/dashboard"
               className="group mt-6 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500"
             >
               Post a Mandate
@@ -50,7 +50,7 @@ export function CTABanner() {
               and track your rewards — free to join.
             </p>
             <Link
-              href="/auth/login"
+              href="/auth/login?returnTo=/dashboard"
               className="group mt-6 inline-flex items-center gap-2 rounded-xl bg-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-violet-500"
             >
               Join as Recruiter

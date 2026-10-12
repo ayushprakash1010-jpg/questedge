@@ -19,7 +19,7 @@ const companyPlans = [
     ],
     cta: "Post Your First Mandate",
     popular: false,
-    href: "/auth/login",
+    href: "/auth/login?returnTo=/dashboard",
   },
   {
     name: "Growth",
@@ -35,7 +35,7 @@ const companyPlans = [
     ],
     cta: "Start Free Trial",
     popular: true,
-    href: "/auth/login",
+    href: "/auth/login?returnTo=/dashboard",
   },
   {
     name: "Enterprise",
@@ -70,7 +70,7 @@ const recruiterPlans = [
     ],
     cta: "Join as Recruiter",
     popular: false,
-    href: "/auth/login",
+    href: "/auth/login?returnTo=/dashboard",
   },
   {
     name: "Pro",
@@ -86,7 +86,7 @@ const recruiterPlans = [
     ],
     cta: "Go Pro",
     popular: true,
-    href: "/auth/login",
+    href: "/auth/login?returnTo=/dashboard",
   },
 ];
 
@@ -183,4 +183,5 @@ export function Pricing() {
     </section>
   );
 }
+
 

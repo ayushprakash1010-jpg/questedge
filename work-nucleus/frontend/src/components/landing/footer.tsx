@@ -9,8 +9,8 @@ const productLinks = [
 ];
 
 const marketplaceLinks = [
-  { label: "Post a Mandate", href: "/auth/login" },
-  { label: "Join as Recruiter", href: "/auth/login" },
+  { label: "Post a Mandate", href: "/auth/login?returnTo=/dashboard" },
+  { label: "Join as Recruiter", href: "/auth/login?returnTo=/dashboard" },
   { label: "Browse Open Roles", href: "/jobs" },
   { label: "Recruiter Verification", href: "/#how-it-works" },
 ];
@@ -145,4 +145,5 @@ export function LandingFooter() {
     </footer>
   );
 }
+
 

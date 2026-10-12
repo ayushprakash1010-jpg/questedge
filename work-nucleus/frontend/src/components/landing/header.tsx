@@ -17,7 +17,7 @@ const joinOptions = [
     icon: Building2,
     label: "Post a Mandate",
     sub: "Hire with referrals",
-    href: "/auth/login",
+    href: "/auth/login?returnTo=/dashboard",
     color: "text-indigo-600",
     bg: "hover:bg-indigo-50",
   },
@@ -25,7 +25,7 @@ const joinOptions = [
     icon: Target,
     label: "Join as Recruiter",
     sub: "Refer & earn rewards",
-    href: "/auth/login",
+    href: "/auth/login?returnTo=/dashboard",
     color: "text-violet-600",
     bg: "hover:bg-violet-50",
   },
@@ -33,7 +33,7 @@ const joinOptions = [
     icon: UserCircle,
     label: "I'm a Candidate",
     sub: "Track my applications",
-    href: "/auth/login",
+    href: "/auth/login?returnTo=/dashboard",
     color: "text-emerald-600",
     bg: "hover:bg-emerald-50",
   },
@@ -72,7 +72,7 @@ export function LandingHeader() {
         {/* CTA Buttons */}
         <div className="hidden items-center gap-3 md:flex">
           <Link
-            href="/auth/login"
+            href="/auth/login?returnTo=/dashboard"
             className="text-sm font-medium text-slate-700 transition-colors hover:text-indigo-600"
           >
             Log in
@@ -137,7 +137,7 @@ export function LandingHeader() {
               </Link>
             ))}
             <hr className="my-2" />
-            <Link href="/auth/login" className="text-sm font-medium text-slate-700">
+            <Link href="/auth/login?returnTo=/dashboard" className="text-sm font-medium text-slate-700">
               Log in
             </Link>
             {joinOptions.map((opt) => (
