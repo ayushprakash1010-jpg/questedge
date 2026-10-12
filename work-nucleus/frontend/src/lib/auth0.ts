@@ -7,15 +7,17 @@ export const auth0 = new Auth0Client({
   authorizationParameters: {
     audience: process.env.AUTH0_AUDIENCE,
   },
-  // VERCEL_PROJECT_PRODUCTION_URL is the stable production domain (e.g. questedge.vercel.app)
-  // VERCEL_URL changes per-deployment — never use it as the base URL or Auth0 callbacks break
+  // APP_BASE_URL must always resolve to the stable production domain.
+  // VERCEL_PROJECT_PRODUCTION_URL is Vercel's built-in stable domain env var.
+  // VERCEL_URL changes per-deployment and must NEVER be used here — it breaks state cookies.
+  // Final fallback is hardcoded to 'https://questedge.vercel.app' to prevent 'state parameter is invalid' errors.
   appBaseUrl: (
     process.env.APP_BASE_URL ||
     process.env.AUTH0_BASE_URL ||
     (process.env.VERCEL_PROJECT_PRODUCTION_URL
       ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : undefined)
-  )?.trim(),
+      : 'https://questedge.vercel.app')
+  ).trim(),
   routes: {
     callback: "/auth/callback",
     login: "/auth/login",
