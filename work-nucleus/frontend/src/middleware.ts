@@ -30,11 +30,6 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
 
-    // Redirect landing page to dashboard in mock mode
-    if (pathname === "/") {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
-    }
-
     return NextResponse.next();
   }
 
@@ -51,14 +46,6 @@ export async function middleware(request: NextRequest) {
 
   if (pathname.startsWith("/auth")) {
     return authResponse;
-  }
-
-  // For the landing page, redirect authenticated users to dashboard
-  if (pathname === "/") {
-    const session = await auth0.getSession();
-    if (session) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
-    }
   }
 
   return authResponse;
