@@ -27,9 +27,15 @@ export class AnalyticsService {
       const [
         activePlans,
         totalRolesAgg,
-        pipelineCandidates,
-        selectedCount,
-        rejectedCount,
+        mandateOpeningsAgg,
+        activeMandates,
+        planPipeline,
+        mandateAppPipeline,
+        referralPipeline,
+        planSelected,
+        referralSelected,
+        planRejected,
+        referralRejected,
       ] = await Promise.all([
         this.prisma.hiringPlan.count({
           where: { orgId, status: HiringPlanStatus.ACTIVE },
@@ -38,21 +44,59 @@ export class AnalyticsService {
           where: { orgId, status: { in: [HiringPlanStatus.ACTIVE, HiringPlanStatus.COMPLETED] } },
           _sum: { totalRoles: true, filledRoles: true },
         }),
+        this.prisma.mandate.aggregate({
+          where: { orgId, status: 'ACTIVE' },
+          _sum: { numberOfOpenings: true },
+        }),
+        this.prisma.mandate.count({ where: { orgId, status: 'ACTIVE' } }),
         this.prisma.candidateApplication.count({
           where: { hiringPlan: { orgId }, status: ApplicationStatus.ACTIVE },
         }),
         this.prisma.candidateApplication.count({
+          where: { mandate: { orgId }, status: ApplicationStatus.ACTIVE },
+        }),
+        this.prisma.referral.count({
+          where: {
+            mandate: { orgId },
+            status: {
+              in: [
+                'PENDING_CONSENT',
+                'CONSENT_REQUESTED',
+                'CANDIDATE_ACCEPTED',
+                'ACTIVATED',
+                'UNDER_REVIEW',
+                'SHORTLISTED',
+                'INTERVIEW',
+              ],
+            },
+          },
+        }),
+        this.prisma.candidateApplication.count({
           where: { hiringPlan: { orgId }, status: ApplicationStatus.SELECTED },
+        }),
+        this.prisma.referral.count({
+          where: { mandate: { orgId }, status: { in: ['SELECTED', 'HIRED'] } },
         }),
         this.prisma.candidateApplication.count({
           where: { hiringPlan: { orgId }, status: ApplicationStatus.REJECTED },
         }),
+        this.prisma.referral.count({
+          where: { mandate: { orgId }, status: { in: ['REJECTED', 'CANDIDATE_DECLINED', 'WITHDRAWN'] } },
+        }),
       ]);
 
-      const totalRoles = totalRolesAgg._sum.totalRoles || 0;
-      const filledRoles = totalRolesAgg._sum.filledRoles || 0;
-      const openRoles = totalRoles - filledRoles;
+      const planTotal = totalRolesAgg._sum.totalRoles || 0;
+      const planFilled = totalRolesAgg._sum.filledRoles || 0;
+      const mandateOpenings = mandateOpeningsAgg._sum.numberOfOpenings || (activeMandates > 0 ? activeMandates : 0);
+
+      const totalRoles = planTotal + mandateOpenings;
+      const filledRoles = planFilled;
+      const openRoles = (planTotal - planFilled) + mandateOpenings;
       const fillRate = totalRoles > 0 ? Math.round((filledRoles / totalRoles) * 100) : 0;
+
+      const pipelineCandidates = planPipeline + mandateAppPipeline + referralPipeline;
+      const selectedCount = planSelected + referralSelected;
+      const rejectedCount = planRejected + referralRejected;
 
       // Avg time-to-hire for completed applications
       const completedApps = await this.prisma.candidateApplication.findMany({
@@ -97,21 +141,28 @@ export class AnalyticsService {
       }
 
       // Marketplace KPIs
-      const [activeMandates, pendingReferrals, rewardCommitmentsAgg, recentPendingReferrals, recentActivityRaw] = await Promise.all([
-        this.prisma.mandate.count({ where: { orgId, status: 'ACTIVE' } }),
-        this.prisma.referral.count({ where: { mandate: { orgId }, status: 'CANDIDATE_ACCEPTED' } }),
+      const [pendingReferrals, rewardCommitmentsAgg, recentPendingReferrals, recentActivityRaw] = await Promise.all([
+        this.prisma.referral.count({
+          where: {
+            mandate: { orgId },
+            status: { in: ['CANDIDATE_ACCEPTED', 'ACTIVATED', 'UNDER_REVIEW'] },
+          },
+        }),
         this.prisma.rewardTracking.aggregate({
           where: { orgId, status: 'POTENTIAL' },
           _sum: { rewardAmount: true },
         }),
         this.prisma.referral.findMany({
-          where: { mandate: { orgId }, status: 'CANDIDATE_ACCEPTED' },
+          where: {
+            mandate: { orgId },
+            status: { in: ['CANDIDATE_ACCEPTED', 'ACTIVATED', 'UNDER_REVIEW'] },
+          },
           orderBy: { updatedAt: 'desc' },
           take: 5,
           include: {
             candidateProfile: { select: { name: true, currentDesignation: true } },
             mandate: { select: { title: true } },
-          }
+          },
         }),
         this.prisma.referral.findMany({
           where: { mandate: { orgId } },
@@ -120,9 +171,9 @@ export class AnalyticsService {
           include: {
             candidateProfile: { select: { name: true } },
             recruiter: { select: { name: true } },
-            mandate: { select: { title: true } }
-          }
-        })
+            mandate: { select: { title: true } },
+          },
+        }),
       ]);
 
       return {

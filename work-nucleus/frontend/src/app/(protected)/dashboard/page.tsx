@@ -305,7 +305,15 @@ export default function DashboardPage() {
         <KpiCard
           title="Active Mandates"
           value={overview?.activeMandates ?? overview?.openRoles ?? 0}
-          subValue={`${overview?.openRoles ?? 0} open positions · ${overview?.activePlans ?? 0} plans`}
+          subValue={
+            (overview?.openRoles ?? 0) > 0
+              ? `${overview?.openRoles} open position${(overview?.openRoles ?? 0) > 1 ? "s" : ""}${
+                  (overview?.activePlans ?? 0) > 0 ? ` · ${overview?.activePlans} plans` : ""
+                }`
+              : (overview?.activeMandates ?? 0) > 0
+              ? `${overview?.activeMandates} active listing${(overview?.activeMandates ?? 0) > 1 ? "s" : ""}`
+              : "0 open positions"
+          }
           icon={<Briefcase />}
           accent="indigo"
           onClick={() => router.push('/mandates')}
@@ -338,7 +346,7 @@ export default function DashboardPage() {
 
       {/* Core Pipeline & Action Center */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-4">
+        <div className="lg:col-span-2 flex flex-col space-y-4">
           {hasFunnelData ? (
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
@@ -409,7 +417,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           ) : (
-            <Card className="border-dashed border-slate-200/80 bg-slate-50/40">
+            <Card className="flex-1 flex flex-col justify-center border-dashed border-slate-200/80 bg-slate-50/40 min-h-[340px]">
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 mb-3 shadow-sm">
                   <Briefcase className="h-6 w-6" />
