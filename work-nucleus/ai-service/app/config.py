@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     PORT: int = 8000
 
     # Gemini model
-    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_MODEL: str = "gemini-3.8-flash"
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

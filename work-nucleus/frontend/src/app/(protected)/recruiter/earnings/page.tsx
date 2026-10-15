@@ -19,10 +19,10 @@ export default function EarningsDashboard() {
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-      // Fix any missing rewards before loading
-      await fetch(`${API_URL}/api/v1/rewards/fix`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      }).catch(console.error);
+      // Fix any missing rewards before loading (maintenance endpoint — disabled for demo)
+      // await fetch(`${API_URL}/api/v1/rewards/fix`, {
+      //   headers: { Authorization: `Bearer ${accessToken}` },
+      // }).catch(console.error);
 
       const res = await fetch(`${API_URL}/api/v1/rewards/recruiter`, {
         headers: { Authorization: `Bearer ${accessToken}` },

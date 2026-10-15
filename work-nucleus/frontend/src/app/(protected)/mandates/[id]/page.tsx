@@ -45,7 +45,7 @@ export default function MandateDetailPage() {
     );
   }
 
-  if (!mandate) return <div>Mandate not found</div>;
+  if (!mandate) return <div className="flex items-center justify-center min-h-[60vh] text-slate-400 text-sm">Mandate not found.</div>;
 
   return (
     <div className="min-h-screen bg-slate-50">

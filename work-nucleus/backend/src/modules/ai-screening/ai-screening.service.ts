@@ -19,7 +19,7 @@ export class AiScreeningService {
     const rawKey = this.configService.get<string>('GEMINI_API_KEY');
     const trimmedKey = rawKey ? rawKey.trim() : null;
     this.hasApiKey = !!trimmedKey;
-    this.model = this.configService.get<string>('GEMINI_MODEL') || 'gemini-3.5-flash';
+    this.model = this.configService.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
 
     this.logger.log(`AI Service initialized. Key present: ${this.hasApiKey}, Model: ${this.model}`);
 
@@ -292,10 +292,8 @@ export class AiScreeningService {
 
     const modelsToTry = [
       this.model,
-      'gemini-3.5-flash',
-      'gemini-2.5-flash',
-      'gemini-2.0-flash',
-      'gemini-1.5-flash',
+      'gemini-flash-latest',
+      'gemini-3.8-flash',
     ].filter((m, i, arr) => m && arr.indexOf(m) === i);
 
     for (const modelName of modelsToTry) {
@@ -332,83 +330,82 @@ export class AiScreeningService {
   async parseResumeToProfile(resumeText: string): Promise<any> {
     this.logger.log(`Parsing resume. Key present: ${this.hasApiKey}, Model: ${this.model}`);
 
-    if (!this.hasApiKey) {
-      this.logger.warn('GEMINI_API_KEY not set. Returning mock profile.');
-      return {
-        name: 'Mock Candidate',
-        email: 'mock@example.com',
-        phone: '+1 555 123 4567',
-        currentDesignation: 'Software Engineer',
-        experienceYears: 4,
-        skills: ['JavaScript', 'TypeScript', 'React'],
-        currentLocation: 'San Francisco, CA',
-      };
-    }
+    const systemPrompt = `
+      You are an expert technical recruiter and resume parser.
+      You will receive raw text extracted from a candidate's PDF resume.
+      Extract the information to populate the candidate's profile.
+      
+      Output valid JSON with exactly the following structure:
+      {
+        "name": "Candidate Full Name (or empty string if not found)",
+        "email": "Candidate Email (or empty string if not found)",
+        "phone": "Candidate Phone Number (or empty string if not found)",
+        "currentDesignation": "Their current or most recent job title (or empty string)",
+        "currentCompany": "Their current or most recent company name (or empty string)",
+        "experienceYears": integer representing total years of experience (estimate if necessary, use 0 for freshers),
+        "skills": ["list", "of", "top", "skills", "found"],
+        "education": ["Degree from Institution (Year)", "Another Degree..."],
+        "currentLocation": "City, State or Country",
+        "linkedin": "LinkedIn URL if present in text, else empty string",
+        "github": "GitHub URL if present in text, else empty string",
+        "portfolio": "Portfolio/Website URL if present, else empty string"
+      }
+    `;
 
-    try {
-      const systemPrompt = `
-        You are an expert technical recruiter and resume parser.
-        You will receive raw text extracted from a candidate's PDF resume.
-        Extract the information to populate the candidate's profile.
-        
-        Output valid JSON with exactly the following structure:
-        {
-          "name": "Candidate Full Name (or empty string if not found)",
-          "email": "Candidate Email (or empty string if not found)",
-          "phone": "Candidate Phone Number (or empty string if not found)",
-          "currentDesignation": "Their current or most recent job title (or empty string)",
-          "currentCompany": "Their current or most recent company name (or empty string)",
-          "experienceYears": integer representing total years of experience (estimate if necessary, use 0 for freshers),
-          "skills": ["list", "of", "top", "skills", "found"],
-          "education": ["Degree from Institution (Year)", "Another Degree..."],
-          "currentLocation": "City, State or Country",
-          "linkedin": "LinkedIn URL if present in text, else empty string",
-          "github": "GitHub URL if present in text, else empty string",
-          "portfolio": "Portfolio/Website URL if present, else empty string"
-        }
-      `;
+    const modelsToTry = [
+      this.model,
+      'gemini-flash-latest',
+      'gemini-3.8-flash',
+    ].filter((m, i, arr) => m && arr.indexOf(m) === i);
 
-      const response = await this.ai.models.generateContent({
-        model: this.model,
-        contents: resumeText,
-        config: {
-          systemInstruction: systemPrompt,
-          responseMimeType: 'application/json',
-        },
-      });
-
-      const content = response.text;
-      if (content) {
+    if (this.hasApiKey) {
+      for (const modelName of modelsToTry) {
         try {
-          return this.parseAiResponse(content);
-        } catch (parseError) {
-          this.logger.error('Failed to parse AI response, falling back to mock.');
-          return {
-            name: 'Parsed via Fallback',
-            email: 'candidate@example.com',
-            phone: '+1 000 000 0000',
-            currentDesignation: 'Professional',
-            experienceYears: 5,
-            skills: ['Leadership', 'Communication'],
-            currentLocation: 'Remote',
-          };
+          this.logger.log(`Attempting parseResumeToProfile with model: ${modelName}`);
+          const response = await this.ai.models.generateContent({
+            model: modelName,
+            contents: resumeText,
+            config: {
+              systemInstruction: systemPrompt,
+              responseMimeType: 'application/json',
+            },
+          });
+
+          const content = response.text;
+          if (content) {
+            const parsed = this.parseAiResponse(content);
+            if (parsed && (parsed.name || parsed.email || parsed.skills?.length)) {
+              this.logger.log(`Successfully parsed resume using model: ${modelName}`);
+              return parsed;
+            }
+          }
+        } catch (err: any) {
+          const msg = this.extractErrorMessage(err);
+          this.logger.warn(`Model ${modelName} failed in parseResumeToProfile: ${msg}`);
         }
       }
-      throw new Error('AI returned an empty response.');
-    } catch (error) {
-      const msg = this.extractErrorMessage(error);
-      this.logger.error(`parseResumeToProfile failed: ${msg}`);
-      this.logger.error(error); // Log full trace
-      // If we completely crash at the Gemini API level (e.g. rate limit, bad API key), return mock data instead of crashing the UI
-      return {
-        name: 'Auto-Fill Error Fallback',
-        email: 'fallback@example.com',
-        phone: '',
-        currentDesignation: 'Professional',
-        experienceYears: 1,
-        skills: ['Fallback Skill'],
-        currentLocation: '',
-      };
     }
+
+    // Resilient fallback: extract details directly from resume text using regex
+    this.logger.warn('AI parsing unavailable or failed; extracting details via text heuristics.');
+    const emailMatch = resumeText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+    const phoneMatch = resumeText.match(/(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
+    const lines = resumeText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const candidateName = lines.length > 0 && lines[0].length < 40 && !lines[0].includes('@') ? lines[0] : '';
+    
+    return {
+      name: candidateName,
+      email: emailMatch ? emailMatch[0] : '',
+      phone: phoneMatch ? phoneMatch[0] : '',
+      currentDesignation: '',
+      currentCompany: '',
+      experienceYears: 1,
+      skills: [],
+      education: [],
+      currentLocation: '',
+      linkedin: '',
+      github: '',
+      portfolio: '',
+    };
   }
 }

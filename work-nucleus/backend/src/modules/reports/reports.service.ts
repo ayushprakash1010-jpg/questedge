@@ -23,7 +23,8 @@ export class ReportsService {
     const rawKey = this.config.get<string>('GEMINI_API_KEY');
     const trimmedKey = rawKey ? rawKey.trim() : null;
     this.hasApiKey = !!trimmedKey;
-    this.model = this.config.get<string>('GEMINI_MODEL') || 'gemini-3.5-flash';
+    this.model = this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
+
     
     this.ai = new GoogleGenAI({
       apiKey: trimmedKey || 'dummy-key',
