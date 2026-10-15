@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toaster";
 import { PageHeader } from "@/components/shared/page-header";
+import { Wallet, Calendar, ArrowRight } from "lucide-react";
 import {
   DataTable,
   DataTableBody,
@@ -32,23 +33,70 @@ interface Revision {
   employee: { id: string; name: string; email: string };
 }
 
+interface AppraisalCycle {
+  id: string;
+  name: string;
+  type?: string;
+  status?: string;
+}
+
 export default function CompTeamPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const cycleId = searchParams.get("cycleId") ?? "";
+  const cycleIdParam = searchParams.get("cycleId") ?? "";
+  const [cycles, setCycles] = useState<AppraisalCycle[]>([]);
+  const [activeCycleId, setActiveCycleId] = useState<string>(cycleIdParam);
+  const [loadingCycles, setLoadingCycles] = useState(true);
   const [rows, setRows] = useState<Revision[]>([]);
   const [edits, setEdits] = useState<Record<string, { hikeINR?: number; bonusINR?: number; reason: string }>>({});
   const [busy, setBusy] = useState<string | null>(null);
 
-  async function load() {
-    if (!cycleId) return;
-    const res = await fetch(`/api/v2/compensation/revisions?cycleId=${cycleId}`);
-    if (res.ok) setRows(await res.json());
-  }
+  // Load available appraisal/compensation cycles
+  useEffect(() => {
+    async function fetchCycles() {
+      setLoadingCycles(true);
+      try {
+        const res = await fetch("/api/v2/appraisal/cycles");
+        if (res.ok) {
+          const data: AppraisalCycle[] = await res.json();
+          setCycles(data);
+          if (!cycleIdParam && data.length > 0) {
+            setActiveCycleId(data[0].id);
+          }
+        }
+      } catch {
+        // ignore
+      } finally {
+        setLoadingCycles(false);
+      }
+    }
+    fetchCycles();
+  }, [cycleIdParam]);
+
+  const loadRevisions = useCallback(async (id: string) => {
+    if (!id) {
+      setRows([]);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/v2/compensation/revisions?cycleId=${id}`);
+      if (res.ok) setRows(await res.json());
+      else setRows([]);
+    } catch {
+      setRows([]);
+    }
+  }, []);
 
   useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cycleId]);
+    if (activeCycleId) {
+      loadRevisions(activeCycleId);
+    }
+  }, [activeCycleId, loadRevisions]);
+
+  const handleCycleChange = (id: string) => {
+    setActiveCycleId(id);
+    router.replace(`/compensation/team?cycleId=${id}`);
+  };
 
   async function saveOverride(r: Revision) {
     const e = edits[r.id];
@@ -68,7 +116,7 @@ export default function CompTeamPage() {
         }),
       });
       if (!res.ok) throw new Error("Override failed");
-      await load();
+      if (activeCycleId) await loadRevisions(activeCycleId);
       setEdits((prev) => {
         const n = { ...prev };
         delete n[r.id];
@@ -88,7 +136,7 @@ export default function CompTeamPage() {
   );
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
         title="My team's compensation"
         subtitle={
@@ -99,17 +147,48 @@ export default function CompTeamPage() {
         }
       />
 
-      {!cycleId ? (
-        <Card>
-          <CardContent className="p-6 text-sm text-slate-500">
-            Append <code>?cycleId=&lt;uuid&gt;</code> to view revisions for a
-            specific cycle.
+      {cycles.length > 0 && (
+        <div className="flex items-center gap-3 bg-slate-50 border border-slate-200/60 p-3 rounded-xl">
+          <Calendar className="h-4 w-4 text-slate-500" />
+          <span className="text-xs font-semibold text-slate-700">Compensation Cycle:</span>
+          <select
+            value={activeCycleId}
+            onChange={(e) => handleCycleChange(e.target.value)}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            {cycles.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} {c.status ? `(${c.status})` : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {!activeCycleId && !loadingCycles ? (
+        <Card className="border-dashed border-slate-200/80 bg-slate-50/40">
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 mb-4 shadow-sm">
+              <Wallet className="h-6 w-6" />
+            </div>
+            <h3 className="text-base font-semibold text-slate-800">No active compensation cycle</h3>
+            <p className="mt-1.5 max-w-md text-sm text-slate-500">
+              Compensation cycles allow organizations to calibrate salary hikes, bonuses, and equity revisions linked to performance appraisals.
+            </p>
+            <div className="mt-6 flex items-center gap-3">
+              <Button size="sm" onClick={() => router.push('/appraisal')}>
+                View Appraisals
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => router.push('/admin/appraisal/cycles')}>
+                Appraisal Cycles
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : rows.length === 0 ? (
-        <Card>
-          <CardContent className="p-6 text-center text-sm text-slate-500">
-            No revisions for this cycle yet.
+        <Card className="border-dashed border-slate-200/80 bg-slate-50/40">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <p className="text-sm text-slate-500">No revisions generated for this cycle yet.</p>
           </CardContent>
         </Card>
       ) : (
