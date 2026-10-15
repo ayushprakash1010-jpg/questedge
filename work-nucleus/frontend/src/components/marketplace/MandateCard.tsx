@@ -199,10 +199,16 @@ export function MandateCard({
           ) : (
             <span className="text-xs text-slate-400">No referral reward</span>
           )}
+          {referralCount !== undefined && (
+            <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
+              <Users className="h-3 w-3 text-sky-500" />
+              {referralCount} referral{referralCount === 1 ? "" : "s"}
+            </span>
+          )}
           {recruiterCount !== undefined && (
             <span className="text-xs text-slate-400 flex items-center gap-1">
               <Users className="h-3 w-3" />
-              {recruiterCount} recruiters
+              {recruiterCount} recruiter{recruiterCount === 1 ? "" : "s"}
             </span>
           )}
         </div>

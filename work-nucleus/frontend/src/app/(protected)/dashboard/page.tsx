@@ -341,11 +341,23 @@ export default function DashboardPage() {
         />
         <KpiCard
           title="Avg Time to Hire"
-          value={`${overview?.avgTimeToHire ?? 0}d`}
-          subValue={`${overview?.fillRate ?? 0}% fill rate`}
+          value={
+            overview?.avgTimeToHire && overview.avgTimeToHire > 0
+              ? `${overview.avgTimeToHire}d`
+              : "—"
+          }
+          subValue={
+            overview?.fillRate && overview.fillRate > 0
+              ? `${overview.fillRate}% fill rate`
+              : "Awaiting first hire"
+          }
           icon={<Clock />}
           accent="emerald"
-          trend={{ label: "vs 35d benchmark", direction: avgTtHGood ? "up" : "down" }}
+          trend={
+            overview?.avgTimeToHire && overview.avgTimeToHire > 0
+              ? { label: "vs 35d benchmark", direction: avgTtHGood ? "up" : "down" }
+              : { label: "Benchmark: 35d", direction: "neutral" }
+          }
         />
       </div>
 
