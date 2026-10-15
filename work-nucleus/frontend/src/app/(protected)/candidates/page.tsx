@@ -231,7 +231,7 @@ export default function CandidatesPage() {
                 }}
                 className="w-56"
               >
-                <option value="">All Hiring Plans</option>
+                <option value="">All Positions & Plans</option>
                 {hiringPlans.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.title}
@@ -289,7 +289,7 @@ export default function CandidatesPage() {
           description={
             search
               ? "Try a different search term."
-              : "Candidates will appear here once they apply via the public job page."
+              : "Candidates will appear here once they are referred by recruiters or apply directly."
           }
         />
       ) : (

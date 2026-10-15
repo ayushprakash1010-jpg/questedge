@@ -72,11 +72,9 @@ export class CandidatesService {
     const effectiveLimit = topN || limit;
     const skip = topN ? 0 : (page - 1) * effectiveLimit;
 
-    const [data, total] = await Promise.all([
+    const [planCandidates, planTotal] = await Promise.all([
       this.prisma.candidate.findMany({
         where,
-        skip,
-        take: effectiveLimit,
         orderBy,
         include: {
           applications: {
@@ -95,8 +93,87 @@ export class CandidatesService {
       this.prisma.candidate.count({ where }),
     ]);
 
+    // Query mandate referrals if source is all or REFERRAL
+    let referralCandidates: any[] = [];
+    if (!source || source === 'REFERRAL') {
+      const referralWhere: any = { mandate: { orgId } };
+      if (hiringPlanId) {
+        referralWhere.mandateId = hiringPlanId;
+      }
+      if (q) {
+        referralWhere.candidateProfile = {
+          OR: [
+            { name: { contains: q, mode: 'insensitive' } },
+            { email: { contains: q, mode: 'insensitive' } },
+          ],
+        };
+      }
+
+      const referrals = await this.prisma.referral.findMany({
+        where: referralWhere,
+        include: {
+          candidateProfile: true,
+          mandate: { select: { id: true, title: true } },
+        },
+        orderBy: { createdAt: sortOrder },
+      });
+
+      referralCandidates = referrals.map((r) => ({
+        id: r.candidateProfile.id,
+        orgId,
+        name: r.candidateProfile.name,
+        email: r.candidateProfile.email,
+        phone: r.candidateProfile.phone,
+        resumeUrl: r.candidateProfile.resumeUrl,
+        source: 'REFERRAL',
+        currentCompany: r.candidateProfile.currentCompany,
+        currentRole: r.candidateProfile.currentDesignation,
+        experienceYears: r.candidateProfile.experienceYears ? new Prisma.Decimal(r.candidateProfile.experienceYears) : null,
+        expectedCtc: null,
+        noticePeriodDays: null,
+        notes: r.recruiterNote,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+        applications: [
+          {
+            id: r.id,
+            hiringPlanId: r.mandateId,
+            status:
+              r.status === 'HIRED' || r.status === 'SELECTED'
+                ? 'SELECTED'
+                : r.status === 'REJECTED' || r.status === 'CANDIDATE_DECLINED' || r.status === 'WITHDRAWN'
+                ? 'REJECTED'
+                : 'ACTIVE',
+            aiMatchScore: r.aiMatchScore ? new Prisma.Decimal(r.aiMatchScore.toString()) : null,
+            aiMatchSummary: r.aiMatchSummary || r.aiSummary || null,
+            appliedAt: r.createdAt,
+            hiringPlan: { id: r.mandate.id, title: r.mandate.title },
+          },
+        ],
+      }));
+    }
+
+    // Combine and deduplicate by email
+    const candidateMap = new Map<string, any>();
+    for (const c of planCandidates) {
+      candidateMap.set(c.email.toLowerCase(), c);
+    }
+    for (const rc of referralCandidates) {
+      const key = rc.email.toLowerCase();
+      if (candidateMap.has(key)) {
+        const existing = candidateMap.get(key);
+        existing.applications = [...(existing.applications || []), ...rc.applications];
+      } else {
+        candidateMap.set(key, rc);
+      }
+    }
+
+    const combined = Array.from(candidateMap.values());
+    const total = combined.length;
+    const paginated = combined.slice(skip, skip + effectiveLimit);
+
     return {
-      data,
+      data: paginated,
       meta: {
         total,
         page: topN ? 1 : page,
