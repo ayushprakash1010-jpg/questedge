@@ -32,19 +32,33 @@ export class CandidatePortalService {
     email: string,
     dto: UpsertCandidateProfileDto,
   ): Promise<CandidateProfile> {
-    if (!email) throw new BadRequestException('Email is required to create a profile.');
+    const cleanEmail = email ? email.toLowerCase().trim() : '';
+    if (!cleanEmail) throw new BadRequestException('Email is required to create a profile.');
     
-    const emailHash = crypto.createHash('sha256').update(email.toLowerCase()).digest('hex');
-    const phoneHash = dto.phone
-      ? crypto.createHash('sha256').update(dto.phone).digest('hex')
-      : undefined;
+    const emailHash = crypto.createHash('sha256').update(cleanEmail).digest('hex');
+    const cleanPhone = dto.phone ? dto.phone.trim() : null;
+    const phoneHash = cleanPhone
+      ? crypto.createHash('sha256').update(cleanPhone).digest('hex')
+      : null;
 
-    const existingBySub = await this.prisma.candidateProfile.findUnique({ where: { auth0Sub } });
-    const existingByEmail = await this.prisma.candidateProfile.findUnique({ where: { email } });
+    // 1. Resolve existing profile across auth0Sub, emailHash, or cleanEmail
+    const existingBySub = auth0Sub
+      ? await this.prisma.candidateProfile.findUnique({ where: { auth0Sub } })
+      : null;
+
+    let existingByHash = await this.prisma.candidateProfile.findUnique({
+      where: { emailHash },
+    });
+
+    if (!existingByHash) {
+      existingByHash = await this.prisma.candidateProfile.findFirst({
+        where: { email: { equals: cleanEmail, mode: 'insensitive' } },
+      });
+    }
 
     const data = {
       name: dto.name,
-      phone: dto.phone,
+      phone: cleanPhone,
       headline: dto.headline,
       currentCompany: dto.currentCompany,
       currentDesignation: dto.currentDesignation,
@@ -63,50 +77,110 @@ export class CandidatePortalService {
       profileLinks: dto.profileLinks ?? {},
     };
 
-    if (existingBySub && existingByEmail && existingBySub.id !== existingByEmail.id) {
-      // Merge scenario: Delete the garbage profile created with a placeholder email
-      await this.prisma.candidateProfile.delete({ where: { id: existingBySub.id } });
+    // 2. Resolve target canonical profile and handle merging if needed
+    let canonical = existingByHash || existingBySub;
+
+    if (existingBySub && existingByHash && existingBySub.id !== existingByHash.id) {
+      // Reassign foreign key dependencies from existingBySub to existingByHash
+      const tempId = existingBySub.id;
+      const targetId = existingByHash.id;
+
+      await Promise.allSettled([
+        this.prisma.candidateApplication.updateMany({
+          where: { candidateProfileId: tempId },
+          data: { candidateProfileId: targetId },
+        }),
+        this.prisma.candidateConsent.updateMany({
+          where: { candidateProfileId: tempId },
+          data: { candidateProfileId: targetId },
+        }),
+        this.prisma.savedJob.updateMany({
+          where: { candidateProfileId: tempId },
+          data: { candidateProfileId: targetId },
+        }),
+        this.prisma.referral.updateMany({
+          where: { candidateProfileId: tempId },
+          data: { candidateProfileId: targetId },
+        }),
+        this.prisma.claimScope.updateMany({
+          where: { candidateProfileId: tempId },
+          data: { candidateProfileId: targetId },
+        }),
+      ]);
+
+      // Safely delete temporary profile
+      await this.prisma.candidateProfile.delete({ where: { id: tempId } }).catch(() => {});
+      canonical = existingByHash;
+    }
+
+    // 3. Prevent phoneHash unique constraint collisions across candidate profiles
+    let safePhoneHash = phoneHash;
+    if (phoneHash) {
+      const phoneConflict = await this.prisma.candidateProfile.findUnique({
+        where: { phoneHash },
+      });
+      if (phoneConflict && phoneConflict.id !== canonical?.id) {
+        safePhoneHash = canonical?.phoneHash ?? null;
+      }
+    }
+
+    // 4. Update existing profile
+    if (canonical) {
       return this.prisma.candidateProfile.update({
-        where: { id: existingByEmail.id },
+        where: { id: canonical.id },
         data: {
           auth0Sub,
+          email: cleanEmail,
+          emailHash,
+          phoneHash: safePhoneHash ?? canonical.phoneHash,
           ...data,
-          phoneHash: phoneHash ?? existingByEmail.phoneHash,
           isProfileComplete: this.isProfileComplete(dto),
         },
       });
     }
 
-    const existing = existingByEmail || existingBySub;
-
-    if (existing) {
-      // Update existing and ensure auth0Sub is linked (for profiles created via referrals)
-      return this.prisma.candidateProfile.update({
-        where: { id: existing.id },
+    // 5. Create new profile with P2002 conflict fallback
+    try {
+      return await this.prisma.candidateProfile.create({
         data: {
           auth0Sub,
+          email: cleanEmail,
+          emailHash,
+          phoneHash: safePhoneHash,
           ...data,
-          phoneHash: phoneHash ?? existing.phoneHash,
           isProfileComplete: this.isProfileComplete(dto),
         },
       });
+    } catch (err: any) {
+      if (err?.code === 'P2002') {
+        const fallback = await this.prisma.candidateProfile.findFirst({
+          where: {
+            OR: [
+              { emailHash },
+              { email: { equals: cleanEmail, mode: 'insensitive' } },
+              ...(auth0Sub ? [{ auth0Sub }] : []),
+            ],
+          },
+        });
+        if (fallback) {
+          return this.prisma.candidateProfile.update({
+            where: { id: fallback.id },
+            data: {
+              auth0Sub,
+              email: cleanEmail,
+              emailHash,
+              ...data,
+              isProfileComplete: this.isProfileComplete(dto),
+            },
+          });
+        }
+      }
+      throw err;
     }
-
-    // Create new profile
-    return this.prisma.candidateProfile.create({
-      data: {
-        auth0Sub,
-        email,
-        emailHash,
-        phoneHash,
-        ...data,
-        isProfileComplete: this.isProfileComplete(dto),
-      },
-    });
   }
 
-  async getMyProfile(auth0Sub: string): Promise<CandidateProfile> {
-    const profile = await this.prisma.candidateProfile.findUnique({
+  async getMyProfile(auth0Sub: string, email?: string): Promise<CandidateProfile> {
+    let profile = await this.prisma.candidateProfile.findUnique({
       where: { auth0Sub },
       include: {
         _count: {
@@ -114,6 +188,38 @@ export class CandidatePortalService {
         },
       },
     });
+
+    if (!profile && email && !email.includes('@placeholder.com')) {
+      const cleanEmail = email.toLowerCase().trim();
+      const emailHash = crypto.createHash('sha256').update(cleanEmail).digest('hex');
+
+      profile = await this.prisma.candidateProfile.findFirst({
+        where: {
+          OR: [
+            { emailHash },
+            { email: { equals: cleanEmail, mode: 'insensitive' } },
+          ],
+        },
+        include: {
+          _count: {
+            select: { referrals: true, applications: true, savedJobs: true, consents: true },
+          },
+        },
+      });
+
+      if (profile && !profile.auth0Sub) {
+        // Auto-link auth0Sub to this candidate's referral profile
+        profile = await this.prisma.candidateProfile.update({
+          where: { id: profile.id },
+          data: { auth0Sub },
+          include: {
+            _count: {
+              select: { referrals: true, applications: true, savedJobs: true, consents: true },
+            },
+          },
+        });
+      }
+    }
 
     if (!profile) throw new NotFoundException('Candidate profile not found. Please create one first.');
     return profile;

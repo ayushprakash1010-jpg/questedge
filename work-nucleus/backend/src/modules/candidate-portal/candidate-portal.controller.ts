@@ -62,13 +62,13 @@ export class CandidatePortalController {
   @Get('profile')
   @ApiOperation({ summary: 'Get own candidate profile' })
   async getMyProfile(@CurrentUser() user: any) {
-    return this.candidatePortalService.getMyProfile(user.auth0Sub);
+    return this.candidatePortalService.getMyProfile(user.auth0Sub, user.email);
   }
 
   @Patch('profile/resume')
   @ApiOperation({ summary: 'Update resume URL after file upload' })
   async updateResume(@CurrentUser() user: any, @Body('resumeUrl') resumeUrl: string) {
-    const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub);
+    const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub, user.email);
     return this.candidatePortalService.updateResume(profile.id, resumeUrl);
   }
 
@@ -81,7 +81,7 @@ export class CandidatePortalController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     if (!file) throw new BadRequestException('No file uploaded');
-    const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub);
+    const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub, user.email);
     const resumeKey = await this.fileUploadService.uploadResume(file, profile.id);
     await this.candidatePortalService.updateResume(profile.id, resumeKey);
     return { resumeUrl: resumeKey, message: 'Resume uploaded successfully' };
@@ -92,7 +92,7 @@ export class CandidatePortalController {
   @Get('jobs')
   @ApiOperation({ summary: 'Browse active mandates with filters and saved status' })
   async discoverJobs(@CurrentUser() user: any, @Query() filter: FilterMandateDto) {
-    const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub);
+    const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub, user.email);
     return this.candidatePortalService.discoverJobs(profile.id, filter);
   }
 
@@ -101,14 +101,14 @@ export class CandidatePortalController {
   @ApiOperation({ summary: 'Toggle save/unsave a job' })
   @ApiParam({ name: 'mandateId', type: 'string', format: 'uuid' })
   async toggleSaveJob(@CurrentUser() user: any, @Param('mandateId') mandateId: string) {
-    const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub);
+    const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub, user.email);
     return this.candidatePortalService.toggleSaveJob(profile.id, mandateId);
   }
 
   @Get('jobs/saved')
   @ApiOperation({ summary: 'Get saved jobs list' })
   async getSavedJobs(@CurrentUser() user: any) {
-    const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub);
+    const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub, user.email);
     return this.candidatePortalService.getSavedJobs(profile.id);
   }
 
@@ -120,14 +120,14 @@ export class CandidatePortalController {
     @Param('mandateId') mandateId: string,
     @Body() dto: DirectApplyDto,
   ) {
-    const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub);
+    const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub, user.email);
     return this.candidatePortalService.applyDirectly(profile.id, mandateId, dto);
   }
 
   @Get('applications')
   @ApiOperation({ summary: 'Get all applications and active referrals for candidate' })
   async getMyApplications(@CurrentUser() user: any) {
-    const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub);
+    const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub, user.email);
     return this.candidatePortalService.getMyApplications(profile.id);
   }
 
@@ -136,7 +136,7 @@ export class CandidatePortalController {
   @Get('consents')
   @ApiOperation({ summary: 'Get all pending consent requests (referrals waiting for response)' })
   async getPendingConsents(@CurrentUser() user: any) {
-    const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub);
+    const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub, user.email);
     return this.candidatePortalService.getPendingConsents(profile.id);
   }
 

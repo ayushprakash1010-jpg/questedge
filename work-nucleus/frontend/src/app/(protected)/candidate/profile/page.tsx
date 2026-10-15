@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getCandidateProfile, upsertCandidateProfile, parseResumeText } from "@/lib/marketplace-api";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   Loader2, Save, CheckCircle2, User, Briefcase, GraduationCap,
   MapPin, ChevronRight, ChevronLeft, Plus, X, ArrowRight, Sparkles,
@@ -284,11 +285,11 @@ export default function CandidateProfilePage() {
       const { accessToken } = await tokenRes.json();
       
       const meRes = await fetch("/api/auth/me");
-      const meData = await meRes.json();
+      const meData = await meRes.json().catch(() => ({}));
 
       const payload = {
         ...profile,
-        fallbackEmail: meData.email,
+        fallbackEmail: meData?.email,
         experienceYears: profile.experienceYears ? parseFloat(profile.experienceYears) : undefined,
         currentCtc: profile.currentCtc ? parseInt(profile.currentCtc) : undefined,
         expectedCtc: profile.expectedCtc ? parseInt(profile.expectedCtc) : undefined,
@@ -297,6 +298,7 @@ export default function CandidateProfilePage() {
       };
       await upsertCandidateProfile(accessToken, payload);
       setSaved(true);
+      toast.success("Profile saved successfully!");
       setTimeout(() => {
         setSaved(false);
         if (isNew) {
@@ -304,9 +306,10 @@ export default function CandidateProfilePage() {
         } else {
            router.push("/candidate/dashboard");
         }
-      }, 1500);
-    } catch (err) {
+      }, 1200);
+    } catch (err: any) {
       console.error(err);
+      toast.error(err?.message || "Failed to save profile. Please check the fields and try again.");
     } finally {
       setSaving(false);
     }
