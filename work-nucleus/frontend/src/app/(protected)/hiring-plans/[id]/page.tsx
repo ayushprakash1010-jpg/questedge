@@ -108,6 +108,18 @@ export default function HiringPlanDetailPage() {
         if (res.ok) {
           const data = await res.json();
           setPlan(data);
+          setLoading(false);
+          return;
+        }
+
+        // If not found as hiring plan, check if this is actually a mandate ID
+        const mandateRes = await fetch(`/api/mandates/${id}`);
+        if (mandateRes.ok) {
+          const mandateData = await mandateRes.json();
+          if (mandateData?.id) {
+            router.replace(`/mandates/${id}`);
+            return;
+          }
         }
       } catch {
         // handle error
@@ -116,7 +128,7 @@ export default function HiringPlanDetailPage() {
       }
     }
     fetchPlan();
-  }, [id]);
+  }, [id, router]);
 
   if (loading) {
     return (
@@ -128,11 +140,22 @@ export default function HiringPlanDetailPage() {
 
   if (!plan) {
     return (
-      <div className="text-center">
-        <p className="text-slate-500">Hiring plan not found</p>
-        <Link href="/hiring-plans" className="mt-2 text-sm text-indigo-600 hover:underline">
-          Back to plans
-        </Link>
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="h-12 w-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
+          <Briefcase className="h-6 w-6" />
+        </div>
+        <h3 className="text-base font-semibold text-slate-800">Position Not Found</h3>
+        <p className="mt-1 text-sm text-slate-500 max-w-sm">
+          This hiring plan or mandate could not be found or may have been archived.
+        </p>
+        <div className="mt-5 flex items-center gap-3">
+          <Link href="/mandates">
+            <Button size="sm">View Mandates</Button>
+          </Link>
+          <Link href="/candidates">
+            <Button variant="outline" size="sm">View Candidates</Button>
+          </Link>
+        </div>
       </div>
     );
   }

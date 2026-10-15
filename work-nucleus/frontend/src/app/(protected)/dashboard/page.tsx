@@ -584,23 +584,37 @@ export default function DashboardPage() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               {insights.map((insight, i) => {
-                // Derive a contextual action link based on category
+                // Derive a contextual action link based on category and title
                 let actionHref: string | undefined;
                 let actionLabel: string | undefined;
                 const cat = insight.category?.toLowerCase() || "";
                 const titleLower = insight.title?.toLowerCase() || "";
-                if (cat === "funnel" && titleLower.includes("bottleneck")) {
+
+                if (
+                  titleLower.includes("duplicate") ||
+                  titleLower.includes("referral quality") ||
+                  titleLower.includes("bottleneck") ||
+                  titleLower.includes("stalled")
+                ) {
                   actionHref = "/candidates";
                   actionLabel = "Review Candidates →";
-                } else if (cat === "funnel" && titleLower.includes("offer")) {
-                  actionHref = "/mandates";
-                  actionLabel = "View Mandates →";
-                } else if (cat === "sourcing") {
+                } else if (titleLower.includes("offer")) {
+                  actionHref = "/candidates";
+                  actionLabel = "Review Offer →";
+                } else if (
+                  titleLower.includes("channel") ||
+                  titleLower.includes("dependency") ||
+                  titleLower.includes("sourcing") ||
+                  cat === "sourcing"
+                ) {
                   actionHref = "/mandates";
                   actionLabel = "View Mandates →";
                 } else if (cat === "funnel") {
                   actionHref = "/candidates";
                   actionLabel = "View Candidates →";
+                } else {
+                  actionHref = "/candidates";
+                  actionLabel = "View Details →";
                 }
                 return (
                   <AiInsightCard

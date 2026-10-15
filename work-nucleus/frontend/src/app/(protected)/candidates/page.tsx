@@ -95,8 +95,8 @@ function scoreBadgeClass(score: number): string {
 function getBestScore(applications?: Application[]): number | null {
   if (!applications) return null;
   const scores = applications
-    .map((a) => (a.aiMatchScore ? Number(a.aiMatchScore) : null))
-    .filter((s): s is number => s !== null);
+    .map((a) => (a.aiMatchScore != null ? Number(a.aiMatchScore) : null))
+    .filter((s): s is number => s !== null && !isNaN(s) && s > 0);
   return scores.length > 0 ? Math.max(...scores) : null;
 }
 
@@ -142,14 +142,33 @@ export default function CandidatesPage() {
   // Derived: set of normalized names that appear more than once in the current page
   const duplicateNameSet = buildDuplicateNameSet(candidates);
 
-  // Fetch hiring plans for filter dropdown
+  // Fetch hiring plans & mandates for filter dropdown
   useEffect(() => {
-    fetch("/api/hiring-plans?limit=100")
-      .then((r) => r.json())
-      .then((d: { data?: HiringPlanLite[] }) => {
-        if (d.data) setHiringPlans(d.data.map((p) => ({ id: p.id, title: p.title })));
-      })
-      .catch(() => {});
+    Promise.all([
+      fetch("/api/hiring-plans?limit=100")
+        .then((r) => (r.ok ? r.json() : {}))
+        .catch(() => ({})),
+      fetch("/api/mandates?limit=100")
+        .then((r) => (r.ok ? r.json() : {}))
+        .catch(() => ({})),
+    ]).then(([plansData, mandatesData]: [any, any]) => {
+      const items: HiringPlanLite[] = [];
+      const seenIds = new Set<string>();
+
+      const addItems = (list?: any[]) => {
+        if (!Array.isArray(list)) return;
+        for (const item of list) {
+          if (item?.id && item?.title && !seenIds.has(item.id)) {
+            seenIds.add(item.id);
+            items.push({ id: item.id, title: item.title });
+          }
+        }
+      };
+
+      addItems(plansData.data);
+      addItems(mandatesData.data);
+      setHiringPlans(items);
+    });
   }, []);
 
   const fetchCandidates = useCallback(async () => {
@@ -428,11 +447,11 @@ export default function CandidatesPage() {
                             >
                               <div className="flex items-center gap-3">
                                 <Link
-                                  href={`/hiring-plans/${app.hiringPlanId}`}
+                                  href={`/mandates/${app.hiringPlanId}`}
                                   className="text-sm font-medium text-indigo-600 hover:underline"
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  {app.hiringPlan.title}
+                                  {app.hiringPlan?.title || "View Position"}
                                   <ExternalLink className="ml-1 inline h-3 w-3" />
                                 </Link>
                                 {VALID_STATUS_SET.has(app.status) ? (
@@ -444,7 +463,7 @@ export default function CandidatesPage() {
                                 )}
                               </div>
                               <div className="flex items-center gap-4">
-                                {app.aiMatchScore ? (
+                                {app.aiMatchScore && Number(app.aiMatchScore) > 0 ? (
                                   <div className="flex items-center gap-2">
                                     <Badge
                                       variant="outline"
@@ -466,8 +485,8 @@ export default function CandidatesPage() {
                                     )}
                                   </div>
                                 ) : (
-                                  <span className="text-xs text-slate-400">
-                                    Score pending
+                                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+                                    Unscored
                                   </span>
                                 )}
                                 <span className="text-xs text-slate-400">
