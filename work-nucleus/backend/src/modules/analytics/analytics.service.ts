@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ApplicationStatus, HiringPlanStatus } from '@prisma/client';
@@ -7,6 +7,7 @@ const TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 @Injectable()
 export class AnalyticsService {
+  private readonly logger = new Logger(AnalyticsService.name);
   private memCache = new Map<string, { data: any; expiry: number }>();
 
   constructor(
@@ -597,22 +598,11 @@ export class AnalyticsService {
     const rawKey = this.config.get<string>('GEMINI_API_KEY');
     const trimmedKey = rawKey ? rawKey.trim() : null;
 
-    if (!trimmedKey) {
-      // Fallback
-      insightsData = [
-        {
-          title: "Hiring Funnel Needs Data",
-          description: "Not enough data across the pipeline to identify bottlenecks.",
-          severity: "info",
-          category: "funnel",
-          recommendation: "Ensure hiring managers are actively updating candidate stages."
-        }
-      ];
-    } else {
+    if (trimmedKey) {
       try {
         const { GoogleGenAI } = require('@google/genai');
         const ai = new GoogleGenAI({ apiKey: trimmedKey });
-        
+
         const systemPrompt = `You are an expert HR Data Analyst. Analyze the following hiring metrics for ${payload.companyName}.
 Return exactly a JSON array of objects representing actionable insights.
 Format:
@@ -627,28 +617,44 @@ Format:
 ]
 Do not return any markdown formatting outside of the JSON block.`;
 
-        const response = await ai.models.generateContent({
-          model: this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest',
-          contents: [
-            { role: 'user', parts: [{ text: `Here is the data:\n${JSON.stringify(payload)}` }] }
-          ],
-          config: {
-            systemInstruction: systemPrompt,
-            responseMimeType: 'application/json',
-            temperature: 0.3,
-          },
-        });
+        const modelCandidates = [
+          this.config.get<string>('GEMINI_MODEL') || 'gemini-3.8-flash',
+          'gemini-flash-latest',
+        ].filter(Boolean);
 
-        const rawResponse = response.text || "[]";
-        try {
-          const parsed = JSON.parse(rawResponse.replace(/```json/g, '').replace(/```/g, '').trim());
-          insightsData = Array.isArray(parsed) ? parsed : [];
-        } catch (e) {
-          throw new BadRequestException("AI returned invalid JSON");
+        for (const model of modelCandidates) {
+          try {
+            const response = await ai.models.generateContent({
+              model,
+              contents: [
+                { role: 'user', parts: [{ text: `Here is the data:\n${JSON.stringify(payload)}` }] }
+              ],
+              config: {
+                systemInstruction: systemPrompt,
+                responseMimeType: 'application/json',
+                temperature: 0.3,
+              },
+            });
+
+            const rawResponse = response.text || "[]";
+            const cleaned = rawResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+            const parsed = JSON.parse(cleaned);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              insightsData = parsed;
+              break;
+            }
+          } catch (modelErr: any) {
+            this.logger.warn(`Gemini generation with ${model} failed: ${modelErr?.message || modelErr}`);
+          }
         }
-      } catch (e) {
-        throw new BadRequestException(`AI insights generation failed: ${e.message}`);
+      } catch (e: any) {
+        this.logger.warn(`AI insights generation failed (${e?.message || e}). Falling back to analytical heuristic insights.`);
       }
+    }
+
+    // Fallback: If Gemini was unavailable, quota-limited, or returned empty, generate data-driven heuristic insights
+    if (!insightsData || insightsData.length === 0) {
+      insightsData = this.generateRuleBasedInsights(payload);
     }
 
     // Persist to database
@@ -666,5 +672,107 @@ Do not return any markdown formatting outside of the JSON block.`;
       generatedAt: record.generatedAt.toISOString(),
       generatedBy: record.user,
     };
+  }
+
+  private generateRuleBasedInsights(payload: any): any[] {
+    const insights: any[] = [];
+    const company = payload.companyName || 'Quest';
+    const overview = payload.overview || {};
+    const funnel = Array.isArray(payload.funnel) ? payload.funnel : [];
+    const inPipeline = overview.inPipeline || 0;
+    const activeMandates = overview.activeMandates || 0;
+    const openRoles = overview.openRoles || 0;
+    const avgTimeToHire = overview.avgTimeToHire || 0;
+    const sources = Array.isArray(payload.sourceEffectiveness) ? payload.sourceEffectiveness : [];
+
+    // 1. Funnel & Stage Analysis
+    if (funnel.length > 0 && inPipeline > 0) {
+      const sortedStages = [...funnel].sort((a, b) => (b.count || 0) - (a.count || 0));
+      const topStage = sortedStages[0];
+      const topPercent = Math.round(((topStage.count || 0) / inPipeline) * 100);
+      insights.push({
+        title: `${topStage.stage} Stage Pipeline Concentration`,
+        description: `${topPercent}% of active candidates (${topStage.count} of ${inPipeline}) are currently in the ${topStage.stage} stage. Streamlining initial evaluation throughput will directly accelerate time-to-offer.`,
+        severity: topPercent > 60 ? 'warning' : 'info',
+        category: 'funnel',
+        recommendation: `Schedule next-stage evaluations for candidates currently in ${topStage.stage} to maintain pipeline velocity.`
+      });
+    } else if (inPipeline === 0) {
+      insights.push({
+        title: 'Candidate Pipeline Inactive',
+        description: `${company} currently has no active candidates moving through hiring pipeline stages.`,
+        severity: 'warning',
+        category: 'funnel',
+        recommendation: 'Activate sourcing channels and encourage referral submissions across your hiring network.'
+      });
+    }
+
+    // 2. Mandate & Open Role Sourcing Depth
+    if (activeMandates > 0 || openRoles > 0) {
+      const rolesCount = openRoles || activeMandates;
+      const ratio = inPipeline > 0 ? (inPipeline / rolesCount).toFixed(1) : '0';
+      const isHealthy = Number(ratio) >= 3;
+      insights.push({
+        title: 'Active Mandate Pipeline Coverage',
+        description: `${company} has ${activeMandates} active mandates with ${rolesCount} open openings. Current candidate-to-opening pipeline ratio is ${ratio}:1.`,
+        severity: isHealthy ? 'info' : 'warning',
+        category: 'sourcing',
+        recommendation: isHealthy
+          ? 'Pipeline depth is adequate. Maintain focus on stage conversion and interviewer feedback SLA.'
+          : 'Expand sourcing and referral rewards to build a target 4:1 applicant pool per open mandate.'
+      });
+    } else {
+      insights.push({
+        title: 'No Active Mandates Detected',
+        description: 'There are currently no active mandates or open roles configured.',
+        severity: 'info',
+        category: 'funnel',
+        recommendation: 'Create and publish new mandates in Recruiting to initiate candidate intake.'
+      });
+    }
+
+    // 3. Time-to-Hire & SLA Benchmark
+    if (avgTimeToHire > 0) {
+      const isFast = avgTimeToHire <= 35;
+      insights.push({
+        title: isFast ? 'Time-to-Hire Within Benchmark' : 'Time-to-Hire Exceeds Benchmark',
+        description: `Average completion velocity is currently tracking at ${avgTimeToHire} days, compared to the industry standard 35-day benchmark.`,
+        severity: isFast ? 'info' : 'warning',
+        category: 'funnel',
+        recommendation: isFast
+          ? 'Maintain rapid interviewer feedback turnaround times under 48 hours.'
+          : 'Audit intermediate interview stages to remove scheduling bottlenecks.'
+      });
+    } else {
+      insights.push({
+        title: 'Time-to-Hire SLA Benchmarking',
+        description: 'Hiring turnaround is calibrated against a 35-day industry SLA benchmark. Metrics will continuously update as candidate evaluations progress.',
+        severity: 'info',
+        category: 'interviewing',
+        recommendation: 'Ensure hiring managers and recruiters submit interview feedback within 48 hours of each round.'
+      });
+    }
+
+    // 4. Sourcing & Channel Insights
+    if (sources.length > 0) {
+      const topSource = sources[0];
+      insights.push({
+        title: `Primary Channel: ${topSource.source}`,
+        description: `${topSource.source} is the leading sourcing channel with ${topSource.candidates} candidate submissions and ${topSource.selectionRate || 0}% selection rate.`,
+        severity: 'info',
+        category: 'sourcing',
+        recommendation: `Capitalize on ${topSource.source} sourcing momentum while diversifying into secondary recruitment channels.`
+      });
+    } else {
+      insights.push({
+        title: 'Referral & Channel Sourcing',
+        description: 'Referral-based hiring currently powers mandate talent discovery. Channel conversion benchmarks will populate as applications progress.',
+        severity: 'info',
+        category: 'sourcing',
+        recommendation: 'Engage team members and recruiters with mandate referral campaigns and incentives.'
+      });
+    }
+
+    return insights;
   }
 }

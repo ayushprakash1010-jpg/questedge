@@ -18,6 +18,7 @@ import {
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { toast } from "@/components/ui/toaster";
 import { PageHeader } from "@/components/shared/page-header";
 import { KpiCard } from "@/components/shared/kpi-card";
 import { AiInsightCard } from "@/components/shared/ai-insight-card";
@@ -244,9 +245,13 @@ export default function DashboardPage() {
         setInsights(newInsights);
         setInsightsGeneratedAt(data.generatedAt || new Date().toISOString());
         setInsightsGeneratedBy(data.generatedBy?.name || null);
+        toast.success("Insights regenerated successfully");
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        toast.error(errData.message || errData.error || "Failed to generate insights");
       }
     } catch {
-      // ignore
+      toast.error("Network error while generating insights");
     } finally {
       setGeneratingInsights(false);
     }

@@ -43,10 +43,10 @@ export async function POST() {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     // Response shape: { insights, generatedAt, generatedBy }
     return NextResponse.json(data, { status: res.status });
   } catch {
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to generate insights" }, { status: 500 });
   }
 }
