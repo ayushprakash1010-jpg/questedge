@@ -168,6 +168,14 @@ export default function AppraisalHomePage() {
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            {!cycle && (
+              <Link href="/appraisal/cycles/new">
+                <Button variant="default" size="sm">
+                  <ArrowRight className="h-4 w-4" />
+                  Start New Cycle
+                </Button>
+              </Link>
+            )}
             <Button variant="outline" size="sm" disabled>
               <Download className="h-4 w-4" />
               Export Report

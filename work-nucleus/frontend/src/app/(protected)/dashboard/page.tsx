@@ -379,7 +379,7 @@ export default function DashboardPage() {
                       axisLine={false}
                       tickLine={false}
                     />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: "#f8fafc" }} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(99,102,241,0.04)" }} />
                     <Bar dataKey="entered" radius={[5, 5, 0, 0]} name="Entered">
                       {funnel.map((stage, idx) => (
                         <Cell key={stage.name} fill={funnelBarColor(stage.name, idx)} />
@@ -484,7 +484,10 @@ export default function DashboardPage() {
               {!overview?.recentPendingReferrals?.length ? (
                 <div className="flex h-[130px] flex-col items-center justify-center gap-2.5 text-center">
                   <p className="text-xs text-slate-400">No pending referrals to review</p>
-                  <Button variant="outline" size="sm" onClick={() => router.push('/mandates')}>Post a Mandate</Button>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => router.push('/candidates')}>View Candidates</Button>
+                    <Button variant="ghost" size="sm" onClick={() => router.push('/mandates')}>Mandates</Button>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-2.5">
@@ -580,16 +583,38 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
-              {insights.map((insight, i) => (
-                <AiInsightCard
-                  key={i}
-                  severity={normaliseSeverity(insight.severity)}
-                  title={insight.title}
-                  description={insight.description}
-                  recommendation={insight.recommendation}
-                  category={insight.category}
-                />
-              ))}
+              {insights.map((insight, i) => {
+                // Derive a contextual action link based on category
+                let actionHref: string | undefined;
+                let actionLabel: string | undefined;
+                const cat = insight.category?.toLowerCase() || "";
+                const titleLower = insight.title?.toLowerCase() || "";
+                if (cat === "funnel" && titleLower.includes("bottleneck")) {
+                  actionHref = "/candidates";
+                  actionLabel = "Review Candidates →";
+                } else if (cat === "funnel" && titleLower.includes("offer")) {
+                  actionHref = "/mandates";
+                  actionLabel = "View Mandates →";
+                } else if (cat === "sourcing") {
+                  actionHref = "/mandates";
+                  actionLabel = "View Mandates →";
+                } else if (cat === "funnel") {
+                  actionHref = "/candidates";
+                  actionLabel = "View Candidates →";
+                }
+                return (
+                  <AiInsightCard
+                    key={i}
+                    severity={normaliseSeverity(insight.severity)}
+                    title={insight.title}
+                    description={insight.description}
+                    recommendation={insight.recommendation}
+                    category={insight.category}
+                    actionHref={actionHref}
+                    actionLabel={actionLabel}
+                  />
+                );
+              })}
             </div>
           )}
         </CardContent>

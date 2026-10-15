@@ -1,5 +1,6 @@
 import * as React from "react";
-import { AlertCircle, AlertTriangle, Info } from "lucide-react";
+import Link from "next/link";
+import { AlertCircle, AlertTriangle, Info, ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +18,7 @@ interface SeverityConfig {
   iconColor: string;
   recBorder: string;
   recLabel: string;
+  linkColor: string;
   Icon: React.ComponentType<{ className?: string }>;
 }
 
@@ -28,6 +30,7 @@ const severityConfig: Record<Severity, SeverityConfig> = {
     iconColor: "text-blue-600",
     recBorder: "border-blue-200/40",
     recLabel: "text-blue-700",
+    linkColor: "text-blue-600 hover:text-blue-800",
     Icon: Info,
   },
   warning: {
@@ -37,6 +40,7 @@ const severityConfig: Record<Severity, SeverityConfig> = {
     iconColor: "text-amber-600",
     recBorder: "border-amber-200/40",
     recLabel: "text-amber-900",
+    linkColor: "text-amber-700 hover:text-amber-900",
     Icon: AlertTriangle,
   },
   critical: {
@@ -46,6 +50,7 @@ const severityConfig: Record<Severity, SeverityConfig> = {
     iconColor: "text-red-600",
     recBorder: "border-red-200/40",
     recLabel: "text-red-700",
+    linkColor: "text-red-600 hover:text-red-800",
     Icon: AlertCircle,
   },
 };
@@ -56,6 +61,10 @@ export interface AiInsightCardProps extends React.HTMLAttributes<HTMLDivElement>
   description: React.ReactNode;
   recommendation?: React.ReactNode;
   category?: string;
+  /** Optional internal href for a direct action link at the bottom of the card */
+  actionHref?: string;
+  /** Label text shown next to the arrow icon on the action link */
+  actionLabel?: string;
 }
 
 export function AiInsightCard({
@@ -64,6 +73,8 @@ export function AiInsightCard({
   description,
   recommendation,
   category,
+  actionHref,
+  actionLabel,
   className,
   ...props
 }: AiInsightCardProps) {
@@ -112,11 +123,28 @@ export function AiInsightCard({
             </p>
           </div>
         ) : null}
-        {category ? (
-          <Badge variant="outline" className="mt-2 text-[10px]">
-            {category}
-          </Badge>
-        ) : null}
+        <div className="mt-2 flex items-center justify-between">
+          {category ? (
+            <Badge variant="outline" className="text-[10px]">
+              {category}
+            </Badge>
+          ) : (
+            <span />
+          )}
+          {actionHref && actionLabel && (
+            <Link
+              href={actionHref}
+              className={cn(
+                "flex items-center gap-1 text-[11px] font-semibold transition-colors",
+                cfg.linkColor
+              )}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {actionLabel}
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          )}
+        </div>
       </div>
     </div>
   );

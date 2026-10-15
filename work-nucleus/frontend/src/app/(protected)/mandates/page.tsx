@@ -106,7 +106,15 @@ export default function MandatesPage() {
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Mandates</h1>
             <p className="text-sm text-slate-500 mt-0.5">
-              Manage your job postings and track referrals
+              Manage job postings, track referrals, and monitor your hiring pipeline.
+              {activeCount > 0 && (
+                <a
+                  href="/candidates"
+                  className="ml-2 inline-flex items-center gap-0.5 font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+                >
+                  View pipeline →
+                </a>
+              )}
             </p>
           </div>
           <Button
@@ -118,6 +126,7 @@ export default function MandatesPage() {
           </Button>
         </div>
       </div>
+
 
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
         {/* Stats row */}

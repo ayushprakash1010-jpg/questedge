@@ -100,6 +100,28 @@ function getBestScore(applications?: Application[]): number | null {
   return scores.length > 0 ? Math.max(...scores) : null;
 }
 
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+// Detect possible duplicate candidates based on normalized name
+function buildDuplicateNameSet(candidates: Candidate[]): Set<string> {
+  const normalizedNames = candidates.map((c) =>
+    c.name.trim().toLowerCase().replace(/\s+/g, " ")
+  );
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  for (const n of normalizedNames) {
+    if (seen.has(n)) duplicates.add(n);
+    else seen.add(n);
+  }
+  return duplicates;
+}
+
 interface HiringPlanLite {
   id: string;
   title: string;
@@ -116,6 +138,9 @@ export default function CandidatesPage() {
   const [hiringPlans, setHiringPlans] = useState<HiringPlanLite[]>([]);
   const [triggeringScoring, setTriggeringScoring] = useState(false);
   const [expandedCandidate, setExpandedCandidate] = useState<string | null>(null);
+
+  // Derived: set of normalized names that appear more than once in the current page
+  const duplicateNameSet = buildDuplicateNameSet(candidates);
 
   // Fetch hiring plans for filter dropdown
   useEffect(() => {
@@ -324,14 +349,23 @@ export default function CandidatesPage() {
                     }
                   >
                     <DataTableCell>
-                      <p className="font-medium text-slate-900">{c.name}</p>
-                      <p className="text-xs text-slate-500">{c.email}</p>
-                      {c.currentRole && (
-                        <p className="mt-0.5 text-xs text-slate-400">
-                          {c.currentRole}
-                          {c.currentCompany && ` at ${c.currentCompany}`}
-                        </p>
-                      )}
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-medium text-slate-900">{c.name}</p>
+                          {duplicateNameSet.has(c.name.trim().toLowerCase().replace(/\s+/g, " ")) && (
+                            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+                              Duplicate
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500">{c.email}</p>
+                        {c.currentRole && (
+                          <p className="text-xs text-slate-400">
+                            {c.currentRole}
+                            {c.currentCompany && ` at ${c.currentCompany}`}
+                          </p>
+                        )}
+                      </div>
                     </DataTableCell>
                     <DataTableCell>
                       <Badge
@@ -359,7 +393,9 @@ export default function CandidatesPage() {
                           {bestScore}%
                         </Badge>
                       ) : (
-                        <span className="text-xs text-slate-400">Pending</span>
+                        <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+                          Unscored
+                        </span>
                       )}
                     </DataTableCell>
                     <DataTableCell>{c.applications.length}</DataTableCell>
@@ -370,10 +406,10 @@ export default function CandidatesPage() {
                         <span className="text-xs text-slate-400">—</span>
                       )}
                     </DataTableCell>
-                    <DataTableCell className="text-slate-500">
+                    <DataTableCell className="text-slate-500 text-xs">
                       {c.applications[0]
-                        ? new Date(c.applications[0].appliedAt).toLocaleDateString()
-                        : new Date(c.createdAt).toLocaleDateString()}
+                        ? formatDate(c.applications[0].appliedAt)
+                        : formatDate(c.createdAt)}
                     </DataTableCell>
                   </DataTableRow>
 
