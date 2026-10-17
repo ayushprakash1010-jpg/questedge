@@ -36,7 +36,9 @@ export class SecurityService {
       orgId: event.orgId,
       ts: new Date().toISOString(),
     });
-    const hash = createHash('sha256').update((prevHash ?? '') + body).digest('hex');
+    const hash = createHash('sha256')
+      .update((prevHash ?? '') + body)
+      .digest('hex');
     return this.prisma.securityLog.create({
       data: {
         orgId: event.orgId,
@@ -55,7 +57,9 @@ export class SecurityService {
    * Verify the chain back to the start. Returns the first index where the
    * chain is broken, or -1 if intact.
    */
-  async verifyChain(orgId: string): Promise<{ ok: boolean; brokenAtIndex: number; total: number }> {
+  async verifyChain(
+    orgId: string,
+  ): Promise<{ ok: boolean; brokenAtIndex: number; total: number }> {
     const rows = await this.prisma.securityLog.findMany({
       where: { orgId },
       orderBy: { createdAt: 'asc' },
@@ -75,12 +79,14 @@ export class SecurityService {
         orgId: row.orgId,
         ts: row.createdAt.toISOString(),
       });
-      const expected = createHash('sha256').update((lastHash ?? '') + body).digest('hex');
-      // Hash mismatch is informational only — payloads can be re-serialised
-      // differently between writer/verifier, so we only assert the chain
-      // pointers are consistent. Stricter equality is a follow-up.
+      const expected: string = createHash('sha256')
+        .update((lastHash ?? '') + body)
+        .digest('hex');
+      // Verify the stored hash matches our recomputed hash — mismatch = tampering detected.
+      if (expected !== row.hash) {
+        return { ok: false, brokenAtIndex: i, total: rows.length };
+      }
       lastHash = row.hash;
-      void expected;
     }
     return { ok: true, brokenAtIndex: -1, total: rows.length };
   }
@@ -90,17 +96,27 @@ export class SecurityService {
   async accessReviewExport(orgId: string) {
     const users = await this.prisma.user.findMany({
       where: { orgId },
-      select: { id: true, email: true, name: true, role: true, isActive: true, updatedAt: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        isActive: true,
+        updatedAt: true,
+      },
     });
     return {
       generatedAt: new Date().toISOString(),
       orgId,
       userCount: users.length,
       activeCount: users.filter((u) => u.isActive).length,
-      byRole: users.reduce((acc, u) => {
-        acc[u.role] = (acc[u.role] ?? 0) + 1;
-        return acc;
-      }, {} as Record<string, number>),
+      byRole: users.reduce(
+        (acc, u) => {
+          acc[u.role] = (acc[u.role] ?? 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>,
+      ),
       users,
     };
   }

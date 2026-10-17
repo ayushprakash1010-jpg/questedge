@@ -49,32 +49,15 @@ export class MandatesController {
 
   @Get('public')
   @Public()
-  @ApiOperation({ summary: 'Public: Browse all ACTIVE mandates on the marketplace (no auth required)' })
+  @ApiOperation({
+    summary:
+      'Public: Browse all ACTIVE mandates on the marketplace (no auth required)',
+  })
   async publicDiscover(@Query() filter: FilterMandateDto) {
     return this.mandatesService.publicDiscover(filter);
   }
 
   // ── Company: Generate Mandate ────────────────────────────────
-
-  @Get('test-ai')
-  @Public()
-  async testAi() {
-    return this.aiScreening.generateMandate('We need a Senior Full-Stack Engineer with React and Node.');
-  }
-
-  @Get('test-whatsapp')
-  @Public()
-  @ApiOperation({ summary: 'Test WhatsApp message sending via Twilio' })
-  async testWhatsapp(@Query('phone') phone?: string) {
-    const targetPhone = phone || '+919560806582';
-    return this.whatsappService.sendWhatsAppNotification(
-      targetPhone,
-      'Ayush',
-      'Senior React Developer',
-      'ACTIVE',
-      'https://questedge.vercel.app/mandates/c3f50472-0491-45d1-9b15-1f1c673e9219',
-    );
-  }
 
   @Post('generate')
   @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
@@ -101,7 +84,9 @@ export class MandatesController {
 
   @Get()
   @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
-  @ApiOperation({ summary: 'Company: List own mandates with filters and pagination' })
+  @ApiOperation({
+    summary: 'Company: List own mandates with filters and pagination',
+  })
   async findByOrg(@CurrentUser() user: any, @Query() filter: FilterMandateDto) {
     return this.mandatesService.findByOrg(user.orgId, filter);
   }
@@ -110,9 +95,13 @@ export class MandatesController {
 
   @Get('discover')
   @UserTypes(UserType.RECRUITER, UserType.CANDIDATE)
-  @ApiOperation({ summary: 'Recruiter/Candidate: Browse all ACTIVE mandates on the marketplace' })
+  @ApiOperation({
+    summary:
+      'Recruiter/Candidate: Browse all ACTIVE mandates on the marketplace',
+  })
   async discover(@CurrentUser() user: any, @Query() filter: FilterMandateDto) {
-    const recruiterId = user.userType === UserType.RECRUITER ? user.id : undefined;
+    const recruiterId =
+      user.userType === UserType.RECRUITER ? user.id : undefined;
     return this.mandatesService.discover(recruiterId ?? '', filter);
   }
 
@@ -121,22 +110,37 @@ export class MandatesController {
   @Get('my-active')
   @UserTypes(UserType.RECRUITER)
   @ApiOperation({ summary: 'Recruiter: Get mandates I am actively working on' })
-  async findByRecruiter(@CurrentUser() user: any, @Query() filter: FilterMandateDto) {
+  async findByRecruiter(
+    @CurrentUser() user: any,
+    @Query() filter: FilterMandateDto,
+  ) {
     return this.mandatesService.findByRecruiter(user.id, filter);
   }
 
   // ── Company: Get single mandate with stats ───────────────────
 
   @Get(':id')
-  @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER, UserType.RECRUITER, UserType.CANDIDATE)
-  @ApiOperation({ summary: 'Get mandate detail (Company sees full stats, Recruiters see marketplace details)' })
+  @UserTypes(
+    UserType.COMPANY_ADMIN,
+    UserType.COMPANY_USER,
+    UserType.RECRUITER,
+    UserType.CANDIDATE,
+  )
+  @ApiOperation({
+    summary:
+      'Get mandate detail (Company sees full stats, Recruiters see marketplace details)',
+  })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   async findOne(
     @CurrentUser() user: any,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    if (user.userType === UserType.RECRUITER || user.userType === UserType.CANDIDATE) {
-      const recruiterId = user.userType === UserType.RECRUITER ? user.id : undefined;
+    if (
+      user.userType === UserType.RECRUITER ||
+      user.userType === UserType.CANDIDATE
+    ) {
+      const recruiterId =
+        user.userType === UserType.RECRUITER ? user.id : undefined;
       return this.mandatesService.findForMarketplace(id, recruiterId);
     }
     return this.mandatesService.findOne(user.orgId, id);
@@ -146,7 +150,9 @@ export class MandatesController {
 
   @Patch(':id')
   @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
-  @ApiOperation({ summary: 'Company: Update a mandate (not allowed when CLOSED/FILLED)' })
+  @ApiOperation({
+    summary: 'Company: Update a mandate (not allowed when CLOSED/FILLED)',
+  })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   async update(
     @CurrentUser() user: any,
@@ -161,7 +167,10 @@ export class MandatesController {
   @Post(':id/publish')
   @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Company Admin: Publish a DRAFT or PAUSED mandate to the marketplace' })
+  @ApiOperation({
+    summary:
+      'Company Admin: Publish a DRAFT or PAUSED mandate to the marketplace',
+  })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   async publish(
     @CurrentUser() user: any,
@@ -203,7 +212,9 @@ export class MandatesController {
   @Delete(':id')
   @UserTypes(UserType.COMPANY_ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Company Admin: Delete a DRAFT mandate (cannot delete published)' })
+  @ApiOperation({
+    summary: 'Company Admin: Delete a DRAFT mandate (cannot delete published)',
+  })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   async remove(
     @CurrentUser() user: any,
@@ -217,7 +228,10 @@ export class MandatesController {
   @Post(':id/join')
   @UserTypes(UserType.RECRUITER)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Recruiter: Opt-in to work on a mandate (appear in its recruiter pool)' })
+  @ApiOperation({
+    summary:
+      'Recruiter: Opt-in to work on a mandate (appear in its recruiter pool)',
+  })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   async joinMandate(
     @CurrentUser() user: any,
@@ -244,7 +258,9 @@ export class MandatesController {
 
   @Get(':id/participants')
   @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
-  @ApiOperation({ summary: 'Company: View recruiters currently working on a mandate' })
+  @ApiOperation({
+    summary: 'Company: View recruiters currently working on a mandate',
+  })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   async getParticipants(
     @CurrentUser() user: any,
@@ -257,7 +273,9 @@ export class MandatesController {
 
   @Get(':id/pipeline')
   @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
-  @ApiOperation({ summary: 'Company: Fetch all applications/referrals for a mandate pipeline' })
+  @ApiOperation({
+    summary: 'Company: Fetch all applications/referrals for a mandate pipeline',
+  })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   async getPipeline(
     @CurrentUser() user: any,
@@ -270,7 +288,10 @@ export class MandatesController {
 
   @Get(':id/referrals')
   @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
-  @ApiOperation({ summary: 'Company: List all referrals for a mandate with candidate and recruiter details' })
+  @ApiOperation({
+    summary:
+      'Company: List all referrals for a mandate with candidate and recruiter details',
+  })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   async getMandateReferrals(
     @CurrentUser() user: any,
@@ -282,7 +303,9 @@ export class MandatesController {
   @Patch(':id/referrals/:referralId/status')
   @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Company: Move a referral through the hiring pipeline' })
+  @ApiOperation({
+    summary: 'Company: Move a referral through the hiring pipeline',
+  })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   @ApiParam({ name: 'referralId', type: 'string', format: 'uuid' })
   async updateReferralStatus(
@@ -291,7 +314,13 @@ export class MandatesController {
     @Param('referralId', ParseUUIDPipe) referralId: string,
     @Body() body: { status: string; notes?: string },
   ) {
-    return this.mandatesService.updateReferralStatus(user.orgId, id, referralId, body.status, body.notes);
+    return this.mandatesService.updateReferralStatus(
+      user.orgId,
+      id,
+      referralId,
+      body.status,
+      body.notes,
+    );
   }
 
   @Post(':id/referrals/:referralId/trigger-ai')
@@ -300,9 +329,7 @@ export class MandatesController {
   @ApiOperation({ summary: 'Company: Retry AI Scoring for a Referral' })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   @ApiParam({ name: 'referralId', type: 'string', format: 'uuid' })
-  async retryAiScoring(
-    @Param('referralId', ParseUUIDPipe) referralId: string,
-  ) {
+  async retryAiScoring(@Param('referralId', ParseUUIDPipe) referralId: string) {
     await this.aiScreening.evaluateReferralFit(referralId);
     return { success: true };
   }

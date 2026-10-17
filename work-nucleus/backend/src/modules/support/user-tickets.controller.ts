@@ -15,7 +15,12 @@ export class UserTicketsController {
   constructor(private readonly ticketsService: TicketsService) {}
 
   @Post()
-  @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER, UserType.RECRUITER, UserType.CANDIDATE)
+  @UserTypes(
+    UserType.COMPANY_ADMIN,
+    UserType.COMPANY_USER,
+    UserType.RECRUITER,
+    UserType.CANDIDATE,
+  )
   @ApiOperation({ summary: 'Create a support ticket as a user' })
   createTicket(@Body() dto: CreateTicketDto, @Req() req: any) {
     dto.orgId = req.user.orgId;
@@ -24,7 +29,12 @@ export class UserTicketsController {
   }
 
   @Get()
-  @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER, UserType.RECRUITER, UserType.CANDIDATE)
+  @UserTypes(
+    UserType.COMPANY_ADMIN,
+    UserType.COMPANY_USER,
+    UserType.RECRUITER,
+    UserType.CANDIDATE,
+  )
   @ApiOperation({ summary: 'List my support tickets' })
   listTickets(@Req() req: any) {
     // If not a company admin, maybe filter by reportedBy? Or let org admins see all org tickets.
@@ -33,7 +43,9 @@ export class UserTicketsController {
       page: 1,
       limit: 50,
       orgId,
-      ...(req.user.userType !== UserType.COMPANY_ADMIN ? { reportedBy: req.user.id } : {})
+      ...(req.user.userType !== UserType.COMPANY_ADMIN
+        ? { reportedBy: req.user.id }
+        : {}),
     });
   }
 }

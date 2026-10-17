@@ -569,6 +569,7 @@ model User {
 
   @@index([orgId])
   @@index([auth0Sub])
+  @@index([orgId, isActive]) // Admin portal: cross-org user listing with active filter
   @@map("users")
 }
 
@@ -1737,6 +1738,8 @@ model RecruiterProfile {
   participations MandateParticipation[]
   rewards        RewardTracking[]
 
+  // Index for admin portal recruiter listing (filter by verified/active status)
+  @@index([isVerified, isActive, createdAt])
   @@map("recruiter_profiles")
 }
 

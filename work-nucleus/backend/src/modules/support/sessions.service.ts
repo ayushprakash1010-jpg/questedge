@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -73,7 +77,12 @@ export class SessionsService {
 
     return {
       data: sessions,
-      meta: { total, page: query.page, limit: query.limit, totalPages: Math.ceil(total / query.limit) },
+      meta: {
+        total,
+        page: query.page,
+        limit: query.limit,
+        totalPages: Math.ceil(total / query.limit),
+      },
     };
   }
 

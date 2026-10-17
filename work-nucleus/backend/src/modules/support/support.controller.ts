@@ -1,6 +1,4 @@
-import {
-  Controller, Get, Param, Query, Req,
-} from '@nestjs/common';
+import { Controller, Get, Param, Query, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SupportService } from './support.service';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -75,6 +73,9 @@ export class SupportController {
     @Param('orgId') orgId: string,
     @Query('months') months?: string,
   ) {
-    return this.supportService.getOrgHealth(orgId, months ? parseInt(months) : 6);
+    return this.supportService.getOrgHealth(
+      orgId,
+      months ? parseInt(months) : 6,
+    );
   }
 }

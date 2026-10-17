@@ -1,6 +1,4 @@
-import {
-  Controller, Get, Post, Param, Query,
-} from '@nestjs/common';
+import { Controller, Get, Post, Param, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SupportAnalyticsService } from './support-analytics.service';
 import { Roles } from '../../auth/decorators/roles.decorator';

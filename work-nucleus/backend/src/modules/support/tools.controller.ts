@@ -1,6 +1,4 @@
-import {
-  Controller, Get, Post, Patch, Param, Body,
-} from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ToolsService } from './tools.service';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -16,7 +14,10 @@ export class ToolsController {
   @Post('export-data')
   @Roles(Role.SUPPORT_ADMIN)
   @ApiOperation({ summary: 'Export org data for compliance/GDPR requests' })
-  exportData(@Body('orgId') orgId: string, @Body('dataTypes') dataTypes: string[]) {
+  exportData(
+    @Body('orgId') orgId: string,
+    @Body('dataTypes') dataTypes: string[],
+  ) {
     return this.toolsService.exportData(orgId, dataTypes);
   }
 
@@ -29,7 +30,10 @@ export class ToolsController {
   @Patch('feature-flags/:orgId')
   @Roles(Role.SUPPORT_ADMIN)
   @ApiOperation({ summary: 'Update feature flags for an organization' })
-  updateFeatureFlags(@Param('orgId') orgId: string, @Body() flags: Record<string, boolean>) {
+  updateFeatureFlags(
+    @Param('orgId') orgId: string,
+    @Body() flags: Record<string, boolean>,
+  ) {
     return this.toolsService.updateFeatureFlags(orgId, flags);
   }
 

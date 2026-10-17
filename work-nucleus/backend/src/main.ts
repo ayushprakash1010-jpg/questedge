@@ -21,10 +21,12 @@ async function bootstrap() {
   );
   app.use(express.urlencoded({ extended: true }));
 
-  // Global validation pipe
+  // Global validation pipe — whitelist unknown fields to prevent mass-assignment
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: false, // warn but don't reject for backwards compat
     }),
   );
 
@@ -34,12 +36,17 @@ async function bootstrap() {
   // Global logging interceptor
   app.useGlobalInterceptors(new LoggingInterceptor());
 
-  // CORS
+  // CORS — allow both local dev origins and production Vercel deployments
   app.enableCors({
     origin: [
-      'http://localhost:3001', // frontend
-      'http://localhost:3002', // admin
+      'http://localhost:3001', // frontend (dev)
+      'http://localhost:3002', // support-admin (dev)
       'https://questedge.vercel.app', // production frontend
+      'https://questedge-admin.vercel.app', // production support-admin
+      // Add additional preview/staging URLs as needed:
+      ...(process.env.EXTRA_CORS_ORIGINS
+        ? process.env.EXTRA_CORS_ORIGINS.split(',')
+        : []),
     ],
     credentials: true,
   });

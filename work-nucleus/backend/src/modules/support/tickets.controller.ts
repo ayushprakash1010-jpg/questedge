@@ -1,5 +1,12 @@
 import {
-  Controller, Get, Post, Patch, Param, Query, Body, Req,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Param,
+  Query,
+  Body,
+  Req,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { TicketsService } from './tickets.service';
@@ -59,19 +66,30 @@ export class TicketsController {
 
   @Post(':id/notes')
   @ApiOperation({ summary: 'Add a note to a ticket' })
-  addNote(@Param('id') id: string, @Body() dto: CreateNoteDto, @Req() req: any) {
+  addNote(
+    @Param('id') id: string,
+    @Body() dto: CreateNoteDto,
+    @Req() req: any,
+  ) {
     return this.ticketsService.addNote(id, dto, req.user.id);
   }
 
   @Post(':id/assign')
   @ApiOperation({ summary: 'Assign or reassign a ticket' })
-  assignTicket(@Param('id') id: string, @Body('assigneeId') assigneeId: string) {
+  assignTicket(
+    @Param('id') id: string,
+    @Body('assigneeId') assigneeId: string,
+  ) {
     return this.ticketsService.assignTicket(id, assigneeId);
   }
 
   @Post(':id/escalate')
   @ApiOperation({ summary: 'Escalate a ticket' })
-  escalateTicket(@Param('id') id: string, @Body() dto: EscalateTicketDto, @Req() req: any) {
+  escalateTicket(
+    @Param('id') id: string,
+    @Body() dto: EscalateTicketDto,
+    @Req() req: any,
+  ) {
     return this.ticketsService.escalateTicket(id, dto, req.user.id);
   }
 

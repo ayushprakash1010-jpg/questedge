@@ -19,7 +19,9 @@ export class TicketsService {
 
   async createTicket(dto: CreateTicketDto, creatorId: string) {
     const slaDeadline = new Date();
-    slaDeadline.setHours(slaDeadline.getHours() + (SLA_HOURS[dto.priority || 'MEDIUM'] || 24));
+    slaDeadline.setHours(
+      slaDeadline.getHours() + (SLA_HOURS[dto.priority || 'MEDIUM'] || 24),
+    );
 
     return this.prisma.supportTicket.create({
       data: {
@@ -27,7 +29,7 @@ export class TicketsService {
         title: dto.title,
         description: dto.description,
         priority: (dto.priority as TicketPriority) || 'MEDIUM',
-        category: dto.category as any || 'GENERAL',
+        category: (dto.category as any) || 'GENERAL',
         reportedBy: dto.reportedBy,
         assigneeId: dto.assigneeId,
         tags: dto.tags || [],
@@ -112,7 +114,9 @@ export class TicketsService {
       data.priority = dto.priority;
       // Recalculate SLA if priority changed
       const slaDeadline = new Date();
-      slaDeadline.setHours(slaDeadline.getHours() + (SLA_HOURS[dto.priority] || 24));
+      slaDeadline.setHours(
+        slaDeadline.getHours() + (SLA_HOURS[dto.priority] || 24),
+      );
       data.slaDeadline = slaDeadline;
     }
     if (dto.assigneeId) data.assigneeId = dto.assigneeId;
@@ -172,7 +176,11 @@ export class TicketsService {
     });
   }
 
-  async escalateTicket(id: string, dto: EscalateTicketDto, escalatedById: string) {
+  async escalateTicket(
+    id: string,
+    dto: EscalateTicketDto,
+    escalatedById: string,
+  ) {
     const [ticket, escalation] = await Promise.all([
       this.prisma.supportTicket.update({
         where: { id },

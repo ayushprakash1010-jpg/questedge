@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -6,7 +10,9 @@ export class ToolsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async exportData(orgId: string, dataTypes: string[]) {
-    const org = await this.prisma.organization.findUnique({ where: { id: orgId } });
+    const org = await this.prisma.organization.findUnique({
+      where: { id: orgId },
+    });
     if (!org) throw new NotFoundException('Organization not found');
 
     const exportResult: Record<string, any> = { organization: org };
@@ -14,7 +20,14 @@ export class ToolsService {
     if (dataTypes.includes('users')) {
       exportResult.users = await this.prisma.user.findMany({
         where: { orgId },
-        select: { id: true, name: true, email: true, role: true, isActive: true, createdAt: true },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          isActive: true,
+          createdAt: true,
+        },
       });
     }
 
@@ -70,7 +83,9 @@ export class ToolsService {
   }
 
   async updateFeatureFlags(orgId: string, flags: Record<string, boolean>) {
-    const existing = await this.prisma.orgSettings.findUnique({ where: { orgId } });
+    const existing = await this.prisma.orgSettings.findUnique({
+      where: { orgId },
+    });
     const currentSettings = (existing?.settings as Record<string, any>) || {};
     const currentFlags = currentSettings.featureFlags || {};
 

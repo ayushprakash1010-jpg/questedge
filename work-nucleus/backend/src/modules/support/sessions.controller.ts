@@ -1,6 +1,4 @@
-import {
-  Controller, Get, Post, Param, Query, Body, Req,
-} from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, Body, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SessionsService } from './sessions.service';
 import { Roles } from '../../auth/decorators/roles.decorator';

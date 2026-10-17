@@ -18,8 +18,12 @@ export class SupportService {
       this.prisma.organization.count(),
       this.prisma.user.count(),
       this.prisma.user.count({ where: { isActive: true } }),
-      this.prisma.hiringPlan.count({ where: { status: HiringPlanStatus.ACTIVE } }),
-      this.prisma.supportTicket.count({ where: { status: { in: ['OPEN', 'IN_PROGRESS', 'ESCALATED'] } } }),
+      this.prisma.hiringPlan.count({
+        where: { status: HiringPlanStatus.ACTIVE },
+      }),
+      this.prisma.supportTicket.count({
+        where: { status: { in: ['OPEN', 'IN_PROGRESS', 'ESCALATED'] } },
+      }),
       this.prisma.organization.findMany({
         take: 5,
         orderBy: { createdAt: 'desc' },
@@ -30,7 +34,10 @@ export class SupportService {
     // Orgs needing attention: those with open critical/high tickets
     const orgsNeedingAttention = await this.prisma.supportTicket.groupBy({
       by: ['orgId'],
-      where: { priority: { in: ['CRITICAL', 'HIGH'] }, status: { in: ['OPEN', 'IN_PROGRESS', 'ESCALATED'] } },
+      where: {
+        priority: { in: ['CRITICAL', 'HIGH'] },
+        status: { in: ['OPEN', 'IN_PROGRESS', 'ESCALATED'] },
+      },
       _count: true,
     });
 
@@ -45,7 +52,12 @@ export class SupportService {
     };
   }
 
-  async getOrganizations(query: { page: number; limit: number; search?: string; industry?: string }) {
+  async getOrganizations(query: {
+    page: number;
+    limit: number;
+    search?: string;
+    industry?: string;
+  }) {
     const where: any = {};
     if (query.search) {
       where.name = { contains: query.search, mode: 'insensitive' };
@@ -69,7 +81,9 @@ export class SupportService {
             select: {
               users: true,
               hiringPlans: { where: { status: HiringPlanStatus.ACTIVE } },
-              supportTickets: { where: { status: { in: ['OPEN', 'IN_PROGRESS', 'ESCALATED'] } } },
+              supportTickets: {
+                where: { status: { in: ['OPEN', 'IN_PROGRESS', 'ESCALATED'] } },
+              },
             },
           },
         },
@@ -123,15 +137,23 @@ export class SupportService {
 
     if (!org) throw new NotFoundException('Organization not found');
 
-    const [activePlans, activeUsers, openTickets, latestHealth] = await Promise.all([
-      this.prisma.hiringPlan.count({ where: { orgId, status: HiringPlanStatus.ACTIVE } }),
-      this.prisma.user.count({ where: { orgId, isActive: true } }),
-      this.prisma.supportTicket.count({ where: { orgId, status: { in: ['OPEN', 'IN_PROGRESS', 'ESCALATED'] } } }),
-      this.prisma.orgHealthMetric.findFirst({
-        where: { orgId },
-        orderBy: { metricDate: 'desc' },
-      }),
-    ]);
+    const [activePlans, activeUsers, openTickets, latestHealth] =
+      await Promise.all([
+        this.prisma.hiringPlan.count({
+          where: { orgId, status: HiringPlanStatus.ACTIVE },
+        }),
+        this.prisma.user.count({ where: { orgId, isActive: true } }),
+        this.prisma.supportTicket.count({
+          where: {
+            orgId,
+            status: { in: ['OPEN', 'IN_PROGRESS', 'ESCALATED'] },
+          },
+        }),
+        this.prisma.orgHealthMetric.findFirst({
+          where: { orgId },
+          orderBy: { metricDate: 'desc' },
+        }),
+      ]);
 
     return {
       ...org,
@@ -164,11 +186,19 @@ export class SupportService {
 
     return {
       data: users,
-      meta: { total, page: query.page, limit: query.limit, totalPages: Math.ceil(total / query.limit) },
+      meta: {
+        total,
+        page: query.page,
+        limit: query.limit,
+        totalPages: Math.ceil(total / query.limit),
+      },
     };
   }
 
-  async getOrgHiringPlans(orgId: string, query: { page: number; limit: number; status?: string }) {
+  async getOrgHiringPlans(
+    orgId: string,
+    query: { page: number; limit: number; status?: string },
+  ) {
     const where: any = { orgId };
     if (query.status) {
       where.status = query.status;
@@ -200,7 +230,12 @@ export class SupportService {
 
     return {
       data: plans,
-      meta: { total, page: query.page, limit: query.limit, totalPages: Math.ceil(total / query.limit) },
+      meta: {
+        total,
+        page: query.page,
+        limit: query.limit,
+        totalPages: Math.ceil(total / query.limit),
+      },
     };
   }
 

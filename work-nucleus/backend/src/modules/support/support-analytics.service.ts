@@ -40,9 +40,18 @@ export class SupportAnalyticsService {
     }
 
     return {
-      trend: Object.entries(volumeByMonth).map(([month, count]) => ({ month, count })),
-      byCategory: Object.entries(byCategory).map(([category, count]) => ({ category, count })),
-      byPriority: Object.entries(byPriority).map(([priority, count]) => ({ priority, count })),
+      trend: Object.entries(volumeByMonth).map(([month, count]) => ({
+        month,
+        count,
+      })),
+      byCategory: Object.entries(byCategory).map(([category, count]) => ({
+        category,
+        count,
+      })),
+      byPriority: Object.entries(byPriority).map(([priority, count]) => ({
+        priority,
+        count,
+      })),
       total: tickets.length,
     };
   }
@@ -59,20 +68,27 @@ export class SupportAnalyticsService {
       },
     });
 
-    const groups: Record<string, { responseTimes: number[]; resolutionTimes: number[] }> = {};
+    const groups: Record<
+      string,
+      { responseTimes: number[]; resolutionTimes: number[] }
+    > = {};
 
     for (const t of tickets) {
       const key = groupBy === 'category' ? t.category : t.priority;
-      if (!groups[key]) groups[key] = { responseTimes: [], resolutionTimes: [] };
+      if (!groups[key])
+        groups[key] = { responseTimes: [], resolutionTimes: [] };
 
       const responseHours = Math.ceil(
-        (new Date(t.firstResponseAt!).getTime() - new Date(t.createdAt).getTime()) / (1000 * 60 * 60),
+        (new Date(t.firstResponseAt!).getTime() -
+          new Date(t.createdAt).getTime()) /
+          (1000 * 60 * 60),
       );
       groups[key].responseTimes.push(responseHours);
 
       if (t.resolvedAt) {
         const resolutionHours = Math.ceil(
-          (new Date(t.resolvedAt).getTime() - new Date(t.createdAt).getTime()) / (1000 * 60 * 60),
+          (new Date(t.resolvedAt).getTime() - new Date(t.createdAt).getTime()) /
+            (1000 * 60 * 60),
         );
         groups[key].resolutionTimes.push(resolutionHours);
       }
@@ -80,12 +96,20 @@ export class SupportAnalyticsService {
 
     return Object.entries(groups).map(([group, data]) => ({
       group,
-      avgResponseHours: data.responseTimes.length > 0
-        ? Math.round(data.responseTimes.reduce((s, v) => s + v, 0) / data.responseTimes.length)
-        : 0,
-      avgResolutionHours: data.resolutionTimes.length > 0
-        ? Math.round(data.resolutionTimes.reduce((s, v) => s + v, 0) / data.resolutionTimes.length)
-        : 0,
+      avgResponseHours:
+        data.responseTimes.length > 0
+          ? Math.round(
+              data.responseTimes.reduce((s, v) => s + v, 0) /
+                data.responseTimes.length,
+            )
+          : 0,
+      avgResolutionHours:
+        data.resolutionTimes.length > 0
+          ? Math.round(
+              data.resolutionTimes.reduce((s, v) => s + v, 0) /
+                data.resolutionTimes.length,
+            )
+          : 0,
       ticketCount: data.responseTimes.length,
     }));
   }
@@ -101,12 +125,18 @@ export class SupportAnalyticsService {
         resolvedAt: { not: null },
         slaDeadline: { not: null },
       },
-      select: { resolvedAt: true, slaDeadline: true, priority: true, createdAt: true },
+      select: {
+        resolvedAt: true,
+        slaDeadline: true,
+        priority: true,
+        createdAt: true,
+      },
     });
 
     const byPriority: Record<string, { met: number; breached: number }> = {};
     for (const t of tickets) {
-      if (!byPriority[t.priority]) byPriority[t.priority] = { met: 0, breached: 0 };
+      if (!byPriority[t.priority])
+        byPriority[t.priority] = { met: 0, breached: 0 };
       if (new Date(t.resolvedAt!) <= new Date(t.slaDeadline!)) {
         byPriority[t.priority].met++;
       } else {
@@ -127,17 +157,19 @@ export class SupportAnalyticsService {
       overall: {
         ...overall,
         total: overall.met + overall.breached,
-        complianceRate: overall.met + overall.breached > 0
-          ? Math.round((overall.met / (overall.met + overall.breached)) * 100)
-          : 100,
+        complianceRate:
+          overall.met + overall.breached > 0
+            ? Math.round((overall.met / (overall.met + overall.breached)) * 100)
+            : 100,
       },
       byPriority: Object.entries(byPriority).map(([priority, data]) => ({
         priority,
         ...data,
         total: data.met + data.breached,
-        complianceRate: data.met + data.breached > 0
-          ? Math.round((data.met / (data.met + data.breached)) * 100)
-          : 100,
+        complianceRate:
+          data.met + data.breached > 0
+            ? Math.round((data.met / (data.met + data.breached)) * 100)
+            : 100,
       })),
     };
   }
@@ -180,22 +212,31 @@ export class SupportAnalyticsService {
       reps.map(async (rep) => {
         const [total, resolved, avgResponse] = await Promise.all([
           this.prisma.supportTicket.count({ where: { assigneeId: rep.id } }),
-          this.prisma.supportTicket.count({ where: { assigneeId: rep.id, status: { in: ['RESOLVED', 'CLOSED'] } } }),
+          this.prisma.supportTicket.count({
+            where: {
+              assigneeId: rep.id,
+              status: { in: ['RESOLVED', 'CLOSED'] },
+            },
+          }),
           this.prisma.supportTicket.findMany({
             where: { assigneeId: rep.id, firstResponseAt: { not: null } },
             select: { createdAt: true, firstResponseAt: true },
           }),
         ]);
 
-        const avgResponseHours = avgResponse.length > 0
-          ? Math.round(
-              avgResponse.reduce(
-                (s, t) =>
-                  s + (new Date(t.firstResponseAt!).getTime() - new Date(t.createdAt).getTime()) / (1000 * 60 * 60),
-                0,
-              ) / avgResponse.length,
-            )
-          : 0;
+        const avgResponseHours =
+          avgResponse.length > 0
+            ? Math.round(
+                avgResponse.reduce(
+                  (s, t) =>
+                    s +
+                    (new Date(t.firstResponseAt!).getTime() -
+                      new Date(t.createdAt).getTime()) /
+                      (1000 * 60 * 60),
+                  0,
+                ) / avgResponse.length,
+              )
+            : 0;
 
         return {
           ...rep,
@@ -220,35 +261,64 @@ export class SupportAnalyticsService {
 
     const results = await Promise.all(
       orgs.map(async (org) => {
-        const [activeUsers, hiringPlans, totalRolesAgg, openTickets] = await Promise.all([
-          this.prisma.user.count({ where: { orgId: org.id, isActive: true } }),
-          this.prisma.hiringPlan.count({ where: { orgId: org.id, status: HiringPlanStatus.ACTIVE } }),
-          this.prisma.hiringPlan.aggregate({
-            where: { orgId: org.id, status: { in: [HiringPlanStatus.ACTIVE, HiringPlanStatus.COMPLETED] } },
-            _sum: { totalRoles: true, filledRoles: true },
-          }),
-          this.prisma.supportTicket.count({
-            where: { orgId: org.id, status: { in: ['OPEN', 'IN_PROGRESS', 'ESCALATED'] } },
-          }),
-        ]);
+        const [activeUsers, hiringPlans, totalRolesAgg, openTickets] =
+          await Promise.all([
+            this.prisma.user.count({
+              where: { orgId: org.id, isActive: true },
+            }),
+            this.prisma.hiringPlan.count({
+              where: { orgId: org.id, status: HiringPlanStatus.ACTIVE },
+            }),
+            this.prisma.hiringPlan.aggregate({
+              where: {
+                orgId: org.id,
+                status: {
+                  in: [HiringPlanStatus.ACTIVE, HiringPlanStatus.COMPLETED],
+                },
+              },
+              _sum: { totalRoles: true, filledRoles: true },
+            }),
+            this.prisma.supportTicket.count({
+              where: {
+                orgId: org.id,
+                status: { in: ['OPEN', 'IN_PROGRESS', 'ESCALATED'] },
+              },
+            }),
+          ]);
 
         const totalRoles = totalRolesAgg._sum.totalRoles || 0;
         const filledRoles = totalRolesAgg._sum.filledRoles || 0;
-        const fillRate = totalRoles > 0 ? Math.round((filledRoles / totalRoles) * 100) : 0;
+        const fillRate =
+          totalRoles > 0 ? Math.round((filledRoles / totalRoles) * 100) : 0;
 
         // Health score: 0-100 based on user activity, fill rate, open tickets
         const riskFlags: string[] = [];
         let score = 100;
 
-        if (activeUsers === 0) { score -= 30; riskFlags.push('No active users'); }
-        else if (activeUsers < 3) { score -= 10; riskFlags.push('Low user count'); }
+        if (activeUsers === 0) {
+          score -= 30;
+          riskFlags.push('No active users');
+        } else if (activeUsers < 3) {
+          score -= 10;
+          riskFlags.push('Low user count');
+        }
 
-        if (hiringPlans === 0) { score -= 20; riskFlags.push('No active hiring plans'); }
+        if (hiringPlans === 0) {
+          score -= 20;
+          riskFlags.push('No active hiring plans');
+        }
 
-        if (fillRate < 25 && totalRoles > 0) { score -= 15; riskFlags.push('Low fill rate'); }
+        if (fillRate < 25 && totalRoles > 0) {
+          score -= 15;
+          riskFlags.push('Low fill rate');
+        }
 
-        if (openTickets > 5) { score -= 15; riskFlags.push('High open ticket count'); }
-        else if (openTickets > 2) { score -= 5; }
+        if (openTickets > 5) {
+          score -= 15;
+          riskFlags.push('High open ticket count');
+        } else if (openTickets > 2) {
+          score -= 5;
+        }
 
         score = Math.max(0, Math.min(100, score));
 
