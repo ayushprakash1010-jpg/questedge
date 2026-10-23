@@ -71,6 +71,41 @@ export default function ProtectedLayout({
     );
   }
 
+  if (!profileLoading && profile && !["SUPPORT_REP", "SUPPORT_ADMIN"].includes(profile.role ?? "")) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 p-6 text-white">
+        <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center shadow-2xl">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
+            <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h1 className="mt-4 text-xl font-bold">Support Admin Access Restricted</h1>
+          <p className="mt-2 text-sm text-slate-400">
+            Signed in as <span className="font-semibold text-white">{profile.email || "Current User"}</span>.
+          </p>
+          <p className="mt-2 text-xs text-slate-500">
+            This account does not have <span className="text-amber-400 font-mono">SUPPORT_ADMIN</span> or <span className="text-amber-400 font-mono">SUPPORT_REP</span> role assigned in the database.
+          </p>
+          <div className="mt-6 flex flex-col gap-3">
+            <a
+              href="/auth/logout"
+              className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition"
+            >
+              Sign Out & Switch Account
+            </a>
+            <a
+              href={process.env.NEXT_PUBLIC_MAIN_APP_URL || "https://questedge.vercel.app"}
+              className="rounded-xl border border-slate-700 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800 transition"
+            >
+              Go to Main QuestEdge App
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen">
       <SupportSidebar />

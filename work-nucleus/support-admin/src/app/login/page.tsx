@@ -16,6 +16,8 @@ export default function SupportAdminLoginPage() {
       setError(
         "Access denied. Your account does not have support admin privileges."
       );
+      setChecking(false);
+      return;
     }
 
     fetch("/api/auth/session")

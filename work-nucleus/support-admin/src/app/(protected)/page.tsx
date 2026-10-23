@@ -21,11 +21,19 @@ interface DashboardData {
 export default function SupportDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/support/dashboard")
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (!r.ok) {
+          const body = await r.json().catch(() => null);
+          throw new Error(body?.message || `Request failed with status ${r.status}`);
+        }
+        return r.json();
+      })
       .then(setData)
+      .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
 
@@ -33,6 +41,15 @@ export default function SupportDashboardPage() {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-6 text-destructive">
+        <h2 className="text-lg font-semibold">Failed to load dashboard</h2>
+        <p className="mt-1 text-sm">{error}</p>
       </div>
     );
   }
@@ -112,7 +129,7 @@ export default function SupportDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {data.recentOrgs.map((org) => (
+              {(data.recentOrgs || []).map((org) => (
                 <Link
                   key={org.id}
                   href={`/organizations/${org.id}`}
@@ -127,6 +144,9 @@ export default function SupportDashboardPage() {
                   </Badge>
                 </Link>
               ))}
+              {(!data.recentOrgs || data.recentOrgs.length === 0) && (
+                <p className="text-sm text-muted-foreground">No recent organizations found.</p>
+              )}
             </div>
           </CardContent>
         </Card>
