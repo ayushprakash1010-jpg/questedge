@@ -5,7 +5,7 @@ export const auth0 = new Auth0Client({
     audience: process.env.AUTH0_AUDIENCE,
     connection: process.env.AUTH0_CONNECTION,
   },
-  appBaseUrl: process.env.APP_BASE_URL,
+  appBaseUrl: process.env.APP_BASE_URL || process.env.AUTH0_BASE_URL,
   routes: {
     callback: "/auth/callback",
     login: "/auth/login",
