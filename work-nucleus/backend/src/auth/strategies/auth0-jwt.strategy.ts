@@ -4,6 +4,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { passportJwtSecret } from 'jwks-rsa';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Role } from '@prisma/client';
 
 interface Auth0JwtPayload {
   sub: string;
@@ -43,7 +44,8 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 
   async validate(payload: Auth0JwtPayload) {
     const auth0Sub = payload.sub;
-    const userType = payload['https://api.questedge.com/user_type'] || 'COMPANY_USER';
+    const userType =
+      payload['https://api.questedge.com/user_type'] || 'COMPANY_USER';
 
     if (!auth0Sub) {
       throw new UnauthorizedException('Invalid token: missing sub claim');
@@ -62,23 +64,32 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     let actualUserType = userType;
 
     if (userType === 'CANDIDATE') {
-      resolvedProfile = await this.prisma.candidateProfile.findUnique({ where: { auth0Sub } });
+      resolvedProfile = await this.prisma.candidateProfile.findUnique({
+        where: { auth0Sub },
+      });
     } else if (userType === 'RECRUITER') {
-      resolvedProfile = await this.prisma.recruiterProfile.findUnique({ where: { auth0Sub } });
+      resolvedProfile = await this.prisma.recruiterProfile.findUnique({
+        where: { auth0Sub },
+      });
     } else {
       // Defaulted to COMPANY_USER, but let's double check if they are actually a Recruiter or Candidate
       resolvedProfile = await this.prisma.user.findUnique({
         where: { auth0Sub },
         include: { organization: true },
       });
-      
+
       if (!resolvedProfile) {
-        const recruiterProfile = await this.prisma.recruiterProfile.findUnique({ where: { auth0Sub } });
+        const recruiterProfile = await this.prisma.recruiterProfile.findUnique({
+          where: { auth0Sub },
+        });
         if (recruiterProfile) {
           resolvedProfile = recruiterProfile;
           actualUserType = 'RECRUITER';
         } else {
-          const candidateProfile = await this.prisma.candidateProfile.findUnique({ where: { auth0Sub } });
+          const candidateProfile =
+            await this.prisma.candidateProfile.findUnique({
+              where: { auth0Sub },
+            });
           if (candidateProfile) {
             resolvedProfile = candidateProfile;
             actualUserType = 'CANDIDATE';
@@ -87,10 +98,83 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       }
     }
 
+    const email = (
+      payload['https://api.questedge.com/email'] ||
+      payload.email ||
+      ''
+    ).toLowerCase();
+
+    const supportAdminEmails = (
+      process.env.SUPPORT_ADMIN_EMAILS ||
+      'ayushprakash1110@gmail.com,support@questedge.com'
+    )
+      .toLowerCase()
+      .split(',')
+      .map((e) => e.trim());
+
+    const isSupportAdmin = email ? supportAdminEmails.includes(email) : false;
+
+    if (isSupportAdmin) {
+      if (!resolvedProfile) {
+        resolvedProfile = await this.prisma.user.findFirst({
+          where: { email },
+          include: { organization: true },
+        });
+      }
+
+      if (!resolvedProfile) {
+        let platformOrg = await this.prisma.organization.findFirst({
+          where: { name: 'QuestEdge Platform' },
+        });
+        if (!platformOrg) {
+          platformOrg = await this.prisma.organization.create({
+            data: {
+              name: 'QuestEdge Platform',
+              industry: 'Technology',
+            },
+          });
+        }
+
+        resolvedProfile = await this.prisma.user.create({
+          data: {
+            auth0Sub,
+            email,
+            name:
+              payload['https://api.questedge.com/name'] ||
+              payload.name ||
+              'Sanchit',
+            role: Role.SUPPORT_ADMIN,
+            orgId: platformOrg.id,
+            isActive: true,
+          },
+          include: { organization: true },
+        });
+      } else {
+        if (
+          resolvedProfile.role !== Role.SUPPORT_ADMIN ||
+          resolvedProfile.auth0Sub !== auth0Sub
+        ) {
+          resolvedProfile = await this.prisma.user.update({
+            where: { id: resolvedProfile.id },
+            data: {
+              role: Role.SUPPORT_ADMIN,
+              auth0Sub,
+              isActive: true,
+            },
+            include: { organization: true },
+          });
+        }
+      }
+      actualUserType = 'COMPANY_USER';
+    }
+
     if (!resolvedProfile) {
       const unprovisioned = {
         auth0Sub,
-        email: payload['https://api.questedge.com/email'] || payload.email || `${auth0Sub}@placeholder.com`,
+        email:
+          payload['https://api.questedge.com/email'] ||
+          payload.email ||
+          `${auth0Sub}@placeholder.com`,
         name: payload['https://api.questedge.com/name'] || payload.name,
         userType: actualUserType,
         isProvisioned: false,
@@ -110,7 +194,10 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     };
 
     // Cache the resolved profile for 60 seconds
-    this.authCache.set(auth0Sub, { profile: finalProfile, expiry: Date.now() + 60000 });
+    this.authCache.set(auth0Sub, {
+      profile: finalProfile,
+      expiry: Date.now() + 60000,
+    });
 
     return finalProfile;
   }
