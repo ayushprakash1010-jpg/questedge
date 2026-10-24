@@ -2,7 +2,7 @@
 
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { useTheme } from "next-themes";
-import { LogOut, User, Settings, ChevronDown, Moon, Sun, RefreshCw } from "lucide-react";
+import { LogOut, User, Settings, ChevronDown, Moon, Sun, RefreshCw, Shield, ExternalLink } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -13,15 +13,23 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { NotificationBell } from "@/components/notification-bell";
 import { GlobalSearch } from "@/components/global-search";
+import { useProfile } from "@/hooks/use-profile";
 
 const IS_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+const SUPPORT_ADMIN_URL =
+  process.env.NEXT_PUBLIC_SUPPORT_ADMIN_URL || "https://questedge-support-admin.vercel.app";
 
 export function TopBar() {
   const { user } = useUser();
+  const { profile } = useProfile();
 
   const displayName = IS_MOCK ? "Priya Sharma" : user?.name;
   const displayPicture = IS_MOCK ? undefined : user?.picture || undefined;
   const { theme, setTheme } = useTheme();
+
+  const isSuperAdmin =
+    profile?.role === "SUPPORT_ADMIN" ||
+    (profile as any)?.userType === "PLATFORM_ADMIN";
 
   const initials = displayName
     ? displayName
@@ -40,6 +48,21 @@ export function TopBar() {
       <GlobalSearch />
 
       <div className="flex items-center gap-3">
+        {/* Support Admin Cross-Portal Switcher */}
+        {isSuperAdmin && (
+          <a
+            href={SUPPORT_ADMIN_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors shadow-xs dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800"
+            title="Switch to QuestEdge Support Admin Portal"
+          >
+            <Shield className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+            <span>Support Admin</span>
+            <ExternalLink className="h-3 w-3 opacity-60" />
+          </a>
+        )}
+
         <button
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -70,6 +93,11 @@ export function TopBar() {
             <DropdownMenuItem onClick={() => (window.location.href = "/admin")}>
               <Settings className="h-4 w-4" /> Admin
             </DropdownMenuItem>
+            {isSuperAdmin && (
+              <DropdownMenuItem onClick={() => window.open(SUPPORT_ADMIN_URL, "_blank")}>
+                <Shield className="h-4 w-4 text-indigo-600" /> Support Admin Portal
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem 
               onClick={async () => {

@@ -22,6 +22,7 @@ import { toast } from "@/components/ui/toaster";
 import { PageHeader } from "@/components/shared/page-header";
 import { KpiCard } from "@/components/shared/kpi-card";
 import { AiInsightCard } from "@/components/shared/ai-insight-card";
+import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import {
   DataTable,
   DataTableBody,
@@ -193,10 +194,14 @@ export default function DashboardPage() {
   const [insightsGeneratedAt, setInsightsGeneratedAt] = useState<string | null>(null);
   const [insightsGeneratedBy, setInsightsGeneratedBy] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [generatingInsights, setGeneratingInsights] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true);
+  const fetchAll = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
+    setRefreshing(true);
     try {
       const [ov, fn, pr, co, iv, sr, tth, savedInsights] = await Promise.all([
         fetch("/api/analytics?type=overview").then((r) => r.ok ? r.json() : null),
@@ -224,16 +229,20 @@ export default function DashboardPage() {
         setInsightsGeneratedAt(savedInsights.generatedAt || null);
         setInsightsGeneratedBy(savedInsights.generatedBy?.name || null);
       }
+      setLastRefreshed(new Date());
     } catch {
       // ignore
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
+
+  useAutoRefresh(() => fetchAll(true), 30_000, autoRefresh);
 
   const handleGenerateInsights = async () => {
     setGeneratingInsights(true);
@@ -297,11 +306,46 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <PageHeader
         title="Dashboard"
-        subtitle="Hiring analytics overview"
+        subtitle={
+          <span className="flex items-center gap-2 text-slate-500">
+            Hiring analytics overview
+            {lastRefreshed && (
+              <span className="inline-flex items-center gap-1 text-xs text-slate-400">
+                · <Clock className="h-3 w-3" />
+                Refreshed {lastRefreshed.toLocaleTimeString()}
+                {autoRefresh && (
+                  <span className="text-emerald-600 font-medium">(30s auto)</span>
+                )}
+              </span>
+            )}
+          </span>
+        }
         actions={
-          <Button variant="outline" size="sm" onClick={fetchAll}>
-            <RefreshCw className="h-3.5 w-3.5" /> Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setAutoRefresh((v) => !v)}
+              className={cn(
+                "flex items-center gap-1.5 h-9 rounded-lg border px-3 text-xs font-semibold transition-colors shadow-xs",
+                autoRefresh
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20"
+                  : "border-slate-200 text-slate-500 hover:text-slate-700 bg-white hover:bg-slate-50"
+              )}
+              title={autoRefresh ? "Auto-refreshing every 30s (click to pause)" : "Auto-refresh paused (click to resume)"}
+            >
+              <span className={cn("h-2 w-2 rounded-full", autoRefresh ? "bg-emerald-500 animate-pulse" : "bg-slate-400")} />
+              {autoRefresh ? "Live" : "Paused"}
+            </button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={refreshing}
+              onClick={() => fetchAll(false)}
+              className="h-9 gap-1.5"
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
+              Refresh
+            </Button>
+          </div>
         }
       />
 
