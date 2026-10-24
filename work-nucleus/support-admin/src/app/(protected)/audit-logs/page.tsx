@@ -99,7 +99,10 @@ export default function AuditLogsPage() {
     if (to) params.set("to", to);
     try {
       const res = await fetch(`/api/support/audit-log/export?${params}`);
-      if (!res.ok) throw new Error("Export failed");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || err.message || `HTTP ${res.status}`);
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

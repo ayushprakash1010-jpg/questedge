@@ -13,15 +13,19 @@ export async function GET(req: NextRequest) {
     const res = await fetch(`${API_URL}/api/v1/support/organizations/export${url.search}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
+    if (!res.ok) {
+      const text = await res.text();
+      return NextResponse.json({ error: text || "Export failed" }, { status: res.status });
+    }
     const csv = await res.text();
     return new NextResponse(csv, {
-      status: res.status,
+      status: 200,
       headers: {
         "Content-Type": "text/csv",
         "Content-Disposition": res.headers.get("Content-Disposition") || 'attachment; filename="organizations-export.csv"',
       },
     });
-  } catch {
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || "Failed" }, { status: 500 });
   }
 }

@@ -34,6 +34,42 @@ export class SupportController {
     });
   }
 
+  @Get('organizations/export')
+  @Roles(Role.SUPPORT_ADMIN)
+  @ApiOperation({ summary: 'Platform: Export organizations as CSV (SUPPORT_ADMIN)' })
+  async exportOrganizations(
+    @Query('search') search?: string,
+    @Query('industry') industry?: string,
+    @Res() res?: Response,
+  ) {
+    const result = await this.supportService.getOrganizations({
+      page: 1,
+      limit: 5000,
+      search,
+      industry,
+    });
+
+    const rows = [
+      ['ID', 'Name', 'Industry', 'Users', 'Hiring Plans', 'Support Tickets', 'Health Score', 'Created At'],
+      ...result.data.map((org: any) => [
+        org.id,
+        org.name,
+        org.industry ?? '',
+        org._count?.users ?? '',
+        org._count?.hiringPlans ?? '',
+        org._count?.supportTickets ?? '',
+        org.healthScore ?? '',
+        new Date(org.createdAt).toISOString(),
+      ]),
+    ];
+
+    const csv = rows.map((r) => r.map((cell: any) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+
+    res!.setHeader('Content-Type', 'text/csv');
+    res!.setHeader('Content-Disposition', `attachment; filename="organizations-export-${Date.now()}.csv"`);
+    res!.send(csv);
+  }
+
   @Get('organizations/:orgId')
   @ApiOperation({ summary: 'Get organization detail with aggregated stats' })
   getOrganizationDetail(@Param('orgId') orgId: string) {
@@ -78,41 +114,5 @@ export class SupportController {
       orgId,
       months ? parseInt(months) : 6,
     );
-  }
-
-  @Get('organizations/export')
-  @Roles(Role.SUPPORT_ADMIN)
-  @ApiOperation({ summary: 'Platform: Export organizations as CSV (SUPPORT_ADMIN)' })
-  async exportOrganizations(
-    @Query('search') search?: string,
-    @Query('industry') industry?: string,
-    @Res() res?: Response,
-  ) {
-    const result = await this.supportService.getOrganizations({
-      page: 1,
-      limit: 5000,
-      search,
-      industry,
-    });
-
-    const rows = [
-      ['ID', 'Name', 'Industry', 'Users', 'Hiring Plans', 'Support Tickets', 'Health Score', 'Created At'],
-      ...result.data.map((org: any) => [
-        org.id,
-        org.name,
-        org.industry ?? '',
-        org._count?.users ?? '',
-        org._count?.hiringPlans ?? '',
-        org._count?.supportTickets ?? '',
-        org.healthScore ?? '',
-        new Date(org.createdAt).toISOString(),
-      ]),
-    ];
-
-    const csv = rows.map((r) => r.map((cell: any) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
-
-    res!.setHeader('Content-Type', 'text/csv');
-    res!.setHeader('Content-Disposition', `attachment; filename="organizations-export-${Date.now()}.csv"`);
-    res!.send(csv);
   }
 }

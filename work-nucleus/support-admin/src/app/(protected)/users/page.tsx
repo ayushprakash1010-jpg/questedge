@@ -146,7 +146,10 @@ export default function UsersPage() {
     if (activeFilter) params.set("isActive", activeFilter);
     try {
       const res = await fetch(`/api/support/users/export?${params}`);
-      if (!res.ok) throw new Error("Export failed");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || err.message || `HTTP ${res.status}`);
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

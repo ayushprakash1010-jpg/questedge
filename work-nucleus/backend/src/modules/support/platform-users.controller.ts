@@ -58,6 +58,70 @@ export class PlatformUsersController {
     });
   }
 
+  @Get('export')
+  @Roles(Role.SUPPORT_ADMIN)
+  @ApiOperation({ summary: 'Platform: Export users as CSV (SUPPORT_ADMIN only)' })
+  async exportUsers(
+    @Query('search') search?: string,
+    @Query('role') role?: Role,
+    @Query('userType') userType?: UserType,
+    @Query('isActive') isActive?: string,
+    @Query('orgId') orgId?: string,
+    @Res() res?: Response,
+  ) {
+    const users = await this.platformUsersService.exportUsers({
+      search,
+      role,
+      userType,
+      isActive: isActive !== undefined ? isActive === 'true' : undefined,
+      orgId,
+    });
+
+    const rows = [
+      ['ID', 'Name', 'Email', 'Role', 'Type', 'Status', 'Organization', 'Created At'],
+      ...users.map((u: any) => [
+        u.id,
+        u.name,
+        u.email,
+        u.role,
+        u.userType,
+        u.isActive ? 'Active' : 'Inactive',
+        u.organization?.name ?? '',
+        new Date(u.createdAt).toISOString(),
+      ]),
+    ];
+
+    const csv = rows.map((r) => r.map((cell: any) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+
+    res!.setHeader('Content-Type', 'text/csv');
+    res!.setHeader('Content-Disposition', `attachment; filename="users-export-${Date.now()}.csv"`);
+    res!.send(csv);
+  }
+
+  @Post('bulk-action')
+  @Roles(Role.SUPPORT_ADMIN)
+  @ApiOperation({ summary: 'Platform: Bulk activate or deactivate users (SUPPORT_ADMIN only)' })
+  bulkUpdateUsers(
+    @Body() body: { userIds: string[]; action: 'activate' | 'deactivate'; reason: string },
+    @Req() req: any,
+  ) {
+    if (!body.userIds || body.userIds.length === 0) {
+      throw new BadRequestException('At least one user ID is required');
+    }
+    if (!['activate', 'deactivate'].includes(body.action)) {
+      throw new BadRequestException('Action must be activate or deactivate');
+    }
+    if (!body.reason || body.reason.trim().length < 5) {
+      throw new BadRequestException('Reason is required');
+    }
+    return this.platformUsersService.bulkUpdateUsers(
+      body.userIds,
+      body.action,
+      req.user.id,
+      body.reason,
+    );
+  }
+
   @Get(':userId')
   @ApiOperation({ summary: 'Platform: User detail with recent activity' })
   getUserDetail(@Param('userId', ParseUUIDPipe) userId: string) {
@@ -102,69 +166,5 @@ export class PlatformUsersController {
       req.user.id,
       body.reason,
     );
-  }
-
-  @Post('bulk-action')
-  @Roles(Role.SUPPORT_ADMIN)
-  @ApiOperation({ summary: 'Platform: Bulk activate or deactivate users (SUPPORT_ADMIN only)' })
-  bulkUpdateUsers(
-    @Body() body: { userIds: string[]; action: 'activate' | 'deactivate'; reason: string },
-    @Req() req: any,
-  ) {
-    if (!body.userIds || body.userIds.length === 0) {
-      throw new BadRequestException('At least one user ID is required');
-    }
-    if (!['activate', 'deactivate'].includes(body.action)) {
-      throw new BadRequestException('Action must be activate or deactivate');
-    }
-    if (!body.reason || body.reason.trim().length < 5) {
-      throw new BadRequestException('Reason is required');
-    }
-    return this.platformUsersService.bulkUpdateUsers(
-      body.userIds,
-      body.action,
-      req.user.id,
-      body.reason,
-    );
-  }
-
-  @Get('export')
-  @Roles(Role.SUPPORT_ADMIN)
-  @ApiOperation({ summary: 'Platform: Export users as CSV (SUPPORT_ADMIN only)' })
-  async exportUsers(
-    @Query('search') search?: string,
-    @Query('role') role?: Role,
-    @Query('userType') userType?: UserType,
-    @Query('isActive') isActive?: string,
-    @Query('orgId') orgId?: string,
-    @Res() res?: Response,
-  ) {
-    const users = await this.platformUsersService.exportUsers({
-      search,
-      role,
-      userType,
-      isActive: isActive !== undefined ? isActive === 'true' : undefined,
-      orgId,
-    });
-
-    const rows = [
-      ['ID', 'Name', 'Email', 'Role', 'Type', 'Status', 'Organization', 'Created At'],
-      ...users.map((u: any) => [
-        u.id,
-        u.name,
-        u.email,
-        u.role,
-        u.userType,
-        u.isActive ? 'Active' : 'Inactive',
-        u.organization?.name ?? '',
-        new Date(u.createdAt).toISOString(),
-      ]),
-    ];
-
-    const csv = rows.map((r) => r.map((cell: any) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
-
-    res!.setHeader('Content-Type', 'text/csv');
-    res!.setHeader('Content-Disposition', `attachment; filename="users-export-${Date.now()}.csv"`);
-    res!.send(csv);
   }
 }
