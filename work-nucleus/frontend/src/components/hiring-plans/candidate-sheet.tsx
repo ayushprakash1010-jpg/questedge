@@ -25,6 +25,11 @@ import {
   MoreHorizontal,
   GraduationCap,
   Heart,
+  Copy,
+  Check,
+  Printer,
+  Download,
+  AlertTriangle,
 } from "lucide-react";
 import { FeedbackDisplay } from "./feedback-display";
 import { FeedbackForm } from "./feedback-form";
@@ -134,6 +139,247 @@ function formatRelativeDate(d: string): string {
   });
 }
 
+interface InterviewQuestion {
+  id?: number | string;
+  category: string;
+  question: string;
+  rationale: string;
+  idealAnswerRubric: string;
+  redFlags: string;
+}
+
+interface InterviewQuestionsData {
+  source: string;
+  candidateName: string;
+  roleTitle: string;
+  stageName: string;
+  questions: InterviewQuestion[];
+}
+
+function escapeHtml(str: string | null | undefined): string {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function printCandidateScorecard(app: ApplicationDetail) {
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) return;
+  const overall = app.totalScore
+    ? Math.round(Number(app.totalScore))
+    : app.aiMatchScore
+      ? Math.round(Number(app.aiMatchScore))
+      : null;
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <title>Candidate Scorecard - ${escapeHtml(app.candidate.name)}</title>
+  <style>
+    @page { size: A4; margin: 15mm; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #0f172a;
+      line-height: 1.5;
+      font-size: 13px;
+      margin: 0;
+      padding: 24px;
+      background: #fff;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #4f46e5;
+      padding-bottom: 14px;
+      margin-bottom: 20px;
+    }
+    .logo {
+      font-size: 20px;
+      font-weight: 800;
+      color: #4f46e5;
+      letter-spacing: -0.5px;
+    }
+    .logo span { color: #06b6d4; }
+    .doc-meta { text-align: right; font-size: 11px; color: #64748b; }
+    .title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 18px;
+    }
+    .cand-name { font-size: 22px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0; }
+    .cand-sub { font-size: 13px; color: #475569; }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      background: #e0e7ff;
+      color: #3730a3;
+    }
+    .score-banner {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+    .score-circle {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #4f46e5, #06b6d4);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+    .card {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 14px;
+      background: #fff;
+    }
+    .card h4 {
+      margin: 0 0 10px 0;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #64748b;
+    }
+    .field-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #f1f5f9; font-size: 12px; }
+    .field-label { color: #64748b; }
+    .field-val { font-weight: 600; color: #1e293b; }
+    .timeline { margin-top: 10px; }
+    .timeline-item { padding: 6px 0; border-left: 2px solid #cbd5e1; padding-left: 14px; position: relative; }
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -5px;
+      top: 10px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4f46e5;
+    }
+    .footer {
+      margin-top: 32px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 12px;
+      text-align: center;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    @media print {
+      body { padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">Quest<span>Edge</span></div>
+    <div class="doc-meta">
+      <div>CONFIDENTIAL EVALUATION SCORECARD</div>
+      <div>Generated on ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</div>
+    </div>
+  </div>
+
+  <div class="title-row">
+    <div>
+      <h1 class="cand-name">${escapeHtml(app.candidate.name)}</h1>
+      <div class="cand-sub">${escapeHtml(app.hiringPlan.designation)} · ${escapeHtml(app.hiringPlan.department)}</div>
+      <div style="margin-top: 4px; font-size: 12px; color: #64748b;">
+        ${escapeHtml(app.candidate.email)} ${app.candidate.phone ? `· ${escapeHtml(app.candidate.phone)}` : ""} ${app.candidate.location ? `· ${escapeHtml(app.candidate.location)}` : ""}
+      </div>
+    </div>
+    <div class="badge">${escapeHtml(app.status)}</div>
+  </div>
+
+  <div class="score-banner">
+    <div class="score-circle">${overall ?? "—"}</div>
+    <div>
+      <div style="font-weight: 700; font-size: 14px; color: #1e293b;">
+        ${overall !== null ? (overall >= 80 ? "Strong Candidate Fit" : overall >= 60 ? "Qualified Candidate Fit" : "Candidate Evaluation in Progress") : "Score Calculation Pending"}
+      </div>
+      <div style="font-size: 12px; color: #475569; margin-top: 3px;">
+        ${escapeHtml(app.aiMatchSummary || app.aiSummary || "Candidate background evaluated against specific role requirements and skills.")}
+      </div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h4>Candidate Background</h4>
+      <div class="field-row"><span class="field-label">Current Role</span><span class="field-val">${escapeHtml(app.candidate.currentRole || "—")}</span></div>
+      <div class="field-row"><span class="field-label">Current Company</span><span class="field-val">${escapeHtml(app.candidate.currentCompany || "—")}</span></div>
+      <div class="field-row"><span class="field-label">Experience</span><span class="field-val">${app.candidate.experienceYears ? `${app.candidate.experienceYears} Years` : "—"}</span></div>
+      <div class="field-row"><span class="field-label">Notice Period</span><span class="field-val">${app.candidate.noticePeriodDays ? `${app.candidate.noticePeriodDays} Days` : "—"}</span></div>
+      <div class="field-row"><span class="field-label">Expected CTC</span><span class="field-val">${formatINR(app.candidate.expectedCtc) || "—"}</span></div>
+    </div>
+
+    <div class="card">
+      <h4>Hiring Mandate Details</h4>
+      <div class="field-row"><span class="field-label">Mandate Title</span><span class="field-val">${escapeHtml(app.hiringPlan.title)}</span></div>
+      <div class="field-row"><span class="field-label">Department</span><span class="field-val">${escapeHtml(app.hiringPlan.department)}</span></div>
+      <div class="field-row"><span class="field-label">Current Stage</span><span class="field-val">${escapeHtml(app.currentStage?.name || "Active Pipeline")}</span></div>
+      <div class="field-row"><span class="field-label">Candidate Source</span><span class="field-val">${escapeHtml(app.candidate.source)}</span></div>
+      <div class="field-row"><span class="field-label">Applied Date</span><span class="field-val">${new Date(app.appliedAt).toLocaleDateString()}</span></div>
+    </div>
+  </div>
+
+  ${app.stageHistory && app.stageHistory.length > 0 ? `
+  <div class="card" style="margin-bottom: 18px;">
+    <h4>Interview Progression History</h4>
+    <div class="timeline">
+      ${app.stageHistory.map(h => `
+        <div class="timeline-item">
+          <div style="font-weight: 600; color: #1e293b;">${escapeHtml(h.stage.name)} ${h.outcome ? `— <span style="color:#4f46e5;">${escapeHtml(h.outcome)}</span>` : ""}</div>
+          <div style="font-size: 11px; color: #64748b;">
+            Entered: ${new Date(h.enteredAt).toLocaleDateString()} ${h.exitedAt ? `· Completed: ${new Date(h.exitedAt).toLocaleDateString()}` : "· Active / In Progress"}
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  </div>
+  ` : ""}
+
+  ${app.candidate.notes ? `
+  <div class="card">
+    <h4>Internal Evaluation Notes</h4>
+    <p style="margin: 0; font-size: 12px; color: #334155; white-space: pre-wrap;">${escapeHtml(app.candidate.notes)}</p>
+  </div>
+  ` : ""}
+
+  <div class="footer">
+    QuestEdge Enterprise Talent Platform · Client-Ready Assessment Scorecard
+  </div>
+</body>
+</html>`;
+
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => {
+    printWindow.print();
+  }, 400);
+}
+
 export function CandidateSheet({
   applicationId,
   planId,
@@ -154,6 +400,47 @@ export function CandidateSheet({
   const [showDecisionModal, setShowDecisionModal] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
   const [savingNote, setSavingNote] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [questionsData, setQuestionsData] = useState<InterviewQuestionsData | null>(null);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
+  const [copiedQuestionId, setCopiedQuestionId] = useState<number | string | null>(null);
+  const [copiedAll, setCopiedAll] = useState(false);
+
+  const fetchQuestions = useCallback(async () => {
+    setLoadingQuestions(true);
+    try {
+      const res = await fetch(`/api/applications/${applicationId}/interview-questions`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setQuestionsData(data);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoadingQuestions(false);
+    }
+  }, [applicationId]);
+
+  const copyQuestionText = (text: string, id: number | string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedQuestionId(id);
+    setTimeout(() => setCopiedQuestionId(null), 2000);
+  };
+
+  const copyAllQuestions = () => {
+    if (!questionsData) return;
+    const formatted = questionsData.questions
+      .map(
+        (q, idx) =>
+          `Q${idx + 1} [${q.category}]:\n${q.question}\n\nRationale: ${q.rationale}\nIdeal Rubric: ${q.idealAnswerRubric}\nRed Flags: ${q.redFlags}`
+      )
+      .join("\n\n---\n\n");
+    navigator.clipboard.writeText(formatted);
+    setCopiedAll(true);
+    setTimeout(() => setCopiedAll(false), 2000);
+  };
 
   const fetchDetail = useCallback(async () => {
     try {
@@ -305,6 +592,8 @@ export function CandidateSheet({
                   onPutOnHold={() => handleStatus("ON_HOLD")}
                   onReject={() => setShowRejectDialog(true)}
                   onMakeDecision={() => setShowDecisionModal(true)}
+                  onOpenAiQuestions={() => setActiveTab("ai-questions")}
+                  onExportScorecard={() => printCandidateScorecard(app)}
                   hasNextStage={!!nextStage}
                   acting={acting}
                 />
@@ -341,9 +630,18 @@ export function CandidateSheet({
                   </div>
                 )}
 
-                <Tabs defaultValue="overview" className="mt-6">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
                   <TabsList>
                     <TabsTrigger value="overview">Overview</TabsTrigger>
+                    <TabsTrigger value="ai-questions" className="gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
+                      AI Questions
+                      {questionsData && (
+                        <span className="ml-1 rounded-full bg-indigo-100 px-1.5 py-0.2 text-[10px] font-semibold text-indigo-700">
+                          {questionsData.questions.length}
+                        </span>
+                      )}
+                    </TabsTrigger>
                     <TabsTrigger value="feedback">Feedback &amp; Score</TabsTrigger>
                     {app.currentStage && app.status === "ACTIVE" && (
                       <TabsTrigger value="give-feedback">Give Feedback</TabsTrigger>
@@ -354,7 +652,10 @@ export function CandidateSheet({
                     {/* Profile + Scorecard side-by-side on lg */}
                     <div className="grid gap-4 lg:grid-cols-2">
                       <ProfileCard app={app} />
-                      <ScorecardCard app={app} />
+                      <ScorecardCard
+                        app={app}
+                        onExport={() => printCandidateScorecard(app)}
+                      />
                     </div>
 
                     {/* Interview History Timeline */}
@@ -371,6 +672,19 @@ export function CandidateSheet({
                         </p>
                       </div>
                     )}
+                  </TabsContent>
+
+                  <TabsContent value="ai-questions">
+                    <AiQuestionsTab
+                      app={app}
+                      questionsData={questionsData}
+                      loading={loadingQuestions}
+                      onGenerate={fetchQuestions}
+                      onCopyQuestion={copyQuestionText}
+                      copiedQuestionId={copiedQuestionId}
+                      onCopyAll={copyAllQuestions}
+                      copiedAll={copiedAll}
+                    />
                   </TabsContent>
 
                   <TabsContent value="feedback">
@@ -446,6 +760,8 @@ function HeroCard({
   onPutOnHold,
   onReject,
   onMakeDecision,
+  onOpenAiQuestions,
+  onExportScorecard,
   hasNextStage,
   acting,
 }: {
@@ -454,6 +770,8 @@ function HeroCard({
   onPutOnHold: () => void;
   onReject: () => void;
   onMakeDecision: () => void;
+  onOpenAiQuestions: () => void;
+  onExportScorecard: () => void;
   hasNextStage: boolean;
   acting: boolean;
 }) {
@@ -582,14 +900,23 @@ function HeroCard({
             </>
           )}
           <Button
-            variant="ai"
+            variant="outline"
             size="sm"
-            className="ml-auto"
-            disabled={!app.aiMatchSummary}
-            title={app.aiMatchSummary ?? "AI summary not available"}
+            onClick={onOpenAiQuestions}
+            className="ml-auto gap-1.5 border-indigo-200 bg-indigo-50/50 text-indigo-700 hover:bg-indigo-100/50"
           >
-            <Sparkles className="h-3.5 w-3.5" />
-            AI Summary
+            <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
+            AI Questions
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onExportScorecard}
+            className="gap-1.5 text-slate-700 hover:bg-slate-50"
+            title="Download client-ready scorecard PDF"
+          >
+            <Download className="h-3.5 w-3.5 text-slate-500" />
+            Export Scorecard
           </Button>
           {isActive && (
             <Button
@@ -662,7 +989,13 @@ function ProfileCard({ app }: { app: ApplicationDetail }) {
   );
 }
 
-function ScorecardCard({ app }: { app: ApplicationDetail }) {
+function ScorecardCard({
+  app,
+  onExport,
+}: {
+  app: ApplicationDetail;
+  onExport?: () => void;
+}) {
   const overall = app.totalScore
     ? Math.round(Number(app.totalScore))
     : app.aiMatchScore
@@ -673,11 +1006,25 @@ function ScorecardCard({ app }: { app: ApplicationDetail }) {
     <div className="rounded-xl border border-slate-200/70 bg-white shadow-sm">
       <div className="flex items-center justify-between border-b border-slate-50 px-5 py-3.5">
         <span className="text-sm font-semibold text-slate-900">Scorecard</span>
-        {overall !== null && (
-          <span className="text-[11px] text-slate-400">
-            {app.totalScore ? "From feedback" : "AI match estimate"}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {overall !== null && (
+            <span className="text-[11px] text-slate-400">
+              {app.totalScore ? "From feedback" : "AI match estimate"}
+            </span>
+          )}
+          {onExport && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onExport}
+              className="h-7 gap-1 px-2 text-[11px] text-slate-600 hover:text-slate-900"
+              title="Download client-ready scorecard PDF"
+            >
+              <Download className="h-3 w-3" />
+              PDF
+            </Button>
+          )}
+        </div>
       </div>
       <div className="px-5 py-4">
         {overall === null ? (
@@ -1066,6 +1413,241 @@ function Field({
         {Icon && <Icon className="h-3.5 w-3.5 text-slate-400" />}
         {value || "—"}
       </p>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// AI Interview Questions Generator Component
+// ─────────────────────────────────────────────────────────────────────────
+
+function AiQuestionsTab({
+  app,
+  questionsData,
+  loading,
+  onGenerate,
+  onCopyQuestion,
+  copiedQuestionId,
+  onCopyAll,
+  copiedAll,
+}: {
+  app: ApplicationDetail;
+  questionsData: InterviewQuestionsData | null;
+  loading: boolean;
+  onGenerate: () => void;
+  onCopyQuestion: (text: string, id: number | string) => void;
+  copiedQuestionId: number | string | null;
+  onCopyAll: () => void;
+  copiedAll: boolean;
+}) {
+  return (
+    <div className="space-y-4">
+      {/* Banner */}
+      <div className="rounded-xl border border-indigo-200/80 bg-gradient-to-r from-indigo-50/80 via-purple-50/50 to-cyan-50/60 p-5 shadow-xs">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-xs">
+                <Sparkles className="h-3.5 w-3.5" />
+              </span>
+              <h3 className="text-base font-bold text-slate-900">
+                AI Interview Question Generator
+              </h3>
+              {questionsData && (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-[10px] font-semibold",
+                    questionsData.source === "gemini-ai"
+                      ? "border-purple-300 bg-purple-50 text-purple-700"
+                      : "border-indigo-300 bg-indigo-50 text-indigo-700"
+                  )}
+                >
+                  {questionsData.source === "gemini-ai"
+                    ? "✨ Powered by Gemini AI"
+                    : "🎯 Curated Role Evaluator"}
+                </Badge>
+              )}
+            </div>
+            <p className="text-xs text-slate-600">
+              Generates 5 tailored technical &amp; behavioral interview questions with answer rubrics comparing {app.candidate.name}’s specific skills against the {app.hiringPlan.designation} requirements.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {questionsData && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onCopyAll}
+                  className="gap-1.5 text-xs bg-white"
+                >
+                  {copiedAll ? (
+                    <Check className="h-3.5 w-3.5 text-emerald-600" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5 text-slate-500" />
+                  )}
+                  {copiedAll ? "Copied All!" : "Copy All"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => printCandidateScorecard(app)}
+                  className="gap-1.5 text-xs bg-white"
+                >
+                  <Printer className="h-3.5 w-3.5 text-slate-500" />
+                  Print / PDF
+                </Button>
+              </>
+            )}
+            <Button
+              size="sm"
+              onClick={onGenerate}
+              disabled={loading}
+              className="gap-1.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white shadow-sm"
+            >
+              <Sparkles className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+              {loading
+                ? "Generating Questions…"
+                : questionsData
+                ? "Regenerate Questions"
+                : "Generate Questions"}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Loading state */}
+      {loading && (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white py-14 shadow-sm">
+          <div className="relative mb-3">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
+            <Sparkles className="absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 text-indigo-600" />
+          </div>
+          <p className="text-sm font-semibold text-slate-800">
+            Analyzing candidate resume &amp; job mandate…
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            Synthesizing background, years of experience, and role competency rubrics.
+          </p>
+        </div>
+      )}
+
+      {/* Empty state when not loaded */}
+      {!loading && !questionsData && (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white py-14 text-center shadow-xs">
+          <div className="mb-3 rounded-full bg-indigo-50 p-3 text-indigo-600">
+            <Sparkles className="h-6 w-6" />
+          </div>
+          <h4 className="text-sm font-semibold text-slate-900">
+            Ready to generate interview questions
+          </h4>
+          <p className="mt-1 max-w-md text-xs text-slate-500">
+            Click &ldquo;Generate Questions&rdquo; to analyze {app.candidate.name}’s profile against the {app.hiringPlan.designation} role requirements and produce 5 targeted questions with answer rubrics and red flags.
+          </p>
+          <Button
+            size="sm"
+            onClick={onGenerate}
+            className="mt-4 gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            Generate 5 Tailored Questions
+          </Button>
+        </div>
+      )}
+
+      {/* Questions list */}
+      {!loading && questionsData && questionsData.questions && (
+        <div className="space-y-4">
+          {questionsData.questions.map((item, idx) => {
+            const qId = item.id ?? idx + 1;
+            const isCopied = copiedQuestionId === qId;
+
+            return (
+              <div
+                key={qId}
+                className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xs transition hover:border-slate-300"
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 px-4 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-md bg-indigo-600 text-[11px] font-bold text-white">
+                      {idx + 1}
+                    </span>
+                    <Badge variant="outline" className="border-indigo-200 bg-indigo-50 text-[11px] font-semibold text-indigo-700">
+                      {item.category}
+                    </Badge>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onCopyQuestion(item.question, qId)}
+                    className="h-7 gap-1 px-2 text-xs text-slate-600 hover:text-slate-900"
+                  >
+                    {isCopied ? (
+                      <>
+                        <Check className="h-3.5 w-3.5 text-emerald-600" />
+                        <span className="text-emerald-700">Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3.5 w-3.5" />
+                        <span>Copy</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Body */}
+                <div className="p-4 space-y-3">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                      Interview Question
+                    </p>
+                    <p className="mt-1 text-sm font-semibold leading-snug text-slate-900">
+                      &ldquo;{item.question}&rdquo;
+                    </p>
+                  </div>
+
+                  {item.rationale && (
+                    <div className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                      <span className="font-semibold text-slate-700">Interviewer Rationale: </span>
+                      {item.rationale}
+                    </div>
+                  )}
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {item.idealAnswerRubric && (
+                      <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-3">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-800">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                          Ideal Answer Indicators
+                        </div>
+                        <p className="mt-1 text-xs leading-relaxed text-emerald-900">
+                          {item.idealAnswerRubric}
+                        </p>
+                      </div>
+                    )}
+
+                    {item.redFlags && (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-800">
+                          <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                          Red Flags to Watch For
+                        </div>
+                        <p className="mt-1 text-xs leading-relaxed text-amber-900">
+                          {item.redFlags}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

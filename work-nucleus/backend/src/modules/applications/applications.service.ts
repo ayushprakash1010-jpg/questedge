@@ -9,6 +9,7 @@ import { AddToPipelineDto } from './dto/add-to-pipeline.dto';
 import { MoveCandidateDto } from './dto/move-candidate.dto';
 import { UpdateApplicationStatusDto } from './dto/update-status.dto';
 import { ApplicationStatus } from '@prisma/client';
+import { ConfigService } from '@nestjs/config';
 
 import { RewardsService } from '../rewards/rewards.service';
 
@@ -17,6 +18,7 @@ export class ApplicationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly rewardsService: RewardsService,
+    private readonly config: ConfigService,
   ) {}
 
   async addToPipeline(hiringPlanId: string, dto: AddToPipelineDto) {
@@ -338,6 +340,147 @@ export class ApplicationsService {
         name: s.name,
         count: s._count.applications,
       })),
+    };
+  }
+
+  async generateInterviewQuestions(appId: string) {
+    const app = await this.prisma.candidateApplication.findUnique({
+      where: { id: appId },
+      include: {
+        candidate: true,
+        hiringPlan: {
+          include: {
+            jobDescriptions: {
+              where: { status: 'PUBLISHED' },
+              take: 1,
+            },
+          },
+        },
+        currentStage: true,
+      },
+    });
+
+    if (!app) {
+      throw new NotFoundException('Application not found');
+    }
+
+    const candidateName = app.candidate.name;
+    const roleTitle = app.hiringPlan.title;
+    const department = app.hiringPlan.department;
+    const currentRole = app.candidate.currentRole || 'Software Professional';
+    const currentCompany = app.candidate.currentCompany || 'Previous Organization';
+    const expYears = app.candidate.experienceYears || '3-5';
+    const stageName = app.currentStage?.name || 'Technical Round';
+    const stageType = app.currentStage?.stageType || 'TECHNICAL';
+    const matchSummary = app.aiMatchSummary || '';
+
+    const rawKey = this.config.get<string>('GEMINI_API_KEY');
+    const trimmedKey = rawKey ? rawKey.trim() : null;
+
+    if (trimmedKey) {
+      try {
+        const { GoogleGenAI } = require('@google/genai');
+        const ai = new GoogleGenAI({ apiKey: trimmedKey });
+        const prompt = `You are a Principal Technical Interviewer and Hiring Lead.
+Role: ${roleTitle} (${department})
+Candidate: ${candidateName}
+Current Role: ${currentRole} at ${currentCompany} (${expYears} years experience)
+Interview Stage: ${stageName} (${stageType})
+AI Match Summary: ${matchSummary}
+
+Generate exactly 5 highly relevant, role-specific interview questions for this specific round.
+3 questions should test technical/architectural depth and hands-on decision making based on their background.
+2 questions should test behavioral competencies, conflict resolution, or team leadership.
+
+Return a JSON array of 5 objects strictly matching this structure:
+[
+  {
+    "id": 1,
+    "category": "Architecture & System Design",
+    "question": "...",
+    "rationale": "Why this question tests their specific background against the role",
+    "idealAnswerRubric": "Key indicators of a strong answer",
+    "redFlags": "Warning signs or unacceptable responses"
+  }
+]`;
+
+        const response = await ai.models.generateContent({
+          model: this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest',
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          config: { responseMimeType: 'application/json', temperature: 0.6 },
+        });
+
+        const parsed = JSON.parse(
+          (response.text || '[]')
+            .replace(/```json/g, '')
+            .replace(/```/g, '')
+            .trim(),
+        );
+
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return {
+            source: 'gemini-ai',
+            candidateName,
+            roleTitle,
+            stageName,
+            questions: parsed,
+          };
+        }
+      } catch {
+        // Fall back to curated evaluator
+      }
+    }
+
+    // Role-tailored intelligent fallback
+    const fallbackQuestions = [
+      {
+        id: 1,
+        category: 'Core Technical Execution',
+        question: `Given your ${expYears} years in ${currentRole}, how have you approached designing scalable backend services when facing sudden throughput spikes?`,
+        rationale: `Validates real-world architectural experience matching the requirements for ${roleTitle}.`,
+        idealAnswerRubric: 'Discusses caching (Redis), asynchronous queues, DB connection pooling, rate limiting, and observability.',
+        redFlags: 'Generic high-level answers without explaining trade-offs or personal contribution.',
+      },
+      {
+        id: 2,
+        category: 'System Reliability & Failure Recovery',
+        question: `Can you walk me through the most critical production incident you resolved at ${currentCompany}? What was the root cause and post-mortem fix?`,
+        rationale: `Assesses troubleshooting methodology and ownership under pressure for ${department}.`,
+        idealAnswerRubric: 'Clear timeline, systematic telemetry analysis, blameless RCA, and automated preventive tests.',
+        redFlags: 'Blaming others, lack of telemetry understanding, or no preventive safeguards implemented.',
+      },
+      {
+        id: 3,
+        category: 'Cross-functional Alignment',
+        question: `Describe a situation where product priorities conflicted with engineering quality or technical debt. How did you negotiate the trade-off?`,
+        rationale: `Assesses stakeholder management and pragmatic technical decision making.`,
+        idealAnswerRubric: 'Quantified technical debt impact, proposed incremental refactoring alongside roadmap milestones.',
+        redFlags: 'Dogmatic resistance to business deadlines or total disregard for maintainability.',
+      },
+      {
+        id: 4,
+        category: 'Code Quality & Mentorship',
+        question: `How do you structure code reviews and enforce architectural consistency within your team? What is your standard for approving a PR?`,
+        rationale: `Measures seniority level and impact on team productivity for ${roleTitle}.`,
+        idealAnswerRubric: 'Automated linter/CI checks first, focus on business logic, security edge-cases, and constructive feedback.',
+        redFlags: 'Nitpicking formatting in manual reviews or rubber-stamping PRs without scrutiny.',
+      },
+      {
+        id: 5,
+        category: 'Domain & Problem Solving',
+        question: `If you joined ${department} tomorrow, how would you evaluate our current data pipeline and identify the biggest 90-day win?`,
+        rationale: `Tests strategic onboarding mindset and immediate value creation potential.`,
+        idealAnswerRubric: 'Listens to team pain points, maps customer latency hot spots, focuses on quick measurable improvements.',
+        redFlags: 'Assuming complete rewrite without understanding existing constraints and customer needs.',
+      },
+    ];
+
+    return {
+      source: 'curated-evaluator',
+      candidateName,
+      roleTitle,
+      stageName,
+      questions: fallbackQuestions,
     };
   }
 }

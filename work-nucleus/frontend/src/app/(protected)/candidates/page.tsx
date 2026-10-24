@@ -12,6 +12,11 @@ import {
   Users,
   Trophy,
   X,
+  LayoutGrid,
+  List,
+  GripVertical,
+  Clock,
+  ArrowRight,
 } from "lucide-react";
 import { Badge, CandidateStatusBadge, type CandidateStatus } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -127,6 +132,45 @@ interface HiringPlanLite {
   title: string;
 }
 
+type KanbanColumnKey = "ACTIVE" | "ON_HOLD" | "SELECTED" | "REJECTED";
+
+const KANBAN_COLUMNS: {
+  id: KanbanColumnKey;
+  title: string;
+  badgeClass: string;
+  borderClass: string;
+  bgClass: string;
+}[] = [
+  {
+    id: "ACTIVE",
+    title: "Applied / Active",
+    badgeClass: "bg-blue-100 text-blue-800",
+    borderClass: "border-blue-200",
+    bgClass: "bg-blue-50/30",
+  },
+  {
+    id: "ON_HOLD",
+    title: "On Hold",
+    badgeClass: "bg-amber-100 text-amber-800",
+    borderClass: "border-amber-200",
+    bgClass: "bg-amber-50/30",
+  },
+  {
+    id: "SELECTED",
+    title: "Selected / Offer",
+    badgeClass: "bg-emerald-100 text-emerald-800",
+    borderClass: "border-emerald-200",
+    bgClass: "bg-emerald-50/30",
+  },
+  {
+    id: "REJECTED",
+    title: "Rejected",
+    badgeClass: "bg-rose-100 text-rose-800",
+    borderClass: "border-rose-200",
+    bgClass: "bg-rose-50/30",
+  },
+];
+
 export default function CandidatesPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [meta, setMeta] = useState<Meta | null>(null);
@@ -138,6 +182,74 @@ export default function CandidatesPage() {
   const [hiringPlans, setHiringPlans] = useState<HiringPlanLite[]>([]);
   const [triggeringScoring, setTriggeringScoring] = useState(false);
   const [expandedCandidate, setExpandedCandidate] = useState<string | null>(null);
+
+  // Kanban & View Mode State
+  const [viewMode, setViewMode] = useState<"table" | "kanban">("table");
+  const [draggedItem, setDraggedItem] = useState<{
+    candidateId: string;
+    applicationId: string;
+    fromStatus: string;
+  } | null>(null);
+  const [dragOverCol, setDragOverCol] = useState<string | null>(null);
+
+  const handleDragStart = (
+    e: React.DragEvent,
+    candidateId: string,
+    applicationId: string,
+    fromStatus: string
+  ) => {
+    setDraggedItem({ candidateId, applicationId, fromStatus });
+    e.dataTransfer.setData(
+      "text/plain",
+      JSON.stringify({ candidateId, applicationId, fromStatus })
+    );
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent, colId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverCol !== colId) setDragOverCol(colId);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetStatus: KanbanColumnKey) => {
+    e.preventDefault();
+    setDragOverCol(null);
+    if (!draggedItem || draggedItem.fromStatus === targetStatus) return;
+
+    const { candidateId, applicationId } = draggedItem;
+    const prevCandidates = [...candidates];
+
+    // Optimistic local update
+    setCandidates((prev) =>
+      prev.map((c) => {
+        if (c.id === candidateId) {
+          return {
+            ...c,
+            applications: c.applications.map((a) =>
+              a.id === applicationId ? { ...a, status: targetStatus } : a
+            ),
+          };
+        }
+        return c;
+      })
+    );
+
+    try {
+      const res = await fetch(`/api/applications/${applicationId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: targetStatus }),
+      });
+      if (!res.ok) throw new Error("Failed to update status on server");
+      toast.success(`Moved candidate to ${targetStatus.replace("_", " ")}`);
+    } catch {
+      setCandidates(prevCandidates);
+      toast.error("Failed to update candidate status");
+    } finally {
+      setDraggedItem(null);
+    }
+  };
 
   // Derived: set of normalized names that appear more than once in the current page
   const duplicateNameSet = buildDuplicateNameSet(candidates);
@@ -234,17 +346,49 @@ export default function CandidatesPage() {
     <div>
       <PageHeader
         title="Candidates"
-        subtitle="Track candidates and AI resume match scores across hiring plans."
+        subtitle="Track candidates, pipeline stages, and AI resume match scores."
         actions={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleTriggerScoring}
-            disabled={triggeringScoring}
-          >
-            <Zap className="h-4 w-4" />
-            {triggeringScoring ? "Queuing..." : "Run AI Scoring"}
-          </Button>
+          <div className="flex items-center gap-3">
+            {/* View Mode Toggle */}
+            <div className="flex items-center rounded-lg border border-slate-200 bg-slate-100/80 p-0.5">
+              <button
+                type="button"
+                onClick={() => setViewMode("table")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all",
+                  viewMode === "table"
+                    ? "bg-white text-slate-900 shadow-xs"
+                    : "text-slate-500 hover:text-slate-800"
+                )}
+              >
+                <List className="h-3.5 w-3.5" />
+                Table
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("kanban")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all",
+                  viewMode === "kanban"
+                    ? "bg-white text-slate-900 shadow-xs"
+                    : "text-slate-500 hover:text-slate-800"
+                )}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+                Kanban
+              </button>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleTriggerScoring}
+              disabled={triggeringScoring}
+            >
+              <Zap className="h-4 w-4" />
+              {triggeringScoring ? "Queuing..." : "Run AI Scoring"}
+            </Button>
+          </div>
         }
       />
 
@@ -336,6 +480,126 @@ export default function CandidatesPage() {
               : "Candidates will appear here once they are referred by recruiters or apply directly."
           }
         />
+      ) : viewMode === "kanban" ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
+          {KANBAN_COLUMNS.map((col) => {
+            const colCandidates = candidates.filter((c) => {
+              const mainApp = c.applications[0];
+              const status = mainApp?.status || "ACTIVE";
+              return status === col.id;
+            });
+            const isOver = dragOverCol === col.id;
+
+            return (
+              <div
+                key={col.id}
+                onDragOver={(e) => handleDragOver(e, col.id)}
+                onDragLeave={() => setDragOverCol(null)}
+                onDrop={(e) => handleDrop(e, col.id)}
+                className={cn(
+                  "flex flex-col rounded-xl border p-3.5 transition-all min-h-[460px]",
+                  col.borderClass,
+                  col.bgClass,
+                  isOver && "ring-2 ring-indigo-500 ring-offset-2 border-indigo-400 bg-indigo-50/50"
+                )}
+              >
+                {/* Column Header */}
+                <div className="flex items-center justify-between pb-3 mb-2 border-b border-slate-200/60">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm text-slate-900">{col.title}</span>
+                    <Badge className={cn("text-xs font-bold px-2 py-0.5", col.badgeClass)}>
+                      {colCandidates.length}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Cards Container */}
+                <div className="space-y-3 flex-1">
+                  {colCandidates.length === 0 ? (
+                    <div className="flex h-36 flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-200 text-center p-3 text-xs text-slate-400">
+                      Drag candidates here
+                    </div>
+                  ) : (
+                    colCandidates.map((c) => {
+                      const mainApp = c.applications[0];
+                      const score = getBestScore(c.applications);
+                      const isDragging = draggedItem?.candidateId === c.id;
+
+                      return (
+                        <div
+                          key={c.id}
+                          draggable={!!mainApp?.id}
+                          onDragStart={(e) =>
+                            mainApp &&
+                            handleDragStart(e, c.id, mainApp.id, mainApp.status || "ACTIVE")
+                          }
+                          className={cn(
+                            "group relative rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs transition-all hover:shadow-md cursor-grab active:cursor-grabbing",
+                            isDragging && "opacity-40 scale-95 border-indigo-300"
+                          )}
+                        >
+                          <div className="flex items-start justify-between gap-2 mb-1.5">
+                            <div className="min-w-0">
+                              <h4 className="font-semibold text-sm text-slate-900 group-hover:text-indigo-600 transition-colors truncate">
+                                {c.name}
+                              </h4>
+                              <p className="text-xs text-slate-500 truncate">{c.email}</p>
+                            </div>
+                            <GripVertical className="h-4 w-4 text-slate-300 group-hover:text-slate-400 shrink-0" />
+                          </div>
+
+                          {(c.currentRole || c.currentCompany) && (
+                            <p className="text-xs text-slate-600 mb-2 truncate">
+                              {[c.currentRole, c.currentCompany].filter(Boolean).join(" @ ")}
+                            </p>
+                          )}
+
+                          {/* Plan / Mandate Title */}
+                          {mainApp?.hiringPlan?.title && (
+                            <div className="mb-2.5">
+                              <span className="inline-block rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 max-w-full truncate">
+                                📋 {mainApp.hiringPlan.title}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Footer with Score & Details link */}
+                          <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                            {score !== null ? (
+                              <Badge
+                                variant="outline"
+                                className={cn("text-[10px] font-semibold gap-1", scoreBadgeClass(score))}
+                              >
+                                <Sparkles className="h-2.5 w-2.5" />
+                                {score}% Match
+                              </Badge>
+                            ) : (
+                              <span className="text-[10px] text-slate-400">Unscored</span>
+                            )}
+
+                            {mainApp?.id ? (
+                              <Link
+                                href={`/candidates/${c.id}/joining`}
+                                className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-0.5"
+                              >
+                                View
+                                <ArrowRight className="h-3 w-3" />
+                              </Link>
+                            ) : (
+                              <span className="text-[10px] text-slate-400">
+                                {c.experienceYears ? `${c.experienceYears}y exp` : ""}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       ) : (
         <DataTable>
           <DataTableHeader>

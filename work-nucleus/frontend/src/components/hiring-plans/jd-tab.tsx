@@ -20,6 +20,8 @@ import {
   Wand2,
   Search,
   Send,
+  Printer,
+  Download,
 } from "lucide-react";
 
 // JD editor surface — design-system-v2/ui-kit/06-JD-Editor.html.
@@ -70,6 +72,185 @@ const statusStyles: Record<string, string> = {
   APPROVED: "bg-emerald-50 text-emerald-700 border-emerald-200",
   PUBLISHED: "bg-indigo-50 text-indigo-700 border-indigo-200",
 };
+
+function escapeHtml(str: string | null | undefined): string {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function printJdPdf(jd: JdData) {
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) return;
+
+  const minLakh = jd.fitmentMapping.ctcRange?.min
+    ? (jd.fitmentMapping.ctcRange.min / 100000).toFixed(1)
+    : null;
+  const maxLakh = jd.fitmentMapping.ctcRange?.max
+    ? (jd.fitmentMapping.ctcRange.max / 100000).toFixed(1)
+    : null;
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <title>Job Description - ${escapeHtml(jd.content.title)}</title>
+  <style>
+    @page { size: A4; margin: 15mm; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #0f172a;
+      line-height: 1.6;
+      font-size: 13px;
+      margin: 0;
+      padding: 24px;
+      background: #fff;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #4f46e5;
+      padding-bottom: 14px;
+      margin-bottom: 20px;
+    }
+    .logo { font-size: 20px; font-weight: 800; color: #4f46e5; letter-spacing: -0.5px; }
+    .logo span { color: #06b6d4; }
+    .doc-meta { text-align: right; font-size: 11px; color: #64748b; }
+    h1 { font-size: 24px; font-weight: 800; color: #0f172a; margin: 0 0 8px 0; }
+    .pills { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .pill {
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #334155;
+    }
+    .pill.accent {
+      background: #e0e7ff;
+      border-color: #c7d2fe;
+      color: #3730a3;
+    }
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #1e293b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 4px;
+      margin: 20px 0 10px 0;
+    }
+    p { margin: 0 0 12px 0; color: #334155; }
+    ul { margin: 0 0 16px 0; padding-left: 20px; color: #334155; }
+    li { margin-bottom: 5px; }
+    .table-spec { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
+    .table-spec td { padding: 6px 10px; border-bottom: 1px solid #f1f5f9; }
+    .table-spec td:first-child { font-weight: 600; color: #64748b; width: 35%; }
+    .skill-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 8px;
+      background: #f8fafc;
+    }
+    .footer {
+      margin-top: 36px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 12px;
+      text-align: center;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    @media print { body { padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">Quest<span>Edge</span></div>
+    <div class="doc-meta">
+      <div>OFFICIAL JOB MANDATE SPECIFICATION</div>
+      <div>Version ${jd.version} · Status: ${escapeHtml(jd.status)} · Date: ${new Date(jd.createdAt).toLocaleDateString()}</div>
+    </div>
+  </div>
+
+  <h1>${escapeHtml(jd.content.title)}</h1>
+  <div class="pills">
+    <span class="pill">Work Mode: ${escapeHtml(jd.content.workMode || "On-site / Hybrid")}</span>
+    <span class="pill">Industry: ${escapeHtml(jd.fitmentMapping.industry || "Technology")}</span>
+    ${minLakh && maxLakh ? `<span class="pill accent">Budget: ₹${minLakh}L – ₹${maxLakh}L CTC</span>` : ""}
+    <span class="pill">Status: ${escapeHtml(jd.status)}</span>
+  </div>
+
+  <div class="section-title">Role Summary</div>
+  <p>${escapeHtml(jd.content.summary)}</p>
+
+  <div class="section-title">Key Responsibilities</div>
+  <ul>
+    ${jd.content.responsibilities?.map(r => `<li>${escapeHtml(r)}</li>`).join("") || "<li>Core responsibilities outlined by hiring team</li>"}
+  </ul>
+
+  <div class="section-title">Required Qualifications</div>
+  <ul>
+    ${jd.content.qualifications?.required?.map(q => `<li>${escapeHtml(q)}</li>`).join("") || "<li>Relevant experience required</li>"}
+  </ul>
+
+  ${jd.content.qualifications?.preferred && jd.content.qualifications.preferred.length > 0 ? `
+  <div class="section-title">Preferred Qualifications</div>
+  <ul>
+    ${jd.content.qualifications.preferred.map(q => `<li>${escapeHtml(q)}</li>`).join("")}
+  </ul>
+  ` : ""}
+
+  <div class="section-title">Organizational Alignment & Reporting</div>
+  <table class="table-spec">
+    <tr><td>Designation</td><td><strong>${escapeHtml(jd.fitmentMapping.designation || jd.content.title)}</strong></td></tr>
+    <tr><td>Reporting To</td><td>${escapeHtml(jd.fitmentMapping.reportingTo || "Hiring Manager")}</td></tr>
+    <tr><td>Department Head (HOD)</td><td>${escapeHtml(jd.fitmentMapping.hod || "Department Leader")}</td></tr>
+    ${jd.fitmentMapping.teamSize ? `<tr><td>Team Size</td><td>${jd.fitmentMapping.teamSize} members</td></tr>` : ""}
+    ${jd.fitmentMapping.teamLevels ? `<tr><td>Team Levels</td><td>${escapeHtml(jd.fitmentMapping.teamLevels)}</td></tr>` : ""}
+  </table>
+
+  ${jd.evaluationParameters?.technicalSkills && jd.evaluationParameters.technicalSkills.length > 0 ? `
+  <div class="section-title">Evaluation Matrix & Competencies</div>
+  <div>
+    ${jd.evaluationParameters.technicalSkills.map(s => `
+      <div class="skill-card">
+        <div style="display:flex; justify-content:space-between; margin-bottom: 4px;">
+          <strong style="color:#1e293b;">${escapeHtml(s.name)}</strong>
+          <span style="font-size:11px; color:#4f46e5; font-weight:600;">Expected Level: ${s.proficiencyExpected}/5</span>
+        </div>
+        <div style="font-size:12px; color:#475569;">${escapeHtml(s.assessmentCriteria)}</div>
+      </div>
+    `).join("")}
+  </div>
+  ` : ""}
+
+  ${jd.content.aboutCompany ? `
+  <div class="section-title">About the Organization</div>
+  <p>${escapeHtml(jd.content.aboutCompany)}</p>
+  ` : ""}
+
+  <div class="footer">
+    QuestEdge Enterprise Job Mandate · Client-Ready Specification
+  </div>
+</body>
+</html>`;
+
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => {
+    printWindow.print();
+  }, 400);
+}
 
 export function JdTab({ planId }: { planId: string }) {
   const [jd, setJd] = useState<JdData | null>(null);
@@ -409,6 +590,17 @@ export function JdTab({ planId }: { planId: string }) {
                 {publishing ? "Publishing…" : "Publish"}
               </Button>
             )}
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => printJdPdf(jd)}
+              className="gap-1.5"
+              title="Download client-ready formatted Job Description PDF"
+            >
+              <Download className="h-3 w-3 text-slate-500" />
+              Export PDF
+            </Button>
           </div>
         </div>
 

@@ -8,7 +8,8 @@ import { cn } from "@/lib/utils";
 import {
   ClipboardList, Users, TrendingUp, Clock, Sparkles,
   Download, RefreshCw, CalendarClock, UserPlus, FileCheck, ExternalLink,
-  Briefcase, ArrowUpRight, BarChart3
+  Briefcase, ArrowUpRight, BarChart3,
+  CheckCircle2, Circle, ChevronUp, ChevronDown, X, Rocket, ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -199,6 +200,60 @@ export default function DashboardPage() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
+  // Quick Start Onboarding Guide state
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+  const [onboardingCollapsed, setOnboardingCollapsed] = useState(false);
+  const [manualChecks, setManualChecks] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    try {
+      const dismissed = localStorage.getItem("questedge_onboarding_dismissed") === "true";
+      const collapsed = localStorage.getItem("questedge_onboarding_collapsed") === "true";
+      const savedChecks = JSON.parse(localStorage.getItem("questedge_onboarding_manual_checks") || "{}");
+      setOnboardingDismissed(dismissed);
+      setOnboardingCollapsed(collapsed);
+      setManualChecks(savedChecks);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const toggleManualCheck = (key: string) => {
+    setManualChecks((prev) => {
+      const updated = { ...prev, [key]: !prev[key] };
+      try {
+        localStorage.setItem("questedge_onboarding_manual_checks", JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  const handleDismissOnboarding = () => {
+    setOnboardingDismissed(true);
+    try {
+      localStorage.setItem("questedge_onboarding_dismissed", "true");
+    } catch {}
+  };
+
+  const handleToggleCollapse = () => {
+    setOnboardingCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("questedge_onboarding_collapsed", String(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const handleReopenOnboarding = () => {
+    setOnboardingDismissed(false);
+    setOnboardingCollapsed(false);
+    try {
+      localStorage.removeItem("questedge_onboarding_dismissed");
+      localStorage.setItem("questedge_onboarding_collapsed", "false");
+    } catch {}
+  };
+
   const fetchAll = useCallback(async (isSilent = false) => {
     if (!isSilent) setLoading(true);
     setRefreshing(true);
@@ -302,6 +357,33 @@ export default function DashboardPage() {
   const hasCostData = cost.length > 0;
   const hasAnySecondaryAnalytics = hasInterviewerData || hasSourceData || hasTimeToHireData || hasCostData;
 
+  const step1Done = Boolean(
+    (overview?.activeMandates ?? 0) > 0 ||
+    (overview?.activePlans ?? 0) > 0 ||
+    (overview?.openRoles ?? 0) > 0 ||
+    manualChecks.mandate
+  );
+
+  const step2Done = Boolean(
+    (funnel && funnel.length > 0) ||
+    manualChecks.stages
+  );
+
+  const step3Done = Boolean(manualChecks.team);
+
+  const step4Done = Boolean(
+    (overview?.pipelineCandidates ?? 0) > 0 ||
+    manualChecks.candidates
+  );
+
+  const completedStepsCount =
+    (step1Done ? 1 : 0) +
+    (step2Done ? 1 : 0) +
+    (step3Done ? 1 : 0) +
+    (step4Done ? 1 : 0);
+
+  const onboardingProgress = Math.round((completedStepsCount / 4) * 100);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -322,6 +404,18 @@ export default function DashboardPage() {
         }
         actions={
           <div className="flex items-center gap-2">
+            {onboardingDismissed && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReopenOnboarding}
+                className="h-9 gap-1.5 text-xs text-indigo-700 border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100"
+                title="Re-open the 4-step onboarding checklist"
+              >
+                <Rocket className="h-3.5 w-3.5 text-indigo-600" />
+                Quick Start ({completedStepsCount}/4)
+              </Button>
+            )}
             <button
               onClick={() => setAutoRefresh((v) => !v)}
               className={cn(
@@ -348,6 +442,302 @@ export default function DashboardPage() {
           </div>
         }
       />
+
+      {/* Quick Start Onboarding Guide Card */}
+      {!onboardingDismissed && (
+        <Card className="overflow-hidden border border-indigo-200/80 bg-gradient-to-r from-indigo-50/40 via-purple-50/20 to-cyan-50/40 shadow-xs">
+          <CardHeader className="p-4 sm:p-5 border-b border-indigo-100/60 bg-white/70">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-700 text-white shadow-xs">
+                  <Rocket className="h-4 w-4" />
+                </span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-base font-bold text-slate-900">
+                      Quick Start Onboarding Guide
+                    </CardTitle>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-[10px] font-semibold",
+                        completedStepsCount === 4
+                          ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                          : "border-indigo-300 bg-indigo-50 text-indigo-700"
+                      )}
+                    >
+                      {completedStepsCount === 4 ? "Complete 🎉" : `${completedStepsCount} of 4 Completed`}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Follow these 4 essential steps to get your organization&apos;s AI talent pipeline fully operational.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="hidden sm:flex flex-col items-end gap-1 w-36">
+                  <div className="flex justify-between w-full text-[11px] font-semibold text-slate-600">
+                    <span>Progress</span>
+                    <span>{onboardingProgress}%</span>
+                  </div>
+                  <Progress value={onboardingProgress} className="h-1.5 w-full" />
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={handleToggleCollapse}
+                    aria-label={onboardingCollapsed ? "Expand onboarding guide" : "Collapse onboarding guide"}
+                    className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                  >
+                    {onboardingCollapsed ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronUp className="h-4 w-4" />
+                    )}
+                  </button>
+                  <button
+                    onClick={handleDismissOnboarding}
+                    aria-label="Dismiss onboarding guide"
+                    className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Mobile progress bar */}
+            <div className="sm:hidden pt-2">
+              <div className="flex justify-between text-[11px] font-semibold text-slate-600 mb-1">
+                <span>Progress</span>
+                <span>{onboardingProgress}%</span>
+              </div>
+              <Progress value={onboardingProgress} className="h-1.5 w-full" />
+            </div>
+          </CardHeader>
+
+          {!onboardingCollapsed && (
+            <CardContent className="p-4 sm:p-5">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {/* Step 1 */}
+                <div
+                  className={cn(
+                    "flex flex-col justify-between rounded-xl border p-4 transition-all bg-white",
+                    step1Done
+                      ? "border-emerald-200/80 bg-emerald-50/20"
+                      : "border-slate-200 hover:border-indigo-300 hover:shadow-xs"
+                  )}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span
+                        className={cn(
+                          "flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
+                          step1Done
+                            ? "bg-emerald-600 text-white"
+                            : "bg-indigo-100 text-indigo-700"
+                        )}
+                      >
+                        1
+                      </span>
+                      <button
+                        onClick={() => toggleManualCheck("mandate")}
+                        title={step1Done ? "Mark incomplete" : "Mark completed"}
+                        className="text-slate-400 hover:text-emerald-600"
+                      >
+                        {step1Done ? (
+                          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                        ) : (
+                          <Circle className="h-5 w-5 text-slate-300" />
+                        )}
+                      </button>
+                    </div>
+                    <h4 className="text-sm font-semibold text-slate-900">
+                      Create Job Mandate
+                    </h4>
+                    <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+                      Publish your first hiring role with AI-generated JDs, budget bands, and skills.
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-slate-100">
+                    <Button
+                      variant={step1Done ? "outline" : "default"}
+                      size="sm"
+                      onClick={() => router.push("/mandates/create")}
+                      className="w-full text-xs gap-1"
+                    >
+                      <span>{step1Done ? "View Mandates" : "Create Mandate"}</span>
+                      <ArrowRight className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Step 2 */}
+                <div
+                  className={cn(
+                    "flex flex-col justify-between rounded-xl border p-4 transition-all bg-white",
+                    step2Done
+                      ? "border-emerald-200/80 bg-emerald-50/20"
+                      : "border-slate-200 hover:border-indigo-300 hover:shadow-xs"
+                  )}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span
+                        className={cn(
+                          "flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
+                          step2Done
+                            ? "bg-emerald-600 text-white"
+                            : "bg-indigo-100 text-indigo-700"
+                        )}
+                      >
+                        2
+                      </span>
+                      <button
+                        onClick={() => toggleManualCheck("stages")}
+                        title={step2Done ? "Mark incomplete" : "Mark completed"}
+                        className="text-slate-400 hover:text-emerald-600"
+                      >
+                        {step2Done ? (
+                          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                        ) : (
+                          <Circle className="h-5 w-5 text-slate-300" />
+                        )}
+                      </button>
+                    </div>
+                    <h4 className="text-sm font-semibold text-slate-900">
+                      Set Up Interview Stages
+                    </h4>
+                    <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+                      Configure evaluation stages (Screening, Technical, Leadership, Culture, Offer).
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-slate-100">
+                    <Button
+                      variant={step2Done ? "outline" : "default"}
+                      size="sm"
+                      onClick={() => router.push("/mandates")}
+                      className="w-full text-xs gap-1"
+                    >
+                      <span>{step2Done ? "Review Stages" : "Configure Stages"}</span>
+                      <ArrowRight className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Step 3 */}
+                <div
+                  className={cn(
+                    "flex flex-col justify-between rounded-xl border p-4 transition-all bg-white",
+                    step3Done
+                      ? "border-emerald-200/80 bg-emerald-50/20"
+                      : "border-slate-200 hover:border-indigo-300 hover:shadow-xs"
+                  )}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span
+                        className={cn(
+                          "flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
+                          step3Done
+                            ? "bg-emerald-600 text-white"
+                            : "bg-indigo-100 text-indigo-700"
+                        )}
+                      >
+                        3
+                      </span>
+                      <button
+                        onClick={() => toggleManualCheck("team")}
+                        title={step3Done ? "Mark incomplete" : "Mark completed"}
+                        className="text-slate-400 hover:text-emerald-600"
+                      >
+                        {step3Done ? (
+                          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                        ) : (
+                          <Circle className="h-5 w-5 text-slate-300" />
+                        )}
+                      </button>
+                    </div>
+                    <h4 className="text-sm font-semibold text-slate-900">
+                      Invite Team Members
+                    </h4>
+                    <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+                      Invite hiring managers and interviewers to score candidates and give feedback.
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-slate-100">
+                    <Button
+                      variant={step3Done ? "outline" : "default"}
+                      size="sm"
+                      onClick={() => {
+                        toggleManualCheck("team");
+                        router.push("/admin/users");
+                      }}
+                      className="w-full text-xs gap-1"
+                    >
+                      <span>{step3Done ? "Manage Team" : "Invite Members"}</span>
+                      <ArrowRight className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Step 4 */}
+                <div
+                  className={cn(
+                    "flex flex-col justify-between rounded-xl border p-4 transition-all bg-white",
+                    step4Done
+                      ? "border-emerald-200/80 bg-emerald-50/20"
+                      : "border-slate-200 hover:border-indigo-300 hover:shadow-xs"
+                  )}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span
+                        className={cn(
+                          "flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
+                          step4Done
+                            ? "bg-emerald-600 text-white"
+                            : "bg-indigo-100 text-indigo-700"
+                        )}
+                      >
+                        4
+                      </span>
+                      <button
+                        onClick={() => toggleManualCheck("candidates")}
+                        title={step4Done ? "Mark incomplete" : "Mark completed"}
+                        className="text-slate-400 hover:text-emerald-600"
+                      >
+                        {step4Done ? (
+                          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                        ) : (
+                          <Circle className="h-5 w-5 text-slate-300" />
+                        )}
+                      </button>
+                    </div>
+                    <h4 className="text-sm font-semibold text-slate-900">
+                      Review AI-Scored Applicants
+                    </h4>
+                    <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+                      Screen applicants on Kanban board with AI fitment match and tailored questions.
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-slate-100">
+                    <Button
+                      variant={step4Done ? "outline" : "default"}
+                      size="sm"
+                      onClick={() => router.push("/candidates")}
+                      className="w-full text-xs gap-1"
+                    >
+                      <span>{step4Done ? "Open Candidates" : "Review Applicants"}</span>
+                      <ArrowRight className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       {/* KPI Cards: 4 Focused & Actionable Metrics */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

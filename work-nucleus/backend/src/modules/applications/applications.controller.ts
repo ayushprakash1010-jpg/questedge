@@ -70,4 +70,12 @@ export class ApplicationsController {
   ) {
     return this.applicationsService.updateStatus(appId, dto);
   }
+
+  @Post('api/v1/applications/:appId/generate-questions')
+  @ApiOperation({
+    summary: 'Generate AI-tailored interview questions and evaluation rubrics for candidate',
+  })
+  generateInterviewQuestions(@Param('appId', ParseUUIDPipe) appId: string) {
+    return this.applicationsService.generateInterviewQuestions(appId);
+  }
 }
