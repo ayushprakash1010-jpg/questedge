@@ -111,8 +111,8 @@ export class SupportController {
 
     const csv = rows.map((r) => r.map((cell: any) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
 
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename="organizations-export-${Date.now()}.csv"`);
-    res.send(csv);
+    res!.setHeader('Content-Type', 'text/csv');
+    res!.setHeader('Content-Disposition', `attachment; filename="organizations-export-${Date.now()}.csv"`);
+    res!.send(csv);
   }
 }
