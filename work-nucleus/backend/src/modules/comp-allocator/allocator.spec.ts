@@ -3,8 +3,19 @@ import { allocate, AllocatorEmployee, BudgetMatrix } from './allocator';
 const matrix = { '5': 15, '4': 10, '3': 6, '2': 2, '1': 0 };
 const bonusMatrix = { '5': 2, '4': 1, '3': 0.5, '2': 0, '1': 0 };
 
-function emp(id: string, rating: number, fixed: number, scope: Record<string, string> = {}): AllocatorEmployee {
-  return { employeeId: id, rating, currentFixed: fixed, currentVariable: 0, scope };
+function emp(
+  id: string,
+  rating: number,
+  fixed: number,
+  scope: Record<string, string> = {},
+): AllocatorEmployee {
+  return {
+    employeeId: id,
+    rating,
+    currentFixed: fixed,
+    currentVariable: 0,
+    scope,
+  };
 }
 
 describe('compensation allocator', () => {
@@ -15,10 +26,16 @@ describe('compensation allocator', () => {
       matrix,
       bonusMatrix,
     };
-    const employees = Array.from({ length: 50 }, (_, i) => emp(`e${i}`, 3, 1_000_000));
+    const employees = Array.from({ length: 50 }, (_, i) =>
+      emp(`e${i}`, 3, 1_000_000),
+    );
     const out = allocate(budget, employees);
     expect(out.totalHikeAllocated).toBeLessThanOrEqual(budget.hikePoolINR);
-    expect(out.results.every((r) => r.computedHikePct >= 5.5 && r.computedHikePct <= 6.5)).toBe(true);
+    expect(
+      out.results.every(
+        (r) => r.computedHikePct >= 5.5 && r.computedHikePct <= 6.5,
+      ),
+    ).toBe(true);
     expect(out.underspend.hikeINR).toBeGreaterThan(0);
   });
 
@@ -29,7 +46,9 @@ describe('compensation allocator', () => {
       matrix,
       bonusMatrix: { '5': 0 },
     };
-    const employees = Array.from({ length: 100 }, (_, i) => emp(`e${i}`, 5, 1_000_000));
+    const employees = Array.from({ length: 100 }, (_, i) =>
+      emp(`e${i}`, 5, 1_000_000),
+    );
     const out = allocate(budget, employees);
     expect(out.overruns.length).toBe(1);
     expect(out.totalHikeAllocated).toBeLessThan(budget.hikePoolINR * 1.01);
@@ -62,12 +81,20 @@ describe('compensation allocator', () => {
       ],
     };
     const employees = [
-      ...Array.from({ length: 10 }, (_, i) => emp(`eng${i}`, 5, 1_000_000, { dept: 'eng' })),
-      ...Array.from({ length: 10 }, (_, i) => emp(`sales${i}`, 3, 1_000_000, { dept: 'sales' })),
+      ...Array.from({ length: 10 }, (_, i) =>
+        emp(`eng${i}`, 5, 1_000_000, { dept: 'eng' }),
+      ),
+      ...Array.from({ length: 10 }, (_, i) =>
+        emp(`sales${i}`, 3, 1_000_000, { dept: 'sales' }),
+      ),
     ];
     const out = allocate(budget, employees);
-    const engTotal = out.results.filter((r) => r.employeeId.startsWith('eng')).reduce((s, r) => s + r.computedHikeINR, 0);
-    const salesTotal = out.results.filter((r) => r.employeeId.startsWith('sales')).reduce((s, r) => s + r.computedHikeINR, 0);
+    const engTotal = out.results
+      .filter((r) => r.employeeId.startsWith('eng'))
+      .reduce((s, r) => s + r.computedHikeINR, 0);
+    const salesTotal = out.results
+      .filter((r) => r.employeeId.startsWith('sales'))
+      .reduce((s, r) => s + r.computedHikeINR, 0);
     expect(engTotal).toBeLessThan(500_000 * 1.01);
     expect(salesTotal).toBeLessThan(3_500_000 * 1.01);
   });

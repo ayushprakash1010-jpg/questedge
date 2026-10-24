@@ -1,4 +1,5 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -100,6 +101,55 @@ export class PlatformObservabilityController {
       from,
       to,
     });
+  }
+
+  @Get('audit-log/export')
+  @ApiOperation({ summary: 'Platform: Export audit log as CSV (SUPPORT_ADMIN)' })
+  @ApiQuery({ name: 'orgId', required: false })
+  @ApiQuery({ name: 'userId', required: false })
+  @ApiQuery({ name: 'action', required: false })
+  @ApiQuery({ name: 'entityType', required: false })
+  @ApiQuery({ name: 'from', required: false })
+  @ApiQuery({ name: 'to', required: false })
+  async exportAuditLogCsv(
+    @Query('orgId') orgId?: string,
+    @Query('userId') userId?: string,
+    @Query('action') action?: string,
+    @Query('entityType') entityType?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Res() res?: Response,
+  ) {
+    const result = await this.svc.listPlatformAuditLog({
+      page: 1,
+      limit: 5000,
+      orgId,
+      userId,
+      action,
+      entityType,
+      from,
+      to,
+    });
+
+    const rows = [
+      ['ID', 'Action', 'Entity Type', 'Entity ID', 'User Name', 'User Email', 'IP Address', 'Created At'],
+      ...result.data.map((log: any) => [
+        log.id,
+        log.action,
+        log.entityType,
+        log.entityId ?? '',
+        log.user?.name ?? '',
+        log.user?.email ?? '',
+        log.ipAddress ?? '',
+        new Date(log.createdAt).toISOString(),
+      ]),
+    ];
+
+    const csv = rows.map((r) => r.map((cell: any) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="audit-log-export-${Date.now()}.csv"`);
+    res.send(csv);
   }
 
   // ── Security Log ─────────────────────────────────────────────────

@@ -1,6 +1,4 @@
-import {
-  Controller, Get, Post, Query, Req,
-} from '@nestjs/common';
+import { Controller, Get, Post, Query, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AnalyticsService } from './analytics.service';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -25,7 +23,10 @@ export class AnalyticsController {
     @Req() req: any,
     @Query('hiringPlanId') hiringPlanId?: string,
   ) {
-    return this.analyticsService.getPipelineFunnel(req.user.orgId, hiringPlanId);
+    return this.analyticsService.getPipelineFunnel(
+      req.user.orgId,
+      hiringPlanId,
+    );
   }
 
   @Get('time-to-hire')

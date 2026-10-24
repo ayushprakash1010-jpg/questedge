@@ -1,10 +1,19 @@
-import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../comms/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateReferralDto } from './dto/create-referral.dto';
 import { randomBytes, createHash } from 'crypto';
-import { OwnershipStatus, ReferralStatus, SourceType, ConsentStatus } from '@prisma/client';
+import {
+  OwnershipStatus,
+  ReferralStatus,
+  SourceType,
+  ConsentStatus,
+} from '@prisma/client';
 
 @Injectable()
 export class ReferralsService {
@@ -33,12 +42,16 @@ export class ReferralsService {
     }
 
     if (!mandate.acceptsReferrals || mandate.status !== 'ACTIVE') {
-      throw new BadRequestException('This mandate is not currently accepting referrals');
+      throw new BadRequestException(
+        'This mandate is not currently accepting referrals',
+      );
     }
 
     // 3. Resolve candidate profile (Unified Identity by SHA-256)
-    const emailHash = createHash('sha256').update(dto.candidateEmail.toLowerCase().trim()).digest('hex');
-    
+    const emailHash = createHash('sha256')
+      .update(dto.candidateEmail.toLowerCase().trim())
+      .digest('hex');
+
     let candidate = await this.prisma.candidateProfile.findUnique({
       where: { emailHash },
     });
@@ -65,19 +78,26 @@ export class ReferralsService {
     });
 
     if (existingClaim) {
-      if (existingClaim.status === OwnershipStatus.ACTIVE && existingClaim.ownershipExpiresAt > new Date()) {
+      if (
+        existingClaim.status === OwnershipStatus.ACTIVE &&
+        existingClaim.ownershipExpiresAt > new Date()
+      ) {
         throw new ConflictException(
-          'This candidate is already locked by another recruiter or direct application for this mandate.'
+          'This candidate is already locked by another recruiter or direct application for this mandate.',
         );
       }
       // If expired, we could override. For MVP, we'll just throw if any claim exists.
-      throw new ConflictException('This candidate has already been submitted for this mandate.');
+      throw new ConflictException(
+        'This candidate has already been submitted for this mandate.',
+      );
     }
 
     // 5. Generate secure consent token
     const token = randomBytes(32).toString('hex');
     const ownershipExpiresAt = new Date();
-    ownershipExpiresAt.setDate(ownershipExpiresAt.getDate() + mandate.ownershipPeriodDays);
+    ownershipExpiresAt.setDate(
+      ownershipExpiresAt.getDate() + mandate.ownershipPeriodDays,
+    );
 
     // 6. Transaction: Create Referral, Consent, and ClaimScope
     const result = await this.prisma.$transaction(async (tx) => {
@@ -126,14 +146,16 @@ export class ReferralsService {
     });
 
     // 7. Dispatch Email (Fire and forget, don't await so the frontend doesn't hang)
-    this.emailService.sendConsentRequest({
-      toEmail: candidate.email,
-      candidateName: candidate.name,
-      recruiterName: recruiter.name,
-      companyName: mandate.organization.name,
-      mandateTitle: mandate.title,
-      consentToken: token,
-    }).catch(e => console.error("Email sending failed:", e));
+    this.emailService
+      .sendConsentRequest({
+        toEmail: candidate.email,
+        candidateName: candidate.name,
+        recruiterName: recruiter.name,
+        companyName: mandate.organization.name,
+        mandateTitle: mandate.title,
+        consentToken: token,
+      })
+      .catch((e) => console.error('Email sending failed:', e));
 
     // 8. Create Notification for Candidate (if they are registered)
     if (candidate.auth0Sub) {
@@ -162,7 +184,12 @@ export class ReferralsService {
       where: { recruiterId },
       include: {
         mandate: {
-          select: { title: true, organization: { select: { name: true } }, referralRewardAmount: true, currency: true },
+          select: {
+            title: true,
+            organization: { select: { name: true } },
+            referralRewardAmount: true,
+            currency: true,
+          },
         },
         candidateProfile: {
           select: { name: true, email: true, headline: true },

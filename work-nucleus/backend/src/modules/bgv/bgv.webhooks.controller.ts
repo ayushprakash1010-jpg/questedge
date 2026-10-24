@@ -1,4 +1,13 @@
-import { BadRequestException, Body, Controller, Headers, Logger, Param, Post, Req } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Headers,
+  Logger,
+  Param,
+  Post,
+  Req,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { Public } from '../../auth/decorators/public.decorator';
@@ -19,7 +28,10 @@ export class BgvWebhooksController {
   ) {}
 
   @Post(':provider')
-  @ApiOperation({ summary: 'Generic BGV vendor webhook (provider in path: authbridge | ongrid | idfy)' })
+  @ApiOperation({
+    summary:
+      'Generic BGV vendor webhook (provider in path: authbridge | ongrid | idfy)',
+  })
   async receive(
     @Param('provider') providerName: string,
     @Headers() headers: Record<string, string | string[] | undefined>,
@@ -27,9 +39,12 @@ export class BgvWebhooksController {
     @Body() body: any,
   ) {
     const provider = this.router.byName(providerName);
-    const raw: Buffer = (req as any).rawBody ?? Buffer.from(JSON.stringify(body ?? {}), 'utf-8');
+    const raw: Buffer =
+      (req as any).rawBody ?? Buffer.from(JSON.stringify(body ?? {}), 'utf-8');
     if (!provider.verifyWebhook(headers, raw)) {
-      this.logger.warn(`BGV webhook signature failed (provider=${providerName})`);
+      this.logger.warn(
+        `BGV webhook signature failed (provider=${providerName})`,
+      );
       throw new BadRequestException('Invalid signature');
     }
     const event = provider.parseWebhookEvent(body);

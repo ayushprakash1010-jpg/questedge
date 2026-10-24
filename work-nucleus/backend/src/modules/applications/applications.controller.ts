@@ -1,5 +1,11 @@
 import {
-  Controller, Get, Post, Patch, Param, Body, ParseUUIDPipe,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Param,
+  Body,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ApplicationsService } from './applications.service';
@@ -55,7 +61,9 @@ export class ApplicationsController {
   }
 
   @Patch('api/v1/applications/:appId/status')
-  @ApiOperation({ summary: 'Update application status (select, reject, hold, withdraw)' })
+  @ApiOperation({
+    summary: 'Update application status (select, reject, hold, withdraw)',
+  })
   updateStatus(
     @Param('appId', ParseUUIDPipe) appId: string,
     @Body() dto: UpdateApplicationStatusDto,

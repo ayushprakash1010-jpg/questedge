@@ -15,10 +15,7 @@ export class AiCostController {
 
   @Get('dashboard')
   @ApiOperation({ summary: 'Per-org AI cost dashboard with anomaly flag' })
-  dashboard(
-    @CurrentUser('orgId') orgId: string,
-    @Query('days') days?: string,
-  ) {
+  dashboard(@CurrentUser('orgId') orgId: string, @Query('days') days?: string) {
     return this.service.dashboard(orgId, days ? parseInt(days, 10) : 30);
   }
 }
@@ -35,7 +32,9 @@ export class AiCostInternalController {
   constructor(private readonly service: AiCostService) {}
 
   @Post('log')
-  @ApiOperation({ summary: 'Log a single AI call (for AI service to ship telemetry)' })
+  @ApiOperation({
+    summary: 'Log a single AI call (for AI service to ship telemetry)',
+  })
   log(
     @Body()
     body: {

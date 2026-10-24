@@ -186,4 +186,85 @@ export class PlatformUsersService {
 
     return { success: true, message: `User ${user.email} activated` };
   }
+
+  async bulkUpdateUsers(
+    userIds: string[],
+    action: 'activate' | 'deactivate',
+    actorId: string,
+    reason: string,
+  ) {
+    const isActive = action === 'activate';
+
+    // Fetch all target users
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, email: true, name: true, orgId: true, isActive: true },
+    });
+
+    // Only update users that need a change
+    const toUpdate = users.filter((u) => u.isActive !== isActive);
+    if (toUpdate.length === 0) return { updated: 0, skipped: users.length };
+
+    await this.prisma.user.updateMany({
+      where: { id: { in: toUpdate.map((u) => u.id) } },
+      data: { isActive },
+    });
+
+    // Audit each update
+    await Promise.all(
+      toUpdate.map((user) =>
+        this.auditService.log({
+          orgId: user.orgId,
+          userId: actorId,
+          action: isActive ? 'ADMIN_USER_BULK_ACTIVATED' : 'ADMIN_USER_BULK_DEACTIVATED',
+          entityType: 'USER',
+          entityId: user.id,
+          changes: {
+            before: { isActive: !isActive },
+            after: { isActive },
+            reason,
+            targetEmail: user.email,
+            bulkOperation: true,
+          },
+        }),
+      ),
+    );
+
+    return {
+      updated: toUpdate.length,
+      skipped: users.length - toUpdate.length,
+      message: `${toUpdate.length} user(s) ${action}d successfully`,
+    };
+  }
+
+  async exportUsers(query: ListUsersQuery) {
+    const where: any = {};
+    const { search, role, userType, isActive, orgId } = query;
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+    if (role) where.role = role;
+    if (userType) where.userType = userType;
+    if (isActive !== undefined) where.isActive = isActive;
+    if (orgId) where.orgId = orgId;
+
+    return this.prisma.user.findMany({
+      where,
+      take: 5000,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        userType: true,
+        isActive: true,
+        createdAt: true,
+        organization: { select: { name: true } },
+      },
+    });
+  }
 }

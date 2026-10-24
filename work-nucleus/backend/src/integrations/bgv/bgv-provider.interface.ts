@@ -26,7 +26,10 @@ export interface BgvWebhookEvent {
 export interface IBgvProvider {
   readonly name: 'authbridge' | 'ongrid' | 'idfy' | 'springverify';
 
-  initiateProfile(input: { candidate: BgvCandidatePayload; orgRefId: string }): Promise<{ vendorRefId: string }>;
+  initiateProfile(input: {
+    candidate: BgvCandidatePayload;
+    orgRefId: string;
+  }): Promise<{ vendorRefId: string }>;
 
   submitCheck(input: {
     vendorProfileRefId: string;
@@ -38,7 +41,10 @@ export interface IBgvProvider {
 
   downloadReport(vendorCheckRefId: string): Promise<Buffer>;
 
-  verifyWebhook(headers: Record<string, string | string[] | undefined>, rawBody: Buffer): boolean;
+  verifyWebhook(
+    headers: Record<string, string | string[] | undefined>,
+    rawBody: Buffer,
+  ): boolean;
 
   parseWebhookEvent(body: unknown): BgvWebhookEvent | null;
 }

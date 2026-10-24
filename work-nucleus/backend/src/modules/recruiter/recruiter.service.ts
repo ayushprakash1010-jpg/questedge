@@ -4,7 +4,10 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateRecruiterProfileDto, UpdateRecruiterProfileDto } from './dto/recruiter-profile.dto';
+import {
+  CreateRecruiterProfileDto,
+  UpdateRecruiterProfileDto,
+} from './dto/recruiter-profile.dto';
 import { RecruiterProfile } from '@prisma/client';
 
 export interface RecruiterDashboard {
@@ -35,8 +38,13 @@ export class RecruiterService {
     email: string,
     dto: CreateRecruiterProfileDto,
   ): Promise<RecruiterProfile> {
-    const existing = await this.prisma.recruiterProfile.findUnique({ where: { auth0Sub } });
-    if (existing) throw new ConflictException('Recruiter profile already exists. Use PATCH to update.');
+    const existing = await this.prisma.recruiterProfile.findUnique({
+      where: { auth0Sub },
+    });
+    if (existing)
+      throw new ConflictException(
+        'Recruiter profile already exists. Use PATCH to update.',
+      );
 
     return this.prisma.recruiterProfile.create({
       data: {
@@ -77,7 +85,9 @@ export class RecruiterService {
     });
   }
 
-  async getMyProfile(recruiterId: string): Promise<RecruiterProfile & { _count: any }> {
+  async getMyProfile(
+    recruiterId: string,
+  ): Promise<RecruiterProfile & { _count: any }> {
     const profile = await this.prisma.recruiterProfile.findUnique({
       where: { id: recruiterId },
       include: {
@@ -106,7 +116,8 @@ export class RecruiterService {
       },
     });
 
-    if (!profile || !profile) throw new NotFoundException('Recruiter not found.');
+    if (!profile || !profile)
+      throw new NotFoundException('Recruiter not found.');
     return profile;
   }
 
@@ -145,8 +156,16 @@ export class RecruiterService {
         take: 10,
         orderBy: { createdAt: 'desc' },
         include: {
-          mandate: { select: { id: true, title: true, organization: { select: { name: true } } } },
-          candidateProfile: { select: { id: true, name: true, headline: true } },
+          mandate: {
+            select: {
+              id: true,
+              title: true,
+              organization: { select: { name: true } },
+            },
+          },
+          candidateProfile: {
+            select: { id: true, name: true, headline: true },
+          },
         },
       }),
 
@@ -200,18 +219,35 @@ export class RecruiterService {
 
     // Calculate gamified metrics
     const totalReferrals = Object.values(refCounts).reduce((a, b) => a + b, 0);
-    const successfulPlacements = (refCounts['SELECTED'] ?? 0) + (refCounts['HIRED'] ?? 0);
-    const placementSuccessRate = totalReferrals > 0 ? Math.round((successfulPlacements / totalReferrals) * 100) : 0;
-    
+    const successfulPlacements =
+      (refCounts['SELECTED'] ?? 0) + (refCounts['HIRED'] ?? 0);
+    const placementSuccessRate =
+      totalReferrals > 0
+        ? Math.round((successfulPlacements / totalReferrals) * 100)
+        : 0;
+
     let reputationTier = 'BRONZE';
     if (successfulPlacements >= 50) reputationTier = 'PLATINUM';
     else if (successfulPlacements >= 10) reputationTier = 'GOLD';
     else if (successfulPlacements >= 3) reputationTier = 'SILVER';
 
     // Build monthly chart data
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     const monthlyDataMap = new Map<string, number>();
-    
+
     // Initialize last 6 months with 0
     for (let i = 5; i >= 0; i--) {
       const d = new Date();
@@ -220,14 +256,16 @@ export class RecruiterService {
       monthlyDataMap.set(key, 0);
     }
 
-    historicalReferrals.forEach(r => {
+    historicalReferrals.forEach((r) => {
       const key = `${monthNames[r.createdAt.getMonth()]} ${r.createdAt.getFullYear()}`;
       if (monthlyDataMap.has(key)) {
         monthlyDataMap.set(key, monthlyDataMap.get(key)! + 1);
       }
     });
 
-    const monthlyReferrals = Array.from(monthlyDataMap.entries()).map(([name, count]) => ({ name, count }));
+    const monthlyReferrals = Array.from(monthlyDataMap.entries()).map(
+      ([name, count]) => ({ name, count }),
+    );
 
     return {
       profile,
@@ -235,9 +273,11 @@ export class RecruiterService {
         activeMandates,
         totalReferrals,
         pendingConsents:
-          (refCounts['PENDING_CONSENT'] ?? 0) + (refCounts['CONSENT_REQUESTED'] ?? 0),
+          (refCounts['PENDING_CONSENT'] ?? 0) +
+          (refCounts['CONSENT_REQUESTED'] ?? 0),
         activePipeline: refCounts['ACTIVATED'] ?? 0,
-        totalEarnings: (earningsMap['PAID'] ?? 0) + (earningsMap['APPROVED'] ?? 0),
+        totalEarnings:
+          (earningsMap['PAID'] ?? 0) + (earningsMap['APPROVED'] ?? 0),
         pendingEarnings:
           (earningsMap['POTENTIAL'] ?? 0) +
           (earningsMap['ELIGIBLE'] ?? 0) +
@@ -269,7 +309,9 @@ export class RecruiterService {
   }
 
   private async findById(id: string): Promise<RecruiterProfile> {
-    const profile = await this.prisma.recruiterProfile.findUnique({ where: { id } });
+    const profile = await this.prisma.recruiterProfile.findUnique({
+      where: { id },
+    });
     if (!profile) throw new NotFoundException('Recruiter profile not found.');
     return profile;
   }
@@ -280,30 +322,43 @@ export class RecruiterService {
       take: 10,
       include: {
         _count: {
-          select: { referrals: { where: { status: 'HIRED' } } }
+          select: { referrals: { where: { status: 'HIRED' } } },
         },
         rewards: {
           where: { status: { in: ['PAID', 'APPROVED'] } },
-          select: { rewardAmount: true }
-        }
-      }
+          select: { rewardAmount: true },
+        },
+      },
     });
 
-    const mapped = recruiters.map(r => {
+    const mapped = recruiters.map((r) => {
       const hiredCount = r._count.referrals;
       return {
         id: r.id,
         name: r.name,
         avatarUrl: r.avatarUrl,
         isVerified: r.isVerified,
-        reputationTier: hiredCount > 10 ? 'Platinum' : hiredCount > 5 ? 'Gold' : hiredCount > 1 ? 'Silver' : 'Bronze',
+        reputationTier:
+          hiredCount > 10
+            ? 'Platinum'
+            : hiredCount > 5
+              ? 'Gold'
+              : hiredCount > 1
+                ? 'Silver'
+                : 'Bronze',
         hiredCount,
-        totalEarnings: r.rewards.reduce((sum, rw) => sum + Number(rw.rewardAmount), 0)
+        totalEarnings: r.rewards.reduce(
+          (sum, rw) => sum + Number(rw.rewardAmount),
+          0,
+        ),
       };
     });
 
     // Sort by earnings descending, then hired count
-    mapped.sort((a, b) => b.totalEarnings - a.totalEarnings || b.hiredCount - a.hiredCount);
+    mapped.sort(
+      (a, b) =>
+        b.totalEarnings - a.totalEarnings || b.hiredCount - a.hiredCount,
+    );
     return mapped;
   }
 }

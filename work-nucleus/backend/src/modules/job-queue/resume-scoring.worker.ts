@@ -45,10 +45,9 @@ export class ResumeScoringWorker implements OnModuleInit {
     await this.queue.scheduleCron('resume-scoring-nightly', '0 2 * * *');
 
     // Register workers
-    await this.queue.registerWorker(
-      'resume-scoring-nightly',
-      async () => { await this.handleNightlyRun(); },
-    );
+    await this.queue.registerWorker('resume-scoring-nightly', async () => {
+      await this.handleNightlyRun();
+    });
 
     await this.queue.registerWorker<ScoreOneData>(
       'resume-score-one',
@@ -140,27 +139,44 @@ export class ResumeScoringWorker implements OnModuleInit {
     const rawKey = this.config.get<string>('GEMINI_API_KEY');
     const trimmedKey = rawKey ? rawKey.trim() : null;
 
-    let matchResult = { matchScore: 80, summary: "Mock match summary (Missing API Key)" };
+    let matchResult = {
+      matchScore: 80,
+      summary: 'Mock match summary (Missing API Key)',
+    };
 
     if (trimmedKey) {
       try {
         const { GoogleGenAI } = require('@google/genai');
         const ai = new GoogleGenAI({ apiKey: trimmedKey });
-        
+
         const b64 = Buffer.from(fileBuffer).toString('base64');
         const prompt = `Score this candidate's resume against the Job Description. Return exactly JSON with "matchScore" (number 0-100) and "summary" (string). JD: ${jd.content}, Skills: ${JSON.stringify(plan.skills)}`;
-        
+
         const response = await ai.models.generateContent({
-          model: this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest',
-          contents: [{ role: 'user', parts: [
-            { inlineData: { data: b64, mimeType: contentType } },
-            { text: prompt }
-          ] }],
+          model:
+            this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest',
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                { inlineData: { data: b64, mimeType: contentType } },
+                { text: prompt },
+              ],
+            },
+          ],
           config: { responseMimeType: 'application/json', temperature: 0.1 },
         });
-        
-        const data = JSON.parse((response.text || "{}").replace(/```json/g, '').replace(/```/g, '').trim());
-        matchResult = { matchScore: data.matchScore || 0, summary: data.summary || "" };
+
+        const data = JSON.parse(
+          (response.text || '{}')
+            .replace(/```json/g, '')
+            .replace(/```/g, '')
+            .trim(),
+        );
+        matchResult = {
+          matchScore: data.matchScore || 0,
+          summary: data.summary || '',
+        };
       } catch (err) {
         this.logger.error(`Resume scoring failed for ${applicationId}: ${err}`);
       }

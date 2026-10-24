@@ -16,7 +16,9 @@ export class BgvVendorRouter {
   ) {}
 
   async getProviderForOrg(orgId: string): Promise<IBgvProvider> {
-    const settings = await this.prisma.orgSettings.findUnique({ where: { orgId } });
+    const settings = await this.prisma.orgSettings.findUnique({
+      where: { orgId },
+    });
     const choice = ((settings?.settings as any)?.bgvProvider ?? 'authbridge')
       .toString()
       .toLowerCase();

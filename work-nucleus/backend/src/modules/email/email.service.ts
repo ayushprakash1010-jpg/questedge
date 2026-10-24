@@ -21,7 +21,8 @@ export class EmailService {
     }
 
     try {
-      const fromAddress = process.env.RESEND_FROM_EMAIL || 'QuestEdge <hello@questedge.com>';
+      const fromAddress =
+        process.env.RESEND_FROM_EMAIL || 'QuestEdge <hello@questedge.com>';
       const { data, error } = await this.resend.emails.send({
         from: fromAddress,
         to: [to],
@@ -39,7 +40,12 @@ export class EmailService {
     }
   }
 
-  async sendNotificationEmail(to: string, title: string, body: string, actionUrl?: string) {
+  async sendNotificationEmail(
+    to: string,
+    title: string,
+    body: string,
+    actionUrl?: string,
+  ) {
     const html = `
       <div style="font-family: sans-serif; max-w: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
         <h2 style="color: #0f172a; margin-top: 0;">${title}</h2>

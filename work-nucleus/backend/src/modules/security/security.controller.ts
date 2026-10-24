@@ -19,7 +19,9 @@ export class SecurityController {
   }
 
   @Get('access-review')
-  @ApiOperation({ summary: 'Access review export (users + roles + active flag)' })
+  @ApiOperation({
+    summary: 'Access review export (users + roles + active flag)',
+  })
   review(@CurrentUser('orgId') orgId: string) {
     return this.service.accessReviewExport(orgId);
   }

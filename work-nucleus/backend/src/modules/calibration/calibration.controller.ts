@@ -1,10 +1,21 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { CalibrationService } from './calibration.service';
-import { CreateCalibrationSessionDto, MoveAssessmentDto } from './dto/calibration.dto';
+import {
+  CreateCalibrationSessionDto,
+  MoveAssessmentDto,
+} from './dto/calibration.dto';
 
 @ApiTags('Calibration (v2)')
 @ApiBearerAuth()
@@ -25,24 +36,37 @@ export class CalibrationController {
 
   @Get()
   @ApiOperation({ summary: 'List calibration sessions' })
-  list(@CurrentUser('orgId') orgId: string, @Query('cycleId') cycleId?: string) {
+  list(
+    @CurrentUser('orgId') orgId: string,
+    @Query('cycleId') cycleId?: string,
+  ) {
     return this.service.list(orgId, cycleId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a calibration session' })
-  findOne(@CurrentUser('orgId') orgId: string, @Param('id', ParseUUIDPipe) id: string) {
+  findOne(
+    @CurrentUser('orgId') orgId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.service.findOne(orgId, id);
   }
 
   @Get(':id/board')
-  @ApiOperation({ summary: 'Live board: in-scope assessments, distributions, decision log' })
-  board(@CurrentUser('orgId') orgId: string, @Param('id', ParseUUIDPipe) id: string) {
+  @ApiOperation({
+    summary: 'Live board: in-scope assessments, distributions, decision log',
+  })
+  board(
+    @CurrentUser('orgId') orgId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.service.board(orgId, id);
   }
 
   @Post(':id/move')
-  @ApiOperation({ summary: 'Move an employee to a different rating bucket (audit-logged)' })
+  @ApiOperation({
+    summary: 'Move an employee to a different rating bucket (audit-logged)',
+  })
   move(
     @CurrentUser('orgId') orgId: string,
     @CurrentUser('id') userId: string,
@@ -53,7 +77,9 @@ export class CalibrationController {
   }
 
   @Post(':id/lock')
-  @ApiOperation({ summary: 'Lock & finalise the session — advances cycle to COMMUNICATED' })
+  @ApiOperation({
+    summary: 'Lock & finalise the session — advances cycle to COMMUNICATED',
+  })
   lock(
     @CurrentUser('orgId') orgId: string,
     @CurrentUser('id') userId: string,

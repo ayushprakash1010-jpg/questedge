@@ -1,4 +1,10 @@
-import { IsEnum, IsString, IsOptional, IsNumber, IsDateString } from 'class-validator';
+import {
+  IsEnum,
+  IsString,
+  IsOptional,
+  IsNumber,
+  IsDateString,
+} from 'class-validator';
 import { DecisionType } from '@prisma/client';
 
 export class MakeDecisionDto {

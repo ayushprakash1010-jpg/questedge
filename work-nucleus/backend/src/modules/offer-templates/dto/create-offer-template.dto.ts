@@ -1,4 +1,10 @@
-import { IsArray, IsObject, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsArray,
+  IsObject,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class TemplateVariableDto {

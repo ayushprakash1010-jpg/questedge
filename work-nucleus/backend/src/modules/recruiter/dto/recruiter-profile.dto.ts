@@ -1,4 +1,11 @@
-import { IsArray, IsInt, IsOptional, IsString, IsUrl, Min } from 'class-validator';
+import {
+  IsArray,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUrl,
+  Min,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -12,12 +19,17 @@ export class CreateRecruiterProfileDto {
   @IsString()
   phone?: string;
 
-  @ApiPropertyOptional({ example: 'Senior Technical Recruiter | 8+ years | SaaS & FinTech' })
+  @ApiPropertyOptional({
+    example: 'Senior Technical Recruiter | 8+ years | SaaS & FinTech',
+  })
   @IsOptional()
   @IsString()
   headline?: string;
 
-  @ApiPropertyOptional({ description: 'Industries/roles recruiter specializes in', example: ['Software Engineering', 'FinTech'] })
+  @ApiPropertyOptional({
+    description: 'Industries/roles recruiter specializes in',
+    example: ['Software Engineering', 'FinTech'],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })

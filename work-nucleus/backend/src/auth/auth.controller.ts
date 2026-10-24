@@ -28,14 +28,12 @@ export class AuthController {
   @Post('provision')
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Provision new organization and admin user after first Auth0 login',
+    summary:
+      'Provision new organization and admin user after first Auth0 login',
   })
   @ApiResponse({ status: 201, description: 'Organization and user created' })
   @ApiResponse({ status: 409, description: 'User already provisioned' })
-  async provision(
-    @CurrentUser() user: any,
-    @Body() dto: ProvisionDto,
-  ) {
+  async provision(@CurrentUser() user: any, @Body() dto: ProvisionDto) {
     if (!user?.auth0Sub) {
       throw new BadRequestException('Auth0 identity not found in token');
     }
@@ -64,15 +62,27 @@ export class AuthController {
     }
 
     // Check recruiter profiles table
-    const recruiterProfile = await this.authService.getRecruiterMe(user.auth0Sub);
+    const recruiterProfile = await this.authService.getRecruiterMe(
+      user.auth0Sub,
+    );
     if (recruiterProfile) {
-      return { isProvisioned: true, userType: 'RECRUITER', ...recruiterProfile };
+      return {
+        isProvisioned: true,
+        userType: 'RECRUITER',
+        ...recruiterProfile,
+      };
     }
 
     // Check candidate profiles table
-    const candidateProfile = await this.authService.getCandidateMe(user.auth0Sub);
+    const candidateProfile = await this.authService.getCandidateMe(
+      user.auth0Sub,
+    );
     if (candidateProfile) {
-      return { isProvisioned: true, userType: 'CANDIDATE', ...candidateProfile };
+      return {
+        isProvisioned: true,
+        userType: 'CANDIDATE',
+        ...candidateProfile,
+      };
     }
 
     return {
@@ -85,9 +95,15 @@ export class AuthController {
   @Post('reset-role')
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Reset a mistakenly chosen role (only if no active associations exist)' })
+  @ApiOperation({
+    summary:
+      'Reset a mistakenly chosen role (only if no active associations exist)',
+  })
   @ApiResponse({ status: 200, description: 'Role reset successfully' })
-  @ApiResponse({ status: 409, description: 'Cannot reset role due to active associations' })
+  @ApiResponse({
+    status: 409,
+    description: 'Cannot reset role due to active associations',
+  })
   async resetRole(@CurrentUser() user: any) {
     if (!user?.auth0Sub) {
       throw new BadRequestException('Auth0 identity not found in token');

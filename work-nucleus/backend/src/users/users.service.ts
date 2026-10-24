@@ -72,10 +72,7 @@ export class UsersService {
     }
 
     // Create user in Auth0 (sends password reset email)
-    const auth0Sub = await this.auth0Management.createUser(
-      dto.email,
-      dto.name,
-    );
+    const auth0Sub = await this.auth0Management.createUser(dto.email, dto.name);
 
     // Create local user record
     const user = await this.prisma.user.create({

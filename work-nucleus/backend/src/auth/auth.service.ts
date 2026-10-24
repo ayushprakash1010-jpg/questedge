@@ -19,15 +19,10 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
   ) {
-    this.syncSecret =
-      this.configService.get<string>('AUTH0_SYNC_SECRET') || '';
+    this.syncSecret = this.configService.get<string>('AUTH0_SYNC_SECRET') || '';
   }
 
-  async provision(
-    auth0Sub: string,
-    email: string,
-    dto: ProvisionDto,
-  ) {
+  async provision(auth0Sub: string, email: string, dto: ProvisionDto) {
     // Check if user is already provisioned
     const existing = await this.prisma.user.findUnique({
       where: { auth0Sub },
@@ -72,20 +67,28 @@ export class AuthService {
       const user = await this.prisma.user.findUnique({ where: { auth0Sub } });
       if (user) {
         await this.prisma.user.delete({ where: { auth0Sub } });
-        const orgUsers = await this.prisma.user.count({ where: { orgId: user.orgId } });
+        const orgUsers = await this.prisma.user.count({
+          where: { orgId: user.orgId },
+        });
         if (orgUsers === 0) {
-          await this.prisma.organization.delete({ where: { id: user.orgId } }).catch(() => null);
+          await this.prisma.organization
+            .delete({ where: { id: user.orgId } })
+            .catch(() => null);
         }
       }
 
       // Attempt to delete Recruiter
-      const recruiter = await this.prisma.recruiterProfile.findUnique({ where: { auth0Sub } });
+      const recruiter = await this.prisma.recruiterProfile.findUnique({
+        where: { auth0Sub },
+      });
       if (recruiter) {
         await this.prisma.recruiterProfile.delete({ where: { auth0Sub } });
       }
 
       // Attempt to delete Candidate
-      const candidate = await this.prisma.candidateProfile.findUnique({ where: { auth0Sub } });
+      const candidate = await this.prisma.candidateProfile.findUnique({
+        where: { auth0Sub },
+      });
       if (candidate) {
         await this.prisma.candidateProfile.delete({ where: { auth0Sub } });
       }
@@ -94,7 +97,9 @@ export class AuthService {
       return { success: true };
     } catch (err: any) {
       this.logger.error(`Failed to reset role for ${auth0Sub}: ${err.message}`);
-      throw new ConflictException('Cannot reset role. You have active associations (e.g. referrals or mandates).');
+      throw new ConflictException(
+        'Cannot reset role. You have active associations (e.g. referrals or mandates).',
+      );
     }
   }
 

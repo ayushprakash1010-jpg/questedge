@@ -23,11 +23,20 @@ export class OfferAiService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {
-    this.aiServiceUrl = this.config.get<string>('AI_SERVICE_URL', 'http://localhost:8000');
-    this.internalApiKey = this.config.get<string>('INTERNAL_API_KEY', 'dev-internal-key');
+    this.aiServiceUrl = this.config.get<string>(
+      'AI_SERVICE_URL',
+      'http://localhost:8000',
+    );
+    this.internalApiKey = this.config.get<string>(
+      'INTERNAL_API_KEY',
+      'dev-internal-key',
+    );
   }
 
-  async draftOfferBody(offerId: string, tone = 'warm'): Promise<OfferBodyDraft> {
+  async draftOfferBody(
+    offerId: string,
+    tone = 'warm',
+  ): Promise<OfferBodyDraft> {
     const offer = await this.prisma.offer.findUnique({
       where: { id: offerId },
       include: {
@@ -67,26 +76,37 @@ export class OfferAiService {
       const rawKey = this.config.get<string>('GEMINI_API_KEY');
       const trimmedKey = rawKey ? rawKey.trim() : null;
       if (!trimmedKey) {
-        return this.fallback(offer.application.candidate.name, offer.application.hiringPlan.designation);
+        return this.fallback(
+          offer.application.candidate.name,
+          offer.application.hiringPlan.designation,
+        );
       }
       const { GoogleGenAI } = require('@google/genai');
       const ai = new GoogleGenAI({ apiKey: trimmedKey });
-      
+
       const prompt = `Draft a professional ${tone} offer letter body for ${payload.candidate.name} joining as ${payload.role} at ${payload.company}. Return valid JSON with a single "body" field containing the draft. Context: ${JSON.stringify(payload)}`;
-      
+
       const response = await ai.models.generateContent({
         model: this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest',
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: { responseMimeType: 'application/json', temperature: 0.7 },
       });
-      
-      const rawResponse = response.text || "{}";
-      const data = JSON.parse(rawResponse.replace(/```json/g, '').replace(/```/g, '').trim());
+
+      const rawResponse = response.text || '{}';
+      const data = JSON.parse(
+        rawResponse
+          .replace(/```json/g, '')
+          .replace(/```/g, '')
+          .trim(),
+      );
       const body = typeof data?.body === 'string' ? data.body : '';
       return { body };
     } catch (err) {
       this.logger.error(`AI service call failed: ${err}`);
-      return this.fallback(offer.application.candidate.name, offer.application.hiringPlan.designation);
+      return this.fallback(
+        offer.application.candidate.name,
+        offer.application.hiringPlan.designation,
+      );
     }
   }
 

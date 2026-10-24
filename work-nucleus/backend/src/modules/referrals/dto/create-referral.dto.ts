@@ -1,4 +1,10 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateReferralDto {
@@ -22,7 +28,9 @@ export class CreateReferralDto {
   @IsOptional()
   candidatePhone?: string;
 
-  @ApiPropertyOptional({ description: 'Pitch note from the recruiter to the candidate' })
+  @ApiPropertyOptional({
+    description: 'Pitch note from the recruiter to the candidate',
+  })
   @IsString()
   @IsOptional()
   recruiterNote?: string;

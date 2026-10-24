@@ -1,4 +1,11 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CycleStatus, Role } from '@prisma/client';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
@@ -15,7 +22,10 @@ export class AppraisalCyclesController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new appraisal cycle (admin only)' })
-  create(@CurrentUser('orgId') orgId: string, @Body() dto: CreateAppraisalCycleDto) {
+  create(
+    @CurrentUser('orgId') orgId: string,
+    @Body() dto: CreateAppraisalCycleDto,
+  ) {
     return this.service.create(orgId, dto);
   }
 
@@ -27,13 +37,19 @@ export class AppraisalCyclesController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a single cycle' })
-  findOne(@CurrentUser('orgId') orgId: string, @Param('id', ParseUUIDPipe) id: string) {
+  findOne(
+    @CurrentUser('orgId') orgId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.service.findOne(orgId, id);
   }
 
   @Post(':id/advance')
   @ApiOperation({ summary: 'Advance the cycle to the next stage' })
-  advance(@CurrentUser('orgId') orgId: string, @Param('id', ParseUUIDPipe) id: string) {
+  advance(
+    @CurrentUser('orgId') orgId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.service.advanceStage(orgId, id);
   }
 
@@ -54,6 +70,11 @@ export class AppraisalCyclesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: { employeeId: string; reason: string },
   ) {
-    return this.service.reopenAssessment(orgId, id, body.employeeId, body.reason);
+    return this.service.reopenAssessment(
+      orgId,
+      id,
+      body.employeeId,
+      body.reason,
+    );
   }
 }

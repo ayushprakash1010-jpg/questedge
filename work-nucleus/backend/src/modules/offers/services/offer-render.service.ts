@@ -24,7 +24,10 @@ export class OfferRenderService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {
-    this.bucket = this.config.get<string>('S3_OFFERS_BUCKET', 'questedge-offers');
+    this.bucket = this.config.get<string>(
+      'S3_OFFERS_BUCKET',
+      'questedge-offers',
+    );
     this.s3 = new S3Client({
       endpoint: this.config.get<string>('S3_ENDPOINT', 'http://localhost:9000'),
       region: this.config.get<string>('S3_REGION', 'us-east-1'),
@@ -36,7 +39,9 @@ export class OfferRenderService {
     });
   }
 
-  async render(offerId: string): Promise<{ s3Key: string; pdfUrl: string; version: number }> {
+  async render(
+    offerId: string,
+  ): Promise<{ s3Key: string; pdfUrl: string; version: number }> {
     const offer = await this.prisma.offer.findUnique({
       where: { id: offerId },
       include: {
@@ -46,7 +51,9 @@ export class OfferRenderService {
         application: {
           include: {
             candidate: true,
-            hiringPlan: { select: { title: true, designation: true, department: true } },
+            hiringPlan: {
+              select: { title: true, designation: true, department: true },
+            },
           },
         },
         docVersions: { orderBy: { version: 'desc' }, take: 1 },

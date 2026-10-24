@@ -18,7 +18,9 @@ export class CreateOfferDto {
   @IsUUID()
   templateId!: string;
 
-  @ApiPropertyOptional({ description: 'Inline compensation; if omitted, supply compensationId' })
+  @ApiPropertyOptional({
+    description: 'Inline compensation; if omitted, supply compensationId',
+  })
   @IsOptional()
   @Type(() => CreateCompensationDto)
   compensation?: CreateCompensationDto;
@@ -34,12 +36,16 @@ export class CreateOfferDto {
   @IsDate()
   expiresAt?: Date;
 
-  @ApiPropertyOptional({ description: 'Approver chain: [{ role, userId? }] (in order)' })
+  @ApiPropertyOptional({
+    description: 'Approver chain: [{ role, userId? }] (in order)',
+  })
   @IsOptional()
   @IsObject({ each: true })
   approverChain?: Array<{ role: string; userId?: string }>;
 
-  @ApiPropertyOptional({ description: 'Free-text body content from AI drafter merged into template' })
+  @ApiPropertyOptional({
+    description: 'Free-text body content from AI drafter merged into template',
+  })
   @IsOptional()
   @IsString()
   draftBody?: string;

@@ -31,7 +31,8 @@ export class FeedbackService {
     const stage = await this.prisma.pipelineStage.findFirst({
       where: { id: dto.stageId, hiringPlanId: application.hiringPlanId },
     });
-    if (!stage) throw new BadRequestException('Invalid stage for this application');
+    if (!stage)
+      throw new BadRequestException('Invalid stage for this application');
 
     const { skillRatings, ...feedbackData } = dto;
 
@@ -128,9 +129,13 @@ export class FeedbackService {
       where,
       include: {
         interviewer: { select: { id: true, name: true, email: true } },
-        stage: { select: { id: true, name: true, stageType: true, stageOrder: true } },
+        stage: {
+          select: { id: true, name: true, stageType: true, stageOrder: true },
+        },
         skillRatings: {
-          include: { skill: { select: { id: true, name: true, category: true } } },
+          include: {
+            skill: { select: { id: true, name: true, category: true } },
+          },
         },
       },
       orderBy: [{ stage: { stageOrder: 'asc' } }, { createdAt: 'asc' }],
@@ -161,15 +166,25 @@ export class FeedbackService {
         interviewer: { select: { id: true, name: true } },
         stage: { select: { id: true, name: true, stageOrder: true } },
         skillRatings: {
-          include: { skill: { select: { id: true, name: true, category: true } } },
+          include: {
+            skill: { select: { id: true, name: true, category: true } },
+          },
         },
       },
       orderBy: { stage: { stageOrder: 'asc' } },
     });
 
     // Build matrix: rows = skills, columns = interviewer@stage
-    const skillMap: Record<string, { id: string; name: string; category: string }> = {};
-    const columns: { interviewerId: string; interviewerName: string; stageId: string; stageName: string }[] = [];
+    const skillMap: Record<
+      string,
+      { id: string; name: string; category: string }
+    > = {};
+    const columns: {
+      interviewerId: string;
+      interviewerName: string;
+      stageId: string;
+      stageName: string;
+    }[] = [];
     const ratings: Record<string, Record<string, number>> = {}; // skillId -> columnKey -> rating
 
     for (const fb of feedbacks) {
@@ -212,7 +227,9 @@ export class FeedbackService {
       where: { id: applicationId },
       include: {
         candidate: true,
-        hiringPlan: { select: { title: true, department: true, designation: true } },
+        hiringPlan: {
+          select: { title: true, department: true, designation: true },
+        },
       },
     });
     if (!application) throw new NotFoundException('Application not found');
@@ -236,11 +253,16 @@ export class FeedbackService {
     const trimmedKey = rawKey ? rawKey.trim() : null;
     let summary: any = {};
     if (!trimmedKey) {
-      summary = { overallScore: 80, strengths: ["Good communication"], weaknesses: ["Needs technical prep"], summary: "Mock summary" };
+      summary = {
+        overallScore: 80,
+        strengths: ['Good communication'],
+        weaknesses: ['Needs technical prep'],
+        summary: 'Mock summary',
+      };
     } else {
       const { GoogleGenAI } = require('@google/genai');
       const ai = new GoogleGenAI({ apiKey: trimmedKey });
-      
+
       const payload = {
         applicationContext: {
           candidateName: application.candidate.name,
@@ -269,13 +291,21 @@ export class FeedbackService {
       const prompt = `Summarize this interview feedback into a structured JSON candidate scorecard. Context: ${JSON.stringify(payload)}`;
       try {
         const response = await ai.models.generateContent({
-          model: this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest',
+          model:
+            this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest',
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           config: { responseMimeType: 'application/json', temperature: 0.2 },
         });
-        summary = JSON.parse((response.text || "{}").replace(/```json/g, '').replace(/```/g, '').trim());
+        summary = JSON.parse(
+          (response.text || '{}')
+            .replace(/```json/g, '')
+            .replace(/```/g, '')
+            .trim(),
+        );
       } catch (err) {
-        throw new BadRequestException(`AI summarization failed: ${err.message}`);
+        throw new BadRequestException(
+          `AI summarization failed: ${err.message}`,
+        );
       }
     }
 
@@ -293,7 +323,9 @@ export class FeedbackService {
       where: { id: applicationId },
       include: {
         candidate: true,
-        hiringPlan: { select: { title: true, department: true, designation: true } },
+        hiringPlan: {
+          select: { title: true, department: true, designation: true },
+        },
       },
     });
     if (!application) throw new NotFoundException('Application not found');
@@ -317,7 +349,7 @@ export class FeedbackService {
     const trimmedKey = rawKey ? rawKey.trim() : null;
     let scoreResult: any = {};
     if (!trimmedKey) {
-      scoreResult = { score: 85, reasoning: "Mock score" };
+      scoreResult = { score: 85, reasoning: 'Mock score' };
     } else {
       const { GoogleGenAI } = require('@google/genai');
       const ai = new GoogleGenAI({ apiKey: trimmedKey });
@@ -356,11 +388,17 @@ export class FeedbackService {
       const prompt = `Calculate a final objective score (0-100) for this candidate based on the feedback and scoring weights. Return JSON with a "score" number and "reasoning" string. Context: ${JSON.stringify(payload)}`;
       try {
         const response = await ai.models.generateContent({
-          model: this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest',
+          model:
+            this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest',
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           config: { responseMimeType: 'application/json', temperature: 0.2 },
         });
-        scoreResult = JSON.parse((response.text || "{}").replace(/```json/g, '').replace(/```/g, '').trim());
+        scoreResult = JSON.parse(
+          (response.text || '{}')
+            .replace(/```json/g, '')
+            .replace(/```/g, '')
+            .trim(),
+        );
       } catch (err) {
         throw new BadRequestException(`AI scoring failed: ${err.message}`);
       }
@@ -382,7 +420,9 @@ export class FeedbackService {
         interviewer: { select: { id: true, name: true, email: true } },
         stage: { select: { id: true, name: true, stageType: true } },
         skillRatings: {
-          include: { skill: { select: { id: true, name: true, category: true } } },
+          include: {
+            skill: { select: { id: true, name: true, category: true } },
+          },
         },
       },
     });

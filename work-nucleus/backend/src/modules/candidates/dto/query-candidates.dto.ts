@@ -1,4 +1,11 @@
-import { IsOptional, IsString, IsEnum, IsInt, Min, IsIn } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsEnum,
+  IsInt,
+  Min,
+  IsIn,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { CandidateSource } from '@prisma/client';
@@ -19,14 +26,20 @@ export class QueryCandidatesDto {
   @IsString()
   hiringPlanId?: string;
 
-  @ApiPropertyOptional({ description: 'Top N candidates by AI match score', enum: [5, 10, 20] })
+  @ApiPropertyOptional({
+    description: 'Top N candidates by AI match score',
+    enum: [5, 10, 20],
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @IsIn([5, 10, 20])
   topN?: number;
 
-  @ApiPropertyOptional({ description: 'Sort field', enum: ['createdAt', 'aiMatchScore', 'name'] })
+  @ApiPropertyOptional({
+    description: 'Sort field',
+    enum: ['createdAt', 'aiMatchScore', 'name'],
+  })
   @IsOptional()
   @IsString()
   sortBy?: string = 'createdAt';

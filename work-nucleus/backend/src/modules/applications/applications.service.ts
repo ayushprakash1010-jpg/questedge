@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AddToPipelineDto } from './dto/add-to-pipeline.dto';
 import { MoveCandidateDto } from './dto/move-candidate.dto';
@@ -11,7 +16,7 @@ import { RewardsService } from '../rewards/rewards.service';
 export class ApplicationsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly rewardsService: RewardsService
+    private readonly rewardsService: RewardsService,
   ) {}
 
   async addToPipeline(hiringPlanId: string, dto: AddToPipelineDto) {
@@ -22,15 +27,24 @@ export class ApplicationsService {
     });
 
     if (!firstStage) {
-      throw new BadRequestException('No pipeline stages configured. Set up the pipeline first.');
+      throw new BadRequestException(
+        'No pipeline stages configured. Set up the pipeline first.',
+      );
     }
 
     // Check for duplicate application
     const existing = await this.prisma.candidateApplication.findUnique({
-      where: { candidateId_hiringPlanId: { candidateId: dto.candidateId, hiringPlanId } },
+      where: {
+        candidateId_hiringPlanId: {
+          candidateId: dto.candidateId,
+          hiringPlanId,
+        },
+      },
     });
     if (existing) {
-      throw new ConflictException('Candidate already applied to this hiring plan');
+      throw new ConflictException(
+        'Candidate already applied to this hiring plan',
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -65,8 +79,12 @@ export class ApplicationsService {
           include: {
             candidate: {
               select: {
-                id: true, name: true, email: true, currentRole: true,
-                currentCompany: true, experienceYears: true,
+                id: true,
+                name: true,
+                email: true,
+                currentRole: true,
+                currentCompany: true,
+                experienceYears: true,
               },
             },
           },
@@ -79,7 +97,8 @@ export class ApplicationsService {
     return stages.map((stage) => {
       const candidates = stage.applications.map((app) => {
         const daysInStage = Math.floor(
-          (Date.now() - new Date(app.stageEnteredAt).getTime()) / (1000 * 60 * 60 * 24),
+          (Date.now() - new Date(app.stageEnteredAt).getTime()) /
+            (1000 * 60 * 60 * 24),
         );
         return {
           applicationId: app.id,
@@ -88,7 +107,9 @@ export class ApplicationsService {
           email: app.candidate.email,
           currentRole: app.candidate.currentRole,
           currentCompany: app.candidate.currentCompany,
-          experienceYears: app.candidate.experienceYears ? Number(app.candidate.experienceYears) : null,
+          experienceYears: app.candidate.experienceYears
+            ? Number(app.candidate.experienceYears)
+            : null,
           totalScore: app.totalScore ? Number(app.totalScore) : null,
           aiMatchScore: app.aiMatchScore ? Number(app.aiMatchScore) : null,
           daysInStage,
@@ -97,7 +118,10 @@ export class ApplicationsService {
       });
 
       const avgDaysInStage = candidates.length
-        ? Math.round(candidates.reduce((sum, c) => sum + c.daysInStage, 0) / candidates.length)
+        ? Math.round(
+            candidates.reduce((sum, c) => sum + c.daysInStage, 0) /
+              candidates.length,
+          )
         : 0;
 
       return {
@@ -132,11 +156,16 @@ export class ApplicationsService {
       throw new BadRequestException('Target stage not found');
     }
 
-    const isValidHiringPlan = application.hiringPlanId && targetStage.hiringPlanId === application.hiringPlanId;
-    const isValidMandate = application.mandateId && targetStage.mandateId === application.mandateId;
+    const isValidHiringPlan =
+      application.hiringPlanId &&
+      targetStage.hiringPlanId === application.hiringPlanId;
+    const isValidMandate =
+      application.mandateId && targetStage.mandateId === application.mandateId;
 
     if (!isValidHiringPlan && !isValidMandate) {
-      throw new BadRequestException('Invalid target stage for this application');
+      throw new BadRequestException(
+        'Invalid target stage for this application',
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -233,9 +262,11 @@ export class ApplicationsService {
     });
 
     if (dto.status === ApplicationStatus.SELECTED && application.referralId) {
-      await this.rewardsService.triggerRewardEligibility(application.referralId).catch(err => {
-        console.error('Failed to trigger reward eligibility:', err);
-      });
+      await this.rewardsService
+        .triggerRewardEligibility(application.referralId)
+        .catch((err) => {
+          console.error('Failed to trigger reward eligibility:', err);
+        });
     }
 
     return result;
@@ -246,10 +277,19 @@ export class ApplicationsService {
       where: { id: applicationId },
       include: {
         candidate: true,
-        hiringPlan: { select: { id: true, title: true, department: true, designation: true } },
+        hiringPlan: {
+          select: {
+            id: true,
+            title: true,
+            department: true,
+            designation: true,
+          },
+        },
         currentStage: { select: { id: true, name: true, stageType: true } },
         stageHistory: {
-          include: { stage: { select: { id: true, name: true, stageType: true } } },
+          include: {
+            stage: { select: { id: true, name: true, stageType: true } },
+          },
           orderBy: { enteredAt: 'asc' },
         },
       },
@@ -259,26 +299,31 @@ export class ApplicationsService {
   }
 
   async getPipelineStats(hiringPlanId: string) {
-    const [totalActive, totalSelected, totalRejected, stages] = await Promise.all([
-      this.prisma.candidateApplication.count({
-        where: { hiringPlanId, status: ApplicationStatus.ACTIVE },
-      }),
-      this.prisma.candidateApplication.count({
-        where: { hiringPlanId, status: ApplicationStatus.SELECTED },
-      }),
-      this.prisma.candidateApplication.count({
-        where: { hiringPlanId, status: ApplicationStatus.REJECTED },
-      }),
-      this.prisma.pipelineStage.findMany({
-        where: { hiringPlanId },
-        orderBy: { stageOrder: 'asc' },
-        select: {
-          id: true,
-          name: true,
-          _count: { select: { applications: { where: { status: ApplicationStatus.ACTIVE } } } },
-        },
-      }),
-    ]);
+    const [totalActive, totalSelected, totalRejected, stages] =
+      await Promise.all([
+        this.prisma.candidateApplication.count({
+          where: { hiringPlanId, status: ApplicationStatus.ACTIVE },
+        }),
+        this.prisma.candidateApplication.count({
+          where: { hiringPlanId, status: ApplicationStatus.SELECTED },
+        }),
+        this.prisma.candidateApplication.count({
+          where: { hiringPlanId, status: ApplicationStatus.REJECTED },
+        }),
+        this.prisma.pipelineStage.findMany({
+          where: { hiringPlanId },
+          orderBy: { stageOrder: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            _count: {
+              select: {
+                applications: { where: { status: ApplicationStatus.ACTIVE } },
+              },
+            },
+          },
+        }),
+      ]);
 
     const total = totalActive + totalSelected + totalRejected;
 
@@ -288,7 +333,11 @@ export class ApplicationsService {
       selected: totalSelected,
       rejected: totalRejected,
       rejectionRate: total > 0 ? Math.round((totalRejected / total) * 100) : 0,
-      perStage: stages.map((s) => ({ id: s.id, name: s.name, count: s._count.applications })),
+      perStage: stages.map((s) => ({
+        id: s.id,
+        name: s.name,
+        count: s._count.applications,
+      })),
     };
   }
 }

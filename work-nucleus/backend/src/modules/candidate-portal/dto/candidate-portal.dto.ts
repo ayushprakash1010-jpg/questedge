@@ -25,7 +25,9 @@ export class UpsertCandidateProfileDto {
   @IsString()
   phone?: string;
 
-  @ApiPropertyOptional({ example: 'Senior Full-Stack Developer | 6 Years | React + Node.js' })
+  @ApiPropertyOptional({
+    example: 'Senior Full-Stack Developer | 6 Years | React + Node.js',
+  })
   @IsOptional()
   @IsString()
   headline?: string;
@@ -46,7 +48,10 @@ export class UpsertCandidateProfileDto {
   @Type(() => Number)
   experienceYears?: number;
 
-  @ApiPropertyOptional({ description: 'Skill names array', example: ['React', 'TypeScript', 'Node.js'] })
+  @ApiPropertyOptional({
+    description: 'Skill names array',
+    example: ['React', 'TypeScript', 'Node.js'],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
@@ -73,7 +78,10 @@ export class UpsertCandidateProfileDto {
   @IsString({ each: true })
   preferredLocations?: string[];
 
-  @ApiPropertyOptional({ description: 'Current CTC in base currency units', example: 1800000 })
+  @ApiPropertyOptional({
+    description: 'Current CTC in base currency units',
+    example: 1800000,
+  })
   @IsOptional()
   @IsNumber()
   @Type(() => Number)
@@ -92,7 +100,9 @@ export class UpsertCandidateProfileDto {
   @Type(() => Number)
   noticePeriodDays?: number;
 
-  @ApiPropertyOptional({ example: ['Backend Engineer', 'Full Stack Developer'] })
+  @ApiPropertyOptional({
+    example: ['Backend Engineer', 'Full Stack Developer'],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
@@ -115,7 +125,9 @@ export class UpsertCandidateProfileDto {
 }
 
 export class DirectApplyDto {
-  @ApiPropertyOptional({ description: 'Optional cover letter for this application' })
+  @ApiPropertyOptional({
+    description: 'Optional cover letter for this application',
+  })
   @IsOptional()
   @IsString()
   coverLetter?: string;

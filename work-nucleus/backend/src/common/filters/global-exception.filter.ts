@@ -1,5 +1,10 @@
 import {
-  ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus, Logger,
+  ExceptionFilter,
+  Catch,
+  ArgumentsHost,
+  HttpException,
+  HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { Response } from 'express';
@@ -73,13 +78,20 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
   private getCodeFromStatus(status: number): string {
     switch (status) {
-      case 400: return 'BAD_REQUEST';
-      case 401: return 'UNAUTHORIZED';
-      case 403: return 'FORBIDDEN';
-      case 404: return 'NOT_FOUND';
-      case 409: return 'CONFLICT';
-      case 429: return 'TOO_MANY_REQUESTS';
-      default: return 'ERROR';
+      case 400:
+        return 'BAD_REQUEST';
+      case 401:
+        return 'UNAUTHORIZED';
+      case 403:
+        return 'FORBIDDEN';
+      case 404:
+        return 'NOT_FOUND';
+      case 409:
+        return 'CONFLICT';
+      case 429:
+        return 'TOO_MANY_REQUESTS';
+      default:
+        return 'ERROR';
     }
   }
 }

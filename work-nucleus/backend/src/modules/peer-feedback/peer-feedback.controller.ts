@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
@@ -19,7 +27,9 @@ export class PeerFeedbackController {
   constructor(private readonly service: PeerFeedbackService) {}
 
   @Post('nominate')
-  @ApiOperation({ summary: 'Nominate peers (employee or manager on behalf of report)' })
+  @ApiOperation({
+    summary: 'Nominate peers (employee or manager on behalf of report)',
+  })
   nominate(
     @CurrentUser('orgId') orgId: string,
     @CurrentUser('id') userId: string,
@@ -39,19 +49,30 @@ export class PeerFeedbackController {
   }
 
   @Get('incoming')
-  @ApiOperation({ summary: 'List feedback requests directed at the current user' })
-  incoming(@CurrentUser('orgId') orgId: string, @CurrentUser('id') userId: string) {
+  @ApiOperation({
+    summary: 'List feedback requests directed at the current user',
+  })
+  incoming(
+    @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') userId: string,
+  ) {
     return this.service.listIncomingForReviewer(orgId, userId);
   }
 
   @Get('aggregated')
-  @ApiOperation({ summary: 'Aggregated themes for manager review (≥3 responses required)' })
+  @ApiOperation({
+    summary: 'Aggregated themes for manager review (≥3 responses required)',
+  })
   aggregated(
     @CurrentUser('orgId') orgId: string,
     @Query('cycleId', ParseUUIDPipe) cycleId: string,
     @Query('subjectUserId', ParseUUIDPipe) subjectUserId: string,
   ) {
-    return this.service.aggregatedForManagerReview(orgId, cycleId, subjectUserId);
+    return this.service.aggregatedForManagerReview(
+      orgId,
+      cycleId,
+      subjectUserId,
+    );
   }
 }
 
@@ -62,7 +83,9 @@ export class PeerFeedbackPublicController {
   constructor(private readonly service: PeerFeedbackService) {}
 
   @Get(':token')
-  @ApiOperation({ summary: 'Tokenised reviewer view — never exposes others’ responses' })
+  @ApiOperation({
+    summary: 'Tokenised reviewer view — never exposes others’ responses',
+  })
   get(@Param('token') token: string) {
     return this.service.findByToken(token);
   }

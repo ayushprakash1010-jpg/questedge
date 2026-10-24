@@ -151,15 +151,17 @@ export class PublicApplyService {
     }
 
     // Enqueue AI resume scoring job (processed by nightly worker or individually)
-    await this.queue.enqueue('resume-score-one', {
-      applicationId: application.id,
-      candidateId: candidate.id,
-      hiringPlanId,
-      candidateName: dto.name,
-      resumeKey,
-    }).catch((err) =>
-      this.logger.warn(`Failed to enqueue resume scoring: ${err.message}`),
-    );
+    await this.queue
+      .enqueue('resume-score-one', {
+        applicationId: application.id,
+        candidateId: candidate.id,
+        hiringPlanId,
+        candidateName: dto.name,
+        resumeKey,
+      })
+      .catch((err) =>
+        this.logger.warn(`Failed to enqueue resume scoring: ${err.message}`),
+      );
 
     return {
       message: 'Application submitted successfully',

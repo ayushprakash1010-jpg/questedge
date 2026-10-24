@@ -42,7 +42,12 @@ export class AnalyticsService {
           where: { orgId, status: HiringPlanStatus.ACTIVE },
         }),
         this.prisma.hiringPlan.aggregate({
-          where: { orgId, status: { in: [HiringPlanStatus.ACTIVE, HiringPlanStatus.COMPLETED] } },
+          where: {
+            orgId,
+            status: {
+              in: [HiringPlanStatus.ACTIVE, HiringPlanStatus.COMPLETED],
+            },
+          },
           _sum: { totalRoles: true, filledRoles: true },
         }),
         this.prisma.mandate.aggregate({
@@ -82,20 +87,27 @@ export class AnalyticsService {
           where: { hiringPlan: { orgId }, status: ApplicationStatus.REJECTED },
         }),
         this.prisma.referral.count({
-          where: { mandate: { orgId }, status: { in: ['REJECTED', 'CANDIDATE_DECLINED', 'WITHDRAWN'] } },
+          where: {
+            mandate: { orgId },
+            status: { in: ['REJECTED', 'CANDIDATE_DECLINED', 'WITHDRAWN'] },
+          },
         }),
       ]);
 
       const planTotal = totalRolesAgg._sum.totalRoles || 0;
       const planFilled = totalRolesAgg._sum.filledRoles || 0;
-      const mandateOpenings = mandateOpeningsAgg._sum.numberOfOpenings || (activeMandates > 0 ? activeMandates : 0);
+      const mandateOpenings =
+        mandateOpeningsAgg._sum.numberOfOpenings ||
+        (activeMandates > 0 ? activeMandates : 0);
 
       const totalRoles = planTotal + mandateOpenings;
       const filledRoles = planFilled;
-      const openRoles = (planTotal - planFilled) + mandateOpenings;
-      const fillRate = totalRoles > 0 ? Math.round((filledRoles / totalRoles) * 100) : 0;
+      const openRoles = planTotal - planFilled + mandateOpenings;
+      const fillRate =
+        totalRoles > 0 ? Math.round((filledRoles / totalRoles) * 100) : 0;
 
-      const pipelineCandidates = planPipeline + mandateAppPipeline + referralPipeline;
+      const pipelineCandidates =
+        planPipeline + mandateAppPipeline + referralPipeline;
       const selectedCount = planSelected + referralSelected;
       const rejectedCount = planRejected + referralRejected;
 
@@ -103,7 +115,9 @@ export class AnalyticsService {
       const completedApps = await this.prisma.candidateApplication.findMany({
         where: {
           hiringPlan: { orgId },
-          status: { in: [ApplicationStatus.SELECTED, ApplicationStatus.REJECTED] },
+          status: {
+            in: [ApplicationStatus.SELECTED, ApplicationStatus.REJECTED],
+          },
           completedAt: { not: null },
         },
         select: { appliedAt: true, completedAt: true },
@@ -113,7 +127,9 @@ export class AnalyticsService {
       if (completedApps.length > 0) {
         const totalDays = completedApps.reduce((sum, a) => {
           const days = Math.ceil(
-            (new Date(a.completedAt!).getTime() - new Date(a.appliedAt).getTime()) / (1000 * 60 * 60 * 24),
+            (new Date(a.completedAt!).getTime() -
+              new Date(a.appliedAt).getTime()) /
+              (1000 * 60 * 60 * 24),
           );
           return sum + days;
         }, 0);
@@ -136,13 +152,21 @@ export class AnalyticsService {
         const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         const count = recentPlans.filter((p) => {
           const pd = new Date(p.createdAt);
-          return pd.getFullYear() === d.getFullYear() && pd.getMonth() === d.getMonth();
+          return (
+            pd.getFullYear() === d.getFullYear() &&
+            pd.getMonth() === d.getMonth()
+          );
         }).length;
         trend.push({ month: monthKey, count });
       }
 
       // Marketplace KPIs
-      const [pendingReferrals, rewardCommitmentsAgg, recentPendingReferrals, recentActivityRaw] = await Promise.all([
+      const [
+        pendingReferrals,
+        rewardCommitmentsAgg,
+        recentPendingReferrals,
+        recentActivityRaw,
+      ] = await Promise.all([
         this.prisma.referral.count({
           where: {
             mandate: { orgId },
@@ -161,7 +185,9 @@ export class AnalyticsService {
           orderBy: { updatedAt: 'desc' },
           take: 5,
           include: {
-            candidateProfile: { select: { name: true, currentDesignation: true } },
+            candidateProfile: {
+              select: { name: true, currentDesignation: true },
+            },
             mandate: { select: { title: true } },
           },
         }),
@@ -190,22 +216,27 @@ export class AnalyticsService {
         trend,
         activeMandates,
         pendingReferrals,
-        rewardCommitments: rewardCommitmentsAgg._sum.rewardAmount?.toNumber() || 0,
+        rewardCommitments:
+          rewardCommitmentsAgg._sum.rewardAmount?.toNumber() || 0,
         recentPendingReferrals,
-        recentActivity: recentActivityRaw.map(r => ({
+        recentActivity: recentActivityRaw.map((r) => ({
           id: `ref-${r.id}`,
           type: 'referral',
           title: `${r.recruiter?.name || 'Someone'} referred ${r.candidateProfile?.name || 'a candidate'} for ${r.mandate?.title || 'a role'}`,
-          timestamp: r.createdAt.toISOString()
-        }))
+          timestamp: r.createdAt.toISOString(),
+        })),
       };
     });
   }
 
   async getPipelineFunnel(orgId: string, hiringPlanId?: string) {
-    const cacheKey = hiringPlanId ? `funnel:${orgId}:${hiringPlanId}` : `funnel:${orgId}`;
+    const cacheKey = hiringPlanId
+      ? `funnel:${orgId}:${hiringPlanId}`
+      : `funnel:${orgId}`;
     return this.cached(cacheKey, async () => {
-      const planFilter = hiringPlanId ? { hiringPlanId } : { hiringPlan: { orgId } };
+      const planFilter = hiringPlanId
+        ? { hiringPlanId }
+        : { hiringPlan: { orgId } };
 
       const stages = await this.prisma.pipelineStage.findMany({
         where: hiringPlanId ? { hiringPlanId } : { hiringPlan: { orgId } },
@@ -221,26 +252,103 @@ export class AnalyticsService {
 
         if (referrals.length > 0) {
           const totalSourced = referrals.length;
-          const consentGiven = referrals.filter(r => r.status !== 'PENDING_CONSENT').length;
-          const reviewOrAbove = referrals.filter(r =>
-            ['CANDIDATE_ACCEPTED', 'ACTIVATED', 'UNDER_REVIEW', 'SHORTLISTED', 'INTERVIEW', 'SELECTED', 'HIRED'].includes(r.status)
+          const consentGiven = referrals.filter(
+            (r) => r.status !== 'PENDING_CONSENT',
           ).length;
-          const shortlistedOrAbove = referrals.filter(r =>
-            ['SHORTLISTED', 'INTERVIEW', 'SELECTED', 'HIRED'].includes(r.status)
+          const reviewOrAbove = referrals.filter((r) =>
+            [
+              'CANDIDATE_ACCEPTED',
+              'ACTIVATED',
+              'UNDER_REVIEW',
+              'SHORTLISTED',
+              'INTERVIEW',
+              'SELECTED',
+              'HIRED',
+            ].includes(r.status),
           ).length;
-          const interviewOrAbove = referrals.filter(r =>
-            ['INTERVIEW', 'SELECTED', 'HIRED'].includes(r.status)
+          const shortlistedOrAbove = referrals.filter((r) =>
+            ['SHORTLISTED', 'INTERVIEW', 'SELECTED', 'HIRED'].includes(
+              r.status,
+            ),
           ).length;
-          const offerOrAbove = referrals.filter(r =>
-            ['SELECTED', 'HIRED'].includes(r.status)
+          const interviewOrAbove = referrals.filter((r) =>
+            ['INTERVIEW', 'SELECTED', 'HIRED'].includes(r.status),
+          ).length;
+          const offerOrAbove = referrals.filter((r) =>
+            ['SELECTED', 'HIRED'].includes(r.status),
           ).length;
 
           return [
-            { id: 'stage-sourced', name: 'Sourced', stageType: 'SOURCING', stageOrder: 1, entered: totalSourced, passed: consentGiven, rejected: 0, passThroughRate: totalSourced > 0 ? Math.round((consentGiven / totalSourced) * 100) : 100, avgDays: 1 },
-            { id: 'stage-review', name: 'Screening', stageType: 'SCREENING', stageOrder: 2, entered: reviewOrAbove, passed: shortlistedOrAbove, rejected: referrals.filter(r => r.status === 'REJECTED' || r.status === 'CANDIDATE_DECLINED').length, passThroughRate: reviewOrAbove > 0 ? Math.round((shortlistedOrAbove / reviewOrAbove) * 100) : 0, avgDays: 2 },
-            { id: 'stage-shortlisted', name: 'Shortlisted', stageType: 'TECHNICAL', stageOrder: 3, entered: shortlistedOrAbove, passed: interviewOrAbove, rejected: 0, passThroughRate: shortlistedOrAbove > 0 ? Math.round((interviewOrAbove / shortlistedOrAbove) * 100) : 0, avgDays: 3 },
-            { id: 'stage-interview', name: 'Interview', stageType: 'LEADERSHIP', stageOrder: 4, entered: interviewOrAbove, passed: offerOrAbove, rejected: 0, passThroughRate: interviewOrAbove > 0 ? Math.round((offerOrAbove / interviewOrAbove) * 100) : 0, avgDays: 4 },
-            { id: 'stage-offer', name: 'Offer / Hired', stageType: 'OFFER', stageOrder: 5, entered: offerOrAbove, passed: offerOrAbove, rejected: 0, passThroughRate: 100, avgDays: 2 },
+            {
+              id: 'stage-sourced',
+              name: 'Sourced',
+              stageType: 'SOURCING',
+              stageOrder: 1,
+              entered: totalSourced,
+              passed: consentGiven,
+              rejected: 0,
+              passThroughRate:
+                totalSourced > 0
+                  ? Math.round((consentGiven / totalSourced) * 100)
+                  : 100,
+              avgDays: 1,
+            },
+            {
+              id: 'stage-review',
+              name: 'Screening',
+              stageType: 'SCREENING',
+              stageOrder: 2,
+              entered: reviewOrAbove,
+              passed: shortlistedOrAbove,
+              rejected: referrals.filter(
+                (r) =>
+                  r.status === 'REJECTED' || r.status === 'CANDIDATE_DECLINED',
+              ).length,
+              passThroughRate:
+                reviewOrAbove > 0
+                  ? Math.round((shortlistedOrAbove / reviewOrAbove) * 100)
+                  : 0,
+              avgDays: 2,
+            },
+            {
+              id: 'stage-shortlisted',
+              name: 'Shortlisted',
+              stageType: 'TECHNICAL',
+              stageOrder: 3,
+              entered: shortlistedOrAbove,
+              passed: interviewOrAbove,
+              rejected: 0,
+              passThroughRate:
+                shortlistedOrAbove > 0
+                  ? Math.round((interviewOrAbove / shortlistedOrAbove) * 100)
+                  : 0,
+              avgDays: 3,
+            },
+            {
+              id: 'stage-interview',
+              name: 'Interview',
+              stageType: 'LEADERSHIP',
+              stageOrder: 4,
+              entered: interviewOrAbove,
+              passed: offerOrAbove,
+              rejected: 0,
+              passThroughRate:
+                interviewOrAbove > 0
+                  ? Math.round((offerOrAbove / interviewOrAbove) * 100)
+                  : 0,
+              avgDays: 4,
+            },
+            {
+              id: 'stage-offer',
+              name: 'Offer / Hired',
+              stageType: 'OFFER',
+              stageOrder: 5,
+              entered: offerOrAbove,
+              passed: offerOrAbove,
+              rejected: 0,
+              passThroughRate: 100,
+              avgDays: 2,
+            },
           ];
         }
       }
@@ -252,30 +360,48 @@ export class AnalyticsService {
               where: { stageId: stage.id, application: planFilter },
             }),
             this.prisma.candidateStageHistory.count({
-              where: { stageId: stage.id, outcome: 'PASSED', application: planFilter },
+              where: {
+                stageId: stage.id,
+                outcome: 'PASSED',
+                application: planFilter,
+              },
             }),
             this.prisma.candidateStageHistory.count({
-              where: { stageId: stage.id, outcome: 'REJECTED', application: planFilter },
+              where: {
+                stageId: stage.id,
+                outcome: 'REJECTED',
+                application: planFilter,
+              },
             }),
           ]);
 
           // Avg days in stage
           const histories = await this.prisma.candidateStageHistory.findMany({
-            where: { stageId: stage.id, exitedAt: { not: null }, application: planFilter },
+            where: {
+              stageId: stage.id,
+              exitedAt: { not: null },
+              application: planFilter,
+            },
             select: { enteredAt: true, exitedAt: true },
           });
 
           let avgDays = 0;
           if (histories.length > 0) {
             const totalDays = histories.reduce((sum, h) => {
-              return sum + Math.ceil(
-                (new Date(h.exitedAt!).getTime() - new Date(h.enteredAt).getTime()) / (1000 * 60 * 60 * 24),
+              return (
+                sum +
+                Math.ceil(
+                  (new Date(h.exitedAt!).getTime() -
+                    new Date(h.enteredAt).getTime()) /
+                    (1000 * 60 * 60 * 24),
+                )
               );
             }, 0);
             avgDays = Math.round(totalDays / histories.length);
           }
 
-          const passThroughRate = entered > 0 ? Math.round((passed / entered) * 100) : 0;
+          const passThroughRate =
+            entered > 0 ? Math.round((passed / entered) * 100) : 0;
 
           return {
             id: stage.id,
@@ -295,7 +421,10 @@ export class AnalyticsService {
     });
   }
 
-  async getTimeToHire(orgId: string, groupBy: 'role' | 'department' | 'quarter' = 'department') {
+  async getTimeToHire(
+    orgId: string,
+    groupBy: 'role' | 'department' | 'quarter' = 'department',
+  ) {
     return this.cached(`tth:${orgId}:${groupBy}`, async () => {
       const apps = await this.prisma.candidateApplication.findMany({
         where: {
@@ -304,18 +433,28 @@ export class AnalyticsService {
           completedAt: { not: null },
         },
         include: {
-          hiringPlan: { select: { designation: true, department: true, quarter: true, year: true } },
+          hiringPlan: {
+            select: {
+              designation: true,
+              department: true,
+              quarter: true,
+              year: true,
+            },
+          },
         },
       });
 
       const groups: Record<string, number[]> = {};
       for (const a of apps) {
         const days = Math.ceil(
-          (new Date(a.completedAt!).getTime() - new Date(a.appliedAt).getTime()) / (1000 * 60 * 60 * 24),
+          (new Date(a.completedAt!).getTime() -
+            new Date(a.appliedAt).getTime()) /
+            (1000 * 60 * 60 * 24),
         );
         let key: string;
         if (groupBy === 'role') key = a.hiringPlan.designation;
-        else if (groupBy === 'quarter') key = `Q${a.hiringPlan.quarter} ${a.hiringPlan.year}`;
+        else if (groupBy === 'quarter')
+          key = `Q${a.hiringPlan.quarter} ${a.hiringPlan.year}`;
         else key = a.hiringPlan.department;
 
         if (!groups[key]) groups[key] = [];
@@ -344,15 +483,26 @@ export class AnalyticsService {
         d.setMonth(d.getMonth() - i);
         const monthApps = apps.filter((a) => {
           const cd = new Date(a.completedAt!);
-          return cd.getFullYear() === d.getFullYear() && cd.getMonth() === d.getMonth();
+          return (
+            cd.getFullYear() === d.getFullYear() &&
+            cd.getMonth() === d.getMonth()
+          );
         });
-        const avg = monthApps.length > 0
-          ? Math.round(
-              monthApps.reduce((s, a) =>
-                s + Math.ceil((new Date(a.completedAt!).getTime() - new Date(a.appliedAt).getTime()) / (1000 * 60 * 60 * 24)),
-              0) / monthApps.length,
-            )
-          : 0;
+        const avg =
+          monthApps.length > 0
+            ? Math.round(
+                monthApps.reduce(
+                  (s, a) =>
+                    s +
+                    Math.ceil(
+                      (new Date(a.completedAt!).getTime() -
+                        new Date(a.appliedAt).getTime()) /
+                        (1000 * 60 * 60 * 24),
+                    ),
+                  0,
+                ) / monthApps.length,
+              )
+            : 0;
         trend.push({
           month: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
           avgDays: avg,
@@ -366,7 +516,10 @@ export class AnalyticsService {
   async getCostTracking(orgId: string) {
     return this.cached(`cost:${orgId}`, async () => {
       const plans = await this.prisma.hiringPlan.findMany({
-        where: { orgId, status: { in: [HiringPlanStatus.ACTIVE, HiringPlanStatus.COMPLETED] } },
+        where: {
+          orgId,
+          status: { in: [HiringPlanStatus.ACTIVE, HiringPlanStatus.COMPLETED] },
+        },
         select: {
           id: true,
           title: true,
@@ -381,12 +534,17 @@ export class AnalyticsService {
       const result = await Promise.all(
         plans.map(async (plan) => {
           const offers = await this.prisma.selectionDecision.findMany({
-            where: { application: { hiringPlanId: plan.id }, decision: 'SELECTED', offerCtc: { not: null } },
+            where: {
+              application: { hiringPlanId: plan.id },
+              decision: 'SELECTED',
+              offerCtc: { not: null },
+            },
             select: { offerCtc: true },
           });
 
           const totalSpent = offers.reduce((s, o) => s + Number(o.offerCtc), 0);
-          const avgOfferCtc = offers.length > 0 ? Math.round(totalSpent / offers.length) : 0;
+          const avgOfferCtc =
+            offers.length > 0 ? Math.round(totalSpent / offers.length) : 0;
 
           return {
             planId: plan.id,
@@ -399,7 +557,8 @@ export class AnalyticsService {
             offersCount: offers.length,
             avgOfferCtc,
             totalSpent,
-            remainingBudget: Number(plan.budgetMax) * plan.totalRoles - totalSpent,
+            remainingBudget:
+              Number(plan.budgetMax) * plan.totalRoles - totalSpent,
           };
         }),
       );
@@ -417,14 +576,17 @@ export class AnalyticsService {
         },
       });
 
-      const interviewerMap: Record<string, {
-        id: string;
-        name: string;
-        totalInterviews: number;
-        ratingSum: number;
-        recommendations: Record<string, number>;
-        feedbackTimes: number[];
-      }> = {};
+      const interviewerMap: Record<
+        string,
+        {
+          id: string;
+          name: string;
+          totalInterviews: number;
+          ratingSum: number;
+          recommendations: Record<string, number>;
+          feedbackTimes: number[];
+        }
+      > = {};
 
       for (const fb of feedbacks) {
         const iId = fb.interviewer.id;
@@ -441,12 +603,15 @@ export class AnalyticsService {
         const m = interviewerMap[iId];
         m.totalInterviews++;
         m.ratingSum += fb.overallRating;
-        m.recommendations[fb.recommendation] = (m.recommendations[fb.recommendation] || 0) + 1;
+        m.recommendations[fb.recommendation] =
+          (m.recommendations[fb.recommendation] || 0) + 1;
 
         // Feedback time (created to submitted)
         if (fb.submittedAt) {
           const hours = Math.ceil(
-            (new Date(fb.submittedAt).getTime() - new Date(fb.createdAt).getTime()) / (1000 * 60 * 60),
+            (new Date(fb.submittedAt).getTime() -
+              new Date(fb.createdAt).getTime()) /
+              (1000 * 60 * 60),
           );
           m.feedbackTimes.push(hours);
         }
@@ -458,9 +623,13 @@ export class AnalyticsService {
           name: m.name,
           totalInterviews: m.totalInterviews,
           avgRating: Math.round((m.ratingSum / m.totalInterviews) * 10) / 10,
-          avgFeedbackTimeHours: m.feedbackTimes.length > 0
-            ? Math.round(m.feedbackTimes.reduce((s, t) => s + t, 0) / m.feedbackTimes.length)
-            : 0,
+          avgFeedbackTimeHours:
+            m.feedbackTimes.length > 0
+              ? Math.round(
+                  m.feedbackTimes.reduce((s, t) => s + t, 0) /
+                    m.feedbackTimes.length,
+                )
+              : 0,
           recommendations: m.recommendations,
         }))
         .sort((a, b) => b.totalInterviews - a.totalInterviews);
@@ -470,7 +639,10 @@ export class AnalyticsService {
   async getHiringProgress(orgId: string) {
     return this.cached(`progress:${orgId}`, async () => {
       const plans = await this.prisma.hiringPlan.findMany({
-        where: { orgId, status: { in: [HiringPlanStatus.ACTIVE, HiringPlanStatus.COMPLETED] } },
+        where: {
+          orgId,
+          status: { in: [HiringPlanStatus.ACTIVE, HiringPlanStatus.COMPLETED] },
+        },
         select: {
           id: true,
           title: true,
@@ -496,7 +668,10 @@ export class AnalyticsService {
         totalRoles: p.totalRoles,
         filledRoles: p.filledRoles,
         inPipeline: p._count.applications,
-        progress: p.totalRoles > 0 ? Math.round((p.filledRoles / p.totalRoles) * 100) : 0,
+        progress:
+          p.totalRoles > 0
+            ? Math.round((p.filledRoles / p.totalRoles) * 100)
+            : 0,
         status: p.status,
       }));
     });
@@ -516,24 +691,34 @@ export class AnalyticsService {
         },
       });
 
-      const sourceMap: Record<string, {
-        candidates: number;
-        selected: number;
-        scores: number[];
-        times: number[];
-      }> = {};
+      const sourceMap: Record<
+        string,
+        {
+          candidates: number;
+          selected: number;
+          scores: number[];
+          times: number[];
+        }
+      > = {};
 
       for (const a of apps) {
         const src = a.candidate.source;
         if (!sourceMap[src]) {
-          sourceMap[src] = { candidates: 0, selected: 0, scores: [], times: [] };
+          sourceMap[src] = {
+            candidates: 0,
+            selected: 0,
+            scores: [],
+            times: [],
+          };
         }
         sourceMap[src].candidates++;
         if (a.status === ApplicationStatus.SELECTED) sourceMap[src].selected++;
         if (a.totalScore) sourceMap[src].scores.push(Number(a.totalScore));
         if (a.completedAt) {
           const days = Math.ceil(
-            (new Date(a.completedAt).getTime() - new Date(a.appliedAt).getTime()) / (1000 * 60 * 60 * 24),
+            (new Date(a.completedAt).getTime() -
+              new Date(a.appliedAt).getTime()) /
+              (1000 * 60 * 60 * 24),
           );
           sourceMap[src].times.push(days);
         }
@@ -544,13 +729,22 @@ export class AnalyticsService {
           source,
           candidates: data.candidates,
           selected: data.selected,
-          selectionRate: data.candidates > 0 ? Math.round((data.selected / data.candidates) * 100) : 0,
-          avgScore: data.scores.length > 0
-            ? Math.round(data.scores.reduce((s, v) => s + v, 0) / data.scores.length)
-            : 0,
-          avgTimeToHire: data.times.length > 0
-            ? Math.round(data.times.reduce((s, v) => s + v, 0) / data.times.length)
-            : 0,
+          selectionRate:
+            data.candidates > 0
+              ? Math.round((data.selected / data.candidates) * 100)
+              : 0,
+          avgScore:
+            data.scores.length > 0
+              ? Math.round(
+                  data.scores.reduce((s, v) => s + v, 0) / data.scores.length,
+                )
+              : 0,
+          avgTimeToHire:
+            data.times.length > 0
+              ? Math.round(
+                  data.times.reduce((s, v) => s + v, 0) / data.times.length,
+                )
+              : 0,
         }))
         .sort((a, b) => b.candidates - a.candidates);
     });
@@ -574,16 +768,19 @@ export class AnalyticsService {
 
   async generateInsights(orgId: string, userId: string) {
     // Gather all analytics
-    const [overview, funnel, timeToHire, cost, interviewerStats, sources] = await Promise.all([
-      this.getOverview(orgId),
-      this.getPipelineFunnel(orgId),
-      this.getTimeToHire(orgId),
-      this.getCostTracking(orgId),
-      this.getInterviewerStats(orgId),
-      this.getSourceEffectiveness(orgId),
-    ]);
+    const [overview, funnel, timeToHire, cost, interviewerStats, sources] =
+      await Promise.all([
+        this.getOverview(orgId),
+        this.getPipelineFunnel(orgId),
+        this.getTimeToHire(orgId),
+        this.getCostTracking(orgId),
+        this.getInterviewerStats(orgId),
+        this.getSourceEffectiveness(orgId),
+      ]);
 
-    const org = await this.prisma.organization.findFirst({ where: { id: orgId } });
+    const org = await this.prisma.organization.findFirst({
+      where: { id: orgId },
+    });
     const payload = {
       companyName: org?.name || 'Company',
       overview,
@@ -627,7 +824,12 @@ Do not return any markdown formatting outside of the JSON block.`;
             const response = await ai.models.generateContent({
               model,
               contents: [
-                { role: 'user', parts: [{ text: `Here is the data:\n${JSON.stringify(payload)}` }] }
+                {
+                  role: 'user',
+                  parts: [
+                    { text: `Here is the data:\n${JSON.stringify(payload)}` },
+                  ],
+                },
               ],
               config: {
                 systemInstruction: systemPrompt,
@@ -636,19 +838,26 @@ Do not return any markdown formatting outside of the JSON block.`;
               },
             });
 
-            const rawResponse = response.text || "[]";
-            const cleaned = rawResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+            const rawResponse = response.text || '[]';
+            const cleaned = rawResponse
+              .replace(/```json/g, '')
+              .replace(/```/g, '')
+              .trim();
             const parsed = JSON.parse(cleaned);
             if (Array.isArray(parsed) && parsed.length > 0) {
               insightsData = parsed;
               break;
             }
           } catch (modelErr: any) {
-            this.logger.warn(`Gemini generation with ${model} failed: ${modelErr?.message || modelErr}`);
+            this.logger.warn(
+              `Gemini generation with ${model} failed: ${modelErr?.message || modelErr}`,
+            );
           }
         }
       } catch (e: any) {
-        this.logger.warn(`AI insights generation failed (${e?.message || e}). Falling back to analytical heuristic insights.`);
+        this.logger.warn(
+          `AI insights generation failed (${e?.message || e}). Falling back to analytical heuristic insights.`,
+        );
       }
     }
 
@@ -683,11 +892,15 @@ Do not return any markdown formatting outside of the JSON block.`;
     const activeMandates = overview.activeMandates || 0;
     const openRoles = overview.openRoles || 0;
     const avgTimeToHire = overview.avgTimeToHire || 0;
-    const sources = Array.isArray(payload.sourceEffectiveness) ? payload.sourceEffectiveness : [];
+    const sources = Array.isArray(payload.sourceEffectiveness)
+      ? payload.sourceEffectiveness
+      : [];
 
     // 1. Funnel & Stage Analysis
     if (funnel.length > 0 && inPipeline > 0) {
-      const sortedStages = [...funnel].sort((a, b) => (b.count || 0) - (a.count || 0));
+      const sortedStages = [...funnel].sort(
+        (a, b) => (b.count || 0) - (a.count || 0),
+      );
       const topStage = sortedStages[0];
       const topPercent = Math.round(((topStage.count || 0) / inPipeline) * 100);
       insights.push({
@@ -695,7 +908,7 @@ Do not return any markdown formatting outside of the JSON block.`;
         description: `${topPercent}% of active candidates (${topStage.count} of ${inPipeline}) are currently in the ${topStage.stage} stage. Streamlining initial evaluation throughput will directly accelerate time-to-offer.`,
         severity: topPercent > 60 ? 'warning' : 'info',
         category: 'funnel',
-        recommendation: `Schedule next-stage evaluations for candidates currently in ${topStage.stage} to maintain pipeline velocity.`
+        recommendation: `Schedule next-stage evaluations for candidates currently in ${topStage.stage} to maintain pipeline velocity.`,
       });
     } else if (inPipeline === 0) {
       insights.push({
@@ -703,7 +916,8 @@ Do not return any markdown formatting outside of the JSON block.`;
         description: `${company} currently has no active candidates moving through hiring pipeline stages.`,
         severity: 'warning',
         category: 'funnel',
-        recommendation: 'Activate sourcing channels and encourage referral submissions across your hiring network.'
+        recommendation:
+          'Activate sourcing channels and encourage referral submissions across your hiring network.',
       });
     }
 
@@ -719,15 +933,17 @@ Do not return any markdown formatting outside of the JSON block.`;
         category: 'sourcing',
         recommendation: isHealthy
           ? 'Pipeline depth is adequate. Maintain focus on stage conversion and interviewer feedback SLA.'
-          : 'Expand sourcing and referral rewards to build a target 4:1 applicant pool per open mandate.'
+          : 'Expand sourcing and referral rewards to build a target 4:1 applicant pool per open mandate.',
       });
     } else {
       insights.push({
         title: 'No Active Mandates Detected',
-        description: 'There are currently no active mandates or open roles configured.',
+        description:
+          'There are currently no active mandates or open roles configured.',
         severity: 'info',
         category: 'funnel',
-        recommendation: 'Create and publish new mandates in Recruiting to initiate candidate intake.'
+        recommendation:
+          'Create and publish new mandates in Recruiting to initiate candidate intake.',
       });
     }
 
@@ -735,21 +951,25 @@ Do not return any markdown formatting outside of the JSON block.`;
     if (avgTimeToHire > 0) {
       const isFast = avgTimeToHire <= 35;
       insights.push({
-        title: isFast ? 'Time-to-Hire Within Benchmark' : 'Time-to-Hire Exceeds Benchmark',
+        title: isFast
+          ? 'Time-to-Hire Within Benchmark'
+          : 'Time-to-Hire Exceeds Benchmark',
         description: `Average completion velocity is currently tracking at ${avgTimeToHire} days, compared to the industry standard 35-day benchmark.`,
         severity: isFast ? 'info' : 'warning',
         category: 'funnel',
         recommendation: isFast
           ? 'Maintain rapid interviewer feedback turnaround times under 48 hours.'
-          : 'Audit intermediate interview stages to remove scheduling bottlenecks.'
+          : 'Audit intermediate interview stages to remove scheduling bottlenecks.',
       });
     } else {
       insights.push({
         title: 'Time-to-Hire SLA Benchmarking',
-        description: 'Hiring turnaround is calibrated against a 35-day industry SLA benchmark. Metrics will continuously update as candidate evaluations progress.',
+        description:
+          'Hiring turnaround is calibrated against a 35-day industry SLA benchmark. Metrics will continuously update as candidate evaluations progress.',
         severity: 'info',
         category: 'interviewing',
-        recommendation: 'Ensure hiring managers and recruiters submit interview feedback within 48 hours of each round.'
+        recommendation:
+          'Ensure hiring managers and recruiters submit interview feedback within 48 hours of each round.',
       });
     }
 
@@ -761,15 +981,17 @@ Do not return any markdown formatting outside of the JSON block.`;
         description: `${topSource.source} is the leading sourcing channel with ${topSource.candidates} candidate submissions and ${topSource.selectionRate || 0}% selection rate.`,
         severity: 'info',
         category: 'sourcing',
-        recommendation: `Capitalize on ${topSource.source} sourcing momentum while diversifying into secondary recruitment channels.`
+        recommendation: `Capitalize on ${topSource.source} sourcing momentum while diversifying into secondary recruitment channels.`,
       });
     } else {
       insights.push({
         title: 'Referral & Channel Sourcing',
-        description: 'Referral-based hiring currently powers mandate talent discovery. Channel conversion benchmarks will populate as applications progress.',
+        description:
+          'Referral-based hiring currently powers mandate talent discovery. Channel conversion benchmarks will populate as applications progress.',
         severity: 'info',
         category: 'sourcing',
-        recommendation: 'Engage team members and recruiters with mandate referral campaigns and incentives.'
+        recommendation:
+          'Engage team members and recruiters with mandate referral campaigns and incentives.',
       });
     }
 

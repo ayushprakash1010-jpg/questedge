@@ -15,6 +15,8 @@ import {
   Bot,
   Shield,
   HeartPulse,
+  FileText,
+  ScrollText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useProfile } from "@/hooks/use-profile";
@@ -55,6 +57,7 @@ const navGroups: NavGroup[] = [
       { label: "AI Operations", href: "/ai-operations", icon: Bot, adminOnly: true },
       { label: "Metrics", href: "/metrics", icon: BarChart3 },
       { label: "Security", href: "/security", icon: Shield, adminOnly: true },
+      { label: "Audit Logs", href: "/audit-logs", icon: ScrollText, adminOnly: true },
       { label: "Tools", href: "/tools", icon: Wrench },
       { label: "System Health", href: "/system-health", icon: HeartPulse, adminOnly: true },
     ],

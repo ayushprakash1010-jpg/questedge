@@ -1,10 +1,19 @@
-import { IsEnum, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { MandateStatus } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
 
 export class FilterMandateDto {
-  @ApiPropertyOptional({ description: 'Full-text search across title and description' })
+  @ApiPropertyOptional({
+    description: 'Full-text search across title and description',
+  })
   @IsOptional()
   @IsString()
   q?: string;
@@ -29,7 +38,10 @@ export class FilterMandateDto {
   @IsString()
   workModel?: string;
 
-  @ApiPropertyOptional({ description: 'Comma-separated skill names', example: 'Node.js,TypeScript' })
+  @ApiPropertyOptional({
+    description: 'Comma-separated skill names',
+    example: 'Node.js,TypeScript',
+  })
   @IsOptional()
   @IsString()
   skills?: string;

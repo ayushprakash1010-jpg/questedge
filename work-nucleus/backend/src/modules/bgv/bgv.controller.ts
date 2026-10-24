@@ -70,7 +70,9 @@ export class BgvController {
   }
 
   @Post('checks/:checkId/override')
-  @ApiOperation({ summary: 'Override a check finding with justification (HR_LEAD)' })
+  @ApiOperation({
+    summary: 'Override a check finding with justification (HR_LEAD)',
+  })
   @Roles(Role.ADMIN, Role.HR)
   override(
     @CurrentUser('orgId') orgId: string,
@@ -78,7 +80,13 @@ export class BgvController {
     @Param('checkId', ParseUUIDPipe) checkId: string,
     @Body() dto: OverrideFindingDto,
   ) {
-    return this.service.overrideFinding(orgId, checkId, userId, dto.finding as BgvFinding, dto.justification);
+    return this.service.overrideFinding(
+      orgId,
+      checkId,
+      userId,
+      dto.finding as BgvFinding,
+      dto.justification,
+    );
   }
 
   @Post('checks/:checkId/retry')

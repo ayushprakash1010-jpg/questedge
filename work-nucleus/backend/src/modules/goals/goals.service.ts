@@ -1,11 +1,11 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { GoalStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import {
-  CreateGoalDto,
-  CreateOrgGoalDto,
-  UpdateGoalDto,
-} from './dto/goal.dto';
+import { CreateGoalDto, CreateOrgGoalDto, UpdateGoalDto } from './dto/goal.dto';
 
 @Injectable()
 export class GoalsService {
@@ -43,19 +43,34 @@ export class GoalsService {
     });
     if (!goal) throw new NotFoundException('Goal not found');
     if (dto.weight !== undefined && dto.weight !== goal.weight) {
-      await this.assertWeightCapacity(goal.cycleId, goal.employeeId, dto.weight, goal.id);
+      await this.assertWeightCapacity(
+        goal.cycleId,
+        goal.employeeId,
+        dto.weight,
+        goal.id,
+      );
     }
     return this.prisma.goal.update({ where: { id }, data: { ...dto } });
   }
 
   async agree(orgId: string, id: string) {
-    const g = await this.prisma.goal.findFirst({ where: { id, cycle: { orgId } } });
+    const g = await this.prisma.goal.findFirst({
+      where: { id, cycle: { orgId } },
+    });
     if (!g) throw new NotFoundException('Goal not found');
     if (g.status === GoalStatus.AGREED) return g;
-    return this.prisma.goal.update({ where: { id }, data: { status: GoalStatus.AGREED } });
+    return this.prisma.goal.update({
+      where: { id },
+      data: { status: GoalStatus.AGREED },
+    });
   }
 
-  async copyFromPreviousCycle(orgId: string, fromCycleId: string, toCycleId: string, employeeId: string) {
+  async copyFromPreviousCycle(
+    orgId: string,
+    fromCycleId: string,
+    toCycleId: string,
+    employeeId: string,
+  ) {
     await this.assertCycleInOrg(orgId, fromCycleId);
     await this.assertCycleInOrg(orgId, toCycleId);
     const previous = await this.prisma.goal.findMany({
@@ -83,8 +98,15 @@ export class GoalsService {
    * Cascade an org goal to a manager's direct reports as personal goals.
    * Creates DRAFT entries; reports edit and the manager approves to AGREED.
    */
-  async cascadeOrgGoal(orgId: string, orgGoalId: string, reportIds: string[], options: { weight?: number } = {}) {
-    const og = await this.prisma.orgGoal.findFirst({ where: { id: orgGoalId, orgId } });
+  async cascadeOrgGoal(
+    orgId: string,
+    orgGoalId: string,
+    reportIds: string[],
+    options: { weight?: number } = {},
+  ) {
+    const og = await this.prisma.orgGoal.findFirst({
+      where: { id: orgGoalId, orgId },
+    });
     if (!og) throw new NotFoundException('Org goal not found');
     if (reportIds.length === 0) return { created: 0 };
     const ownerId = og.ownerId ?? reportIds[0];
@@ -123,7 +145,10 @@ export class GoalsService {
   // ── Helpers ───────────────────────────────────────────────────
 
   private async assertCycleInOrg(orgId: string, cycleId: string) {
-    const c = await this.prisma.appraisalCycle.findFirst({ where: { id: cycleId, orgId }, select: { id: true } });
+    const c = await this.prisma.appraisalCycle.findFirst({
+      where: { id: cycleId, orgId },
+      select: { id: true },
+    });
     if (!c) throw new NotFoundException('Cycle not found');
   }
 
@@ -131,14 +156,25 @@ export class GoalsService {
    * Goals weights must sum to ≤ 100 across an employee's goals in a cycle —
    * mismatched weights are a common source of opaque rating bugs later.
    */
-  private async assertWeightCapacity(cycleId: string, employeeId: string, newWeight: number, ignoreGoalId?: string) {
+  private async assertWeightCapacity(
+    cycleId: string,
+    employeeId: string,
+    newWeight: number,
+    ignoreGoalId?: string,
+  ) {
     const existing = await this.prisma.goal.findMany({
-      where: { cycleId, employeeId, ...(ignoreGoalId ? { NOT: { id: ignoreGoalId } } : {}) },
+      where: {
+        cycleId,
+        employeeId,
+        ...(ignoreGoalId ? { NOT: { id: ignoreGoalId } } : {}),
+      },
       select: { weight: true },
     });
     const total = existing.reduce((s, g) => s + g.weight, 0) + newWeight;
     if (total > 100) {
-      throw new BadRequestException(`Total goal weight would be ${total}; max allowed is 100`);
+      throw new BadRequestException(
+        `Total goal weight would be ${total}; max allowed is 100`,
+      );
     }
   }
 }

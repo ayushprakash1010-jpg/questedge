@@ -11,20 +11,30 @@ export class BgvPublicController {
   constructor(private readonly service: BgvService) {}
 
   @Get(':token')
-  @ApiOperation({ summary: 'Get BGV consent context (scope, vendor, retention)' })
+  @ApiOperation({
+    summary: 'Get BGV consent context (scope, vendor, retention)',
+  })
   get(@Param('token') token: string) {
     return this.service.findByConsentToken(token);
   }
 
   @Post(':token/start')
-  @ApiOperation({ summary: 'Send OTP to candidate phone/email to begin consent' })
+  @ApiOperation({
+    summary: 'Send OTP to candidate phone/email to begin consent',
+  })
   start(@Param('token') token: string, @Ip() ip: string) {
     return this.service.startConsent(token, ip);
   }
 
   @Post(':token/verify')
-  @ApiOperation({ summary: 'Submit OTP + signed name → records consent and starts checks' })
-  verify(@Param('token') token: string, @Body() dto: VerifyOtpDto, @Ip() ip: string) {
+  @ApiOperation({
+    summary: 'Submit OTP + signed name → records consent and starts checks',
+  })
+  verify(
+    @Param('token') token: string,
+    @Body() dto: VerifyOtpDto,
+    @Ip() ip: string,
+  ) {
     return this.service.verifyConsent(token, dto.otp, dto.signedName, ip);
   }
 }

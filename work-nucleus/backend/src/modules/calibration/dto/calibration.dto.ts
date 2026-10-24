@@ -1,6 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsDate, IsObject, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import {
+  IsArray,
+  IsDate,
+  IsObject,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MinLength,
+} from 'class-validator';
 
 export class CreateCalibrationSessionDto {
   @ApiProperty()
@@ -21,7 +29,9 @@ export class CreateCalibrationSessionDto {
   @IsObject()
   scope!: { departments?: string[]; levels?: string[]; locations?: string[] };
 
-  @ApiProperty({ description: 'Target % per rating bucket: { "5": 10, "4": 25, ... }' })
+  @ApiProperty({
+    description: 'Target % per rating bucket: { "5": 10, "4": 25, ... }',
+  })
   @IsObject()
   targetDistribution!: Record<string, number>;
 
@@ -36,7 +46,9 @@ export class MoveAssessmentDto {
   @IsUUID()
   employeeId!: string;
 
-  @ApiProperty({ description: 'New rating value, must exist in cycle ratingScale' })
+  @ApiProperty({
+    description: 'New rating value, must exist in cycle ratingScale',
+  })
   newRating!: number;
 
   @ApiProperty()

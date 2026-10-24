@@ -6,7 +6,10 @@ import { PrismaService } from '../../prisma/prisma.service';
  * intersect these sets. Anything outside is silently dropped — never proxied
  * into a query. NEVER allow raw SQL from user input.
  */
-const SOURCE_FIELDS: Record<ReportSource, { groupable: string[]; aggregatable: string[] }> = {
+const SOURCE_FIELDS: Record<
+  ReportSource,
+  { groupable: string[]; aggregatable: string[] }
+> = {
   HIRING: {
     groupable: ['status', 'department', 'industry', 'year', 'quarter'],
     aggregatable: ['totalRoles', 'filledRoles', 'budgetMin', 'budgetMax'],
@@ -62,12 +65,16 @@ export class ReportRunner {
 
   async run(orgId: string, plan: ReportPlan): Promise<ReportRow[]> {
     const fields = SOURCE_FIELDS[plan.source];
-    const safeGroupBy = plan.groupBy.filter((g) => fields.groupable.includes(g));
+    const safeGroupBy = plan.groupBy.filter((g) =>
+      fields.groupable.includes(g),
+    );
     const safeMetrics = plan.metrics.filter((m) =>
       m.agg === 'count' ? true : fields.aggregatable.includes(m.field),
     );
     const safeFilters = plan.filters.filter(
-      (f) => fields.groupable.includes(f.field) || fields.aggregatable.includes(f.field),
+      (f) =>
+        fields.groupable.includes(f.field) ||
+        fields.aggregatable.includes(f.field),
     );
 
     const where = this.buildWhere(safeFilters, plan.source, orgId);
@@ -76,7 +83,11 @@ export class ReportRunner {
     return aggregate(rows, safeGroupBy, safeMetrics);
   }
 
-  private buildWhere(filters: ReportFilter[], source: ReportSource, orgId: string): Record<string, any> {
+  private buildWhere(
+    filters: ReportFilter[],
+    source: ReportSource,
+    orgId: string,
+  ): Record<string, any> {
     const where: Record<string, any> = {};
     // Org scoping per source
     switch (source) {
@@ -119,7 +130,10 @@ export class ReportRunner {
     return where;
   }
 
-  private async fetchRows(source: ReportSource, where: Record<string, any>): Promise<Record<string, any>[]> {
+  private async fetchRows(
+    source: ReportSource,
+    where: Record<string, any>,
+  ): Promise<Record<string, any>[]> {
     switch (source) {
       case 'HIRING':
         return this.prisma.hiringPlan.findMany({ where });
@@ -146,7 +160,10 @@ export function aggregate(
     return [{ group: {}, metrics: { count: rows.length } }];
   }
 
-  const groups = new Map<string, { group: Record<string, unknown>; rows: Record<string, any>[] }>();
+  const groups = new Map<
+    string,
+    { group: Record<string, unknown>; rows: Record<string, any>[] }
+  >();
   for (const row of rows) {
     const groupVals: Record<string, unknown> = {};
     for (const g of groupBy) groupVals[g] = row[g] ?? null;

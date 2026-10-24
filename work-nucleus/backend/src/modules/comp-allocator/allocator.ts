@@ -18,9 +18,17 @@ export interface BudgetMatrix {
   /** ratingToBonusMonths: { "5": 2, "4": 1, ... } */
   bonusMatrix: Record<string, number>;
   /** Per-scope hike ceiling [{ scope, hikeINR, bonusINR }] */
-  splits?: Array<{ scope: Record<string, string>; hikeINR: number; bonusINR: number }>;
+  splits?: Array<{
+    scope: Record<string, string>;
+    hikeINR: number;
+    bonusINR: number;
+  }>;
   /** [{ scope, adjustmentPercent (e.g. 1.1 = +10%), reason }] */
-  marketCorrection?: Array<{ scope: Record<string, string>; adjustmentPercent: number; reason: string }>;
+  marketCorrection?: Array<{
+    scope: Record<string, string>;
+    adjustmentPercent: number;
+    reason: string;
+  }>;
   /** [{ riskTier, additionalPercent }] */
   retentionRules?: Array<{ riskTier: string; additionalPercent: number }>;
   /** Hard cap on hike % (default 50). */
@@ -54,7 +62,12 @@ export interface AllocatorReport {
   totalBonusAllocated: number;
   totalHikeBudget: number;
   totalBonusBudget: number;
-  overruns: Array<{ scopeKey: string; budget: number; pre: number; post: number }>;
+  overruns: Array<{
+    scopeKey: string;
+    budget: number;
+    pre: number;
+    post: number;
+  }>;
   underspend: { hikeINR: number; bonusINR: number };
 }
 
@@ -63,15 +76,23 @@ const DEFAULT_FLOOR = 25_000; // ₹25k/month equivalent of monthly minimum wage
 const TOLERANCE_PCT = 0.005;
 const MAX_BINARY_ITERS = 24;
 
-export function allocate(budget: BudgetMatrix, employees: AllocatorEmployee[]): AllocatorReport {
+export function allocate(
+  budget: BudgetMatrix,
+  employees: AllocatorEmployee[],
+): AllocatorReport {
   const cap = budget.hikeCapPct ?? DEFAULT_HIKE_CAP_PCT;
   const floor = budget.minimumFixedINR ?? DEFAULT_FLOOR;
 
   // 1. Compute base hike + apply per-employee adjustments
   const intermediate = employees.map((e) => {
     const baseHikePct = lookupRating(budget.matrix, e.rating);
-    const market = matchScope(budget.marketCorrection ?? [], e.scope)?.adjustmentPercent ?? 1;
-    const retention = matchRetention(budget.retentionRules ?? [], e.retentionRiskTier);
+    const market =
+      matchScope(budget.marketCorrection ?? [], e.scope)?.adjustmentPercent ??
+      1;
+    const retention = matchRetention(
+      budget.retentionRules ?? [],
+      e.retentionRiskTier,
+    );
     let hikePct = baseHikePct * market + retention;
     hikePct = clamp(hikePct, 0, cap);
     return { e, baseHikePct, hikePct, market, retention };
@@ -85,36 +106,62 @@ export function allocate(budget: BudgetMatrix, employees: AllocatorEmployee[]): 
     for (const split of budget.splits) {
       const key = scopeKey(split.scope);
       const inGroup = intermediate.filter((x) => scopeKey(x.e.scope) === key);
-      const groupSum = inGroup.reduce((s, x) => s + x.e.currentFixed * (x.hikePct / 100), 0);
+      const groupSum = inGroup.reduce(
+        (s, x) => s + x.e.currentFixed * (x.hikePct / 100),
+        0,
+      );
       if (groupSum > split.hikeINR) {
         const factor = fitProportionally(
-          inGroup.map((x) => ({ weight: weightForTrim(x.hikePct, x.e.rating), base: x.e.currentFixed * (x.hikePct / 100) })),
+          inGroup.map((x) => ({
+            weight: weightForTrim(x.hikePct, x.e.rating),
+            base: x.e.currentFixed * (x.hikePct / 100),
+          })),
           split.hikeINR,
         );
         trimFactors[key] = factor;
-        overruns.push({ scopeKey: key, budget: split.hikeINR, pre: groupSum, post: groupSum * factor });
+        overruns.push({
+          scopeKey: key,
+          budget: split.hikeINR,
+          pre: groupSum,
+          post: groupSum * factor,
+        });
       }
     }
   } else {
     // No per-scope splits: trim against the global hike pool
-    const groupSum = intermediate.reduce((s, x) => s + x.e.currentFixed * (x.hikePct / 100), 0);
+    const groupSum = intermediate.reduce(
+      (s, x) => s + x.e.currentFixed * (x.hikePct / 100),
+      0,
+    );
     if (groupSum > budget.hikePoolINR) {
       const factor = fitProportionally(
-        intermediate.map((x) => ({ weight: weightForTrim(x.hikePct, x.e.rating), base: x.e.currentFixed * (x.hikePct / 100) })),
+        intermediate.map((x) => ({
+          weight: weightForTrim(x.hikePct, x.e.rating),
+          base: x.e.currentFixed * (x.hikePct / 100),
+        })),
         budget.hikePoolINR,
       );
       trimFactors['__global'] = factor;
-      overruns.push({ scopeKey: '__global', budget: budget.hikePoolINR, pre: groupSum, post: groupSum * factor });
+      overruns.push({
+        scopeKey: '__global',
+        budget: budget.hikePoolINR,
+        pre: groupSum,
+        post: groupSum * factor,
+      });
     }
   }
 
   // 3. Final hike per employee
   const hikes = intermediate.map((x) => {
-    const key = budget.splits && budget.splits.length > 0 ? scopeKey(x.e.scope) : '__global';
+    const key =
+      budget.splits && budget.splits.length > 0
+        ? scopeKey(x.e.scope)
+        : '__global';
     const factor = trimFactors[key] ?? 1;
     const finalHikeINR = x.e.currentFixed * (x.hikePct / 100) * factor;
     const newFixed = Math.max(floor, x.e.currentFixed + finalHikeINR);
-    const finalHikePct = x.e.currentFixed > 0 ? (finalHikeINR / x.e.currentFixed) * 100 : 0;
+    const finalHikePct =
+      x.e.currentFixed > 0 ? (finalHikeINR / x.e.currentFixed) * 100 : 0;
     return {
       employeeId: x.e.employeeId,
       computedHikePct: round2(finalHikePct),
@@ -127,19 +174,28 @@ export function allocate(budget: BudgetMatrix, employees: AllocatorEmployee[]): 
   });
 
   // 4. Bonus computation: bonusMonths × monthly fixed, then proportional fit to bonus pool
-  let bonusBase = intermediate.map((x) => {
+  const bonusBase = intermediate.map((x) => {
     const months = lookupRating(budget.bonusMatrix, x.e.rating);
-    return { employeeId: x.e.employeeId, base: months * (x.e.currentFixed / 12), rating: x.e.rating };
+    return {
+      employeeId: x.e.employeeId,
+      base: months * (x.e.currentFixed / 12),
+      rating: x.e.rating,
+    };
   });
   let bonusFactor = 1;
   const bonusSum = bonusBase.reduce((s, b) => s + b.base, 0);
   if (bonusSum > budget.bonusPoolINR && budget.bonusPoolINR > 0) {
     bonusFactor = fitProportionally(
-      bonusBase.map((b) => ({ weight: weightForTrim(b.base, b.rating), base: b.base })),
+      bonusBase.map((b) => ({
+        weight: weightForTrim(b.base, b.rating),
+        base: b.base,
+      })),
       budget.bonusPoolINR,
     );
   }
-  const bonusByEmployee = new Map(bonusBase.map((b) => [b.employeeId, round2(b.base * bonusFactor)]));
+  const bonusByEmployee = new Map(
+    bonusBase.map((b) => [b.employeeId, round2(b.base * bonusFactor)]),
+  );
 
   // 5. Stitch together
   const results: AllocatorOutput[] = hikes.map((h) => {
@@ -211,10 +267,12 @@ function matchRetention(
 }
 
 function scopeKey(scope: Record<string, string>): string {
-  return Object.keys(scope)
-    .sort()
-    .map((k) => `${k}=${scope[k]}`)
-    .join('|') || '__global';
+  return (
+    Object.keys(scope)
+      .sort()
+      .map((k) => `${k}=${scope[k]}`)
+      .join('|') || '__global'
+  );
 }
 
 /**
@@ -243,7 +301,8 @@ function fitProportionally(
   for (let i = 0; i < MAX_BINARY_ITERS; i++) {
     const mid = (lo + hi) / 2;
     const projected = items.reduce((s, x) => s + x.base * mid, 0);
-    if (Math.abs(projected - targetTotal) / targetTotal < TOLERANCE_PCT) return mid;
+    if (Math.abs(projected - targetTotal) / targetTotal < TOLERANCE_PCT)
+      return mid;
     if (projected > targetTotal) hi = mid;
     else lo = mid;
   }

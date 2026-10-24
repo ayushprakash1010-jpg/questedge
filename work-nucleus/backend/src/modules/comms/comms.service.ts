@@ -1,5 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { NotificationChannel, NotificationDeliveryStatus, Prisma } from '@prisma/client';
+import {
+  NotificationChannel,
+  NotificationDeliveryStatus,
+  Prisma,
+} from '@prisma/client';
 import { Msg91Client } from '../../integrations/msg91/msg91.client';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -31,7 +35,11 @@ export class CommsService {
    * hours. Falls through to IN_APP if the requested channel is opted out.
    */
   async send(opts: SendOpts) {
-    const allowed = await this.isChannelAllowed(opts.userId, opts.templateKey, opts.channel);
+    const allowed = await this.isChannelAllowed(
+      opts.userId,
+      opts.templateKey,
+      opts.channel,
+    );
     const channel = allowed ? opts.channel : NotificationChannel.IN_APP;
 
     if (!opts.ignoreQuietHours && (await this.inQuietHours(opts.userId))) {
@@ -63,7 +71,9 @@ export class CommsService {
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'unknown';
-      this.logger.error(`Failed to send ${channel} ${opts.templateKey}: ${msg}`);
+      this.logger.error(
+        `Failed to send ${channel} ${opts.templateKey}: ${msg}`,
+      );
       return this.prisma.notificationLog.update({
         where: { id: log.id },
         data: { status: NotificationDeliveryStatus.FAILED, errorMessage: msg },
@@ -75,7 +85,11 @@ export class CommsService {
     const variables = (opts.payload ?? {}) as Record<string, string>;
     switch (channel) {
       case NotificationChannel.SMS:
-        return this.msg91.sendSms({ templateId: opts.templateKey, to: opts.toAddress, variables });
+        return this.msg91.sendSms({
+          templateId: opts.templateKey,
+          to: opts.toAddress,
+          variables,
+        });
       case NotificationChannel.WHATSAPP:
         return this.msg91.sendWhatsApp({
           templateName: opts.templateKey,
@@ -95,7 +109,11 @@ export class CommsService {
    * Look up the user's per-channel preference for this event type. Default is
    * "enabled" — opt-out is the explicit user choice.
    */
-  private async isChannelAllowed(userId: string | undefined, eventType: string, channel: NotificationChannel) {
+  private async isChannelAllowed(
+    userId: string | undefined,
+    eventType: string,
+    channel: NotificationChannel,
+  ) {
     if (!userId) return true;
     const pref = await this.prisma.userNotificationPref.findUnique({
       where: { userId_eventType_channel: { userId, eventType, channel } },
@@ -132,7 +150,12 @@ export class CommsService {
     return this.prisma.userNotificationPref.findMany({ where: { userId } });
   }
 
-  async setPref(userId: string, eventType: string, channel: NotificationChannel, enabled: boolean) {
+  async setPref(
+    userId: string,
+    eventType: string,
+    channel: NotificationChannel,
+    enabled: boolean,
+  ) {
     return this.prisma.userNotificationPref.upsert({
       where: { userId_eventType_channel: { userId, eventType, channel } },
       update: { enabled },
@@ -147,12 +170,20 @@ export class CommsService {
       where: {
         orgId,
         ...(opts.from || opts.to
-          ? { createdAt: { ...(opts.from && { gte: opts.from }), ...(opts.to && { lte: opts.to }) } }
+          ? {
+              createdAt: {
+                ...(opts.from && { gte: opts.from }),
+                ...(opts.to && { lte: opts.to }),
+              },
+            }
           : {}),
       },
       select: { channel: true, costInPaise: true, status: true },
     });
-    const byChannel: Record<string, { count: number; paise: number; failed: number }> = {};
+    const byChannel: Record<
+      string,
+      { count: number; paise: number; failed: number }
+    > = {};
     for (const l of logs) {
       const k = l.channel;
       byChannel[k] = byChannel[k] ?? { count: 0, paise: 0, failed: 0 };

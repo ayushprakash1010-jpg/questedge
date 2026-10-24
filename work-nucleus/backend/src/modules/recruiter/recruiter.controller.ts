@@ -10,9 +10,18 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+} from '@nestjs/swagger';
 import { RecruiterService } from './recruiter.service';
-import { CreateRecruiterProfileDto, UpdateRecruiterProfileDto } from './dto/recruiter-profile.dto';
+import {
+  CreateRecruiterProfileDto,
+  UpdateRecruiterProfileDto,
+} from './dto/recruiter-profile.dto';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { UserTypes } from '../../auth/decorators/user-types.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -28,10 +37,15 @@ export class RecruiterController {
   constructor(private readonly recruiterService: RecruiterService) {}
 
   @Post('profile')
-  @ApiOperation({ summary: 'Recruiter: Create profile (called after first Auth0 login)' })
+  @ApiOperation({
+    summary: 'Recruiter: Create profile (called after first Auth0 login)',
+  })
   @ApiResponse({ status: 201, description: 'Profile created' })
   @ApiResponse({ status: 409, description: 'Profile already exists' })
-  async createProfile(@CurrentUser() user: any, @Body() dto: CreateRecruiterProfileDto) {
+  async createProfile(
+    @CurrentUser() user: any,
+    @Body() dto: CreateRecruiterProfileDto,
+  ) {
     return this.recruiterService.createProfile(user.auth0Sub, user.email, dto);
   }
 
@@ -44,13 +58,19 @@ export class RecruiterController {
   @Patch('profile')
   @UserTypes(UserType.RECRUITER)
   @ApiOperation({ summary: 'Recruiter: Update own profile' })
-  async updateProfile(@CurrentUser() user: any, @Body() dto: UpdateRecruiterProfileDto) {
+  async updateProfile(
+    @CurrentUser() user: any,
+    @Body() dto: UpdateRecruiterProfileDto,
+  ) {
     return this.recruiterService.updateProfile(user.id, dto);
   }
 
   @Get('dashboard')
   @UserTypes(UserType.RECRUITER)
-  @ApiOperation({ summary: 'Recruiter: Get full dashboard (earnings, referrals, active mandates)' })
+  @ApiOperation({
+    summary:
+      'Recruiter: Get full dashboard (earnings, referrals, active mandates)',
+  })
   async getDashboard(@CurrentUser() user: any) {
     return this.recruiterService.getDashboard(user.id);
   }

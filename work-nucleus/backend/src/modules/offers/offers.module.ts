@@ -15,7 +15,11 @@ import { OfferRenderService } from './services/offer-render.service';
 
 @Module({
   imports: [BgvModule, CompensationModule, JobQueueModule, NotificationsModule],
-  controllers: [OffersController, OffersPublicController, OffersWebhooksController],
+  controllers: [
+    OffersController,
+    OffersPublicController,
+    OffersWebhooksController,
+  ],
   providers: [
     OffersService,
     OfferApprovalService,

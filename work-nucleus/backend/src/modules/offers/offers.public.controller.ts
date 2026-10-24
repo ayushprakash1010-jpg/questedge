@@ -41,7 +41,9 @@ export class OffersPublicController {
   }
 
   @Post(':token/negotiate')
-  @ApiOperation({ summary: 'Candidate sends a counter-proposal — HR is notified' })
+  @ApiOperation({
+    summary: 'Candidate sends a counter-proposal — HR is notified',
+  })
   negotiate(@Param('token') token: string, @Body() dto: NegotiateOfferDto) {
     return this.service.candidateNegotiate(token, dto.comment, dto.counter);
   }

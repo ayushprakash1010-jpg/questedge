@@ -28,15 +28,23 @@ export class LeegalityClient implements IESignProvider {
   }
 
   async getStatus(providerReqId: string): Promise<ESignStatusResult> {
-    if (providerReqId.startsWith('dev-leegality-')) return { status: 'PENDING' };
-    throw new NotImplementedException('Leegality.getStatus not yet implemented');
+    if (providerReqId.startsWith('dev-leegality-'))
+      return { status: 'PENDING' };
+    throw new NotImplementedException(
+      'Leegality.getStatus not yet implemented',
+    );
   }
 
   async downloadSigned(_providerReqId: string): Promise<Buffer> {
-    throw new NotImplementedException('Leegality.downloadSigned not yet implemented');
+    throw new NotImplementedException(
+      'Leegality.downloadSigned not yet implemented',
+    );
   }
 
-  verifyWebhook(_headers: Record<string, string | string[] | undefined>, _rawBody: Buffer): boolean {
+  verifyWebhook(
+    _headers: Record<string, string | string[] | undefined>,
+    _rawBody: Buffer,
+  ): boolean {
     return false;
   }
 

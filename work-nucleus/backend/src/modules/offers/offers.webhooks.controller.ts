@@ -1,4 +1,12 @@
-import { BadRequestException, Body, Controller, Headers, Logger, Post, Req } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Headers,
+  Logger,
+  Post,
+  Req,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { Public } from '../../auth/decorators/public.decorator';
@@ -26,7 +34,8 @@ export class OffersWebhooksController {
     @Body() body: any,
   ) {
     const provider = this.esign.getProviderByName('digio');
-    const raw: Buffer = (req as any).rawBody ?? Buffer.from(JSON.stringify(body ?? {}), 'utf-8');
+    const raw: Buffer =
+      (req as any).rawBody ?? Buffer.from(JSON.stringify(body ?? {}), 'utf-8');
 
     if (!provider.verifyWebhook(headers, raw)) {
       this.logger.warn('Digio webhook signature verification failed');
@@ -35,7 +44,9 @@ export class OffersWebhooksController {
 
     const event = provider.parseWebhookEvent(body);
     if (!event) {
-      this.logger.warn(`Unparseable digio webhook: ${JSON.stringify(body).slice(0, 200)}`);
+      this.logger.warn(
+        `Unparseable digio webhook: ${JSON.stringify(body).slice(0, 200)}`,
+      );
       return { ok: true, parsed: false };
     }
 

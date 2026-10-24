@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateOfferTemplateDto } from './dto/create-offer-template.dto';
 import { UpdateOfferTemplateDto } from './dto/update-offer-template.dto';
@@ -43,7 +47,7 @@ export class OfferTemplatesService {
 
     const isContentChange =
       (dto.body !== undefined && dto.body !== tpl.body) ||
-      (dto.variables !== undefined);
+      dto.variables !== undefined;
 
     return this.prisma.offerTemplate.update({
       where: { id },
@@ -51,7 +55,9 @@ export class OfferTemplatesService {
         ...(dto.name !== undefined && { name: dto.name }),
         ...(dto.body !== undefined && { body: dto.body }),
         ...(dto.variables !== undefined && { variables: dto.variables as any }),
-        ...(dto.brandingJson !== undefined && { brandingJson: dto.brandingJson as any }),
+        ...(dto.brandingJson !== undefined && {
+          brandingJson: dto.brandingJson as any,
+        }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
         ...(isContentChange && { version: { increment: 1 } }),
       },
@@ -67,7 +73,11 @@ export class OfferTemplatesService {
     });
   }
 
-  async preview(orgId: string, id: string, sampleData: Record<string, unknown>) {
+  async preview(
+    orgId: string,
+    id: string,
+    sampleData: Record<string, unknown>,
+  ) {
     const tpl = await this.findOne(orgId, id);
     if (!tpl) throw new NotFoundException();
     if (!sampleData || typeof sampleData !== 'object') {

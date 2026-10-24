@@ -1,4 +1,15 @@
-import { BadRequestException, Body, Controller, Get, Headers, Logger, Patch, Post, Query, Req } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Logger,
+  Patch,
+  Post,
+  Query,
+  Req,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { NotificationChannel, Prisma, Role } from '@prisma/client';
 import { Request } from 'express';
@@ -25,9 +36,15 @@ export class CommsController {
   @ApiOperation({ summary: 'Set/clear preference for (eventType, channel)' })
   setPref(
     @CurrentUser('id') userId: string,
-    @Body() body: { eventType: string; channel: NotificationChannel; enabled: boolean },
+    @Body()
+    body: { eventType: string; channel: NotificationChannel; enabled: boolean },
   ) {
-    return this.service.setPref(userId, body.eventType, body.channel, body.enabled);
+    return this.service.setPref(
+      userId,
+      body.eventType,
+      body.channel,
+      body.enabled,
+    );
   }
 
   @Get('cost-report')
@@ -63,14 +80,17 @@ export class Msg91WebhookController {
     @Req() req: Request,
     @Body() body: any,
   ) {
-    const raw: Buffer = (req as any).rawBody ?? Buffer.from(JSON.stringify(body ?? {}), 'utf-8');
+    const raw: Buffer =
+      (req as any).rawBody ?? Buffer.from(JSON.stringify(body ?? {}), 'utf-8');
     if (!this.msg91.verifyWebhook(headers, raw)) {
       this.logger.warn('MSG91 webhook signature failed');
       throw new BadRequestException('Invalid signature');
     }
     const evt = this.msg91.parseDeliveryReceipt(body);
     if (!evt) return { ok: true, parsed: false };
-    const log = await this.prisma.notificationLog.findFirst({ where: { providerId: evt.providerId } });
+    const log = await this.prisma.notificationLog.findFirst({
+      where: { providerId: evt.providerId },
+    });
     if (!log) return { ok: true, matched: false };
     await this.prisma.notificationLog.update({
       where: { id: log.id },

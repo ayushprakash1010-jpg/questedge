@@ -9,7 +9,9 @@ describe('CandidatePortalController', () => {
       controllers: [CandidatePortalController],
     }).compile();
 
-    controller = module.get<CandidatePortalController>(CandidatePortalController);
+    controller = module.get<CandidatePortalController>(
+      CandidatePortalController,
+    );
   });
 
   it('should be defined', () => {

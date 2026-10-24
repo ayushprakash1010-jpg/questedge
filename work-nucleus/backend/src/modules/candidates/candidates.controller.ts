@@ -1,5 +1,12 @@
 import {
-  Controller, Get, Post, Patch, Param, Body, Query, ParseUUIDPipe,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Param,
+  Body,
+  Query,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CandidatesService } from './candidates.service';
@@ -23,10 +30,7 @@ export class CandidatesController {
 
   @Post()
   @ApiOperation({ summary: 'Create a candidate' })
-  create(
-    @CurrentUser('orgId') orgId: string,
-    @Body() dto: CreateCandidateDto,
-  ) {
+  create(@CurrentUser('orgId') orgId: string, @Body() dto: CreateCandidateDto) {
     return this.candidatesService.create(orgId, dto);
   }
 
@@ -60,7 +64,9 @@ export class CandidatesController {
 
   @Post('trigger-scoring')
   @Roles(Role.ADMIN, Role.HR)
-  @ApiOperation({ summary: 'Manually trigger AI resume scoring for all unscored applications' })
+  @ApiOperation({
+    summary: 'Manually trigger AI resume scoring for all unscored applications',
+  })
   async triggerScoring() {
     const jobId = await this.queue.enqueue('resume-scoring-nightly', {});
     return { message: 'Resume scoring triggered', jobId };

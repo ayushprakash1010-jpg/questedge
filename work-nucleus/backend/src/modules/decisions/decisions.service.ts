@@ -6,7 +6,10 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
-import { MakeDecisionDto, UpdateCommunicationDto } from './dto/make-decision.dto';
+import {
+  MakeDecisionDto,
+  UpdateCommunicationDto,
+} from './dto/make-decision.dto';
 import { DecisionType, ApplicationStatus, Prisma } from '@prisma/client';
 
 @Injectable()
@@ -16,22 +19,35 @@ export class DecisionsService {
     private readonly config: ConfigService,
   ) {}
 
-  async makeDecision(applicationId: string, userId: string, dto: MakeDecisionDto) {
+  async makeDecision(
+    applicationId: string,
+    userId: string,
+    dto: MakeDecisionDto,
+  ) {
     const application = await this.prisma.candidateApplication.findUnique({
       where: { id: applicationId },
       include: {
         candidate: true,
-        hiringPlan: { select: { id: true, title: true, designation: true, department: true } },
+        hiringPlan: {
+          select: {
+            id: true,
+            title: true,
+            designation: true,
+            department: true,
+          },
+        },
         decision: true,
       },
     });
 
     if (!application) throw new NotFoundException('Application not found');
-    if (application.decision) throw new ConflictException('Decision already made for this application');
+    if (application.decision)
+      throw new ConflictException('Decision already made for this application');
 
-    const newStatus = dto.decision === DecisionType.SELECTED
-      ? ApplicationStatus.SELECTED
-      : ApplicationStatus.REJECTED;
+    const newStatus =
+      dto.decision === DecisionType.SELECTED
+        ? ApplicationStatus.SELECTED
+        : ApplicationStatus.REJECTED;
 
     // Create decision and update application in transaction
     const decision = await this.prisma.$transaction(async (tx) => {
@@ -69,7 +85,8 @@ export class DecisionsService {
           },
           data: {
             exitedAt: new Date(),
-            outcome: dto.decision === DecisionType.SELECTED ? 'PASSED' : 'REJECTED',
+            outcome:
+              dto.decision === DecisionType.SELECTED ? 'PASSED' : 'REJECTED',
           },
         });
       }
@@ -96,7 +113,10 @@ export class DecisionsService {
     application: any,
     dto: MakeDecisionDto,
   ) {
-    const aiServiceUrl = this.config.get('AI_SERVICE_URL', 'http://localhost:8000');
+    const aiServiceUrl = this.config.get(
+      'AI_SERVICE_URL',
+      'http://localhost:8000',
+    );
     const apiKey = this.config.get('INTERNAL_API_KEY', 'dev-internal-key');
 
     // Determine feedback tone from submitted feedback
@@ -114,11 +134,15 @@ export class DecisionsService {
         ['STRONG_NO', 'NO'].includes(f.recommendation),
       ).length;
       if (positiveCount > feedbacks.length * 0.6) feedbackTone = 'positive';
-      else if (negativeCount > feedbacks.length * 0.6) feedbackTone = 'negative';
+      else if (negativeCount > feedbacks.length * 0.6)
+        feedbackTone = 'negative';
     }
 
     const payload: any = {
-      candidate: { name: application.candidate.name, email: application.candidate.email },
+      candidate: {
+        name: application.candidate.name,
+        email: application.candidate.email,
+      },
       role: application.hiringPlan.designation,
       company: application.hiringPlan.title,
       department: application.hiringPlan.department,
@@ -146,7 +170,12 @@ export class DecisionsService {
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: { responseMimeType: 'application/json', temperature: 0.7 },
       });
-      const draft = JSON.parse((response.text || "{}").replace(/```json/g, '').replace(/```/g, '').trim());
+      const draft = JSON.parse(
+        (response.text || '{}')
+          .replace(/```json/g, '')
+          .replace(/```/g, '')
+          .trim(),
+      );
       await this.prisma.selectionDecision.update({
         where: { id: decisionId },
         data: { communicationDraft: draft },
@@ -161,16 +190,23 @@ export class DecisionsService {
       where: { applicationId },
     });
     if (!decision) throw new NotFoundException('Decision not found');
-    if (decision.approvedById) throw new BadRequestException('Decision already approved');
+    if (decision.approvedById)
+      throw new BadRequestException('Decision already approved');
 
     return this.prisma.selectionDecision.update({
       where: { id: decision.id },
       data: { approvedById: userId, approvedAt: new Date() },
-      include: { decidedBy: { select: { id: true, name: true } }, approvedBy: { select: { id: true, name: true } } },
+      include: {
+        decidedBy: { select: { id: true, name: true } },
+        approvedBy: { select: { id: true, name: true } },
+      },
     });
   }
 
-  async updateCommunication(applicationId: string, dto: UpdateCommunicationDto) {
+  async updateCommunication(
+    applicationId: string,
+    dto: UpdateCommunicationDto,
+  ) {
     const decision = await this.prisma.selectionDecision.findUnique({
       where: { applicationId },
     });
@@ -203,12 +239,15 @@ export class DecisionsService {
         application: {
           include: {
             candidate: { select: { id: true, name: true, email: true } },
-            hiringPlan: { select: { id: true, title: true, designation: true } },
+            hiringPlan: {
+              select: { id: true, title: true, designation: true },
+            },
           },
         },
       },
     });
-    if (!decision) throw new NotFoundException('No decision found for this application');
+    if (!decision)
+      throw new NotFoundException('No decision found for this application');
     return decision;
   }
 
@@ -265,7 +304,12 @@ export class DecisionsService {
           date: sh.exitedAt,
           title: `Completed ${sh.stage.name}`,
           description: sh.outcome || '',
-          color: sh.outcome === 'PASSED' ? 'green' : sh.outcome === 'REJECTED' ? 'red' : 'slate',
+          color:
+            sh.outcome === 'PASSED'
+              ? 'green'
+              : sh.outcome === 'REJECTED'
+                ? 'red'
+                : 'slate',
         });
       }
     }
@@ -286,7 +330,10 @@ export class DecisionsService {
       events.push({
         type: 'decision',
         date: application.decision.createdAt,
-        title: application.decision.decision === 'SELECTED' ? 'Selected' : 'Rejected',
+        title:
+          application.decision.decision === 'SELECTED'
+            ? 'Selected'
+            : 'Rejected',
         description: `By ${application.decision.decidedBy.name}`,
         color: application.decision.decision === 'SELECTED' ? 'green' : 'red',
       });
@@ -303,10 +350,13 @@ export class DecisionsService {
     }
 
     // Sort by date
-    events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    events.sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    );
 
     const totalDays = Math.ceil(
-      (Date.now() - new Date(application.appliedAt).getTime()) / (1000 * 60 * 60 * 24),
+      (Date.now() - new Date(application.appliedAt).getTime()) /
+        (1000 * 60 * 60 * 24),
     );
 
     return { candidateName: application.candidate.name, totalDays, events };

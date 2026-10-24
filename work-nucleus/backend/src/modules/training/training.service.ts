@@ -1,6 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateTrainingModuleDto, UpdateTrainingModuleDto } from './dto/training.dto';
+import {
+  CreateTrainingModuleDto,
+  UpdateTrainingModuleDto,
+} from './dto/training.dto';
 import { TrainingCategory } from '@prisma/client';
 
 @Injectable()
@@ -73,7 +76,11 @@ export class TrainingService {
         where: { userId, module: { orgId } },
       }),
     ]);
-    return { total, completed, percentage: total > 0 ? Math.round((completed / total) * 100) : 0 };
+    return {
+      total,
+      completed,
+      percentage: total > 0 ? Math.round((completed / total) * 100) : 0,
+    };
   }
 
   async seedDefaults(orgId: string) {
@@ -302,6 +309,9 @@ Track key metrics:
       })),
     });
 
-    return { message: 'Default training modules created', count: defaults.length };
+    return {
+      message: 'Default training modules created',
+      count: defaults.length,
+    };
   }
 }

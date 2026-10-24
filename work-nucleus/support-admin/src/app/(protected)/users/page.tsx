@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Search, Filter, ChevronRight } from "lucide-react";
+import {
+  Search, Filter, ChevronRight, Download, RefreshCw, CheckSquare,
+  Square, Users, X, Clock, AlertTriangle,
+} from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { TableSkeleton } from "@/components/skeletons";
 import { EmptyState, ErrorState } from "@/components/feedback";
+import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 
 interface User {
   id: string;
@@ -21,6 +25,7 @@ interface User {
 
 const ROLES = ["ADMIN", "HR", "HIRING_MANAGER", "INTERVIEWER", "VIEWER", "SUPPORT_REP", "SUPPORT_ADMIN"];
 const USER_TYPES = ["COMPANY_ADMIN", "COMPANY_USER", "CANDIDATE", "RECRUITER", "PLATFORM_ADMIN"];
+const POLL_INTERVAL = 30_000;
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -29,21 +34,33 @@ export default function UsersPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+
+  // Filters
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [userTypeFilter, setUserTypeFilter] = useState("");
   const [activeFilter, setActiveFilter] = useState("");
 
+  // Bulk select state
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkAction, setBulkAction] = useState<"activate" | "deactivate">("deactivate");
+  const [bulkReason, setBulkReason] = useState("");
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkResult, setBulkResult] = useState<string | null>(null);
+  const [showBulkPanel, setShowBulkPanel] = useState(false);
+
+  // Search debounce
   useEffect(() => {
-    const timer = setTimeout(() => setSearch(searchInput), 300);
-    return () => clearTimeout(timer);
+    const t = setTimeout(() => setSearch(searchInput), 300);
+    return () => clearTimeout(t);
   }, [searchInput]);
 
   useEffect(() => { setPage(1); }, [search, roleFilter, userTypeFilter, activeFilter]);
-  useEffect(() => { fetchUsers(); }, [page, search, roleFilter, userTypeFilter, activeFilter]);
 
-  async function fetchUsers() {
+  const fetchUsers = useCallback(async () => {
     setLoading(true); setError(null);
     try {
       const params = new URLSearchParams({ page: String(page), limit: "20" });
@@ -54,13 +71,80 @@ export default function UsersPage() {
       const res = await fetch(`/api/support/users?${params}`);
       if (!res.ok) throw new Error("Failed to load users");
       const json = await res.json();
-      setUsers(json.data); setTotal(json.meta.total); setTotalPages(json.meta.totalPages);
-    } catch (e: any) { setError(e.message); }
-    finally { setLoading(false); }
-  }
+      setUsers(json.data ?? []);
+      setTotal(json.meta?.total ?? 0);
+      setTotalPages(json.meta?.totalPages ?? 1);
+      setLastRefreshed(new Date());
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, search, roleFilter, userTypeFilter, activeFilter]);
+
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+  useAutoRefresh(fetchUsers, POLL_INTERVAL, autoRefresh);
 
   function clearFilters() {
     setSearchInput(""); setRoleFilter(""); setUserTypeFilter(""); setActiveFilter("");
+  }
+
+  // --- Selection helpers ---
+  const allSelected = users.length > 0 && users.every((u) => selected.has(u.id));
+  const someSelected = selected.size > 0;
+
+  function toggleAll() {
+    if (allSelected) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(users.map((u) => u.id)));
+    }
+  }
+
+  function toggleUser(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  // --- Bulk action ---
+  async function executeBulkAction() {
+    if (selected.size === 0 || !bulkReason.trim()) return;
+    setBulkLoading(true); setBulkResult(null);
+    try {
+      const res = await fetch("/api/support/users/bulk-action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userIds: Array.from(selected),
+          action: bulkAction,
+          reason: bulkReason,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || "Bulk action failed");
+      setBulkResult(json.message ?? "Done");
+      setSelected(new Set());
+      setShowBulkPanel(false);
+      setBulkReason("");
+      await fetchUsers();
+    } catch (e: any) {
+      setBulkResult(`Error: ${e.message}`);
+    } finally {
+      setBulkLoading(false);
+    }
+  }
+
+  // --- CSV Export ---
+  function exportCsv() {
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (roleFilter) params.set("role", roleFilter);
+    if (userTypeFilter) params.set("userType", userTypeFilter);
+    if (activeFilter) params.set("isActive", activeFilter);
+    window.open(`/api/support/users/export?${params}`, "_blank");
   }
 
   const hasFilters = searchInput || roleFilter || userTypeFilter || activeFilter;
@@ -68,13 +152,132 @@ export default function UsersPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Users</h1>
-        <p className="text-sm text-muted-foreground">
-          Cross-org user directory
-          {!loading && <> — <span aria-live="polite">{total.toLocaleString()} users</span></>}
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <Users className="h-6 w-6 text-primary" />
+            Users
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Cross-org user directory
+            {!loading && (
+              <span className="ml-2 inline-flex items-center gap-1 text-xs" aria-live="polite">
+                — {total.toLocaleString()} users
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Auto-refresh toggle */}
+          <button
+            id="users-toggle-refresh"
+            onClick={() => setAutoRefresh((v) => !v)}
+            title={autoRefresh ? "Pause auto-refresh" : "Enable auto-refresh"}
+            className={`flex items-center gap-1.5 h-9 rounded-md border px-3 text-xs font-medium transition-colors ${
+              autoRefresh
+                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600"
+                : "border-muted text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <span className={`h-2 w-2 rounded-full ${autoRefresh ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground"}`} />
+            {autoRefresh ? "Live" : "Paused"}
+          </button>
+          <button
+            id="users-refresh"
+            onClick={fetchUsers}
+            disabled={loading}
+            className="flex items-center gap-1.5 h-9 rounded-md border px-3 text-xs hover:bg-accent disabled:opacity-50 transition-colors"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+          {someSelected && (
+            <button
+              id="users-bulk-action-btn"
+              onClick={() => setShowBulkPanel(true)}
+              className="flex items-center gap-1.5 h-9 rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-600 px-3 text-xs font-medium hover:bg-amber-500/20 transition-colors"
+            >
+              <AlertTriangle className="h-3.5 w-3.5" />
+              Bulk Action ({selected.size})
+            </button>
+          )}
+          <button
+            id="users-export-csv"
+            onClick={exportCsv}
+            className="flex items-center gap-1.5 h-9 rounded-md bg-primary text-primary-foreground px-3 text-xs font-medium hover:bg-primary/90 transition-colors"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export CSV
+          </button>
+        </div>
       </div>
+
+      {/* Last refreshed */}
+      {lastRefreshed && (
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <Clock className="h-3 w-3" />
+          Last refreshed: {lastRefreshed.toLocaleTimeString()}
+          {autoRefresh && <span className="ml-1 text-emerald-500">(auto-refreshing every 30s)</span>}
+        </p>
+      )}
+
+      {/* Bulk result */}
+      {bulkResult && (
+        <div className={`rounded-md border px-4 py-2 text-sm flex items-center justify-between ${
+          bulkResult.startsWith("Error") ? "border-destructive/30 bg-destructive/10 text-destructive" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+        }`}>
+          <span>{bulkResult}</span>
+          <button onClick={() => setBulkResult(null)}><X className="h-4 w-4" /></button>
+        </div>
+      )}
+
+      {/* Bulk Action Panel */}
+      {showBulkPanel && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold flex items-center gap-1.5">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              Bulk Action — {selected.size} user(s) selected
+            </p>
+            <button onClick={() => setShowBulkPanel(false)}><X className="h-4 w-4 text-muted-foreground" /></button>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <div className="flex gap-2">
+              <button
+                id="bulk-deactivate-btn"
+                onClick={() => setBulkAction("deactivate")}
+                className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${bulkAction === "deactivate" ? "bg-red-500 text-white border-red-500" : "hover:bg-accent"}`}
+              >
+                Deactivate
+              </button>
+              <button
+                id="bulk-activate-btn"
+                onClick={() => setBulkAction("activate")}
+                className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${bulkAction === "activate" ? "bg-emerald-500 text-white border-emerald-500" : "hover:bg-accent"}`}
+              >
+                Activate
+              </button>
+            </div>
+            <input
+              id="bulk-reason-input"
+              type="text"
+              placeholder="Reason (required, min 5 chars)…"
+              value={bulkReason}
+              onChange={(e) => setBulkReason(e.target.value)}
+              className="flex-1 min-w-[200px] h-8 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            <button
+              id="bulk-execute-btn"
+              onClick={executeBulkAction}
+              disabled={bulkLoading || bulkReason.trim().length < 5}
+              className="flex items-center gap-1.5 h-8 rounded-md bg-primary text-primary-foreground px-4 text-xs font-medium disabled:opacity-50 hover:bg-primary/90 transition-colors"
+            >
+              {bulkLoading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : null}
+              Confirm
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3" role="search" aria-label="Filter users">
@@ -87,10 +290,10 @@ export default function UsersPage() {
             placeholder="Search by name or email…"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            aria-label="Search users by name or email"
+            aria-label="Search users"
           />
         </div>
-        <label htmlFor="user-role-filter" className="sr-only">Filter by role</label>
+        <label htmlFor="user-role-filter" className="sr-only">Role</label>
         <select
           id="user-role-filter"
           className="h-9 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
@@ -100,7 +303,7 @@ export default function UsersPage() {
           <option value="">All Roles</option>
           {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
         </select>
-        <label htmlFor="user-type-filter" className="sr-only">Filter by user type</label>
+        <label htmlFor="user-type-filter" className="sr-only">User Type</label>
         <select
           id="user-type-filter"
           className="h-9 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
@@ -110,7 +313,7 @@ export default function UsersPage() {
           <option value="">All Types</option>
           {USER_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
-        <label htmlFor="user-status-filter" className="sr-only">Filter by status</label>
+        <label htmlFor="user-status-filter" className="sr-only">Status</label>
         <select
           id="user-status-filter"
           className="h-9 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
@@ -126,7 +329,6 @@ export default function UsersPage() {
             id="user-clear-filters"
             onClick={clearFilters}
             className="flex items-center gap-1.5 h-9 rounded-md border px-3 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            aria-label="Clear all filters"
           >
             <Filter className="h-3.5 w-3.5" aria-hidden="true" /> Clear
           </button>
@@ -138,6 +340,16 @@ export default function UsersPage() {
         <table className="w-full text-sm" aria-label="Users table" aria-busy={loading}>
           <thead className="border-b bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
+              <th scope="col" className="px-4 py-3 text-left">
+                <button
+                  id="users-select-all"
+                  onClick={toggleAll}
+                  aria-label={allSelected ? "Deselect all" : "Select all"}
+                  className="text-primary hover:text-primary/80 transition-colors"
+                >
+                  {allSelected ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
+                </button>
+              </th>
               <th scope="col" className="px-4 py-3 text-left font-semibold">Name</th>
               <th scope="col" className="px-4 py-3 text-left font-semibold">Email</th>
               <th scope="col" className="px-4 py-3 text-left font-semibold">Organization</th>
@@ -147,15 +359,27 @@ export default function UsersPage() {
             </tr>
           </thead>
           {loading ? (
-            <TableSkeleton cols={6} rows={8} />
+            <TableSkeleton cols={7} rows={8} />
           ) : error ? (
-            <tbody><tr><td colSpan={6}><ErrorState message={error} onRetry={fetchUsers} /></td></tr></tbody>
+            <tbody><tr><td colSpan={7}><ErrorState message={error} onRetry={fetchUsers} /></td></tr></tbody>
           ) : users.length === 0 ? (
-            <tbody><tr><td colSpan={6}><EmptyState title="No users found" description="Try adjusting your search or filters." /></td></tr></tbody>
+            <tbody><tr><td colSpan={7}><EmptyState title="No users found" description="Try adjusting your search or filters." /></td></tr></tbody>
           ) : (
             <tbody className="divide-y">
               {users.map((user) => (
-                <tr key={user.id} className="hover:bg-muted/20 transition-colors">
+                <tr
+                  key={user.id}
+                  className={`hover:bg-muted/20 transition-colors ${selected.has(user.id) ? "bg-primary/5" : ""}`}
+                >
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => toggleUser(user.id)}
+                      aria-label={`${selected.has(user.id) ? "Deselect" : "Select"} ${user.name}`}
+                      className="text-primary hover:text-primary/80 transition-colors"
+                    >
+                      {selected.has(user.id) ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4 text-muted-foreground" />}
+                    </button>
+                  </td>
                   <td className="px-4 py-3 font-medium">{user.name}</td>
                   <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
                   <td className="px-4 py-3">
@@ -173,7 +397,7 @@ export default function UsersPage() {
                       className="inline-flex items-center gap-1 text-xs text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary rounded"
                       aria-label={`View details for ${user.name}`}
                     >
-                      View <ChevronRight className="h-3 w-3" aria-hidden="true" />
+                      View <ChevronRight className="h-3 w-3" />
                     </Link>
                   </td>
                 </tr>
@@ -185,7 +409,10 @@ export default function UsersPage() {
         {/* Pagination */}
         {!loading && !error && users.length > 0 && (
           <div className="flex items-center justify-between border-t px-4 py-3 text-xs text-muted-foreground">
-            <span aria-live="polite">Page {page} of {totalPages} — {total.toLocaleString()} users</span>
+            <span aria-live="polite">
+              {someSelected && <span className="mr-3 text-primary font-medium">{selected.size} selected · </span>}
+              Page {page} of {totalPages} — {total.toLocaleString()} users
+            </span>
             <nav aria-label="Pagination">
               <div className="flex gap-2">
                 <button
@@ -193,7 +420,6 @@ export default function UsersPage() {
                   disabled={page <= 1}
                   onClick={() => setPage((p) => p - 1)}
                   className="rounded border px-3 py-1 disabled:opacity-40 hover:bg-accent transition-colors"
-                  aria-label="Previous page"
                 >
                   ← Prev
                 </button>
@@ -202,7 +428,6 @@ export default function UsersPage() {
                   disabled={page >= totalPages}
                   onClick={() => setPage((p) => p + 1)}
                   className="rounded border px-3 py-1 disabled:opacity-40 hover:bg-accent transition-colors"
-                  aria-label="Next page"
                 >
                   Next →
                 </button>

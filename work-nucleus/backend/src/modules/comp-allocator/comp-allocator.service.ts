@@ -1,7 +1,17 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { BudgetStatus, Prisma, RevisionStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { allocate, AllocatorEmployee, AllocatorReport, BudgetMatrix } from './allocator';
+import {
+  allocate,
+  AllocatorEmployee,
+  AllocatorReport,
+  BudgetMatrix,
+} from './allocator';
 
 export interface SimulateOptions {
   /** Override pool sizes for what-if simulation. */
@@ -18,7 +28,10 @@ export class CompAllocatorService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async loadEmployees(orgId: string, cycleId: string): Promise<AllocatorEmployee[]> {
+  async loadEmployees(
+    orgId: string,
+    cycleId: string,
+  ): Promise<AllocatorEmployee[]> {
     const assessments = await this.prisma.appraisalAssessment.findMany({
       where: {
         cycle: { orgId },
@@ -45,18 +58,28 @@ export class CompAllocatorService {
    * Re-running before any revision is LOCKED is allowed; LOCKED revisions
    * are preserved untouched (idempotent for the calibrated subset).
    */
-  async allocate(orgId: string, cycleId: string, opts: { effectiveDate?: Date } = {}): Promise<AllocatorReport> {
-    const budget = await this.prisma.appraisalBudget.findFirst({ where: { orgId, cycleId } });
+  async allocate(
+    orgId: string,
+    cycleId: string,
+    opts: { effectiveDate?: Date } = {},
+  ): Promise<AllocatorReport> {
+    const budget = await this.prisma.appraisalBudget.findFirst({
+      where: { orgId, cycleId },
+    });
     if (!budget) throw new NotFoundException('Budget not found for cycle');
 
     const employees = await this.enrichEmployees(orgId, cycleId);
     if (employees.length === 0) {
-      throw new BadRequestException('No finalised manager assessments for this cycle');
+      throw new BadRequestException(
+        'No finalised manager assessments for this cycle',
+      );
     }
 
     const report = allocate(this.toBudgetMatrix(budget), employees);
 
-    const effectiveDate = opts.effectiveDate ?? new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1);
+    const effectiveDate =
+      opts.effectiveDate ??
+      new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1);
 
     // Persist within a SERIALIZABLE transaction so concurrent allocator runs
     // can't interleave and produce inconsistent revisions.
@@ -74,7 +97,9 @@ export class CompAllocatorService {
           if (lockedSet.has(r.employeeId)) continue;
           const e = empMap.get(r.employeeId)!;
           await tx.compensationRevision.upsert({
-            where: { cycleId_employeeId: { cycleId, employeeId: r.employeeId } },
+            where: {
+              cycleId_employeeId: { cycleId, employeeId: r.employeeId },
+            },
             update: {
               budgetId: budget.id,
               currentFixed: e.currentFixed,
@@ -135,8 +160,14 @@ export class CompAllocatorService {
    * What-if: pure simulation, never persists. Used by the simulator UI for
    * sub-200ms recompute (the spec target). No DB writes.
    */
-  async simulate(orgId: string, cycleId: string, opts: SimulateOptions = {}): Promise<AllocatorReport> {
-    const budget = await this.prisma.appraisalBudget.findFirst({ where: { orgId, cycleId } });
+  async simulate(
+    orgId: string,
+    cycleId: string,
+    opts: SimulateOptions = {},
+  ): Promise<AllocatorReport> {
+    const budget = await this.prisma.appraisalBudget.findFirst({
+      where: { orgId, cycleId },
+    });
     if (!budget) throw new NotFoundException('Budget not found for cycle');
 
     const employees = await this.enrichEmployees(orgId, cycleId);
@@ -148,7 +179,10 @@ export class CompAllocatorService {
       matrix: opts.overrideMatrix ?? baseMatrix.matrix,
     };
     const adjustedEmployees = opts.overrideRatings
-      ? employees.map((e) => ({ ...e, rating: opts.overrideRatings![e.employeeId] ?? e.rating }))
+      ? employees.map((e) => ({
+          ...e,
+          rating: opts.overrideRatings![e.employeeId] ?? e.rating,
+        }))
       : employees;
     return allocate(overridden, adjustedEmployees);
   }
@@ -187,9 +221,17 @@ export class CompAllocatorService {
 
   // ── Helpers ───────────────────────────────────────────────────
 
-  private async enrichEmployees(orgId: string, cycleId: string): Promise<AllocatorEmployee[]> {
+  private async enrichEmployees(
+    orgId: string,
+    cycleId: string,
+  ): Promise<AllocatorEmployee[]> {
     const assessments = await this.prisma.appraisalAssessment.findMany({
-      where: { cycle: { orgId }, cycleId, type: 'MANAGER', status: { in: ['REVIEWED', 'FINALISED'] } },
+      where: {
+        cycle: { orgId },
+        cycleId,
+        type: 'MANAGER',
+        status: { in: ['REVIEWED', 'FINALISED'] },
+      },
       include: {
         employee: { select: { id: true } },
       },
@@ -198,7 +240,13 @@ export class CompAllocatorService {
 
     const existing = await this.prisma.compensationRevision.findMany({
       where: { orgId, cycleId },
-      select: { employeeId: true, currentFixed: true, currentVariable: true, scopeKey: true, retentionTier: true },
+      select: {
+        employeeId: true,
+        currentFixed: true,
+        currentVariable: true,
+        scopeKey: true,
+        retentionTier: true,
+      },
     });
     const map = new Map(existing.map((r) => [r.employeeId, r]));
 
@@ -232,23 +280,30 @@ export class CompAllocatorService {
       matrix: budget.matrix as unknown as Record<string, number>,
       bonusMatrix: budget.bonusMatrix as unknown as Record<string, number>,
       splits: budget.splits as unknown as BudgetMatrix['splits'],
-      marketCorrection: budget.marketCorrection as unknown as BudgetMatrix['marketCorrection'],
-      retentionRules: budget.retentionRules as unknown as BudgetMatrix['retentionRules'],
+      marketCorrection:
+        budget.marketCorrection as unknown as BudgetMatrix['marketCorrection'],
+      retentionRules:
+        budget.retentionRules as unknown as BudgetMatrix['retentionRules'],
       hikeCapPct: Number(budget.hikeCapPct),
     };
   }
 }
 
 function scopeKey(scope: Record<string, string>): string {
-  return Object.keys(scope)
-    .sort()
-    .map((k) => `${k}=${scope[k]}`)
-    .join('|') || '__global';
+  return (
+    Object.keys(scope)
+      .sort()
+      .map((k) => `${k}=${scope[k]}`)
+      .join('|') || '__global'
+  );
 }
 
 function parseScopeKey(key: string): Record<string, string> {
   if (key === '__global') return {};
-  return Object.fromEntries(key.split('|').map((p) => p.split('='))) as Record<string, string>;
+  return Object.fromEntries(key.split('|').map((p) => p.split('='))) as Record<
+    string,
+    string
+  >;
 }
 
 function median(xs: number[]): number {

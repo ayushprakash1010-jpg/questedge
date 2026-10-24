@@ -2,7 +2,10 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma, ReportSource, ReportVisualization } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateReportDefinitionDto, UpdateReportDefinitionDto } from './dto/report.dto';
+import {
+  CreateReportDefinitionDto,
+  UpdateReportDefinitionDto,
+} from './dto/report.dto';
 import { listAvailableFields, ReportRunner, ReportPlan } from './report-runner';
 import { GoogleGenAI } from '@google/genai';
 
@@ -19,13 +22,13 @@ export class ReportsService {
     private readonly config: ConfigService,
   ) {
     this.runner = new ReportRunner(prisma);
-    
+
     const rawKey = this.config.get<string>('GEMINI_API_KEY');
     const trimmedKey = rawKey ? rawKey.trim() : null;
     this.hasApiKey = !!trimmedKey;
-    this.model = this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
+    this.model =
+      this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
 
-    
     this.ai = new GoogleGenAI({
       apiKey: trimmedKey || 'dummy-key',
     });
@@ -57,7 +60,9 @@ export class ReportsService {
   }
 
   async findOne(orgId: string, id: string) {
-    const r = await this.prisma.reportDefinition.findFirst({ where: { id, orgId } });
+    const r = await this.prisma.reportDefinition.findFirst({
+      where: { id, orgId },
+    });
     if (!r) throw new NotFoundException('Report not found');
     return r;
   }
@@ -70,11 +75,19 @@ export class ReportsService {
         ...(dto.name !== undefined && { name: dto.name }),
         ...(dto.description !== undefined && { description: dto.description }),
         ...(dto.dataSource !== undefined && { dataSource: dto.dataSource }),
-        ...(dto.filters !== undefined && { filters: dto.filters as Prisma.InputJsonValue }),
+        ...(dto.filters !== undefined && {
+          filters: dto.filters as Prisma.InputJsonValue,
+        }),
         ...(dto.groupBy !== undefined && { groupBy: dto.groupBy }),
-        ...(dto.metrics !== undefined && { metrics: dto.metrics as Prisma.InputJsonValue }),
-        ...(dto.visualization !== undefined && { visualization: dto.visualization }),
-        ...(dto.scheduleCron !== undefined && { scheduleCron: dto.scheduleCron }),
+        ...(dto.metrics !== undefined && {
+          metrics: dto.metrics as Prisma.InputJsonValue,
+        }),
+        ...(dto.visualization !== undefined && {
+          visualization: dto.visualization,
+        }),
+        ...(dto.scheduleCron !== undefined && {
+          scheduleCron: dto.scheduleCron,
+        }),
       },
     });
   }
@@ -137,12 +150,15 @@ export class ReportsService {
         config: {
           systemInstruction: systemPrompt,
           responseMimeType: 'application/json',
-        }
+        },
       });
 
       const content = response.text;
       if (content) {
-        const cleaned = content.replace(/```json/gi, '').replace(/```/g, '').trim();
+        const cleaned = content
+          .replace(/```json/gi, '')
+          .replace(/```/g, '')
+          .trim();
         return JSON.parse(cleaned);
       }
       throw new Error('AI returned an empty response.');
@@ -159,9 +175,12 @@ export class ReportsService {
     const lower = prompt.toLowerCase();
     let source: ReportSource = ReportSource.HIRING;
     if (lower.includes('hire')) source = ReportSource.HIRING;
-    else if (lower.includes('appraisal') || lower.includes('rating')) source = ReportSource.APPRAISAL;
-    else if (lower.includes('compensation') || lower.includes('hike')) source = ReportSource.COMPENSATION;
-    else if (lower.includes('bgv') || lower.includes('verification')) source = ReportSource.BGV;
+    else if (lower.includes('appraisal') || lower.includes('rating'))
+      source = ReportSource.APPRAISAL;
+    else if (lower.includes('compensation') || lower.includes('hike'))
+      source = ReportSource.COMPENSATION;
+    else if (lower.includes('bgv') || lower.includes('verification'))
+      source = ReportSource.BGV;
     else if (lower.includes('attrition')) source = ReportSource.ATTRITION;
     return {
       name: prompt.slice(0, 80),

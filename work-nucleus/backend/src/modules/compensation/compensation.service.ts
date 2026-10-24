@@ -24,7 +24,9 @@ export class CompensationService {
   }
 
   async findOne(orgId: string, id: string) {
-    const c = await this.prisma.compensation.findFirst({ where: { id, orgId } });
+    const c = await this.prisma.compensation.findFirst({
+      where: { id, orgId },
+    });
     if (!c) throw new NotFoundException('Compensation not found');
     return c;
   }
@@ -35,11 +37,19 @@ export class CompensationService {
       where: { id },
       data: {
         ...(dto.fixedAnnual !== undefined && { fixedAnnual: dto.fixedAnnual }),
-        ...(dto.variableAnnual !== undefined && { variableAnnual: dto.variableAnnual }),
-        ...(dto.joiningBonus !== undefined && { joiningBonus: dto.joiningBonus }),
-        ...(dto.retentionBonus !== undefined && { retentionBonus: dto.retentionBonus }),
+        ...(dto.variableAnnual !== undefined && {
+          variableAnnual: dto.variableAnnual,
+        }),
+        ...(dto.joiningBonus !== undefined && {
+          joiningBonus: dto.joiningBonus,
+        }),
+        ...(dto.retentionBonus !== undefined && {
+          retentionBonus: dto.retentionBonus,
+        }),
         ...(dto.esopUnits !== undefined && { esopUnits: dto.esopUnits }),
-        ...(dto.esopVesting !== undefined && { esopVesting: dto.esopVesting as any }),
+        ...(dto.esopVesting !== undefined && {
+          esopVesting: dto.esopVesting as any,
+        }),
         ...(dto.breakup !== undefined && { breakup: dto.breakup as any }),
         ...(dto.currency !== undefined && { currency: dto.currency }),
       },
@@ -56,7 +66,10 @@ export class CompensationService {
     retentionBonus: number;
   }) {
     const annualGross =
-      comp.fixedAnnual + comp.variableAnnual + comp.joiningBonus + comp.retentionBonus;
+      comp.fixedAnnual +
+      comp.variableAnnual +
+      comp.joiningBonus +
+      comp.retentionBonus;
     let bracket = '0%';
     if (annualGross > 1500000) bracket = '30%';
     else if (annualGross > 1200000) bracket = '20%';

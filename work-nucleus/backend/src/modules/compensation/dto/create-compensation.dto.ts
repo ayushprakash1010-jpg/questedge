@@ -43,7 +43,9 @@ export class CreateCompensationDto {
   @IsObject()
   esopVesting?: Record<string, unknown>;
 
-  @ApiPropertyOptional({ description: '{ basic, hra, special, pf, gratuity, lta, ... }' })
+  @ApiPropertyOptional({
+    description: '{ basic, hra, special, pf, gratuity, lta, ... }',
+  })
   @IsOptional()
   @IsObject()
   breakup?: Record<string, unknown>;

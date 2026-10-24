@@ -93,7 +93,10 @@ export class MandatesService {
     }
 
     if (filter.employmentType) {
-      where.employmentType = { contains: filter.employmentType, mode: 'insensitive' };
+      where.employmentType = {
+        contains: filter.employmentType,
+        mode: 'insensitive',
+      };
     }
 
     if (filter.minReward !== undefined) {
@@ -112,7 +115,10 @@ export class MandatesService {
 
     // Skills filter — mandate must contain ALL specified skills
     if (filter.skills) {
-      const skillsList = filter.skills.split(',').map((s) => s.trim()).filter(Boolean);
+      const skillsList = filter.skills
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
       if (skillsList.length > 0) {
         // JSON contains check — check if any mandatory skill matches
         where.AND = skillsList.map((skill) => ({
@@ -144,7 +150,10 @@ export class MandatesService {
 
     return {
       totalApplications,
-      totalReferrals: Object.values(referralsByStatus).reduce((a, b) => a + b, 0),
+      totalReferrals: Object.values(referralsByStatus).reduce(
+        (a, b) => a + b,
+        0,
+      ),
       referralsPendingConsent:
         (referralsByStatus['PENDING_CONSENT'] ?? 0) +
         (referralsByStatus['CONSENT_REQUESTED'] ?? 0),
@@ -173,11 +182,15 @@ export class MandatesService {
         compensationMin: dto.compensationMin ? dto.compensationMin : undefined,
         compensationMax: dto.compensationMax ? dto.compensationMax : undefined,
         currency: dto.currency ?? 'INR',
-        applicationDeadline: dto.applicationDeadline ? new Date(dto.applicationDeadline) : undefined,
+        applicationDeadline: dto.applicationDeadline
+          ? new Date(dto.applicationDeadline)
+          : undefined,
         acceptsDirectApply: dto.acceptsDirectApply ?? true,
         acceptsReferrals: dto.acceptsReferrals ?? true,
         participationType: dto.participationType ?? 'OPEN',
-        referralRewardAmount: dto.referralRewardAmount ? dto.referralRewardAmount : undefined,
+        referralRewardAmount: dto.referralRewardAmount
+          ? dto.referralRewardAmount
+          : undefined,
         referralRewardType: dto.referralRewardType,
         ownershipPeriodDays: dto.ownershipPeriodDays ?? 180,
         expectedTimeline: dto.expectedTimeline,
@@ -193,7 +206,11 @@ export class MandatesService {
     });
   }
 
-  async update(orgId: string, id: string, dto: UpdateMandateDto): Promise<Mandate> {
+  async update(
+    orgId: string,
+    id: string,
+    dto: UpdateMandateDto,
+  ): Promise<Mandate> {
     const mandate = await this.findOwnMandate(orgId, id);
 
     if (mandate.status === 'CLOSED' || mandate.status === 'FILLED') {
@@ -207,14 +224,19 @@ export class MandatesService {
         compensationMin: dto.compensationMin ?? undefined,
         compensationMax: dto.compensationMax ?? undefined,
         referralRewardAmount: dto.referralRewardAmount ?? undefined,
-        applicationDeadline: dto.applicationDeadline ? new Date(dto.applicationDeadline) : undefined,
+        applicationDeadline: dto.applicationDeadline
+          ? new Date(dto.applicationDeadline)
+          : undefined,
         interviewProcess: dto.interviewProcess ?? undefined,
       },
       include: { organization: { select: { id: true, name: true } } },
     });
   }
 
-  async findByOrg(orgId: string, filter: FilterMandateDto): Promise<PaginatedResult<Mandate>> {
+  async findByOrg(
+    orgId: string,
+    filter: FilterMandateDto,
+  ): Promise<PaginatedResult<Mandate>> {
     const where = this.buildWhereClause(filter, { orgId });
     const page = filter.page ?? 1;
     const limit = Math.min(filter.limit ?? 20, 100);
@@ -226,7 +248,16 @@ export class MandatesService {
         skip,
         take: limit,
         orderBy: { [filter.sortBy ?? 'createdAt']: filter.sortOrder ?? 'desc' },
-        include: { organization: { select: { id: true, name: true } }, _count: { select: { referrals: true, applications: true, participations: true } } },
+        include: {
+          organization: { select: { id: true, name: true } },
+          _count: {
+            select: {
+              referrals: true,
+              applications: true,
+              participations: true,
+            },
+          },
+        },
       }),
       this.prisma.mandate.count({ where }),
     ]);
@@ -286,8 +317,14 @@ export class MandatesService {
       );
     }
 
-    if (!mandate.title || !mandate.description || (mandate.mandatorySkills as string[]).length === 0) {
-      throw new BadRequestException('Mandate must have a title, description, and at least one required skill before publishing.');
+    if (
+      !mandate.title ||
+      !mandate.description ||
+      (mandate.mandatorySkills as string[]).length === 0
+    ) {
+      throw new BadRequestException(
+        'Mandate must have a title, description, and at least one required skill before publishing.',
+      );
     }
 
     const updated = await this.prisma.mandate.update({
@@ -300,13 +337,15 @@ export class MandatesService {
       // Send WhatsApp notification to the manager
       const appLink = `https://questedge.com/mandates/${updated.id}`;
       if (updated.hiringManagerPhone) {
-        this.whatsappService.sendWhatsAppNotification(
-          updated.hiringManagerPhone,
-          updated.hiringManagerName,
-          updated.title,
-          'ACTIVE',
-          appLink
-        ).catch(e => console.error(e));
+        this.whatsappService
+          .sendWhatsAppNotification(
+            updated.hiringManagerPhone,
+            updated.hiringManagerName,
+            updated.title,
+            'ACTIVE',
+            appLink,
+          )
+          .catch((e) => console.error(e));
       }
     }
 
@@ -341,7 +380,9 @@ export class MandatesService {
     const mandate = await this.findOwnMandate(orgId, id);
 
     if (mandate.status !== 'DRAFT') {
-      throw new ForbiddenException('Only DRAFT mandates can be deleted. Pause or Close active mandates instead.');
+      throw new ForbiddenException(
+        'Only DRAFT mandates can be deleted. Pause or Close active mandates instead.',
+      );
     }
 
     await this.prisma.mandate.delete({ where: { id } });
@@ -349,7 +390,9 @@ export class MandatesService {
 
   // ── Public: Discovery (no auth) ─────────────────────────────────
 
-  async publicDiscover(filter: FilterMandateDto): Promise<PaginatedResult<Mandate>> {
+  async publicDiscover(
+    filter: FilterMandateDto,
+  ): Promise<PaginatedResult<Mandate>> {
     const where = this.buildWhereClause(filter);
     where.status = 'ACTIVE';
     const page = filter.page ?? 1;
@@ -361,7 +404,9 @@ export class MandatesService {
         where,
         skip,
         take: limit,
-        orderBy: { [filter.sortBy ?? 'publishedAt']: filter.sortOrder ?? 'desc' },
+        orderBy: {
+          [filter.sortBy ?? 'publishedAt']: filter.sortOrder ?? 'desc',
+        },
         include: {
           organization: { select: { id: true, name: true } },
           _count: { select: { referrals: true, participations: true } },
@@ -385,7 +430,10 @@ export class MandatesService {
 
   // ── Recruiter: Discovery ────────────────────────────────────────
 
-  async discover(recruiterId: string, filter: FilterMandateDto): Promise<PaginatedResult<Mandate & { isJoined: boolean }>> {
+  async discover(
+    recruiterId: string,
+    filter: FilterMandateDto,
+  ): Promise<PaginatedResult<Mandate & { isJoined: boolean }>> {
     const where = this.buildWhereClause(filter);
     where.status = 'ACTIVE';
     const page = filter.page ?? 1;
@@ -397,7 +445,9 @@ export class MandatesService {
         where,
         skip,
         take: limit,
-        orderBy: { [filter.sortBy ?? 'publishedAt']: filter.sortOrder ?? 'desc' },
+        orderBy: {
+          [filter.sortBy ?? 'publishedAt']: filter.sortOrder ?? 'desc',
+        },
         include: {
           organization: { select: { id: true, name: true } },
           _count: { select: { referrals: true, participations: true } },
@@ -425,7 +475,10 @@ export class MandatesService {
     };
   }
 
-  async findByRecruiter(recruiterId: string, filter: FilterMandateDto): Promise<PaginatedResult<Mandate>> {
+  async findByRecruiter(
+    recruiterId: string,
+    filter: FilterMandateDto,
+  ): Promise<PaginatedResult<Mandate>> {
     const page = filter.page ?? 1;
     const limit = Math.min(filter.limit ?? 20, 100);
     const skip = (page - 1) * limit;
@@ -469,12 +522,17 @@ export class MandatesService {
   // ── Recruiter: Participation ────────────────────────────────────
 
   async joinMandate(recruiterId: string, mandateId: string) {
-    const mandate = await this.prisma.mandate.findUnique({ where: { id: mandateId } });
+    const mandate = await this.prisma.mandate.findUnique({
+      where: { id: mandateId },
+    });
 
     if (!mandate) throw new NotFoundException('Mandate not found.');
-    if (mandate.status !== 'ACTIVE') throw new BadRequestException('Can only join ACTIVE mandates.');
+    if (mandate.status !== 'ACTIVE')
+      throw new BadRequestException('Can only join ACTIVE mandates.');
     if (mandate.participationType === 'INVITE_ONLY') {
-      throw new ForbiddenException('This mandate is invite-only. Please contact the company to be invited.');
+      throw new ForbiddenException(
+        'This mandate is invite-only. Please contact the company to be invited.',
+      );
     }
 
     const existing = await this.prisma.mandateParticipation.findUnique({
@@ -482,7 +540,8 @@ export class MandatesService {
     });
 
     if (existing) {
-      if (existing.status === 'ACTIVE') throw new ConflictException('You are already working on this mandate.');
+      if (existing.status === 'ACTIVE')
+        throw new ConflictException('You are already working on this mandate.');
       // Re-activate if previously left
       return this.prisma.mandateParticipation.update({
         where: { id: existing.id },
@@ -500,7 +559,8 @@ export class MandatesService {
       where: { mandateId_recruiterId: { mandateId, recruiterId } },
     });
 
-    if (!participation) throw new NotFoundException('You are not participating in this mandate.');
+    if (!participation)
+      throw new NotFoundException('You are not participating in this mandate.');
 
     await this.prisma.mandateParticipation.update({
       where: { id: participation.id },
@@ -538,7 +598,10 @@ export class MandatesService {
       include: { organization: { select: { id: true, name: true } } },
     });
 
-    if (!mandate) throw new NotFoundException('Mandate not found or you do not have access.');
+    if (!mandate)
+      throw new NotFoundException(
+        'Mandate not found or you do not have access.',
+      );
     return mandate;
   }
 
@@ -574,22 +637,27 @@ export class MandatesService {
     });
 
     // Manually join referrals to avoid prisma schema relation issues for now
-    const referralIds = applications.map(a => a.referralId).filter(Boolean) as string[];
-    let referralsMap: Record<string, any> = {};
-    
+    const referralIds = applications
+      .map((a) => a.referralId)
+      .filter(Boolean) as string[];
+    const referralsMap: Record<string, any> = {};
+
     if (referralIds.length > 0) {
       const referrals = await this.prisma.referral.findMany({
         where: { id: { in: referralIds } },
-        include: { recruiter: { select: { id: true, name: true } } }
+        include: { recruiter: { select: { id: true, name: true } } },
       });
-      referrals.forEach(r => {
+      referrals.forEach((r) => {
         referralsMap[r.id] = r;
       });
     }
 
-    return applications.map(app => ({
+    return applications.map((app) => ({
       ...app,
-      referral: app.referralId && referralsMap[app.referralId] ? referralsMap[app.referralId] : null
+      referral:
+        app.referralId && referralsMap[app.referralId]
+          ? referralsMap[app.referralId]
+          : null,
     }));
   }
 
@@ -723,14 +791,18 @@ export class MandatesService {
           },
         }),
       ]);
-      
-      this.emailService.sendReferralStatusUpdate({
-        toEmail: updatedReferral.recruiter.email,
-        recruiterName: updatedReferral.recruiter.name,
-        candidateName: updatedReferral.candidateProfile.name,
-        mandateTitle: updatedReferral.mandate.title,
-        newStatus,
-      }).catch(err => console.error("Failed to send referral status email", err));
+
+      this.emailService
+        .sendReferralStatusUpdate({
+          toEmail: updatedReferral.recruiter.email,
+          recruiterName: updatedReferral.recruiter.name,
+          candidateName: updatedReferral.candidateProfile.name,
+          mandateTitle: updatedReferral.mandate.title,
+          newStatus,
+        })
+        .catch((err) =>
+          console.error('Failed to send referral status email', err),
+        );
 
       if (updatedReferral.recruiter?.auth0Sub) {
         await this.notifications.create({
@@ -758,13 +830,17 @@ export class MandatesService {
       },
     });
 
-    this.emailService.sendReferralStatusUpdate({
-      toEmail: updated.recruiter.email,
-      recruiterName: updated.recruiter.name,
-      candidateName: updated.candidateProfile.name,
-      mandateTitle: updated.mandate.title,
-      newStatus,
-    }).catch(err => console.error("Failed to send referral status email", err));
+    this.emailService
+      .sendReferralStatusUpdate({
+        toEmail: updated.recruiter.email,
+        recruiterName: updated.recruiter.name,
+        candidateName: updated.candidateProfile.name,
+        mandateTitle: updated.mandate.title,
+        newStatus,
+      })
+      .catch((err) =>
+        console.error('Failed to send referral status email', err),
+      );
 
     if (updated.recruiter?.auth0Sub) {
       await this.notifications.create({

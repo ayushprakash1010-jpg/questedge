@@ -53,7 +53,9 @@ export class OfferTemplatesController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update offer template (bumps version on content change)' })
+  @ApiOperation({
+    summary: 'Update offer template (bumps version on content change)',
+  })
   update(
     @CurrentUser('orgId') orgId: string,
     @Param('id', ParseUUIDPipe) id: string,

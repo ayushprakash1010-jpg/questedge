@@ -18,15 +18,20 @@ export class BgvWorkers implements OnModuleInit {
     await this.queue.ensureQueue(START_QUEUE);
     await this.queue.ensureQueue(POLL_QUEUE);
 
-    await this.queue.registerWorker<{ profileId: string }>(START_QUEUE, async (jobs) => {
-      for (const job of jobs) {
-        try {
-          await this.service.dispatchPendingChecks(job.data.profileId);
-        } catch (err) {
-          this.logger.error(`bgv.start failed for ${job.data.profileId}: ${err}`);
+    await this.queue.registerWorker<{ profileId: string }>(
+      START_QUEUE,
+      async (jobs) => {
+        for (const job of jobs) {
+          try {
+            await this.service.dispatchPendingChecks(job.data.profileId);
+          } catch (err) {
+            this.logger.error(
+              `bgv.start failed for ${job.data.profileId}: ${err}`,
+            );
+          }
         }
-      }
-    });
+      },
+    );
 
     await this.queue.scheduleCron(POLL_QUEUE, '*/5 * * * *', {});
     await this.queue.registerWorker(POLL_QUEUE, async () => {

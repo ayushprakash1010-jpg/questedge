@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
-import { AiCostController, AiCostInternalController } from './ai-cost.controller';
+import {
+  AiCostController,
+  AiCostInternalController,
+} from './ai-cost.controller';
 import { AiCostService } from './ai-cost.service';
 
 @Module({

@@ -1,5 +1,11 @@
 import {
-  Controller, Get, Post, Param, Body, ParseUUIDPipe, Req,
+  Controller,
+  Get,
+  Post,
+  Param,
+  Body,
+  ParseUUIDPipe,
+  Req,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { FeedbackService } from './feedback.service';
@@ -41,7 +47,11 @@ export class FeedbackController {
     @Param('appId', ParseUUIDPipe) appId: string,
     @Req() req: any,
   ) {
-    return this.feedbackService.getAllForApplication(appId, req.user.id, req.user.role);
+    return this.feedbackService.getAllForApplication(
+      appId,
+      req.user.id,
+      req.user.role,
+    );
   }
 
   @Get('api/v1/applications/:appId/feedback/matrix')

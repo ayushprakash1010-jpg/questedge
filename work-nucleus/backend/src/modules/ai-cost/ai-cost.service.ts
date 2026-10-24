@@ -28,13 +28,24 @@ export class AiCostService {
     const since = new Date(Date.now() - days * 24 * 3600 * 1000);
     const calls = await this.prisma.aiCallLog.findMany({
       where: { orgId, createdAt: { gte: since } },
-      select: { agentName: true, costInPaise: true, tokensInput: true, tokensOutput: true, createdAt: true, status: true, cacheHit: true },
+      select: {
+        agentName: true,
+        costInPaise: true,
+        tokensInput: true,
+        tokensOutput: true,
+        createdAt: true,
+        status: true,
+        cacheHit: true,
+      },
     });
 
-    const byDay: Record<string, { paise: number; calls: number; cacheHits: number }> = {};
+    const byDay: Record<
+      string,
+      { paise: number; calls: number; cacheHits: number }
+    > = {};
     const byAgent: Record<string, { paise: number; calls: number }> = {};
     let totalPaise = 0;
-    let totalCalls = calls.length;
+    const totalCalls = calls.length;
     let cacheHits = 0;
 
     for (const c of calls) {
@@ -57,9 +68,13 @@ export class AiCostService {
     const todayPaise = byDay[todayKey]?.paise ?? 0;
     const rollingAvg =
       dayKeys.length > 1
-        ? dayKeys.filter((k) => k !== todayKey).reduce((s, k) => s + byDay[k].paise, 0) / Math.max(1, dayKeys.length - 1)
+        ? dayKeys
+            .filter((k) => k !== todayKey)
+            .reduce((s, k) => s + byDay[k].paise, 0) /
+          Math.max(1, dayKeys.length - 1)
         : 0;
-    const anomaly = rollingAvg > 0 && todayPaise > rollingAvg * ANOMALY_MULTIPLIER;
+    const anomaly =
+      rollingAvg > 0 && todayPaise > rollingAvg * ANOMALY_MULTIPLIER;
 
     return {
       totalCalls,

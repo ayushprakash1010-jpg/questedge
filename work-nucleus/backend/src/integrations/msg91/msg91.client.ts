@@ -38,14 +38,19 @@ export class Msg91Client {
     this.authKey = this.config.get<string>('MSG91_AUTH_KEY', '');
     this.senderId = this.config.get<string>('MSG91_SMS_SENDER_ID', 'WRKNCS');
     this.waChannelNumber = this.config.get<string>('MSG91_WA_NUMBER', '');
-    this.webhookSecret = this.config.get<string>('MSG91_WEBHOOK_SECRET', 'dev-msg91-secret');
+    this.webhookSecret = this.config.get<string>(
+      'MSG91_WEBHOOK_SECRET',
+      'dev-msg91-secret',
+    );
     this.sandbox = this.config.get<string>('MSG91_SANDBOX', 'true') !== 'false';
   }
 
   async sendSms(req: SmsRequest): Promise<MessageResult> {
     if (this.sandbox && !this.authKey) {
       const id = `dev-msg91-sms-${Date.now()}`;
-      this.logger.warn(`[MSG91 sandbox] SMS to=${redactPhone(req.to)} template=${req.templateId} → ${id}`);
+      this.logger.warn(
+        `[MSG91 sandbox] SMS to=${redactPhone(req.to)} template=${req.templateId} → ${id}`,
+      );
       return { providerId: id, costInPaise: 25 };
     }
     const res = await fetch(`${this.baseUrl}/flow`, {
@@ -65,48 +70,72 @@ export class Msg91Client {
       throw new Error(`MSG91 SMS failed: ${res.status} ${await res.text()}`);
     }
     const data: any = await res.json();
-    return { providerId: data.request_id ?? data.message ?? 'unknown', costInPaise: 25 };
+    return {
+      providerId: data.request_id ?? data.message ?? 'unknown',
+      costInPaise: 25,
+    };
   }
 
   async sendWhatsApp(req: WhatsAppRequest): Promise<MessageResult> {
     if (this.sandbox && !this.authKey) {
       const id = `dev-msg91-wa-${Date.now()}`;
-      this.logger.warn(`[MSG91 sandbox] WhatsApp to=${redactPhone(req.to)} template=${req.templateName} → ${id}`);
+      this.logger.warn(
+        `[MSG91 sandbox] WhatsApp to=${redactPhone(req.to)} template=${req.templateName} → ${id}`,
+      );
       return { providerId: id, costInPaise: 60 };
     }
-    if (!this.waChannelNumber) throw new Error('MSG91_WA_NUMBER not configured');
-    const res = await fetch(`${this.baseUrl}/whatsapp/whatsapp-outbound-message`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authkey: this.authKey },
-      body: JSON.stringify({
-        integrated_number: this.waChannelNumber,
-        content_type: 'template',
-        payload: {
-          messaging_product: 'whatsapp',
-          to: req.to,
-          type: 'template',
-          template: {
-            name: req.templateName,
-            language: { code: req.language ?? 'en', policy: 'deterministic' },
-            components: [
-              {
-                type: 'body',
-                parameters: req.variables.map((v) => ({ type: 'text', text: v })),
-              },
-            ],
+    if (!this.waChannelNumber)
+      throw new Error('MSG91_WA_NUMBER not configured');
+    const res = await fetch(
+      `${this.baseUrl}/whatsapp/whatsapp-outbound-message`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authkey: this.authKey },
+        body: JSON.stringify({
+          integrated_number: this.waChannelNumber,
+          content_type: 'template',
+          payload: {
+            messaging_product: 'whatsapp',
+            to: req.to,
+            type: 'template',
+            template: {
+              name: req.templateName,
+              language: { code: req.language ?? 'en', policy: 'deterministic' },
+              components: [
+                {
+                  type: 'body',
+                  parameters: req.variables.map((v) => ({
+                    type: 'text',
+                    text: v,
+                  })),
+                },
+              ],
+            },
           },
-        },
-      }),
-    });
-    if (!res.ok) throw new Error(`MSG91 WhatsApp failed: ${res.status} ${await res.text()}`);
+        }),
+      },
+    );
+    if (!res.ok)
+      throw new Error(
+        `MSG91 WhatsApp failed: ${res.status} ${await res.text()}`,
+      );
     const data: any = await res.json();
-    return { providerId: data.request_id ?? data.id ?? 'unknown', costInPaise: 60 };
+    return {
+      providerId: data.request_id ?? data.id ?? 'unknown',
+      costInPaise: 60,
+    };
   }
 
-  verifyWebhook(headers: Record<string, string | string[] | undefined>, rawBody: Buffer): boolean {
-    const sig = (headers['x-msg91-signature'] || headers['X-MSG91-Signature']) as string | undefined;
+  verifyWebhook(
+    headers: Record<string, string | string[] | undefined>,
+    rawBody: Buffer,
+  ): boolean {
+    const sig = (headers['x-msg91-signature'] ||
+      headers['X-MSG91-Signature']) as string | undefined;
     if (!sig) return false;
-    const expected = createHmac('sha256', this.webhookSecret).update(rawBody).digest('hex');
+    const expected = createHmac('sha256', this.webhookSecret)
+      .update(rawBody)
+      .digest('hex');
     try {
       return timingSafeEqual(Buffer.from(expected), Buffer.from(sig));
     } catch {
@@ -114,14 +143,18 @@ export class Msg91Client {
     }
   }
 
-  parseDeliveryReceipt(body: any): { providerId: string; status: 'DELIVERED' | 'FAILED' | 'BOUNCED' } | null {
+  parseDeliveryReceipt(
+    body: any,
+  ): { providerId: string; status: 'DELIVERED' | 'FAILED' | 'BOUNCED' } | null {
     if (!body || typeof body !== 'object') return null;
     const id = body.request_id ?? body.id ?? body.message_id;
     const status = (body.status ?? body.event ?? '').toString().toLowerCase();
     if (!id) return null;
-    if (status.includes('deliver')) return { providerId: id, status: 'DELIVERED' };
+    if (status.includes('deliver'))
+      return { providerId: id, status: 'DELIVERED' };
     if (status.includes('bounce')) return { providerId: id, status: 'BOUNCED' };
-    if (status.includes('fail') || status.includes('reject')) return { providerId: id, status: 'FAILED' };
+    if (status.includes('fail') || status.includes('reject'))
+      return { providerId: id, status: 'FAILED' };
     return null;
   }
 }

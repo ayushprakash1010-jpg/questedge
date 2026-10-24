@@ -28,6 +28,11 @@ export interface IESignProvider {
   createSignRequest(input: ESignCreateInput): Promise<ESignCreateResult>;
   getStatus(providerReqId: string): Promise<ESignStatusResult>;
   downloadSigned(providerReqId: string): Promise<Buffer>;
-  verifyWebhook(headers: Record<string, string | string[] | undefined>, rawBody: Buffer): boolean;
-  parseWebhookEvent(body: unknown): { providerReqId: string; status: ESignStatusResult['status'] } | null;
+  verifyWebhook(
+    headers: Record<string, string | string[] | undefined>,
+    rawBody: Buffer,
+  ): boolean;
+  parseWebhookEvent(
+    body: unknown,
+  ): { providerReqId: string; status: ESignStatusResult['status'] } | null;
 }

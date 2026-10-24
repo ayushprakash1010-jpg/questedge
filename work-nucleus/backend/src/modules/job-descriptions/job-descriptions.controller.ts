@@ -53,10 +53,7 @@ export class JobDescriptionsController {
 
   @Patch(':jdId')
   @ApiOperation({ summary: 'Update JD (manual edit)' })
-  update(
-    @Param('jdId', ParseUUIDPipe) jdId: string,
-    @Body() dto: UpdateJdDto,
-  ) {
+  update(@Param('jdId', ParseUUIDPipe) jdId: string, @Body() dto: UpdateJdDto) {
     return this.jdService.update(jdId, dto);
   }
 

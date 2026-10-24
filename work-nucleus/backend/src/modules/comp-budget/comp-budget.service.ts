@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { BudgetStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateBudgetDto, UpdateBudgetDto } from './dto/create-budget.dto';
@@ -35,25 +39,34 @@ export class CompBudgetService {
   }
 
   async findByCycle(orgId: string, cycleId: string) {
-    const b = await this.prisma.appraisalBudget.findFirst({ where: { orgId, cycleId } });
+    const b = await this.prisma.appraisalBudget.findFirst({
+      where: { orgId, cycleId },
+    });
     if (!b) throw new NotFoundException('Budget not found for cycle');
     return b;
   }
 
   async findOne(orgId: string, id: string) {
-    const b = await this.prisma.appraisalBudget.findFirst({ where: { id, orgId } });
+    const b = await this.prisma.appraisalBudget.findFirst({
+      where: { id, orgId },
+    });
     if (!b) throw new NotFoundException('Budget not found');
     return b;
   }
 
   async update(orgId: string, id: string, dto: UpdateBudgetDto) {
     const b = await this.findOne(orgId, id);
-    if (b.status === BudgetStatus.LOCKED || b.status === BudgetStatus.DISTRIBUTED) {
-      throw new BadRequestException(`Budget is ${b.status}; create a new one or unlock first`);
+    if (
+      b.status === BudgetStatus.LOCKED ||
+      b.status === BudgetStatus.DISTRIBUTED
+    ) {
+      throw new BadRequestException(
+        `Budget is ${b.status}; create a new one or unlock first`,
+      );
     }
     if (dto.matrix || dto.bonusMatrix || dto.hikePoolINR != null) {
       this.validateBudget({
-        ...((b as unknown) as CreateBudgetDto),
+        ...(b as unknown as CreateBudgetDto),
         ...dto,
       } as CreateBudgetDto);
     }
@@ -61,10 +74,18 @@ export class CompBudgetService {
       where: { id },
       data: {
         ...(dto.hikePoolINR !== undefined && { hikePoolINR: dto.hikePoolINR }),
-        ...(dto.bonusPoolINR !== undefined && { bonusPoolINR: dto.bonusPoolINR }),
-        ...(dto.splits !== undefined && { splits: dto.splits as Prisma.InputJsonValue }),
-        ...(dto.matrix !== undefined && { matrix: dto.matrix as Prisma.InputJsonValue }),
-        ...(dto.bonusMatrix !== undefined && { bonusMatrix: dto.bonusMatrix as Prisma.InputJsonValue }),
+        ...(dto.bonusPoolINR !== undefined && {
+          bonusPoolINR: dto.bonusPoolINR,
+        }),
+        ...(dto.splits !== undefined && {
+          splits: dto.splits as Prisma.InputJsonValue,
+        }),
+        ...(dto.matrix !== undefined && {
+          matrix: dto.matrix as Prisma.InputJsonValue,
+        }),
+        ...(dto.bonusMatrix !== undefined && {
+          bonusMatrix: dto.bonusMatrix as Prisma.InputJsonValue,
+        }),
         ...(dto.marketCorrection !== undefined && {
           marketCorrection: dto.marketCorrection as Prisma.InputJsonValue,
         }),
@@ -78,21 +99,36 @@ export class CompBudgetService {
 
   async approve(orgId: string, id: string, userId: string) {
     const b = await this.findOne(orgId, id);
-    if (b.status !== BudgetStatus.DRAFT && b.status !== BudgetStatus.IN_REVIEW) {
+    if (
+      b.status !== BudgetStatus.DRAFT &&
+      b.status !== BudgetStatus.IN_REVIEW
+    ) {
       throw new BadRequestException('Only DRAFT/IN_REVIEW can be approved');
     }
     return this.prisma.appraisalBudget.update({
       where: { id },
-      data: { status: BudgetStatus.APPROVED, approvedById: userId, approvedAt: new Date() },
+      data: {
+        status: BudgetStatus.APPROVED,
+        approvedById: userId,
+        approvedAt: new Date(),
+      },
     });
   }
 
   async lock(orgId: string, id: string) {
     const b = await this.findOne(orgId, id);
-    if (b.status !== BudgetStatus.APPROVED && b.status !== BudgetStatus.DISTRIBUTED) {
-      throw new BadRequestException('Only APPROVED/DISTRIBUTED budgets can be locked');
+    if (
+      b.status !== BudgetStatus.APPROVED &&
+      b.status !== BudgetStatus.DISTRIBUTED
+    ) {
+      throw new BadRequestException(
+        'Only APPROVED/DISTRIBUTED budgets can be locked',
+      );
     }
-    return this.prisma.appraisalBudget.update({ where: { id }, data: { status: BudgetStatus.LOCKED } });
+    return this.prisma.appraisalBudget.update({
+      where: { id },
+      data: { status: BudgetStatus.LOCKED },
+    });
   }
 
   // ── Validation ────────────────────────────────────────────────

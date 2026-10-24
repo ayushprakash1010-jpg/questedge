@@ -1,11 +1,23 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role, RevisionStatus } from '@prisma/client';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { CompAllocatorService } from '../comp-allocator/comp-allocator.service';
 import { CompRevisionsService } from './comp-revisions.service';
-import { ApprovalActionDto, OverrideRevisionDto, SimulateDto } from './dto/revision.dto';
+import {
+  ApprovalActionDto,
+  OverrideRevisionDto,
+  SimulateDto,
+} from './dto/revision.dto';
 
 @ApiTags('Compensation Revisions (v2)')
 @ApiBearerAuth()
@@ -18,21 +30,31 @@ export class CompRevisionsController {
   ) {}
 
   @Post('allocate')
-  @ApiOperation({ summary: 'Run the allocator across all manager-finalised assessments in a cycle' })
+  @ApiOperation({
+    summary:
+      'Run the allocator across all manager-finalised assessments in a cycle',
+  })
   @Roles(Role.ADMIN, Role.HR)
   allocate(
     @CurrentUser('orgId') orgId: string,
     @Body() body: { cycleId: string; effectiveDate?: string },
   ) {
     return this.allocator.allocate(orgId, body.cycleId, {
-      effectiveDate: body.effectiveDate ? new Date(body.effectiveDate) : undefined,
+      effectiveDate: body.effectiveDate
+        ? new Date(body.effectiveDate)
+        : undefined,
     });
   }
 
   @Post('reallocate')
-  @ApiOperation({ summary: 'Re-run allocator (preserves any LOCKED revisions)' })
+  @ApiOperation({
+    summary: 'Re-run allocator (preserves any LOCKED revisions)',
+  })
   @Roles(Role.ADMIN, Role.HR)
-  reallocate(@CurrentUser('orgId') orgId: string, @Body() body: { cycleId: string }) {
+  reallocate(
+    @CurrentUser('orgId') orgId: string,
+    @Body() body: { cycleId: string },
+  ) {
     return this.allocator.allocate(orgId, body.cycleId);
   }
 
@@ -67,7 +89,10 @@ export class CompRevisionsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get revision' })
-  findOne(@CurrentUser('orgId') orgId: string, @Param('id', ParseUUIDPipe) id: string) {
+  findOne(
+    @CurrentUser('orgId') orgId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.service.findOne(orgId, id);
   }
 
@@ -84,12 +109,17 @@ export class CompRevisionsController {
 
   @Post(':id/submit')
   @ApiOperation({ summary: 'Submit revision into approval chain' })
-  submit(@CurrentUser('orgId') orgId: string, @Param('id', ParseUUIDPipe) id: string) {
+  submit(
+    @CurrentUser('orgId') orgId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.service.submitToApproval(orgId, id);
   }
 
   @Post(':id/act')
-  @ApiOperation({ summary: 'Act on the current approval step (APPROVE/REJECT)' })
+  @ApiOperation({
+    summary: 'Act on the current approval step (APPROVE/REJECT)',
+  })
   act(
     @CurrentUser('orgId') orgId: string,
     @CurrentUser('id') userId: string,
@@ -101,18 +131,26 @@ export class CompRevisionsController {
 
   @Post(':id/lock')
   @ApiOperation({ summary: 'Lock revision (post-CEO approval)' })
-  lock(@CurrentUser('orgId') orgId: string, @Param('id', ParseUUIDPipe) id: string) {
+  lock(
+    @CurrentUser('orgId') orgId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.service.lock(orgId, id);
   }
 
   @Post(':id/letter')
   @ApiOperation({ summary: 'Generate the comp revision letter' })
-  generateLetter(@CurrentUser('orgId') orgId: string, @Param('id', ParseUUIDPipe) id: string) {
+  generateLetter(
+    @CurrentUser('orgId') orgId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.service.generateLetter(orgId, id);
   }
 
   @Post(':id/log-1on1')
-  @ApiOperation({ summary: 'Manager logs that the 1-on-1 was conducted (manager-first gate)' })
+  @ApiOperation({
+    summary: 'Manager logs that the 1-on-1 was conducted (manager-first gate)',
+  })
   logOneOnOne(
     @CurrentUser('orgId') orgId: string,
     @CurrentUser('id') userId: string,
@@ -123,7 +161,10 @@ export class CompRevisionsController {
 
   @Post(':id/deliver')
   @ApiOperation({ summary: 'Deliver the letter to employee (gated on 1-on-1)' })
-  deliver(@CurrentUser('orgId') orgId: string, @Param('id', ParseUUIDPipe) id: string) {
+  deliver(
+    @CurrentUser('orgId') orgId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.service.deliver(orgId, id);
   }
 
@@ -139,7 +180,10 @@ export class CompRevisionsController {
 
   @Get('cycles/:cycleId/variance')
   @ApiOperation({ summary: 'Variance report for a cycle' })
-  variance(@CurrentUser('orgId') orgId: string, @Param('cycleId', ParseUUIDPipe) cycleId: string) {
+  variance(
+    @CurrentUser('orgId') orgId: string,
+    @Param('cycleId', ParseUUIDPipe) cycleId: string,
+  ) {
     return this.service.varianceReport(orgId, cycleId);
   }
 

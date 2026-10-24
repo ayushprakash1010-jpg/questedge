@@ -33,10 +33,7 @@ export class UsersController {
   @Get()
   @ApiOperation({ summary: 'List users in organization (paginated)' })
   @ApiResponse({ status: 200, description: 'Paginated user list' })
-  list(
-    @CurrentUser('orgId') orgId: string,
-    @Query() query: ListUsersQueryDto,
-  ) {
+  list(@CurrentUser('orgId') orgId: string, @Query() query: ListUsersQueryDto) {
     return this.usersService.list(orgId, query);
   }
 
@@ -44,10 +41,7 @@ export class UsersController {
   @ApiOperation({ summary: 'Invite a new user to the organization' })
   @ApiResponse({ status: 201, description: 'User created and invited' })
   @ApiResponse({ status: 409, description: 'Email already exists' })
-  create(
-    @CurrentUser('orgId') orgId: string,
-    @Body() dto: CreateUserDto,
-  ) {
+  create(@CurrentUser('orgId') orgId: string, @Body() dto: CreateUserDto) {
     return this.usersService.create(orgId, dto);
   }
 

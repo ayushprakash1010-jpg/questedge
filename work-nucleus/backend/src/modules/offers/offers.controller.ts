@@ -76,7 +76,10 @@ export class OffersController {
   }
 
   @Post(':id/approve')
-  @ApiOperation({ summary: 'Act on the current pending approval step (approve / changes / reject)' })
+  @ApiOperation({
+    summary:
+      'Act on the current pending approval step (approve / changes / reject)',
+  })
   approve(
     @CurrentUser('orgId') orgId: string,
     @CurrentUser('id') userId: string,
@@ -87,7 +90,9 @@ export class OffersController {
   }
 
   @Post(':id/render')
-  @ApiOperation({ summary: 'Render the offer letter (creates a new doc version)' })
+  @ApiOperation({
+    summary: 'Render the offer letter (creates a new doc version)',
+  })
   async renderDoc(
     @CurrentUser('orgId') orgId: string,
     @Param('id', ParseUUIDPipe) id: string,
@@ -97,7 +102,9 @@ export class OffersController {
   }
 
   @Post(':id/draft-body')
-  @ApiOperation({ summary: 'Generate AI draft for the offer body free-text section' })
+  @ApiOperation({
+    summary: 'Generate AI draft for the offer body free-text section',
+  })
   draftBody(
     @CurrentUser('orgId') orgId: string,
     @Param('id', ParseUUIDPipe) id: string,
@@ -107,7 +114,9 @@ export class OffersController {
   }
 
   @Post(':id/send')
-  @ApiOperation({ summary: 'Send the approved offer to the candidate via e-sign' })
+  @ApiOperation({
+    summary: 'Send the approved offer to the candidate via e-sign',
+  })
   send(
     @CurrentUser('orgId') orgId: string,
     @Param('id', ParseUUIDPipe) id: string,
@@ -116,7 +125,9 @@ export class OffersController {
   }
 
   @Post(':id/refresh-esign')
-  @ApiOperation({ summary: 'Force-poll the e-sign provider for current status' })
+  @ApiOperation({
+    summary: 'Force-poll the e-sign provider for current status',
+  })
   refresh(
     @CurrentUser('orgId') orgId: string,
     @Param('id', ParseUUIDPipe) id: string,

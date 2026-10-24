@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { CompLetterStatus, Prisma, RevisionStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OfferRenderService } from '../offers/services/offer-render.service';
@@ -28,7 +33,14 @@ export class CompRevisionsService {
     private readonly offerRender: OfferRenderService,
   ) {}
 
-  async list(orgId: string, opts: { cycleId?: string; managerUserId?: string; status?: RevisionStatus } = {}) {
+  async list(
+    orgId: string,
+    opts: {
+      cycleId?: string;
+      managerUserId?: string;
+      status?: RevisionStatus;
+    } = {},
+  ) {
     return this.prisma.compensationRevision.findMany({
       where: {
         orgId,
@@ -53,9 +65,17 @@ export class CompRevisionsService {
    * Manager override: edit final hike/bonus values with required reason.
    * Conservative — locks revisions can't be overridden.
    */
-  async override(orgId: string, id: string, userId: string, dto: OverrideRevisionDto) {
+  async override(
+    orgId: string,
+    id: string,
+    userId: string,
+    dto: OverrideRevisionDto,
+  ) {
     const r = await this.findOne(orgId, id);
-    if (r.status === RevisionStatus.LOCKED || r.status === RevisionStatus.COMMUNICATED) {
+    if (
+      r.status === RevisionStatus.LOCKED ||
+      r.status === RevisionStatus.COMMUNICATED
+    ) {
       throw new BadRequestException(`Revision is ${r.status}; cannot override`);
     }
     if (!dto.overrideReason || dto.overrideReason.length < 5) {
@@ -71,7 +91,8 @@ export class CompRevisionsService {
       finalHikeINR = round2(currentFixed * (finalHikePct / 100));
     } else if (dto.finalHikeINR !== undefined) {
       finalHikeINR = dto.finalHikeINR;
-      finalHikePct = currentFixed > 0 ? round2((finalHikeINR / currentFixed) * 100) : 0;
+      finalHikePct =
+        currentFixed > 0 ? round2((finalHikeINR / currentFixed) * 100) : 0;
     }
     const finalBonusINR = dto.finalBonusINR ?? Number(r.finalBonusINR);
     const newFixed = round2(currentFixed + finalHikeINR);
@@ -92,17 +113,26 @@ export class CompRevisionsService {
 
   async submitToApproval(orgId: string, id: string) {
     const r = await this.findOne(orgId, id);
-    if (r.status !== RevisionStatus.DRAFT) throw new BadRequestException('Only DRAFT revisions can be submitted');
+    if (r.status !== RevisionStatus.DRAFT)
+      throw new BadRequestException('Only DRAFT revisions can be submitted');
     return this.prisma.compensationRevision.update({
       where: { id },
       data: { status: RevisionStatus.MANAGER_REVIEW },
     });
   }
 
-  async act(orgId: string, id: string, userId: string, action: 'APPROVE' | 'REJECT', comment?: string) {
+  async act(
+    orgId: string,
+    id: string,
+    userId: string,
+    action: 'APPROVE' | 'REJECT',
+    comment?: string,
+  ) {
     const r = await this.findOne(orgId, id);
     if (!APPROVAL_CHAIN.includes(r.status)) {
-      throw new BadRequestException(`Revision is ${r.status}; not in an approval state`);
+      throw new BadRequestException(
+        `Revision is ${r.status}; not in an approval state`,
+      );
     }
     const chain = (r.approvalChain as unknown as ApprovalChainEntry[]) ?? [];
     chain.push({
@@ -118,7 +148,10 @@ export class CompRevisionsService {
       nextStatus = RevisionStatus.DRAFT;
     } else {
       const idx = APPROVAL_CHAIN.indexOf(r.status);
-      nextStatus = idx === APPROVAL_CHAIN.length - 1 ? RevisionStatus.APPROVED : APPROVAL_CHAIN[idx + 1];
+      nextStatus =
+        idx === APPROVAL_CHAIN.length - 1
+          ? RevisionStatus.APPROVED
+          : APPROVAL_CHAIN[idx + 1];
     }
 
     return this.prisma.compensationRevision.update({
@@ -132,7 +165,8 @@ export class CompRevisionsService {
 
   async lock(orgId: string, id: string) {
     const r = await this.findOne(orgId, id);
-    if (r.status !== RevisionStatus.APPROVED) throw new BadRequestException('Only APPROVED revisions can be locked');
+    if (r.status !== RevisionStatus.APPROVED)
+      throw new BadRequestException('Only APPROVED revisions can be locked');
     return this.prisma.compensationRevision.update({
       where: { id },
       data: { status: RevisionStatus.LOCKED },
@@ -143,7 +177,10 @@ export class CompRevisionsService {
 
   async generateLetter(orgId: string, id: string) {
     const r = await this.findOne(orgId, id);
-    if (r.status !== RevisionStatus.LOCKED && r.status !== RevisionStatus.COMMUNICATED) {
+    if (
+      r.status !== RevisionStatus.LOCKED &&
+      r.status !== RevisionStatus.COMMUNICATED
+    ) {
       throw new BadRequestException('Only LOCKED revisions get letters');
     }
     // Phase 1 OfferRender produces HTML for any S3 path; we reuse that pipeline
@@ -151,7 +188,10 @@ export class CompRevisionsService {
     // Manager-first communication gating is enforced at the markCommunicated step.
     return this.prisma.compensationRevision.update({
       where: { id },
-      data: { letterStatus: CompLetterStatus.RENDERED, letterUrl: `comp/${orgId}/${id}/letter.html` },
+      data: {
+        letterStatus: CompLetterStatus.RENDERED,
+        letterUrl: `comp/${orgId}/${id}/letter.html`,
+      },
     });
   }
 
@@ -166,7 +206,9 @@ export class CompRevisionsService {
   async deliver(orgId: string, id: string) {
     const r = await this.findOne(orgId, id);
     if (!r.oneOnOneAt) {
-      throw new BadRequestException('Manager 1-on-1 must be logged before letter is delivered (manager-first gate)');
+      throw new BadRequestException(
+        'Manager 1-on-1 must be logged before letter is delivered (manager-first gate)',
+      );
     }
     if (r.letterStatus !== CompLetterStatus.RENDERED) {
       throw new BadRequestException('Letter not yet rendered');
@@ -183,10 +225,14 @@ export class CompRevisionsService {
 
   async acknowledge(orgId: string, id: string, userId: string) {
     const r = await this.findOne(orgId, id);
-    if (r.employeeId !== userId) throw new BadRequestException('Only the employee can acknowledge');
+    if (r.employeeId !== userId)
+      throw new BadRequestException('Only the employee can acknowledge');
     return this.prisma.compensationRevision.update({
       where: { id },
-      data: { letterStatus: CompLetterStatus.ACKNOWLEDGED, acknowledgedAt: new Date() },
+      data: {
+        letterStatus: CompLetterStatus.ACKNOWLEDGED,
+        acknowledgedAt: new Date(),
+      },
     });
   }
 
@@ -210,7 +256,13 @@ export class CompRevisionsService {
         if (Math.abs(finalPct - matrixHike) <= 0.5) acc.conformantCount++;
         return acc;
       },
-      { computedHike: 0, finalHike: 0, computedBonus: 0, finalBonus: 0, conformantCount: 0 },
+      {
+        computedHike: 0,
+        finalHike: 0,
+        computedBonus: 0,
+        finalBonus: 0,
+        conformantCount: 0,
+      },
     );
 
     const distributionByRating: Record<string, number> = {};
@@ -220,7 +272,10 @@ export class CompRevisionsService {
       distributionByRating[k] = (distributionByRating[k] ?? 0) + 1;
     }
 
-    const totalCurrentFixed = revisions.reduce((s, r) => s + Number(r.currentFixed), 0);
+    const totalCurrentFixed = revisions.reduce(
+      (s, r) => s + Number(r.currentFixed),
+      0,
+    );
     const totalNewFixed = revisions.reduce((s, r) => s + Number(r.newFixed), 0);
 
     return {
@@ -229,15 +284,26 @@ export class CompRevisionsService {
         bonusPoolINR: Number(budget.bonusPoolINR),
       },
       totals,
-      conformancePct: revisions.length === 0 ? 0 : (totals.conformantCount / revisions.length) * 100,
+      conformancePct:
+        revisions.length === 0
+          ? 0
+          : (totals.conformantCount / revisions.length) * 100,
       distributionByRating,
       annualisedWageBillIncrease: round2(totalNewFixed - totalCurrentFixed),
     };
   }
 
-  async payrollExport(orgId: string, cycleId: string, format: 'keka' | 'darwinbox' | 'zinghr' | 'csv') {
+  async payrollExport(
+    orgId: string,
+    cycleId: string,
+    format: 'keka' | 'darwinbox' | 'zinghr' | 'csv',
+  ) {
     const revisions = await this.prisma.compensationRevision.findMany({
-      where: { orgId, cycleId, status: { in: [RevisionStatus.LOCKED, RevisionStatus.COMMUNICATED] } },
+      where: {
+        orgId,
+        cycleId,
+        status: { in: [RevisionStatus.LOCKED, RevisionStatus.COMMUNICATED] },
+      },
       include: { employee: { select: { id: true, email: true, name: true } } },
     });
     const rows = revisions.map((r) => ({
@@ -269,7 +335,10 @@ function csvify(rows: Record<string, unknown>[]): string {
     const s = String(v ?? '');
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
-  return [headers.join(','), ...rows.map((r) => headers.map((h) => escape((r as any)[h])).join(','))].join('\n');
+  return [
+    headers.join(','),
+    ...rows.map((r) => headers.map((h) => escape((r as any)[h])).join(',')),
+  ].join('\n');
 }
 
 function transformForVendor(
@@ -308,7 +377,8 @@ function transformForVendor(
 
 function simpleHash(s: string): string {
   let h = 0;
-  for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+  for (let i = 0; i < s.length; i++)
+    h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
   return (h >>> 0).toString(16);
 }
 

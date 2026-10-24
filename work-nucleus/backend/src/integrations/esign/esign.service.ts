@@ -18,7 +18,9 @@ export class ESignService {
   ) {}
 
   async getProviderForOrg(orgId: string): Promise<IESignProvider> {
-    const settings = await this.prisma.orgSettings.findUnique({ where: { orgId } });
+    const settings = await this.prisma.orgSettings.findUnique({
+      where: { orgId },
+    });
     const choice = ((settings?.settings as any)?.eSignProvider ?? 'digio')
       .toString()
       .toLowerCase();

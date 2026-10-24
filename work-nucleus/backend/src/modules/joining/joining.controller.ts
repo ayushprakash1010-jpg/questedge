@@ -44,7 +44,8 @@ export class JoiningController {
     @CurrentUser('orgId') orgId: string,
     @Query('applicationId') applicationId?: string,
   ) {
-    if (applicationId) return this.service.findByCandidateApp(orgId, applicationId);
+    if (applicationId)
+      return this.service.findByCandidateApp(orgId, applicationId);
     return this.service.listForOrg(orgId);
   }
 
@@ -62,7 +63,8 @@ export class JoiningController {
   assign(
     @CurrentUser('orgId') orgId: string,
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: { buddyUserId?: string; reportingMgrId?: string; joinDate?: string },
+    @Body()
+    body: { buddyUserId?: string; reportingMgrId?: string; joinDate?: string },
   ) {
     return this.service.setBuddyAndManager(orgId, id, {
       buddyUserId: body.buddyUserId,

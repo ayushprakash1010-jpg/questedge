@@ -10,19 +10,69 @@ import { randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JobQueueService } from '../job-queue/job-queue.service';
 import { CreateChecklistDto } from './dto/checklist.dto';
-import { ReviewDocumentDto, SubmitDocumentDto } from './dto/submit-document.dto';
+import {
+  ReviewDocumentDto,
+  SubmitDocumentDto,
+} from './dto/submit-document.dto';
 
 const QUEUE = 'joining.auto-create';
 
 const DEFAULT_CHECKLIST_ITEMS = [
-  { key: 'pan', label: 'PAN card', required: true, owner: 'CANDIDATE', docTypes: ['application/pdf', 'image/png', 'image/jpeg'] },
-  { key: 'aadhaar', label: 'Aadhaar', required: true, owner: 'CANDIDATE', docTypes: ['application/pdf', 'image/png', 'image/jpeg'] },
-  { key: 'bank_proof', label: 'Bank account proof', required: true, owner: 'CANDIDATE', docTypes: ['application/pdf', 'image/png'] },
-  { key: 'last_payslip', label: 'Last 3 payslips', required: true, owner: 'CANDIDATE', docTypes: ['application/pdf'] },
-  { key: 'experience_letter', label: 'Experience letter', required: true, owner: 'CANDIDATE', docTypes: ['application/pdf'] },
-  { key: 'education_certificate', label: 'Education certificate', required: true, owner: 'CANDIDATE', docTypes: ['application/pdf'] },
-  { key: 'photo', label: 'Passport photo', required: true, owner: 'CANDIDATE', docTypes: ['image/png', 'image/jpeg'] },
-  { key: 'offer_signed', label: 'Signed offer letter (system)', required: true, owner: 'HR' },
+  {
+    key: 'pan',
+    label: 'PAN card',
+    required: true,
+    owner: 'CANDIDATE',
+    docTypes: ['application/pdf', 'image/png', 'image/jpeg'],
+  },
+  {
+    key: 'aadhaar',
+    label: 'Aadhaar',
+    required: true,
+    owner: 'CANDIDATE',
+    docTypes: ['application/pdf', 'image/png', 'image/jpeg'],
+  },
+  {
+    key: 'bank_proof',
+    label: 'Bank account proof',
+    required: true,
+    owner: 'CANDIDATE',
+    docTypes: ['application/pdf', 'image/png'],
+  },
+  {
+    key: 'last_payslip',
+    label: 'Last 3 payslips',
+    required: true,
+    owner: 'CANDIDATE',
+    docTypes: ['application/pdf'],
+  },
+  {
+    key: 'experience_letter',
+    label: 'Experience letter',
+    required: true,
+    owner: 'CANDIDATE',
+    docTypes: ['application/pdf'],
+  },
+  {
+    key: 'education_certificate',
+    label: 'Education certificate',
+    required: true,
+    owner: 'CANDIDATE',
+    docTypes: ['application/pdf'],
+  },
+  {
+    key: 'photo',
+    label: 'Passport photo',
+    required: true,
+    owner: 'CANDIDATE',
+    docTypes: ['image/png', 'image/jpeg'],
+  },
+  {
+    key: 'offer_signed',
+    label: 'Signed offer letter (system)',
+    required: true,
+    owner: 'HR',
+  },
 ];
 
 @Injectable()
@@ -36,15 +86,20 @@ export class JoiningService implements OnModuleInit {
 
   async onModuleInit() {
     await this.queue.ensureQueue(QUEUE);
-    await this.queue.registerWorker<{ offerId: string }>(QUEUE, async (jobs) => {
-      for (const job of jobs) {
-        try {
-          await this.autoCreateForOffer(job.data.offerId);
-        } catch (err) {
-          this.logger.error(`Auto-create joining failed for offer ${job.data.offerId}: ${err}`);
+    await this.queue.registerWorker<{ offerId: string }>(
+      QUEUE,
+      async (jobs) => {
+        for (const job of jobs) {
+          try {
+            await this.autoCreateForOffer(job.data.offerId);
+          } catch (err) {
+            this.logger.error(
+              `Auto-create joining failed for offer ${job.data.offerId}: ${err}`,
+            );
+          }
         }
-      }
-    });
+      },
+    );
   }
 
   // ── Checklist CRUD ────────────────────────────────────────────
@@ -74,7 +129,9 @@ export class JoiningService implements OnModuleInit {
   }
 
   async ensureDefaultChecklist(orgId: string) {
-    const existing = await this.prisma.joiningChecklist.findFirst({ where: { orgId, isDefault: true } });
+    const existing = await this.prisma.joiningChecklist.findFirst({
+      where: { orgId, isDefault: true },
+    });
     if (existing) return existing;
     return this.prisma.joiningChecklist.create({
       data: {
@@ -99,7 +156,9 @@ export class JoiningService implements OnModuleInit {
     });
     if (!offer) throw new NotFoundException('Offer not found');
     if (offer.status !== OfferStatus.ACCEPTED) {
-      this.logger.debug(`Skipping auto-create: offer ${offerId} status=${offer.status}`);
+      this.logger.debug(
+        `Skipping auto-create: offer ${offerId} status=${offer.status}`,
+      );
       return null;
     }
     if (offer.joining) return offer.joining;
@@ -127,7 +186,13 @@ export class JoiningService implements OnModuleInit {
       where: { offer: { orgId } },
       include: {
         offer: {
-          include: { application: { include: { candidate: { select: { id: true, name: true, email: true } } } } },
+          include: {
+            application: {
+              include: {
+                candidate: { select: { id: true, name: true, email: true } },
+              },
+            },
+          },
         },
         checklist: true,
       },
@@ -139,7 +204,16 @@ export class JoiningService implements OnModuleInit {
     const j = await this.prisma.candidateJoining.findFirst({
       where: { id: joiningId, offer: { orgId } },
       include: {
-        offer: { include: { application: { include: { candidate: true, hiringPlan: { select: { designation: true } } } } } },
+        offer: {
+          include: {
+            application: {
+              include: {
+                candidate: true,
+                hiringPlan: { select: { designation: true } },
+              },
+            },
+          },
+        },
         checklist: true,
         buddy: { select: { id: true, name: true, email: true } },
         reportingManager: { select: { id: true, name: true, email: true } },
@@ -156,13 +230,21 @@ export class JoiningService implements OnModuleInit {
     });
   }
 
-  async setBuddyAndManager(orgId: string, joiningId: string, body: { buddyUserId?: string; reportingMgrId?: string; joinDate?: Date }) {
+  async setBuddyAndManager(
+    orgId: string,
+    joiningId: string,
+    body: { buddyUserId?: string; reportingMgrId?: string; joinDate?: Date },
+  ) {
     await this.findOneForOrg(orgId, joiningId);
     return this.prisma.candidateJoining.update({
       where: { id: joiningId },
       data: {
-        ...(body.buddyUserId !== undefined && { buddyUserId: body.buddyUserId }),
-        ...(body.reportingMgrId !== undefined && { reportingMgrId: body.reportingMgrId }),
+        ...(body.buddyUserId !== undefined && {
+          buddyUserId: body.buddyUserId,
+        }),
+        ...(body.reportingMgrId !== undefined && {
+          reportingMgrId: body.reportingMgrId,
+        }),
         ...(body.joinDate && { joinDate: body.joinDate }),
       },
     });
@@ -179,7 +261,10 @@ export class JoiningService implements OnModuleInit {
       reviewedAt: new Date().toISOString(),
       reviewerNotes: dto.notes,
     };
-    const allDone = this.computeAllDone(j.checklist.items as any[], submissions);
+    const allDone = this.computeAllDone(
+      j.checklist.items as any[],
+      submissions,
+    );
     return this.prisma.candidateJoining.update({
       where: { id: joiningId },
       data: {
@@ -195,7 +280,14 @@ export class JoiningService implements OnModuleInit {
     const j = await this.prisma.candidateJoining.findFirst({
       where: { candidateToken: token },
       include: {
-        offer: { include: { organization: { select: { name: true } }, application: { include: { candidate: { select: { name: true, email: true } } } } } },
+        offer: {
+          include: {
+            organization: { select: { name: true } },
+            application: {
+              include: { candidate: { select: { name: true, email: true } } },
+            },
+          },
+        },
         checklist: true,
       },
     });
@@ -208,7 +300,8 @@ export class JoiningService implements OnModuleInit {
     const items = (j.checklist.items as any[]) ?? [];
     const item = items.find((i) => i.key === dto.itemKey);
     if (!item) throw new BadRequestException('Unknown checklist item');
-    if (item.owner !== 'CANDIDATE') throw new BadRequestException('Item is not candidate-owned');
+    if (item.owner !== 'CANDIDATE')
+      throw new BadRequestException('Item is not candidate-owned');
 
     const submissions = (j.submissions as Record<string, any>) ?? {};
     submissions[dto.itemKey] = {
@@ -227,12 +320,18 @@ export class JoiningService implements OnModuleInit {
       where: { id: j.id },
       data: {
         submissions: submissions as any,
-        ...(allSubmitted && j.status === JoiningStatus.IN_PROGRESS && { status: JoiningStatus.DOCUMENTS_PENDING }),
+        ...(allSubmitted &&
+          j.status === JoiningStatus.IN_PROGRESS && {
+            status: JoiningStatus.DOCUMENTS_PENDING,
+          }),
       },
     });
   }
 
-  private computeAllDone(items: any[], submissions: Record<string, any>): boolean {
+  private computeAllDone(
+    items: any[],
+    submissions: Record<string, any>,
+  ): boolean {
     return items
       .filter((i) => i.required !== false)
       .every((i) => {

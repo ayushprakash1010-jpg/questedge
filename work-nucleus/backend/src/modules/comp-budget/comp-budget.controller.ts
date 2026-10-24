@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
@@ -21,19 +30,27 @@ export class CompBudgetController {
 
   @Get()
   @ApiOperation({ summary: 'List budgets' })
-  list(@CurrentUser('orgId') orgId: string, @Query('cycleId') cycleId?: string) {
+  list(
+    @CurrentUser('orgId') orgId: string,
+    @Query('cycleId') cycleId?: string,
+  ) {
     if (cycleId) return this.service.findByCycle(orgId, cycleId);
     return this.service.list(orgId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get budget' })
-  findOne(@CurrentUser('orgId') orgId: string, @Param('id', ParseUUIDPipe) id: string) {
+  findOne(
+    @CurrentUser('orgId') orgId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.service.findOne(orgId, id);
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update budget (only while DRAFT/IN_REVIEW/APPROVED)' })
+  @ApiOperation({
+    summary: 'Update budget (only while DRAFT/IN_REVIEW/APPROVED)',
+  })
   update(
     @CurrentUser('orgId') orgId: string,
     @Param('id', ParseUUIDPipe) id: string,
@@ -53,8 +70,13 @@ export class CompBudgetController {
   }
 
   @Post(':id/lock')
-  @ApiOperation({ summary: 'Lock a budget — no further matrix/pool edits allowed' })
-  lock(@CurrentUser('orgId') orgId: string, @Param('id', ParseUUIDPipe) id: string) {
+  @ApiOperation({
+    summary: 'Lock a budget — no further matrix/pool edits allowed',
+  })
+  lock(
+    @CurrentUser('orgId') orgId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.service.lock(orgId, id);
   }
 }

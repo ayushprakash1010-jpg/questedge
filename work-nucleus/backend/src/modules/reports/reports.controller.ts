@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ReportSource, Role } from '@prisma/client';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
@@ -41,7 +50,10 @@ export class ReportsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a report definition' })
-  findOne(@CurrentUser('orgId') orgId: string, @Param('id', ParseUUIDPipe) id: string) {
+  findOne(
+    @CurrentUser('orgId') orgId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.service.findOne(orgId, id);
   }
 
@@ -57,7 +69,10 @@ export class ReportsController {
 
   @Post(':id/run')
   @ApiOperation({ summary: 'Run a saved report' })
-  run(@CurrentUser('orgId') orgId: string, @Param('id', ParseUUIDPipe) id: string) {
+  run(
+    @CurrentUser('orgId') orgId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.service.run(orgId, id);
   }
 
@@ -65,7 +80,13 @@ export class ReportsController {
   @ApiOperation({ summary: 'Run an ad-hoc report plan (no persistence)' })
   adhoc(
     @CurrentUser('orgId') orgId: string,
-    @Body() body: { source: ReportSource; filters?: any[]; groupBy?: string[]; metrics?: any[] },
+    @Body()
+    body: {
+      source: ReportSource;
+      filters?: any[];
+      groupBy?: string[];
+      metrics?: any[];
+    },
   ) {
     return this.service.runAdhoc(orgId, {
       source: body.source,
@@ -76,7 +97,9 @@ export class ReportsController {
   }
 
   @Post('natural-language')
-  @ApiOperation({ summary: 'AI: prompt → ReportDefinition draft (review-then-save)' })
+  @ApiOperation({
+    summary: 'AI: prompt → ReportDefinition draft (review-then-save)',
+  })
   natural(@Body() dto: NaturalLanguageReportDto) {
     return this.service.naturalLanguageDraft(dto.prompt);
   }

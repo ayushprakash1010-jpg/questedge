@@ -19,17 +19,26 @@ export class IDfyProvider implements IBgvProvider {
     return { vendorRefId: `dev-idfy-${Date.now()}` };
   }
 
-  async submitCheck(_input: { vendorProfileRefId: string; type: BgvCheckType; payload: Record<string, unknown> }) {
+  async submitCheck(_input: {
+    vendorProfileRefId: string;
+    type: BgvCheckType;
+    payload: Record<string, unknown>;
+  }) {
     return { vendorCheckRefId: `dev-idfy-chk-${Date.now()}` };
   }
 
   async getCheckStatus(vendorCheckRefId: string): Promise<VendorCheckStatus> {
-    if (vendorCheckRefId.startsWith('dev-idfy-')) return { status: 'IN_PROGRESS', finding: 'PENDING' };
-    throw new NotImplementedException('IDfy.getCheckStatus not yet implemented');
+    if (vendorCheckRefId.startsWith('dev-idfy-'))
+      return { status: 'IN_PROGRESS', finding: 'PENDING' };
+    throw new NotImplementedException(
+      'IDfy.getCheckStatus not yet implemented',
+    );
   }
 
   async downloadReport(): Promise<Buffer> {
-    throw new NotImplementedException('IDfy.downloadReport not yet implemented');
+    throw new NotImplementedException(
+      'IDfy.downloadReport not yet implemented',
+    );
   }
 
   verifyWebhook() {

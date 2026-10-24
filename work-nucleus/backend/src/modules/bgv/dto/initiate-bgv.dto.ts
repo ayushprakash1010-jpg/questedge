@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ArrayMinSize, IsArray, IsEnum, IsOptional, IsUUID } from 'class-validator';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsEnum,
+  IsOptional,
+  IsUUID,
+} from 'class-validator';
 import { BgvCheckType } from '@prisma/client';
 
 export class InitiateBgvDto {

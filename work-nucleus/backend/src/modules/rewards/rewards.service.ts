@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RewardStatus } from '@prisma/client';
 
@@ -63,9 +67,9 @@ export class RewardsService {
         referral: {
           select: {
             candidateProfile: { select: { name: true, email: true } },
-            mandate: { select: { title: true } }
-          }
-        }
+            mandate: { select: { title: true } },
+          },
+        },
       },
       orderBy: { eligibleAt: 'desc' },
     });
@@ -86,9 +90,11 @@ export class RewardsService {
         referral: {
           select: {
             candidateProfile: { select: { name: true } },
-            mandate: { select: { title: true, organization: { select: { name: true } } } }
-          }
-        }
+            mandate: {
+              select: { title: true, organization: { select: { name: true } } },
+            },
+          },
+        },
       },
       orderBy: { eligibleAt: 'desc' },
     });
@@ -107,7 +113,10 @@ export class RewardsService {
 
     return {
       rewards,
-      pipelinePotential: pipeline.reduce((sum, ref) => sum + Number(ref.mandate.referralRewardAmount || 0), 0),
+      pipelinePotential: pipeline.reduce(
+        (sum, ref) => sum + Number(ref.mandate.referralRewardAmount || 0),
+        0,
+      ),
     };
   }
 
@@ -121,7 +130,10 @@ export class RewardsService {
 
     if (!reward) throw new NotFoundException('Reward not found');
     if (reward.orgId !== orgId) throw new BadRequestException('Unauthorized');
-    if (reward.status !== RewardStatus.PENDING_APPROVAL && reward.status !== RewardStatus.ELIGIBLE) {
+    if (
+      reward.status !== RewardStatus.PENDING_APPROVAL &&
+      reward.status !== RewardStatus.ELIGIBLE
+    ) {
       throw new BadRequestException('Reward is not pending approval');
     }
 
@@ -137,13 +149,13 @@ export class RewardsService {
   async fixMissingRewards() {
     const hiredReferrals = await this.prisma.referral.findMany({
       where: { status: 'HIRED' },
-      include: { mandate: true }
+      include: { mandate: true },
     });
 
     let fixedCount = 0;
     for (const ref of hiredReferrals) {
       const existing = await this.prisma.rewardTracking.findUnique({
-        where: { referralId: ref.id }
+        where: { referralId: ref.id },
       });
 
       if (!existing) {
@@ -157,8 +169,8 @@ export class RewardsService {
             currency: ref.mandate.currency || 'INR',
             status: 'PENDING_APPROVAL',
             hiredAt: ref.updatedAt,
-            eligibleAt: ref.updatedAt
-          }
+            eligibleAt: ref.updatedAt,
+          },
         });
         fixedCount++;
       }
@@ -177,7 +189,8 @@ export class RewardsService {
     });
 
     if (!reward) throw new NotFoundException('Reward not found');
-    if (reward.recruiterId !== recruiter.id) throw new BadRequestException('Unauthorized');
+    if (reward.recruiterId !== recruiter.id)
+      throw new BadRequestException('Unauthorized');
     if (reward.status !== RewardStatus.APPROVED) {
       throw new BadRequestException('Reward is not available for withdrawal');
     }

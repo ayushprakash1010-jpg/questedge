@@ -24,7 +24,9 @@ export class ChecklistItemDto {
   @IsBoolean()
   required?: boolean;
 
-  @ApiPropertyOptional({ description: 'Allowed mime types e.g. ["application/pdf", "image/png"]' })
+  @ApiPropertyOptional({
+    description: 'Allowed mime types e.g. ["application/pdf", "image/png"]',
+  })
   @IsOptional()
   @IsArray()
   docTypes?: string[];

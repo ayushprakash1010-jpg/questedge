@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { ESignProvider, ESignStatus, OfferStatus } from '@prisma/client';
 import { FileUploadService } from '../../file-upload/file-upload.service';
 import { JobQueueService } from '../../job-queue/job-queue.service';
@@ -32,10 +37,18 @@ export class OfferESignService {
       },
     });
     if (!offer) throw new NotFoundException('Offer not found');
-    if (offer.status !== OfferStatus.APPROVED && offer.status !== OfferStatus.SENT) {
-      throw new BadRequestException('Offer must be APPROVED before requesting signature');
+    if (
+      offer.status !== OfferStatus.APPROVED &&
+      offer.status !== OfferStatus.SENT
+    ) {
+      throw new BadRequestException(
+        'Offer must be APPROVED before requesting signature',
+      );
     }
-    if (offer.signatureRequest && offer.signatureRequest.status === ESignStatus.SIGNED) {
+    if (
+      offer.signatureRequest &&
+      offer.signatureRequest.status === ESignStatus.SIGNED
+    ) {
       throw new BadRequestException('Already signed');
     }
 
@@ -49,7 +62,9 @@ export class OfferESignService {
     try {
       pdfBuffer = await this.fileUpload.getFileBuffer(s3Key);
     } catch (err) {
-      this.logger.warn(`Could not fetch doc buffer (${err}); using placeholder`);
+      this.logger.warn(
+        `Could not fetch doc buffer (${err}); using placeholder`,
+      );
       pdfBuffer = Buffer.from(`Offer ${offerId}`, 'utf-8');
     }
 
@@ -67,7 +82,8 @@ export class OfferESignService {
       expireInDays: 14,
     });
 
-    const providerEnum: ESignProvider = provider.name === 'leegality' ? 'LEEGALITY' : 'DIGIO';
+    const providerEnum: ESignProvider =
+      provider.name === 'leegality' ? 'LEEGALITY' : 'DIGIO';
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 14);
 
@@ -113,7 +129,12 @@ export class OfferESignService {
     if (!req) throw new NotFoundException('No e-sign request for offer');
     const provider = this.esign.getProviderByName(req.provider);
     const status = await provider.getStatus(req.providerReqId);
-    return this.applyStatus(req.id, status.status, status.signedAt, status.auditTrailUrl);
+    return this.applyStatus(
+      req.id,
+      status.status,
+      status.signedAt,
+      status.auditTrailUrl,
+    );
   }
 
   async applyStatus(
@@ -122,21 +143,30 @@ export class OfferESignService {
     signedAt?: Date,
     auditTrailUrl?: string,
   ) {
-    const req = await this.prisma.eSignRequest.findUnique({ 
+    const req = await this.prisma.eSignRequest.findUnique({
       where: { id: requestId },
-      include: { offer: { include: { application: true } } }
+      include: { offer: { include: { application: true } } },
     });
     if (!req) return null;
 
-    const newStatus = (typeof status === 'string' ? status.toUpperCase() : status) as ESignStatus;
+    const newStatus = (
+      typeof status === 'string' ? status.toUpperCase() : status
+    ) as ESignStatus;
     const events = (req.webhookEvents as unknown as any[]) ?? [];
-    events.push({ at: new Date().toISOString(), status: newStatus, auditTrailUrl });
+    events.push({
+      at: new Date().toISOString(),
+      status: newStatus,
+      auditTrailUrl,
+    });
 
     await this.prisma.eSignRequest.update({
       where: { id: requestId },
       data: {
         status: newStatus,
-        signedAt: newStatus === ESignStatus.SIGNED ? signedAt ?? new Date() : req.signedAt,
+        signedAt:
+          newStatus === ESignStatus.SIGNED
+            ? (signedAt ?? new Date())
+            : req.signedAt,
         auditTrailUrl: auditTrailUrl ?? req.auditTrailUrl,
         webhookEvents: events as any,
         lastPolledAt: new Date(),
@@ -152,20 +182,29 @@ export class OfferESignService {
         },
       });
       try {
-        await this.queue.enqueue(JOINING_AUTO_CREATE_QUEUE, { offerId: req.offerId });
+        await this.queue.enqueue(JOINING_AUTO_CREATE_QUEUE, {
+          offerId: req.offerId,
+        });
       } catch (err) {
         this.logger.warn(`Failed to enqueue joining auto-create: ${err}`);
       }
 
       // Auto-trigger BGV if configured
       try {
-        const orgSettings = await this.prisma.orgSettings.findUnique({ where: { orgId: req.offer.orgId } });
+        const orgSettings = await this.prisma.orgSettings.findUnique({
+          where: { orgId: req.offer.orgId },
+        });
         const settings = (orgSettings?.settings as Record<string, any>) || {};
         if (settings.autoTriggerBgvOnOfferAccept) {
           await this.bgvService.initiate(req.offer.orgId, {
             candidateId: req.offer.application.candidateId,
             offerId: req.offerId,
-            checkTypes: ['PAN', 'AADHAAR', 'EMPLOYMENT_HISTORY', 'EDUCATION'] as any[],
+            checkTypes: [
+              'PAN',
+              'AADHAAR',
+              'EMPLOYMENT_HISTORY',
+              'EDUCATION',
+            ] as any[],
           });
         }
       } catch (err) {

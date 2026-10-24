@@ -8,7 +8,10 @@ import { Injectable, Logger } from '@nestjs/common';
 @Injectable()
 export class HotCacheService {
   private readonly logger = new Logger(HotCacheService.name);
-  private readonly store = new Map<string, { value: unknown; expiresAt: number }>();
+  private readonly store = new Map<
+    string,
+    { value: unknown; expiresAt: number }
+  >();
   private readonly maxEntries = 5000;
 
   async get<T>(key: string): Promise<T | undefined> {
@@ -38,7 +41,11 @@ export class HotCacheService {
    * Helper: cache-aside pattern. Returns cached value or runs `producer` and
    * stores the result under `key` for `ttlSeconds`.
    */
-  async wrap<T>(key: string, producer: () => Promise<T>, ttlSeconds = 300): Promise<T> {
+  async wrap<T>(
+    key: string,
+    producer: () => Promise<T>,
+    ttlSeconds = 300,
+  ): Promise<T> {
     const hit = await this.get<T>(key);
     if (hit !== undefined) return hit;
     const value = await producer();

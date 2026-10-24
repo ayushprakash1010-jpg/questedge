@@ -2,7 +2,10 @@ import { IsOptional } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateJdDto {
-  @ApiPropertyOptional({ description: 'JD content JSON (title, summary, responsibilities, qualifications, aboutCompany, workMode)' })
+  @ApiPropertyOptional({
+    description:
+      'JD content JSON (title, summary, responsibilities, qualifications, aboutCompany, workMode)',
+  })
   @IsOptional()
   content?: Record<string, any>;
 

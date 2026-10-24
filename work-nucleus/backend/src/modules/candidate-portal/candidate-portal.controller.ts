@@ -15,7 +15,14 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiConsumes } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+  ApiConsumes,
+} from '@nestjs/swagger';
 import { Request } from 'express';
 import { CandidatePortalService } from './candidate-portal.service';
 import { FileUploadService } from '../file-upload/file-upload.service';
@@ -46,10 +53,22 @@ export class CandidatePortalController {
   // CandidateProfile will receive a 404 from getMyProfile().
 
   @Post('profile')
-  @ApiOperation({ summary: 'Create or update global candidate profile (idempotent upsert)' })
-  async upsertProfile(@CurrentUser() user: any, @Body() dto: UpsertCandidateProfileDto) {
-    const emailToUse = user.email && !user.email.includes('@placeholder.com') ? user.email : dto.fallbackEmail;
-    return this.candidatePortalService.upsertProfile(user.auth0Sub, emailToUse, dto);
+  @ApiOperation({
+    summary: 'Create or update global candidate profile (idempotent upsert)',
+  })
+  async upsertProfile(
+    @CurrentUser() user: any,
+    @Body() dto: UpsertCandidateProfileDto,
+  ) {
+    const emailToUse =
+      user.email && !user.email.includes('@placeholder.com')
+        ? user.email
+        : dto.fallbackEmail;
+    return this.candidatePortalService.upsertProfile(
+      user.auth0Sub,
+      emailToUse,
+      dto,
+    );
   }
 
   @Post('profile/parse-resume')
@@ -67,13 +86,21 @@ export class CandidatePortalController {
 
   @Patch('profile/resume')
   @ApiOperation({ summary: 'Update resume URL after file upload' })
-  async updateResume(@CurrentUser() user: any, @Body('resumeUrl') resumeUrl: string) {
-    const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub, user.email);
+  async updateResume(
+    @CurrentUser() user: any,
+    @Body('resumeUrl') resumeUrl: string,
+  ) {
+    const profile = await this.candidatePortalService.getMyProfile(
+      user.auth0Sub,
+      user.email,
+    );
     return this.candidatePortalService.updateResume(profile.id, resumeUrl);
   }
 
   @Post('profile/upload-resume')
-  @ApiOperation({ summary: 'Upload resume PDF/DOCX directly — stores to S3 and saves URL' })
+  @ApiOperation({
+    summary: 'Upload resume PDF/DOCX directly — stores to S3 and saves URL',
+  })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('resume'))
   async uploadResumeDirect(
@@ -81,8 +108,14 @@ export class CandidatePortalController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     if (!file) throw new BadRequestException('No file uploaded');
-    const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub, user.email);
-    const resumeKey = await this.fileUploadService.uploadResume(file, profile.id);
+    const profile = await this.candidatePortalService.getMyProfile(
+      user.auth0Sub,
+      user.email,
+    );
+    const resumeKey = await this.fileUploadService.uploadResume(
+      file,
+      profile.id,
+    );
     await this.candidatePortalService.updateResume(profile.id, resumeKey);
     return { resumeUrl: resumeKey, message: 'Resume uploaded successfully' };
   }
@@ -90,9 +123,17 @@ export class CandidatePortalController {
   // ── Job Discovery ─────────────────────────────────────────────────
 
   @Get('jobs')
-  @ApiOperation({ summary: 'Browse active mandates with filters and saved status' })
-  async discoverJobs(@CurrentUser() user: any, @Query() filter: FilterMandateDto) {
-    const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub, user.email);
+  @ApiOperation({
+    summary: 'Browse active mandates with filters and saved status',
+  })
+  async discoverJobs(
+    @CurrentUser() user: any,
+    @Query() filter: FilterMandateDto,
+  ) {
+    const profile = await this.candidatePortalService.getMyProfile(
+      user.auth0Sub,
+      user.email,
+    );
     return this.candidatePortalService.discoverJobs(profile.id, filter);
   }
 
@@ -100,15 +141,24 @@ export class CandidatePortalController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Toggle save/unsave a job' })
   @ApiParam({ name: 'mandateId', type: 'string', format: 'uuid' })
-  async toggleSaveJob(@CurrentUser() user: any, @Param('mandateId') mandateId: string) {
-    const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub, user.email);
+  async toggleSaveJob(
+    @CurrentUser() user: any,
+    @Param('mandateId') mandateId: string,
+  ) {
+    const profile = await this.candidatePortalService.getMyProfile(
+      user.auth0Sub,
+      user.email,
+    );
     return this.candidatePortalService.toggleSaveJob(profile.id, mandateId);
   }
 
   @Get('jobs/saved')
   @ApiOperation({ summary: 'Get saved jobs list' })
   async getSavedJobs(@CurrentUser() user: any) {
-    const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub, user.email);
+    const profile = await this.candidatePortalService.getMyProfile(
+      user.auth0Sub,
+      user.email,
+    );
     return this.candidatePortalService.getSavedJobs(profile.id);
   }
 
@@ -120,29 +170,49 @@ export class CandidatePortalController {
     @Param('mandateId') mandateId: string,
     @Body() dto: DirectApplyDto,
   ) {
-    const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub, user.email);
-    return this.candidatePortalService.applyDirectly(profile.id, mandateId, dto);
+    const profile = await this.candidatePortalService.getMyProfile(
+      user.auth0Sub,
+      user.email,
+    );
+    return this.candidatePortalService.applyDirectly(
+      profile.id,
+      mandateId,
+      dto,
+    );
   }
 
   @Get('applications')
-  @ApiOperation({ summary: 'Get all applications and active referrals for candidate' })
+  @ApiOperation({
+    summary: 'Get all applications and active referrals for candidate',
+  })
   async getMyApplications(@CurrentUser() user: any) {
-    const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub, user.email);
+    const profile = await this.candidatePortalService.getMyProfile(
+      user.auth0Sub,
+      user.email,
+    );
     return this.candidatePortalService.getMyApplications(profile.id);
   }
 
   // ── Consent ───────────────────────────────────────────────────────
 
   @Get('consents')
-  @ApiOperation({ summary: 'Get all pending consent requests (referrals waiting for response)' })
+  @ApiOperation({
+    summary:
+      'Get all pending consent requests (referrals waiting for response)',
+  })
   async getPendingConsents(@CurrentUser() user: any) {
-    const profile = await this.candidatePortalService.getMyProfile(user.auth0Sub, user.email);
+    const profile = await this.candidatePortalService.getMyProfile(
+      user.auth0Sub,
+      user.email,
+    );
     return this.candidatePortalService.getPendingConsents(profile.id);
   }
 
   @Get('consents/:token/preview')
   @Public()
-  @ApiOperation({ summary: 'PUBLIC: Preview a consent request (no auth required)' })
+  @ApiOperation({
+    summary: 'PUBLIC: Preview a consent request (no auth required)',
+  })
   @ApiResponse({ status: 200, description: 'Consent request details returned' })
   @ApiResponse({ status: 404, description: 'Invalid consent token' })
   @ApiResponse({ status: 410, description: 'Consent request has expired' })
@@ -154,12 +224,19 @@ export class CandidatePortalController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'PUBLIC: Respond to a referral consent via tokenized email link (no auth required)',
+    summary:
+      'PUBLIC: Respond to a referral consent via tokenized email link (no auth required)',
     description:
       'Candidates respond via a secure link emailed to them. The consent token is single-use and expires after 7 days.',
   })
-  @ApiResponse({ status: 200, description: 'Consent response recorded successfully' })
-  @ApiResponse({ status: 400, description: 'Already responded to this consent' })
+  @ApiResponse({
+    status: 200,
+    description: 'Consent response recorded successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Already responded to this consent',
+  })
   @ApiResponse({ status: 404, description: 'Invalid consent token' })
   @ApiResponse({ status: 410, description: 'Consent request has expired' })
   async respondToConsent(
@@ -167,7 +244,12 @@ export class CandidatePortalController {
     @Body() dto: ConsentResponseDto,
     @Req() req: Request,
   ) {
-    const ipAddress = (req.headers['x-forwarded-for'] as string) || req.ip || 'unknown';
-    return this.candidatePortalService.respondToConsent(token, dto.accepted, ipAddress);
+    const ipAddress =
+      (req.headers['x-forwarded-for'] as string) || req.ip || 'unknown';
+    return this.candidatePortalService.respondToConsent(
+      token,
+      dto.accepted,
+      ipAddress,
+    );
   }
 }

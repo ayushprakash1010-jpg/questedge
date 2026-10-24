@@ -51,7 +51,9 @@ export class CompensationController {
   }
 
   @Post('summary')
-  @ApiOperation({ summary: 'Compute CTC summary + India slab hint (no persistence)' })
+  @ApiOperation({
+    summary: 'Compute CTC summary + India slab hint (no persistence)',
+  })
   summary(
     @Body()
     body: {

@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GenerateJdDto } from './dto/generate-jd.dto';
@@ -15,11 +20,22 @@ export class JobDescriptionsService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {
-    this.aiServiceUrl = this.config.get<string>('AI_SERVICE_URL', 'http://localhost:8000');
-    this.internalApiKey = this.config.get<string>('INTERNAL_API_KEY', 'dev-internal-key');
+    this.aiServiceUrl = this.config.get<string>(
+      'AI_SERVICE_URL',
+      'http://localhost:8000',
+    );
+    this.internalApiKey = this.config.get<string>(
+      'INTERNAL_API_KEY',
+      'dev-internal-key',
+    );
   }
 
-  async generate(orgId: string, hiringPlanId: string, userId: string, dto: GenerateJdDto) {
+  async generate(
+    orgId: string,
+    hiringPlanId: string,
+    userId: string,
+    dto: GenerateJdDto,
+  ) {
     // Fetch the hiring plan with all details
     const plan = await this.prisma.hiringPlan.findFirst({
       where: { id: hiringPlanId, orgId },
@@ -74,17 +90,35 @@ export class JobDescriptionsService {
       const rawKey = this.config.get<string>('GEMINI_API_KEY');
       const trimmedKey = rawKey ? rawKey.trim() : null;
       if (!trimmedKey) {
-        aiResponse = { content: "<h1>Mock Job Description</h1><p>Please configure GEMINI_API_KEY to generate real JDs.</p>" };
+        aiResponse = {
+          content:
+            '<h1>Mock Job Description</h1><p>Please configure GEMINI_API_KEY to generate real JDs.</p>',
+        };
       } else {
         const { GoogleGenAI } = require('@google/genai');
         const ai = new GoogleGenAI({ apiKey: trimmedKey });
         const response = await ai.models.generateContent({
-          model: this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest',
-          contents: [{ role: 'user', parts: [{ text: `Generate a detailed, professional Job Description. Return exactly a JSON object with a single "content" field containing HTML. The HTML should use <h1>, <h2>, <ul>, <li>, and <p> tags. Use this context: ${JSON.stringify(aiPayload)}` }] }],
+          model:
+            this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest',
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  text: `Generate a detailed, professional Job Description. Return exactly a JSON object with a single "content" field containing HTML. The HTML should use <h1>, <h2>, <ul>, <li>, and <p> tags. Use this context: ${JSON.stringify(aiPayload)}`,
+                },
+              ],
+            },
+          ],
           config: { responseMimeType: 'application/json', temperature: 0.7 },
         });
-        const rawResponse = response.text || "{}";
-        aiResponse = JSON.parse(rawResponse.replace(/```json/g, '').replace(/```/g, '').trim());
+        const rawResponse = response.text || '{}';
+        aiResponse = JSON.parse(
+          rawResponse
+            .replace(/```json/g, '')
+            .replace(/```/g, '')
+            .trim(),
+        );
       }
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
@@ -155,7 +189,9 @@ export class JobDescriptionsService {
     const jd = await this.findOne(id);
 
     if (jd.status === JdStatus.APPROVED || jd.status === JdStatus.PUBLISHED) {
-      throw new BadRequestException('Cannot edit an approved or published JD. Create a new version instead.');
+      throw new BadRequestException(
+        'Cannot edit an approved or published JD. Create a new version instead.',
+      );
     }
 
     return this.prisma.jobDescription.update({
@@ -163,7 +199,9 @@ export class JobDescriptionsService {
       data: {
         ...(dto.content && { content: dto.content }),
         ...(dto.fitmentMapping && { fitmentMapping: dto.fitmentMapping }),
-        ...(dto.evaluationParameters && { evaluationParameters: dto.evaluationParameters }),
+        ...(dto.evaluationParameters && {
+          evaluationParameters: dto.evaluationParameters,
+        }),
         generatedByAi: false,
       },
       include: {
@@ -176,8 +214,13 @@ export class JobDescriptionsService {
   async approve(id: string, userId: string) {
     const jd = await this.findOne(id);
 
-    if (jd.status !== JdStatus.DRAFT && jd.status !== JdStatus.PENDING_APPROVAL) {
-      throw new BadRequestException('Only DRAFT or PENDING_APPROVAL JDs can be approved');
+    if (
+      jd.status !== JdStatus.DRAFT &&
+      jd.status !== JdStatus.PENDING_APPROVAL
+    ) {
+      throw new BadRequestException(
+        'Only DRAFT or PENDING_APPROVAL JDs can be approved',
+      );
     }
 
     return this.prisma.jobDescription.update({

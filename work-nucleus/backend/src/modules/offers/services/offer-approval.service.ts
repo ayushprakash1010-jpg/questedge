@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { OfferStatus } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 
@@ -17,21 +21,40 @@ const DEFAULT_CHAIN: string[] = ['HIRING_MANAGER', 'HR', 'FINANCE', 'FOUNDER'];
 export class OfferApprovalService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async buildChain(orgId: string, override?: Array<{ role: string; userId?: string }>): Promise<ApprovalStep[]> {
+  async buildChain(
+    orgId: string,
+    override?: Array<{ role: string; userId?: string }>,
+  ): Promise<ApprovalStep[]> {
     if (override?.length) {
-      return override.map((o) => ({ role: o.role, userId: o.userId, status: 'PENDING' }));
+      return override.map((o) => ({
+        role: o.role,
+        userId: o.userId,
+        status: 'PENDING',
+      }));
     }
-    const settings = await this.prisma.orgSettings.findUnique({ where: { orgId } });
-    const orgChain = (settings?.settings as any)?.offerApprovalChain as string[] | undefined;
+    const settings = await this.prisma.orgSettings.findUnique({
+      where: { orgId },
+    });
+    const orgChain = (settings?.settings as any)?.offerApprovalChain as
+      | string[]
+      | undefined;
     const chain = orgChain?.length ? orgChain : DEFAULT_CHAIN;
     return chain.map((role) => ({ role, status: 'PENDING' }));
   }
 
-  async submitForApproval(orgId: string, offerId: string, override?: ApprovalStep[]) {
-    const offer = await this.prisma.offer.findFirst({ where: { id: offerId, orgId } });
+  async submitForApproval(
+    orgId: string,
+    offerId: string,
+    override?: ApprovalStep[],
+  ) {
+    const offer = await this.prisma.offer.findFirst({
+      where: { id: offerId, orgId },
+    });
     if (!offer) throw new NotFoundException('Offer not found');
     if (offer.status !== OfferStatus.DRAFT) {
-      throw new BadRequestException('Only DRAFT offers can be submitted for approval');
+      throw new BadRequestException(
+        'Only DRAFT offers can be submitted for approval',
+      );
     }
     const chain = override ?? (await this.buildChain(orgId));
     return this.prisma.offer.update({
@@ -43,8 +66,16 @@ export class OfferApprovalService {
     });
   }
 
-  async act(orgId: string, offerId: string, actorUserId: string, decision: 'APPROVED' | 'CHANGES_REQUESTED' | 'REJECTED', comment?: string) {
-    const offer = await this.prisma.offer.findFirst({ where: { id: offerId, orgId } });
+  async act(
+    orgId: string,
+    offerId: string,
+    actorUserId: string,
+    decision: 'APPROVED' | 'CHANGES_REQUESTED' | 'REJECTED',
+    comment?: string,
+  ) {
+    const offer = await this.prisma.offer.findFirst({
+      where: { id: offerId, orgId },
+    });
     if (!offer) throw new NotFoundException('Offer not found');
     if (offer.status !== OfferStatus.PENDING_APPROVAL) {
       throw new BadRequestException('Offer is not awaiting approval');
@@ -52,11 +83,14 @@ export class OfferApprovalService {
 
     const chain = (offer.approvalChain as unknown as ApprovalStep[]) ?? [];
     const idx = chain.findIndex((s) => s.status === 'PENDING');
-    if (idx < 0) throw new BadRequestException('No pending approval steps remain');
+    if (idx < 0)
+      throw new BadRequestException('No pending approval steps remain');
 
     const step = chain[idx];
     if (step.userId && step.userId !== actorUserId) {
-      throw new BadRequestException('You are not the assigned approver for this step');
+      throw new BadRequestException(
+        'You are not the assigned approver for this step',
+      );
     }
 
     chain[idx] = {

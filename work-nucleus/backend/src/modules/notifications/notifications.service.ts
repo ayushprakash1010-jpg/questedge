@@ -24,17 +24,23 @@ export class NotificationsService {
     const notification = await this.prisma.notification.create({ data });
 
     try {
-      const user = await this.prisma.user.findUnique({ where: { id: data.userId } });
+      const user = await this.prisma.user.findUnique({
+        where: { id: data.userId },
+      });
       if (user?.email) {
         // Fire and forget email dispatch
-        this.emailService.sendNotificationEmail(
-          user.email,
-          data.title,
-          data.body,
-          data.actionUrl,
-        ).catch(err => {
-          this.logger.error(`Email dispatch failed for ${user.email}: ${err.message}`);
-        });
+        this.emailService
+          .sendNotificationEmail(
+            user.email,
+            data.title,
+            data.body,
+            data.actionUrl,
+          )
+          .catch((err) => {
+            this.logger.error(
+              `Email dispatch failed for ${user.email}: ${err.message}`,
+            );
+          });
       }
     } catch (err) {
       this.logger.error(`Failed to send email notification: ${err.message}`);

@@ -19,9 +19,12 @@ export class AiScreeningService {
     const rawKey = this.configService.get<string>('GEMINI_API_KEY');
     const trimmedKey = rawKey ? rawKey.trim() : null;
     this.hasApiKey = !!trimmedKey;
-    this.model = this.configService.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
+    this.model =
+      this.configService.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
 
-    this.logger.log(`AI Service initialized. Key present: ${this.hasApiKey}, Model: ${this.model}`);
+    this.logger.log(
+      `AI Service initialized. Key present: ${this.hasApiKey}, Model: ${this.model}`,
+    );
 
     this.ai = new GoogleGenAI({
       apiKey: trimmedKey || 'dummy-key',
@@ -31,7 +34,10 @@ export class AiScreeningService {
   // ── Parse AI JSON response safely ─────────────────────────────
   private parseAiResponse(text: string): any {
     try {
-      const cleaned = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const cleaned = text
+        .replace(/```json/gi, '')
+        .replace(/```/g, '')
+        .trim();
       return JSON.parse(cleaned);
     } catch (err) {
       this.logger.error(`JSON parse failed on AI response. Raw text: ${text}`);
@@ -89,7 +95,7 @@ export class AiScreeningService {
       // ── Build the prompt text ──────────────────────────────────
       const promptText = `
         You are an expert technical recruiter. Evaluate the fit between a candidate and a job mandate.
-        ${candidateProfile.resumeUrl ? 'The candidate\'s full resume is attached as a document — use it as the primary source of truth for their skills and experience.' : 'No resume was uploaded; evaluate based on their profile data only.'}
+        ${candidateProfile.resumeUrl ? "The candidate's full resume is attached as a document — use it as the primary source of truth for their skills and experience." : 'No resume was uploaded; evaluate based on their profile data only.'}
         
         Job Mandate:
         Title: ${mandate.title}
@@ -120,7 +126,9 @@ export class AiScreeningService {
 
       if (resumeKey) {
         try {
-          this.logger.log(`Fetching resume for candidate ${candidateProfile.id} from key: ${resumeKey}`);
+          this.logger.log(
+            `Fetching resume for candidate ${candidateProfile.id} from key: ${resumeKey}`,
+          );
           const fileBuffer = await this.fileUpload.getFileBuffer(resumeKey);
           const mimeType = resumeKey.toLowerCase().endsWith('.pdf')
             ? 'application/pdf'
@@ -128,21 +136,29 @@ export class AiScreeningService {
           const b64 = Buffer.from(fileBuffer).toString('base64');
 
           // Send resume as an inline part + text prompt
-          contents = [{
-            role: 'user',
-            parts: [
-              { inlineData: { data: b64, mimeType } },
-              { text: promptText },
-            ],
-          }];
-          this.logger.log(`Resume attached for referral ${referralId} — using full document evaluation.`);
+          contents = [
+            {
+              role: 'user',
+              parts: [
+                { inlineData: { data: b64, mimeType } },
+                { text: promptText },
+              ],
+            },
+          ];
+          this.logger.log(
+            `Resume attached for referral ${referralId} — using full document evaluation.`,
+          );
         } catch (fileErr) {
           // If fetching the resume fails, fall back gracefully to text-only
-          this.logger.warn(`Could not fetch resume for referral ${referralId}: ${fileErr}. Falling back to text-only evaluation.`);
+          this.logger.warn(
+            `Could not fetch resume for referral ${referralId}: ${fileErr}. Falling back to text-only evaluation.`,
+          );
           contents = promptText;
         }
       } else {
-        this.logger.log(`No resume for referral ${referralId} — using profile text-only evaluation.`);
+        this.logger.log(
+          `No resume for referral ${referralId} — using profile text-only evaluation.`,
+        );
         contents = promptText;
       }
 
@@ -169,10 +185,14 @@ export class AiScreeningService {
             }),
           },
         });
-        this.logger.log(`Successfully evaluated referral ${referralId}. Score: ${parsed.matchScore}%`);
+        this.logger.log(
+          `Successfully evaluated referral ${referralId}. Score: ${parsed.matchScore}%`,
+        );
       }
     } catch (error) {
-      this.logger.error(`Failed to evaluate referral ${referralId}: ${this.extractErrorMessage(error)}`);
+      this.logger.error(
+        `Failed to evaluate referral ${referralId}: ${this.extractErrorMessage(error)}`,
+      );
       // Don't rethrow — this is a background task, failure should be silent
     }
   }
@@ -183,7 +203,10 @@ export class AiScreeningService {
 
     // 1. Extract role / title
     let title = cleanPrompt
-      .replace(/^(?:we\s+)?(?:need|looking for|hiring|want|search for|seeking)\s+(?:a|an)\s+/i, '')
+      .replace(
+        /^(?:we\s+)?(?:need|looking for|hiring|want|search for|seeking)\s+(?:a|an)\s+/i,
+        '',
+      )
       .replace(/\s+(?:with|having|who has|of)\s+.*$/i, '')
       .trim();
 
@@ -197,38 +220,115 @@ export class AiScreeningService {
     }
 
     // 2. Extract experience
-    const expMatch = cleanPrompt.match(/(\d+(?:\+|-|\s*to\s*\d+)?\s*(?:years?|yrs?))/i);
-    const requiredExperience = expMatch ? `${expMatch[1]} of experience` : '3-5 years';
+    const expMatch = cleanPrompt.match(
+      /(\d+(?:\+|-|\s*to\s*\d+)?\s*(?:years?|yrs?))/i,
+    );
+    const requiredExperience = expMatch
+      ? `${expMatch[1]} of experience`
+      : '3-5 years';
 
     // 3. Extract skills & department
     const skillsList: string[] = [];
     const lower = cleanPrompt.toLowerCase();
 
     const techCatalog: Record<string, string[]> = {
-      react: ['React', 'TypeScript', 'JavaScript (ES6+)', 'HTML5/CSS3', 'Next.js', 'Redux'],
-      node: ['Node.js', 'TypeScript', 'Express/NestJS', 'RESTful APIs', 'PostgreSQL', 'Docker'],
-      frontend: ['React', 'TypeScript', 'CSS3/Tailwind', 'Next.js', 'Web Performance'],
-      backend: ['Node.js', 'PostgreSQL', 'RESTful APIs', 'Docker', 'Redis', 'Microservices'],
-      'full-stack': ['React', 'Node.js', 'TypeScript', 'PostgreSQL', 'Tailwind CSS', 'Docker'],
-      fullstack: ['React', 'Node.js', 'TypeScript', 'PostgreSQL', 'Tailwind CSS', 'Docker'],
+      react: [
+        'React',
+        'TypeScript',
+        'JavaScript (ES6+)',
+        'HTML5/CSS3',
+        'Next.js',
+        'Redux',
+      ],
+      node: [
+        'Node.js',
+        'TypeScript',
+        'Express/NestJS',
+        'RESTful APIs',
+        'PostgreSQL',
+        'Docker',
+      ],
+      frontend: [
+        'React',
+        'TypeScript',
+        'CSS3/Tailwind',
+        'Next.js',
+        'Web Performance',
+      ],
+      backend: [
+        'Node.js',
+        'PostgreSQL',
+        'RESTful APIs',
+        'Docker',
+        'Redis',
+        'Microservices',
+      ],
+      'full-stack': [
+        'React',
+        'Node.js',
+        'TypeScript',
+        'PostgreSQL',
+        'Tailwind CSS',
+        'Docker',
+      ],
+      fullstack: [
+        'React',
+        'Node.js',
+        'TypeScript',
+        'PostgreSQL',
+        'Tailwind CSS',
+        'Docker',
+      ],
       python: ['Python', 'Django/FastAPI', 'PostgreSQL', 'Docker', 'REST APIs'],
       java: ['Java', 'Spring Boot', 'Microservices', 'PostgreSQL', 'Docker'],
       devops: ['AWS', 'Docker', 'Kubernetes', 'CI/CD Pipelines', 'Terraform'],
       aws: ['AWS', 'Docker', 'Kubernetes', 'Terraform', 'CI/CD'],
-      mobile: ['React Native / Flutter', 'TypeScript', 'iOS/Android', 'REST APIs'],
+      mobile: [
+        'React Native / Flutter',
+        'TypeScript',
+        'iOS/Android',
+        'REST APIs',
+      ],
       flutter: ['Flutter', 'Dart', 'State Management', 'REST APIs'],
-      sales: ['B2B Sales', 'Lead Generation', 'CRM (HubSpot/Salesforce)', 'Negotiation'],
-      marketing: ['Growth Marketing', 'SEO/SEM', 'Content Strategy', 'Google Analytics'],
-      design: ['Figma', 'UI/UX Design', 'Design Systems', 'Wireframing', 'User Research'],
-      product: ['Product Management', 'Roadmapping', 'Agile/Scrum', 'Data Analytics'],
+      sales: [
+        'B2B Sales',
+        'Lead Generation',
+        'CRM (HubSpot/Salesforce)',
+        'Negotiation',
+      ],
+      marketing: [
+        'Growth Marketing',
+        'SEO/SEM',
+        'Content Strategy',
+        'Google Analytics',
+      ],
+      design: [
+        'Figma',
+        'UI/UX Design',
+        'Design Systems',
+        'Wireframing',
+        'User Research',
+      ],
+      product: [
+        'Product Management',
+        'Roadmapping',
+        'Agile/Scrum',
+        'Data Analytics',
+      ],
     };
 
     let department = 'Engineering';
     if (lower.includes('sales')) department = 'Sales';
     else if (lower.includes('marketing')) department = 'Marketing';
-    else if (lower.includes('design') || lower.includes('ui/ux')) department = 'Design';
-    else if (lower.includes('product manager') || lower.includes('product owner')) department = 'Product';
-    else if (lower.includes('hr') || lower.includes('recruiter')) department = 'Human Resources';
+    else if (lower.includes('design') || lower.includes('ui/ux'))
+      department = 'Design';
+    else if (
+      lower.includes('product manager') ||
+      lower.includes('product owner')
+    )
+      department = 'Product';
+    else if (lower.includes('hr') || lower.includes('recruiter'))
+      department = 'Human Resources';
 
     for (const [key, skills] of Object.entries(techCatalog)) {
       if (lower.includes(key)) {
@@ -239,15 +339,24 @@ export class AiScreeningService {
     }
 
     if (skillsList.length === 0) {
-      skillsList.push('Problem Solving', 'Communication', 'Teamwork', 'Agile Workflow');
+      skillsList.push(
+        'Problem Solving',
+        'Communication',
+        'Teamwork',
+        'Agile Workflow',
+      );
     }
 
     const mandatorySkills = skillsList.slice(0, 4);
-    const preferredSkills = skillsList.length > 4 ? skillsList.slice(4, 8) : ['Git', 'Agile / Scrum', 'CI/CD'];
+    const preferredSkills =
+      skillsList.length > 4
+        ? skillsList.slice(4, 8)
+        : ['Git', 'Agile / Scrum', 'CI/CD'];
 
     let workModel = 'Hybrid';
     if (lower.includes('remote')) workModel = 'Remote';
-    if (lower.includes('on-site') || lower.includes('onsite')) workModel = 'On-site';
+    if (lower.includes('on-site') || lower.includes('onsite'))
+      workModel = 'On-site';
 
     const description = `We are looking for an exceptional **${title}** to join our fast-growing ${department} team. In this role, you will play a central part in building high-impact products, collaborating across functions, and driving technical excellence.\n\n### Key Responsibilities\n- Design, develop, and deliver high-quality, scalable solutions.\n- Collaborate closely with product managers, designers, and engineering colleagues.\n- Participate actively in code reviews, technical architecture sessions, and sprint planning.\n- Ensure robust system reliability, performance optimization, and clean code standards.\n\n### Requirements\n- **Experience:** ${requiredExperience} in relevant industry roles.\n- **Core Proficiencies:** ${mandatorySkills.join(', ')}.\n- Proven track record of shipping production-grade software or executing high-quality deliverables.\n- Strong problem-solving mindset and excellent cross-team communication.`;
 
@@ -265,10 +374,14 @@ export class AiScreeningService {
 
   // ── 2. Generate Mandate from Prompt ──────────────────────────
   async generateMandate(prompt: string): Promise<any> {
-    this.logger.log(`Generating mandate for prompt: "${prompt}". Key present: ${this.hasApiKey}`);
+    this.logger.log(
+      `Generating mandate for prompt: "${prompt}". Key present: ${this.hasApiKey}`,
+    );
 
     if (!this.hasApiKey) {
-      this.logger.warn('GEMINI_API_KEY not set. Returning prompt-derived mandate.');
+      this.logger.warn(
+        'GEMINI_API_KEY not set. Returning prompt-derived mandate.',
+      );
       return this.generateFallbackMandate(prompt);
     }
 
@@ -312,23 +425,31 @@ export class AiScreeningService {
         if (content) {
           const parsed = this.parseAiResponse(content);
           if (parsed && parsed.title) {
-            this.logger.log(`Successfully generated mandate using model: ${modelName}`);
+            this.logger.log(
+              `Successfully generated mandate using model: ${modelName}`,
+            );
             return parsed;
           }
         }
       } catch (err: any) {
         const msg = this.extractErrorMessage(err);
-        this.logger.warn(`Model ${modelName} failed in generateMandate: ${msg}`);
+        this.logger.warn(
+          `Model ${modelName} failed in generateMandate: ${msg}`,
+        );
       }
     }
 
-    this.logger.warn('All Gemini models failed or experienced high demand. Returning prompt-derived mandate.');
+    this.logger.warn(
+      'All Gemini models failed or experienced high demand. Returning prompt-derived mandate.',
+    );
     return this.generateFallbackMandate(prompt);
   }
 
   // ── 3. Parse Resume to Profile ────────────────────────────────
   async parseResumeToProfile(resumeText: string): Promise<any> {
-    this.logger.log(`Parsing resume. Key present: ${this.hasApiKey}, Model: ${this.model}`);
+    this.logger.log(
+      `Parsing resume. Key present: ${this.hasApiKey}, Model: ${this.model}`,
+    );
 
     const systemPrompt = `
       You are an expert technical recruiter and resume parser.
@@ -361,7 +482,9 @@ export class AiScreeningService {
     if (this.hasApiKey) {
       for (const modelName of modelsToTry) {
         try {
-          this.logger.log(`Attempting parseResumeToProfile with model: ${modelName}`);
+          this.logger.log(
+            `Attempting parseResumeToProfile with model: ${modelName}`,
+          );
           const response = await this.ai.models.generateContent({
             model: modelName,
             contents: resumeText,
@@ -374,25 +497,44 @@ export class AiScreeningService {
           const content = response.text;
           if (content) {
             const parsed = this.parseAiResponse(content);
-            if (parsed && (parsed.name || parsed.email || parsed.skills?.length)) {
-              this.logger.log(`Successfully parsed resume using model: ${modelName}`);
+            if (
+              parsed &&
+              (parsed.name || parsed.email || parsed.skills?.length)
+            ) {
+              this.logger.log(
+                `Successfully parsed resume using model: ${modelName}`,
+              );
               return parsed;
             }
           }
         } catch (err: any) {
           const msg = this.extractErrorMessage(err);
-          this.logger.warn(`Model ${modelName} failed in parseResumeToProfile: ${msg}`);
+          this.logger.warn(
+            `Model ${modelName} failed in parseResumeToProfile: ${msg}`,
+          );
         }
       }
     }
 
     // Resilient fallback: extract details directly from resume text using regex
-    this.logger.warn('AI parsing unavailable or failed; extracting details via text heuristics.');
-    const emailMatch = resumeText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-    const phoneMatch = resumeText.match(/(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
-    const lines = resumeText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-    const candidateName = lines.length > 0 && lines[0].length < 40 && !lines[0].includes('@') ? lines[0] : '';
-    
+    this.logger.warn(
+      'AI parsing unavailable or failed; extracting details via text heuristics.',
+    );
+    const emailMatch = resumeText.match(
+      /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/,
+    );
+    const phoneMatch = resumeText.match(
+      /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/,
+    );
+    const lines = resumeText
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+    const candidateName =
+      lines.length > 0 && lines[0].length < 40 && !lines[0].includes('@')
+        ? lines[0]
+        : '';
+
     return {
       name: candidateName,
       email: emailMatch ? emailMatch[0] : '',

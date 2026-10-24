@@ -33,9 +33,13 @@ export class CandidatePortalService {
     dto: UpsertCandidateProfileDto,
   ): Promise<CandidateProfile> {
     const cleanEmail = email ? email.toLowerCase().trim() : '';
-    if (!cleanEmail) throw new BadRequestException('Email is required to create a profile.');
-    
-    const emailHash = crypto.createHash('sha256').update(cleanEmail).digest('hex');
+    if (!cleanEmail)
+      throw new BadRequestException('Email is required to create a profile.');
+
+    const emailHash = crypto
+      .createHash('sha256')
+      .update(cleanEmail)
+      .digest('hex');
     const cleanPhone = dto.phone ? dto.phone.trim() : null;
     const phoneHash = cleanPhone
       ? crypto.createHash('sha256').update(cleanPhone).digest('hex')
@@ -80,7 +84,11 @@ export class CandidatePortalService {
     // 2. Resolve target canonical profile and handle merging if needed
     let canonical = existingByHash || existingBySub;
 
-    if (existingBySub && existingByHash && existingBySub.id !== existingByHash.id) {
+    if (
+      existingBySub &&
+      existingByHash &&
+      existingBySub.id !== existingByHash.id
+    ) {
       // Reassign foreign key dependencies from existingBySub to existingByHash
       const tempId = existingBySub.id;
       const targetId = existingByHash.id;
@@ -109,7 +117,9 @@ export class CandidatePortalService {
       ]);
 
       // Safely delete temporary profile
-      await this.prisma.candidateProfile.delete({ where: { id: tempId } }).catch(() => {});
+      await this.prisma.candidateProfile
+        .delete({ where: { id: tempId } })
+        .catch(() => {});
       canonical = existingByHash;
     }
 
@@ -179,19 +189,30 @@ export class CandidatePortalService {
     }
   }
 
-  async getMyProfile(auth0Sub: string, email?: string): Promise<CandidateProfile> {
+  async getMyProfile(
+    auth0Sub: string,
+    email?: string,
+  ): Promise<CandidateProfile> {
     let profile = await this.prisma.candidateProfile.findUnique({
       where: { auth0Sub },
       include: {
         _count: {
-          select: { referrals: true, applications: true, savedJobs: true, consents: true },
+          select: {
+            referrals: true,
+            applications: true,
+            savedJobs: true,
+            consents: true,
+          },
         },
       },
     });
 
     if (!profile && email && !email.includes('@placeholder.com')) {
       const cleanEmail = email.toLowerCase().trim();
-      const emailHash = crypto.createHash('sha256').update(cleanEmail).digest('hex');
+      const emailHash = crypto
+        .createHash('sha256')
+        .update(cleanEmail)
+        .digest('hex');
 
       profile = await this.prisma.candidateProfile.findFirst({
         where: {
@@ -202,7 +223,12 @@ export class CandidatePortalService {
         },
         include: {
           _count: {
-            select: { referrals: true, applications: true, savedJobs: true, consents: true },
+            select: {
+              referrals: true,
+              applications: true,
+              savedJobs: true,
+              consents: true,
+            },
           },
         },
       });
@@ -214,14 +240,22 @@ export class CandidatePortalService {
           data: { auth0Sub },
           include: {
             _count: {
-              select: { referrals: true, applications: true, savedJobs: true, consents: true },
+              select: {
+                referrals: true,
+                applications: true,
+                savedJobs: true,
+                consents: true,
+              },
             },
           },
         });
       }
     }
 
-    if (!profile) throw new NotFoundException('Candidate profile not found. Please create one first.');
+    if (!profile)
+      throw new NotFoundException(
+        'Candidate profile not found. Please create one first.',
+      );
     return profile;
   }
 
@@ -229,7 +263,10 @@ export class CandidatePortalService {
     return this.aiScreening.parseResumeToProfile(text);
   }
 
-  async updateResume(candidateId: string, resumeUrl: string): Promise<CandidateProfile> {
+  async updateResume(
+    candidateId: string,
+    resumeUrl: string,
+  ): Promise<CandidateProfile> {
     return this.prisma.candidateProfile.update({
       where: { id: candidateId },
       data: { resumeUrl },
@@ -254,9 +291,11 @@ export class CandidatePortalService {
         { description: { contains: filter.q, mode: 'insensitive' } },
       ];
     }
-    if (filter.location) where.location = { contains: filter.location, mode: 'insensitive' };
+    if (filter.location)
+      where.location = { contains: filter.location, mode: 'insensitive' };
     if (filter.workModel) where.workModel = filter.workModel;
-    if (filter.minReward) where.referralRewardAmount = { gte: filter.minReward };
+    if (filter.minReward)
+      where.referralRewardAmount = { gte: filter.minReward };
 
     const [mandates, total, savedJobIds] = await Promise.all([
       this.prisma.mandate.findMany({
@@ -297,11 +336,18 @@ export class CandidatePortalService {
     candidateId: string,
     mandateId: string,
   ): Promise<{ saved: boolean }> {
-    const mandate = await this.prisma.mandate.findUnique({ where: { id: mandateId } });
+    const mandate = await this.prisma.mandate.findUnique({
+      where: { id: mandateId },
+    });
     if (!mandate) throw new NotFoundException('Mandate not found.');
 
     const existing = await this.prisma.savedJob.findUnique({
-      where: { candidateProfileId_mandateId: { candidateProfileId: candidateId, mandateId } },
+      where: {
+        candidateProfileId_mandateId: {
+          candidateProfileId: candidateId,
+          mandateId,
+        },
+      },
     });
 
     if (existing) {
@@ -327,24 +373,37 @@ export class CandidatePortalService {
     });
   }
 
-
-  async applyDirectly(candidateProfileId: string, mandateId: string, dto: DirectApplyDto) {
+  async applyDirectly(
+    candidateProfileId: string,
+    mandateId: string,
+    dto: DirectApplyDto,
+  ) {
     const [mandate, candidateProfile, existingApp] = await Promise.all([
       this.prisma.mandate.findUnique({
         where: { id: mandateId },
         include: { organization: true },
       }),
-      this.prisma.candidateProfile.findUnique({ where: { id: candidateProfileId } }),
+      this.prisma.candidateProfile.findUnique({
+        where: { id: candidateProfileId },
+      }),
       this.prisma.candidateApplication.findFirst({
         where: { candidateProfileId, mandateId },
       }),
     ]);
 
     if (!mandate) throw new NotFoundException('Mandate not found.');
-    if (mandate.status !== 'ACTIVE') throw new BadRequestException('This mandate is no longer accepting applications.');
-    if (!mandate.acceptsDirectApply) throw new BadRequestException('This mandate only accepts recruiter referrals.');
-    if (!candidateProfile) throw new NotFoundException('Candidate profile not found.');
-    if (existingApp) throw new ConflictException('You have already applied to this mandate.');
+    if (mandate.status !== 'ACTIVE')
+      throw new BadRequestException(
+        'This mandate is no longer accepting applications.',
+      );
+    if (!mandate.acceptsDirectApply)
+      throw new BadRequestException(
+        'This mandate only accepts recruiter referrals.',
+      );
+    if (!candidateProfile)
+      throw new NotFoundException('Candidate profile not found.');
+    if (existingApp)
+      throw new ConflictException('You have already applied to this mandate.');
 
     // Find or create a legacy Candidate record in the mandate org.
     // CandidateApplication.candidateId requires a Candidate (org-scoped ATS model).
@@ -458,7 +517,12 @@ export class CandidatePortalService {
               },
             },
             recruiter: {
-              select: { id: true, name: true, headline: true, isVerified: true },
+              select: {
+                id: true,
+                name: true,
+                headline: true,
+                isVerified: true,
+              },
             },
           },
         },
@@ -492,8 +556,9 @@ export class CandidatePortalService {
     });
 
     if (!consent) throw new NotFoundException('Consent request not found.');
-    if (consent.expiresAt < new Date()) throw new GoneException('Consent request has expired.');
-    
+    if (consent.expiresAt < new Date())
+      throw new GoneException('Consent request has expired.');
+
     return consent;
   }
 
@@ -504,23 +569,36 @@ export class CandidatePortalService {
   ) {
     const consent = await this.prisma.candidateConsent.findUnique({
       where: { consentToken },
-      include: { referral: { include: { mandate: true, recruiter: true, candidateProfile: true } } },
+      include: {
+        referral: {
+          include: { mandate: true, recruiter: true, candidateProfile: true },
+        },
+      },
     });
 
-    if (!consent) throw new NotFoundException('Consent request not found. The link may be invalid.');
+    if (!consent)
+      throw new NotFoundException(
+        'Consent request not found. The link may be invalid.',
+      );
     if (consent.status !== 'PENDING') {
-      throw new BadRequestException(`This consent request has already been ${consent.status.toLowerCase()}.`);
+      throw new BadRequestException(
+        `This consent request has already been ${consent.status.toLowerCase()}.`,
+      );
     }
     if (consent.expiresAt < new Date()) {
       await this.prisma.candidateConsent.update({
         where: { id: consent.id },
         data: { status: 'EXPIRED' },
       });
-      throw new GoneException('This consent request has expired. Ask the recruiter to re-send.');
+      throw new GoneException(
+        'This consent request has expired. Ask the recruiter to re-send.',
+      );
     }
 
     const newConsentStatus: ConsentStatus = accepted ? 'ACCEPTED' : 'DECLINED';
-    const newReferralStatus = accepted ? 'CANDIDATE_ACCEPTED' : 'CANDIDATE_DECLINED';
+    const newReferralStatus = accepted
+      ? 'CANDIDATE_ACCEPTED'
+      : 'CANDIDATE_DECLINED';
 
     // Build transaction operations
     const txOps: any[] = [
@@ -554,7 +632,7 @@ export class CandidatePortalService {
             currency: consent.referral.mandate.currency,
             status: 'POTENTIAL',
           },
-        })
+        }),
       );
     }
 
@@ -564,7 +642,7 @@ export class CandidatePortalService {
     // Notify Recruiter (via Email only, since Notification table is for Company Users)
     if (accepted && consent.referral.recruiter?.auth0Sub) {
       // Just trigger the AI screening, email can be added later
-      this.aiScreening.evaluateReferralFit(consent.referralId).catch(err => {
+      this.aiScreening.evaluateReferralFit(consent.referralId).catch((err) => {
         // Just log, we don't want to fail the consent API call
         console.error('Failed to trigger AI scoring for referral:', err);
       });
@@ -574,25 +652,32 @@ export class CandidatePortalService {
     if (accepted) {
       // Find company admins
       const admins = await this.prisma.user.findMany({
-        where: { orgId: consent.referral.mandate.orgId, userType: 'COMPANY_ADMIN' }
+        where: {
+          orgId: consent.referral.mandate.orgId,
+          userType: 'COMPANY_ADMIN',
+        },
       });
       for (const admin of admins) {
-        await this.notifications.create({
-          userId: admin.id,
-          orgId: admin.orgId,
-          type: 'NEW_REFERRAL',
-          title: 'New Candidate Referral!',
-          body: `${consent.referral.candidateProfile?.name} was just referred for ${consent.referral.mandate?.title}. AI Scoring is in progress.`,
-          entityType: 'REFERRAL',
-          entityId: consent.referral.id,
-          actionUrl: `/company/mandates/${consent.referral.mandate.id}`,
-        }).catch(err => console.error('Failed to create admin notification:', err));
+        await this.notifications
+          .create({
+            userId: admin.id,
+            orgId: admin.orgId,
+            type: 'NEW_REFERRAL',
+            title: 'New Candidate Referral!',
+            body: `${consent.referral.candidateProfile?.name} was just referred for ${consent.referral.mandate?.title}. AI Scoring is in progress.`,
+            entityType: 'REFERRAL',
+            entityId: consent.referral.id,
+            actionUrl: `/company/mandates/${consent.referral.mandate.id}`,
+          })
+          .catch((err) =>
+            console.error('Failed to create admin notification:', err),
+          );
       }
     }
 
     if (accepted) {
       // Trigger AI Screening async (don't block the response)
-      this.aiScreening.evaluateReferralFit(consent.referralId).catch(err => {
+      this.aiScreening.evaluateReferralFit(consent.referralId).catch((err) => {
         console.error('Failed to trigger AI Screening', err);
       });
     }

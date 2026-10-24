@@ -1,6 +1,4 @@
-import {
-  Controller, Get, Post, Query, Body, Req,
-} from '@nestjs/common';
+import { Controller, Get, Post, Query, Body, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { NotificationsService } from './notifications.service';
 

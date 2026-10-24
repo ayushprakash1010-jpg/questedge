@@ -20,8 +20,15 @@ export function detectDiscrepancies(
   const hits: DiscrepancyHit[] = [];
 
   if (type === BgvCheckType.PAN || type === BgvCheckType.AADHAAR) {
-    const vendorName = (vendorResponse?.name ?? vendorResponse?.full_name ?? '').toString();
-    if (vendorName && levenshtein(vendorName.toLowerCase(), candidate.name.toLowerCase()) > 2) {
+    const vendorName = (
+      vendorResponse?.name ??
+      vendorResponse?.full_name ??
+      ''
+    ).toString();
+    if (
+      vendorName &&
+      levenshtein(vendorName.toLowerCase(), candidate.name.toLowerCase()) > 2
+    ) {
       hits.push({
         rule: 'identity.name_mismatch',
         severity: 'HIGH',
@@ -37,13 +44,18 @@ export function detectDiscrepancies(
       hits.push({
         rule: 'education.verification_empty',
         severity: 'MEDIUM',
-        message: 'Candidate listed education but no verified degrees returned by vendor',
+        message:
+          'Candidate listed education but no verified degrees returned by vendor',
       });
     }
     for (const c of claimed) {
       const match = verified.find((v: any) => similarTitle(v.degree, c.degree));
       if (!match) continue;
-      if (c.endYear && match.endYear && Math.abs(Number(c.endYear) - Number(match.endYear)) > 1) {
+      if (
+        c.endYear &&
+        match.endYear &&
+        Math.abs(Number(c.endYear) - Number(match.endYear)) > 1
+      ) {
         hits.push({
           rule: 'education.date_mismatch',
           severity: 'MEDIUM',
@@ -54,10 +66,13 @@ export function detectDiscrepancies(
   }
 
   if (type === BgvCheckType.EMPLOYMENT_HISTORY) {
-    const verified = vendorResponse?.employments ?? vendorResponse?.employment ?? [];
+    const verified =
+      vendorResponse?.employments ?? vendorResponse?.employment ?? [];
     const claimed = applicationContext?.resumeEmployment ?? [];
     for (const c of claimed) {
-      const match = verified.find((v: any) => similarCompany(v.company, c.company));
+      const match = verified.find((v: any) =>
+        similarCompany(v.company, c.company),
+      );
       if (!match) {
         hits.push({
           rule: 'employment.company_mismatch',
@@ -68,7 +83,10 @@ export function detectDiscrepancies(
     }
   }
 
-  if (type === BgvCheckType.CRIMINAL_COURT || type === BgvCheckType.POLICE_VERIFICATION) {
+  if (
+    type === BgvCheckType.CRIMINAL_COURT ||
+    type === BgvCheckType.POLICE_VERIFICATION
+  ) {
     const records = vendorResponse?.records ?? vendorResponse?.cases ?? [];
     if (Array.isArray(records) && records.length > 0) {
       hits.push({
@@ -90,7 +108,11 @@ export function findingFromHits(hits: DiscrepancyHit[]): BgvFinding {
 function similarTitle(a?: string, b?: string): boolean {
   if (!a || !b) return false;
   const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-  return norm(a) === norm(b) || norm(a).includes(norm(b)) || norm(b).includes(norm(a));
+  return (
+    norm(a) === norm(b) ||
+    norm(a).includes(norm(b)) ||
+    norm(b).includes(norm(a))
+  );
 }
 
 function similarCompany(a?: string, b?: string): boolean {
@@ -98,7 +120,10 @@ function similarCompany(a?: string, b?: string): boolean {
   const norm = (s: string) =>
     s
       .toLowerCase()
-      .replace(/\b(ltd|limited|pvt|private|inc|incorporated|llp|corp|corporation)\b/g, '')
+      .replace(
+        /\b(ltd|limited|pvt|private|inc|incorporated|llp|corp|corporation)\b/g,
+        '',
+      )
       .replace(/[^a-z0-9]/g, '');
   return norm(a) === norm(b);
 }

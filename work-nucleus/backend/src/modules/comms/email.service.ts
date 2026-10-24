@@ -23,14 +23,18 @@ export class EmailService {
   async sendConsentRequest(params: SendConsentEmailParams): Promise<void> {
     const consentLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/consent/${params.consentToken}`;
     const fromEmail = process.env.SENDGRID_FROM_EMAIL;
-    
+
     // Fallback to mock if credentials are not provided
     if (!process.env.SENDGRID_API_KEY || !fromEmail) {
       this.logger.log('----------------------------------------------------');
       this.logger.log(`📧 MOCK EMAIL SENT TO: ${params.toEmail}`);
-      this.logger.log(`Subject: ${params.recruiterName} referred you for ${params.mandateTitle} at ${params.companyName}`);
+      this.logger.log(
+        `Subject: ${params.recruiterName} referred you for ${params.mandateTitle} at ${params.companyName}`,
+      );
       this.logger.log(`Hi ${params.candidateName},`);
-      this.logger.log(`${params.recruiterName} thinks you'd be a great fit for the ${params.mandateTitle} role at ${params.companyName}.`);
+      this.logger.log(
+        `${params.recruiterName} thinks you'd be a great fit for the ${params.mandateTitle} role at ${params.companyName}.`,
+      );
       this.logger.log(`Please review and accept the referral to proceed:`);
       this.logger.log(`🔗 ${consentLink}`);
       this.logger.log('----------------------------------------------------');
@@ -73,9 +77,13 @@ export class EmailService {
     if (!process.env.SENDGRID_API_KEY || !fromEmail) {
       this.logger.log('----------------------------------------------------');
       this.logger.log(`📧 MOCK STATUS EMAIL SENT TO: ${params.toEmail}`);
-      this.logger.log(`Subject: Update on your referral for ${params.candidateName}`);
+      this.logger.log(
+        `Subject: Update on your referral for ${params.candidateName}`,
+      );
       this.logger.log(`Hi ${params.recruiterName},`);
-      this.logger.log(`The status of your referral ${params.candidateName} for the ${params.mandateTitle} role has changed to: ${params.newStatus}.`);
+      this.logger.log(
+        `The status of your referral ${params.candidateName} for the ${params.mandateTitle} role has changed to: ${params.newStatus}.`,
+      );
       this.logger.log('----------------------------------------------------');
       return;
     }

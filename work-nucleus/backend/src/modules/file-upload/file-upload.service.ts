@@ -1,4 +1,9 @@
-import { Injectable, OnModuleInit, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   S3Client,
@@ -46,7 +51,9 @@ export class FileUploadService implements OnModuleInit {
         await this.s3.send(new CreateBucketCommand({ Bucket: this.bucket }));
         this.logger.log(`Bucket "${this.bucket}" created`);
       } catch (err) {
-        this.logger.warn(`Failed to create bucket "${this.bucket}": ${err.message}. File uploads will fail until configured.`);
+        this.logger.warn(
+          `Failed to create bucket "${this.bucket}": ${err.message}. File uploads will fail until configured.`,
+        );
       }
     }
   }

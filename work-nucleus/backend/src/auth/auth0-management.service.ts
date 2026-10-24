@@ -52,18 +52,12 @@ export class Auth0ManagementService implements OnModuleInit {
   }
 
   async blockUser(auth0Sub: string): Promise<void> {
-    await this.management.users.update(
-      { id: auth0Sub },
-      { blocked: true },
-    );
+    await this.management.users.update({ id: auth0Sub }, { blocked: true });
     this.logger.log(`Blocked Auth0 user ${auth0Sub}`);
   }
 
   async unblockUser(auth0Sub: string): Promise<void> {
-    await this.management.users.update(
-      { id: auth0Sub },
-      { blocked: false },
-    );
+    await this.management.users.update({ id: auth0Sub }, { blocked: false });
     this.logger.log(`Unblocked Auth0 user ${auth0Sub}`);
   }
 

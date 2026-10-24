@@ -1,6 +1,13 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { ReportSource, ReportVisualization } from '@prisma/client';
-import { IsArray, IsEnum, IsObject, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsArray,
+  IsEnum,
+  IsObject,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 
 export class CreateReportDefinitionDto {
   @ApiProperty()
@@ -48,7 +55,9 @@ export class CreateReportDefinitionDto {
   scheduleTargets?: Record<string, unknown>;
 }
 
-export class UpdateReportDefinitionDto extends PartialType(CreateReportDefinitionDto) {}
+export class UpdateReportDefinitionDto extends PartialType(
+  CreateReportDefinitionDto,
+) {}
 
 export class NaturalLanguageReportDto {
   @ApiProperty()

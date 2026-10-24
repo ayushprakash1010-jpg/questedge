@@ -51,16 +51,22 @@ export class CreateAppraisalCycleDto {
   @IsDate()
   calibrationDeadline!: Date;
 
-  @ApiProperty({ description: 'e.g. [{ value: 5, label: "Outstanding" }, ...]' })
+  @ApiProperty({
+    description: 'e.g. [{ value: 5, label: "Outstanding" }, ...]',
+  })
   @IsArray()
   ratingScale!: Array<{ value: number; label: string }>;
 
-  @ApiPropertyOptional({ description: 'e.g. { goals: 60, competencies: 30, values: 10 }' })
+  @ApiPropertyOptional({
+    description: 'e.g. { goals: 60, competencies: 30, values: 10 }',
+  })
   @IsOptional()
   @IsObject()
   weights?: Record<string, number>;
 
-  @ApiPropertyOptional({ description: '{ minTenureMonths, departments, levels }' })
+  @ApiPropertyOptional({
+    description: '{ minTenureMonths, departments, levels }',
+  })
   @IsOptional()
   @IsObject()
   eligibilityRules?: Record<string, unknown>;

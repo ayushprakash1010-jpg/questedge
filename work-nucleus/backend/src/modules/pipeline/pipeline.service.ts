@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateStageDto } from './dto/create-stage.dto';
 import { UpdateStageDto } from './dto/update-stage.dto';
@@ -89,7 +93,9 @@ export class PipelineService {
       });
 
       if (interviewers !== undefined) {
-        await tx.pipelineStageInterviewer.deleteMany({ where: { stageId: id } });
+        await tx.pipelineStageInterviewer.deleteMany({
+          where: { stageId: id },
+        });
         if (interviewers.length) {
           await tx.pipelineStageInterviewer.createMany({
             data: interviewers.map((i) => ({
@@ -135,12 +141,20 @@ export class PipelineService {
   }
 
   async createDefaultTemplate(hiringPlanId: string) {
-    const existing = await this.prisma.pipelineStage.count({ where: { hiringPlanId } });
+    const existing = await this.prisma.pipelineStage.count({
+      where: { hiringPlanId },
+    });
     if (existing > 0) {
-      throw new BadRequestException('Pipeline already has stages. Delete them first to use the default template.');
+      throw new BadRequestException(
+        'Pipeline already has stages. Delete them first to use the default template.',
+      );
     }
 
-    const defaults: { name: string; stageType: StageType; maxDurationDays: number }[] = [
+    const defaults: {
+      name: string;
+      stageType: StageType;
+      maxDurationDays: number;
+    }[] = [
       { name: 'Screening', stageType: 'SCREENING', maxDurationDays: 3 },
       { name: 'Technical Round 1', stageType: 'TECHNICAL', maxDurationDays: 5 },
       { name: 'Technical Round 2', stageType: 'TECHNICAL', maxDurationDays: 5 },

@@ -6,7 +6,9 @@ import { createHash } from 'crypto';
  */
 describe('security log hash chain', () => {
   function chainHash(prev: string | null, body: string): string {
-    return createHash('sha256').update((prev ?? '') + body).digest('hex');
+    return createHash('sha256')
+      .update((prev ?? '') + body)
+      .digest('hex');
   }
 
   it('first entry uses empty prev', () => {

@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Building2, Users, ClipboardList, Ticket, AlertTriangle, TrendingUp,
+  Building2, Users, ClipboardList, Ticket, AlertTriangle, TrendingUp, RefreshCw, Clock,
 } from "lucide-react";
 import Link from "next/link";
+import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 
 interface DashboardData {
   totalOrgs: number;
@@ -22,8 +23,10 @@ export default function SupportDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState(true);
 
-  useEffect(() => {
+  const fetchDashboard = useCallback(() => {
     fetch("/api/support/dashboard")
       .then(async (r) => {
         if (!r.ok) {
@@ -32,10 +35,13 @@ export default function SupportDashboardPage() {
         }
         return r.json();
       })
-      .then(setData)
+      .then((d) => { setData(d); setLastRefreshed(new Date()); })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
+  useAutoRefresh(fetchDashboard, 30_000, autoRefresh);
 
   if (loading) {
     return (
@@ -66,10 +72,43 @@ export default function SupportDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Support Dashboard</h1>
-        <p className="text-muted-foreground">Cross-organization overview and health monitoring</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Support Dashboard</h1>
+          <p className="text-muted-foreground">Cross-organization overview and health monitoring</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            id="dashboard-toggle-refresh"
+            onClick={() => setAutoRefresh((v) => !v)}
+            className={`flex items-center gap-1.5 h-9 rounded-md border px-3 text-xs font-medium transition-colors ${
+              autoRefresh
+                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600"
+                : "border-muted text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <span className={`h-2 w-2 rounded-full ${autoRefresh ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground"}`} />
+            {autoRefresh ? "Live" : "Paused"}
+          </button>
+          <button
+            id="dashboard-refresh"
+            onClick={fetchDashboard}
+            disabled={loading}
+            className="flex items-center gap-1.5 h-9 rounded-md border px-3 text-xs hover:bg-accent disabled:opacity-50 transition-colors"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
       </div>
+
+      {lastRefreshed && (
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <Clock className="h-3 w-3" />
+          Last refreshed: {lastRefreshed.toLocaleTimeString()}
+          {autoRefresh && <span className="ml-1 text-emerald-500">(auto-refreshing every 30s)</span>}
+        </p>
+      )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-5">
         {kpis.map((kpi) => (

@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
@@ -30,7 +39,9 @@ export class GoalsController {
   }
 
   @Get('manager')
-  @ApiOperation({ summary: "List goals for direct reports (current user as manager)" })
+  @ApiOperation({
+    summary: 'List goals for direct reports (current user as manager)',
+  })
   manager(
     @CurrentUser('orgId') orgId: string,
     @CurrentUser('id') userId: string,
@@ -50,18 +61,31 @@ export class GoalsController {
   }
 
   @Post(':id/agree')
-  @ApiOperation({ summary: 'Manager agrees to the goal (transitions DRAFT → AGREED)' })
-  agree(@CurrentUser('orgId') orgId: string, @Param('id', ParseUUIDPipe) id: string) {
+  @ApiOperation({
+    summary: 'Manager agrees to the goal (transitions DRAFT → AGREED)',
+  })
+  agree(
+    @CurrentUser('orgId') orgId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.service.agree(orgId, id);
   }
 
   @Post('bulk-copy')
-  @ApiOperation({ summary: 'Copy goals from previous cycle to current cycle for one employee' })
+  @ApiOperation({
+    summary: 'Copy goals from previous cycle to current cycle for one employee',
+  })
   bulkCopy(
     @CurrentUser('orgId') orgId: string,
-    @Body() body: { fromCycleId: string; toCycleId: string; employeeId: string },
+    @Body()
+    body: { fromCycleId: string; toCycleId: string; employeeId: string },
   ) {
-    return this.service.copyFromPreviousCycle(orgId, body.fromCycleId, body.toCycleId, body.employeeId);
+    return this.service.copyFromPreviousCycle(
+      orgId,
+      body.fromCycleId,
+      body.toCycleId,
+      body.employeeId,
+    );
   }
 
   @Post('cascade')
@@ -70,20 +94,28 @@ export class GoalsController {
     @CurrentUser('orgId') orgId: string,
     @Body() body: { orgGoalId: string; reportIds: string[]; weight?: number },
   ) {
-    return this.service.cascadeOrgGoal(orgId, body.orgGoalId, body.reportIds, { weight: body.weight });
+    return this.service.cascadeOrgGoal(orgId, body.orgGoalId, body.reportIds, {
+      weight: body.weight,
+    });
   }
 
   // ── Org goals ────────────────────────────────────────────────
 
   @Post('org')
   @ApiOperation({ summary: 'Create an org goal' })
-  createOrgGoal(@CurrentUser('orgId') orgId: string, @Body() dto: CreateOrgGoalDto) {
+  createOrgGoal(
+    @CurrentUser('orgId') orgId: string,
+    @Body() dto: CreateOrgGoalDto,
+  ) {
     return this.service.createOrgGoal(orgId, dto);
   }
 
   @Get('org')
   @ApiOperation({ summary: 'List the org goal tree for a cycle' })
-  listOrgGoals(@CurrentUser('orgId') orgId: string, @Query('cycleId', ParseUUIDPipe) cycleId: string) {
+  listOrgGoals(
+    @CurrentUser('orgId') orgId: string,
+    @Query('cycleId', ParseUUIDPipe) cycleId: string,
+  ) {
     return this.service.listOrgGoals(orgId, cycleId);
   }
 }

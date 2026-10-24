@@ -1,9 +1,20 @@
 import {
-  Controller, Get, Post, Patch, Delete, Param, Body, ParseUUIDPipe, Req,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Param,
+  Body,
+  ParseUUIDPipe,
+  Req,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { TrainingService } from './training.service';
-import { CreateTrainingModuleDto, UpdateTrainingModuleDto } from './dto/training.dto';
+import {
+  CreateTrainingModuleDto,
+  UpdateTrainingModuleDto,
+} from './dto/training.dto';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 
@@ -48,7 +59,10 @@ export class TrainingController {
   @Patch(':id')
   @Roles(Role.ADMIN, Role.HR)
   @ApiOperation({ summary: 'Update a training module' })
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateTrainingModuleDto) {
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateTrainingModuleDto,
+  ) {
     return this.trainingService.update(id, dto);
   }
 

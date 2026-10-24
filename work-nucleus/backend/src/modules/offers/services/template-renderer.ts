@@ -3,13 +3,18 @@
  * Avoids pulling in the full handlebars dep until puppeteer is wired; the same
  * template syntax stays compatible with handlebars when we swap.
  */
-export function renderTemplate(template: string, ctx: Record<string, unknown>): string {
+export function renderTemplate(
+  template: string,
+  ctx: Record<string, unknown>,
+): string {
   return template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, path: string) => {
     const value = path
       .split('.')
       .reduce<unknown>(
         (acc, key) =>
-          acc != null && typeof acc === 'object' && key in (acc as Record<string, unknown>)
+          acc != null &&
+          typeof acc === 'object' &&
+          key in (acc as Record<string, unknown>)
             ? (acc as Record<string, unknown>)[key]
             : undefined,
         ctx,

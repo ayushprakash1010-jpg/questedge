@@ -6,7 +6,12 @@ import { BgvVendorRouter } from './bgv.service';
 
 @Global()
 @Module({
-  providers: [BgvVendorRouter, AuthBridgeProvider, OnGridProvider, IDfyProvider],
+  providers: [
+    BgvVendorRouter,
+    AuthBridgeProvider,
+    OnGridProvider,
+    IDfyProvider,
+  ],
   exports: [BgvVendorRouter, AuthBridgeProvider, OnGridProvider, IDfyProvider],
 })
 export class BgvIntegrationsModule {}

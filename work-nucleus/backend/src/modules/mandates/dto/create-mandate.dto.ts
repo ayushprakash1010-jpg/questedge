@@ -35,12 +35,18 @@ export class CreateMandateDto {
   @IsString()
   requiredExperience?: string;
 
-  @ApiProperty({ description: 'Mandatory skills list', example: ['Node.js', 'PostgreSQL'] })
+  @ApiProperty({
+    description: 'Mandatory skills list',
+    example: ['Node.js', 'PostgreSQL'],
+  })
   @IsArray()
   @IsString({ each: true })
   mandatorySkills: string[];
 
-  @ApiPropertyOptional({ description: 'Nice-to-have skills', example: ['Redis', 'Docker'] })
+  @ApiPropertyOptional({
+    description: 'Nice-to-have skills',
+    example: ['Redis', 'Docker'],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
@@ -68,13 +74,19 @@ export class CreateMandateDto {
   @IsString()
   employmentType?: string;
 
-  @ApiPropertyOptional({ description: 'Minimum compensation', example: 1500000 })
+  @ApiPropertyOptional({
+    description: 'Minimum compensation',
+    example: 1500000,
+  })
   @IsOptional()
   @IsNumber()
   @Type(() => Number)
   compensationMin?: number;
 
-  @ApiPropertyOptional({ description: 'Maximum compensation', example: 2000000 })
+  @ApiPropertyOptional({
+    description: 'Maximum compensation',
+    example: 2000000,
+  })
   @IsOptional()
   @IsNumber()
   @Type(() => Number)
@@ -105,7 +117,10 @@ export class CreateMandateDto {
   @IsEnum(MandateParticipationType)
   participationType?: MandateParticipationType;
 
-  @ApiPropertyOptional({ description: 'Fixed referral reward amount', example: 50000 })
+  @ApiPropertyOptional({
+    description: 'Fixed referral reward amount',
+    example: 50000,
+  })
   @IsOptional()
   @IsNumber()
   @Type(() => Number)
@@ -116,44 +131,68 @@ export class CreateMandateDto {
   @IsString()
   referralRewardType?: string;
 
-  @ApiPropertyOptional({ description: 'Ownership lock duration in days', default: 180 })
+  @ApiPropertyOptional({
+    description: 'Ownership lock duration in days',
+    default: 180,
+  })
   @IsOptional()
   @IsInt()
   @Min(30)
   @Type(() => Number)
   ownershipPeriodDays?: number;
 
-  @ApiPropertyOptional({ description: 'Expected hiring timeline', example: '30 days' })
+  @ApiPropertyOptional({
+    description: 'Expected hiring timeline',
+    example: '30 days',
+  })
   @IsOptional()
   @IsString()
   expectedTimeline?: string;
 
-  @ApiPropertyOptional({ description: 'Interview process description as JSON array', example: ['Phone Screen', 'Technical', 'Culture Fit'] })
+  @ApiPropertyOptional({
+    description: 'Interview process description as JSON array',
+    example: ['Phone Screen', 'Technical', 'Culture Fit'],
+  })
   @IsOptional()
   @IsArray()
   interviewProcess?: string[];
 
-  @ApiPropertyOptional({ description: 'Notice period preference', example: '30 days or less' })
+  @ApiPropertyOptional({
+    description: 'Notice period preference',
+    example: '30 days or less',
+  })
   @IsOptional()
   @IsString()
   noticePeriodPref?: string;
 
-  @ApiPropertyOptional({ description: 'Hiring Manager Name', example: 'John Doe' })
+  @ApiPropertyOptional({
+    description: 'Hiring Manager Name',
+    example: 'John Doe',
+  })
   @IsOptional()
   @IsString()
   hiringManagerName?: string;
 
-  @ApiPropertyOptional({ description: 'Hiring Manager Title', example: 'Engineering Lead' })
+  @ApiPropertyOptional({
+    description: 'Hiring Manager Title',
+    example: 'Engineering Lead',
+  })
   @IsOptional()
   @IsString()
   hiringManagerTitle?: string;
 
-  @ApiPropertyOptional({ description: 'Hiring Manager Phone', example: '+1234567890' })
+  @ApiPropertyOptional({
+    description: 'Hiring Manager Phone',
+    example: '+1234567890',
+  })
   @IsOptional()
   @IsString()
   hiringManagerPhone?: string;
 
-  @ApiPropertyOptional({ description: 'Team Description', example: 'You will join a dynamic 5-person squad' })
+  @ApiPropertyOptional({
+    description: 'Team Description',
+    example: 'You will join a dynamic 5-person squad',
+  })
   @IsOptional()
   @IsString()
   teamDescription?: string;

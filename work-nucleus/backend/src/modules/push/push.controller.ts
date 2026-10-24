@@ -10,14 +10,26 @@ export class PushController {
   constructor(private readonly prisma: PrismaService) {}
 
   @Post('subscribe')
-  @ApiOperation({ summary: 'Register a web-push subscription for the current user' })
+  @ApiOperation({
+    summary: 'Register a web-push subscription for the current user',
+  })
   async subscribe(
     @CurrentUser('id') userId: string,
-    @Body() body: { endpoint: string; keys: { p256dh: string; auth: string }; userAgent?: string },
+    @Body()
+    body: {
+      endpoint: string;
+      keys: { p256dh: string; auth: string };
+      userAgent?: string;
+    },
   ) {
     return this.prisma.pushSubscription.upsert({
       where: { endpoint: body.endpoint },
-      update: { p256dh: body.keys.p256dh, auth: body.keys.auth, userAgent: body.userAgent, userId },
+      update: {
+        p256dh: body.keys.p256dh,
+        auth: body.keys.auth,
+        userAgent: body.userAgent,
+        userId,
+      },
       create: {
         userId,
         endpoint: body.endpoint,
@@ -30,7 +42,10 @@ export class PushController {
 
   @Delete('subscribe')
   @ApiOperation({ summary: 'Unsubscribe a push endpoint' })
-  async unsubscribe(@CurrentUser('id') userId: string, @Body() body: { endpoint: string }) {
+  async unsubscribe(
+    @CurrentUser('id') userId: string,
+    @Body() body: { endpoint: string },
+  ) {
     await this.prisma.pushSubscription.deleteMany({
       where: { userId, endpoint: body.endpoint },
     });

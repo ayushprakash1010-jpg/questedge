@@ -14,10 +14,10 @@ export class RolesGuard implements CanActivate {
       context.getClass(),
     ]);
 
-    const requiredUserTypes = this.reflector.getAllAndOverride<UserType[]>(USER_TYPES_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const requiredUserTypes = this.reflector.getAllAndOverride<UserType[]>(
+      USER_TYPES_KEY,
+      [context.getHandler(), context.getClass()],
+    );
 
     if (!requiredRoles?.length && !requiredUserTypes?.length) {
       return true;
@@ -37,7 +37,9 @@ export class RolesGuard implements CanActivate {
     }
 
     if (requiredUserTypes?.length) {
-      hasUserType = user.userType ? requiredUserTypes.includes(user.userType) : false;
+      hasUserType = user.userType
+        ? requiredUserTypes.includes(user.userType)
+        : false;
     }
 
     return hasRole && hasUserType;

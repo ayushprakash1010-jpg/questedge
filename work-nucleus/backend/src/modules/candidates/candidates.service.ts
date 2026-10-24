@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCandidateDto } from './dto/create-candidate.dto';
 import { UpdateCandidateDto } from './dto/update-candidate.dto';
@@ -14,15 +18,21 @@ export class CandidatesService {
       where: { orgId_email: { orgId, email: dto.email } },
     });
     if (existing) {
-      throw new ConflictException('A candidate with this email already exists in your organization');
+      throw new ConflictException(
+        'A candidate with this email already exists in your organization',
+      );
     }
 
     return this.prisma.candidate.create({
       data: {
         ...dto,
         orgId,
-        experienceYears: dto.experienceYears ? new Prisma.Decimal(dto.experienceYears) : null,
-        expectedCtc: dto.expectedCtc ? new Prisma.Decimal(dto.expectedCtc) : null,
+        experienceYears: dto.experienceYears
+          ? new Prisma.Decimal(dto.experienceYears)
+          : null,
+        expectedCtc: dto.expectedCtc
+          ? new Prisma.Decimal(dto.expectedCtc)
+          : null,
       },
     });
   }
@@ -128,7 +138,9 @@ export class CandidatesService {
         source: 'REFERRAL',
         currentCompany: r.candidateProfile.currentCompany,
         currentRole: r.candidateProfile.currentDesignation,
-        experienceYears: r.candidateProfile.experienceYears ? new Prisma.Decimal(r.candidateProfile.experienceYears) : null,
+        experienceYears: r.candidateProfile.experienceYears
+          ? new Prisma.Decimal(r.candidateProfile.experienceYears)
+          : null,
         expectedCtc: null,
         noticePeriodDays: null,
         notes: r.recruiterNote,
@@ -141,10 +153,14 @@ export class CandidatesService {
             status:
               r.status === 'HIRED' || r.status === 'SELECTED'
                 ? 'SELECTED'
-                : r.status === 'REJECTED' || r.status === 'CANDIDATE_DECLINED' || r.status === 'WITHDRAWN'
-                ? 'REJECTED'
-                : 'ACTIVE',
-            aiMatchScore: r.aiMatchScore ? new Prisma.Decimal(r.aiMatchScore.toString()) : null,
+                : r.status === 'REJECTED' ||
+                    r.status === 'CANDIDATE_DECLINED' ||
+                    r.status === 'WITHDRAWN'
+                  ? 'REJECTED'
+                  : 'ACTIVE',
+            aiMatchScore: r.aiMatchScore
+              ? new Prisma.Decimal(r.aiMatchScore.toString())
+              : null,
             aiMatchSummary: r.aiMatchSummary || r.aiSummary || null,
             appliedAt: r.createdAt,
             hiringPlan: { id: r.mandate.id, title: r.mandate.title },
@@ -162,7 +178,10 @@ export class CandidatesService {
       const key = rc.email.toLowerCase();
       if (candidateMap.has(key)) {
         const existing = candidateMap.get(key);
-        existing.applications = [...(existing.applications || []), ...rc.applications];
+        existing.applications = [
+          ...(existing.applications || []),
+          ...rc.applications,
+        ];
       } else {
         candidateMap.set(key, rc);
       }
@@ -255,10 +274,14 @@ export class CandidatesService {
       data: {
         ...dto,
         ...(dto.experienceYears !== undefined && {
-          experienceYears: dto.experienceYears ? new Prisma.Decimal(dto.experienceYears) : null,
+          experienceYears: dto.experienceYears
+            ? new Prisma.Decimal(dto.experienceYears)
+            : null,
         }),
         ...(dto.expectedCtc !== undefined && {
-          expectedCtc: dto.expectedCtc ? new Prisma.Decimal(dto.expectedCtc) : null,
+          expectedCtc: dto.expectedCtc
+            ? new Prisma.Decimal(dto.expectedCtc)
+            : null,
         }),
       },
     });

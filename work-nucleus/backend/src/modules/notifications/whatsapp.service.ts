@@ -4,12 +4,20 @@ import { Injectable, Logger } from '@nestjs/common';
 export class WhatsappService {
   private readonly logger = new Logger(WhatsappService.name);
 
-  async sendWhatsAppNotification(managerPhone: string, managerName: string, title: string, status: string, link: string) {
+  async sendWhatsAppNotification(
+    managerPhone: string,
+    managerName: string,
+    title: string,
+    status: string,
+    link: string,
+  ) {
     const sid = process.env.TWILIO_ACCOUNT_SID;
     const token = process.env.TWILIO_AUTH_TOKEN;
-    const fromPhone = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+17372508034';
+    const fromPhone =
+      process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+17372508034';
     const testRecipient = process.env.TWILIO_TEST_RECIPIENT_PHONE;
-    const contentSid = process.env.TWILIO_CONTENT_SID || 'HXfe5ab5f00277942d4d4200328b4d403c';
+    const contentSid =
+      process.env.TWILIO_CONTENT_SID || 'HXfe5ab5f00277942d4d4200328b4d403c';
 
     const rawRecipient = testRecipient || managerPhone;
     if (!rawRecipient) {
@@ -19,7 +27,9 @@ export class WhatsappService {
 
     const cleanPhone = rawRecipient.replace(/^whatsapp:/, '').trim();
     const formattedTo = `whatsapp:${cleanPhone.startsWith('+') ? cleanPhone : '+' + cleanPhone}`;
-    const formattedFrom = fromPhone.startsWith('whatsapp:') ? fromPhone : `whatsapp:${fromPhone}`;
+    const formattedFrom = fromPhone.startsWith('whatsapp:')
+      ? fromPhone
+      : `whatsapp:${fromPhone}`;
 
     const message = `Hi ${managerName}, the mandate "${title}" is now ${status}. View it here: ${link}`;
 
@@ -41,7 +51,9 @@ export class WhatsappService {
           '1': title,
           '2': `${status} on QuestEdge (${link})`,
         });
-        this.logger.log(`Sending WhatsApp via Twilio ContentSid ${contentSid} to ${formattedTo}`);
+        this.logger.log(
+          `Sending WhatsApp via Twilio ContentSid ${contentSid} to ${formattedTo}`,
+        );
       } else {
         bodyParams.Body = message;
         this.logger.log(`Sending WhatsApp via freeform Body to ${formattedTo}`);
@@ -52,7 +64,8 @@ export class WhatsappService {
       const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Authorization': 'Basic ' + Buffer.from(`${sid}:${token}`).toString('base64'),
+          Authorization:
+            'Basic ' + Buffer.from(`${sid}:${token}`).toString('base64'),
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: params.toString(),
@@ -61,7 +74,9 @@ export class WhatsappService {
       const responseText = await response.text();
 
       if (!response.ok) {
-        throw new Error(`Twilio API Error: ${response.status} - ${responseText}`);
+        throw new Error(
+          `Twilio API Error: ${response.status} - ${responseText}`,
+        );
       }
 
       let parsedData: any = {};
@@ -69,10 +84,14 @@ export class WhatsappService {
         parsedData = JSON.parse(responseText);
       } catch (_) {}
 
-      this.logger.log(`[WhatsApp Real] Successfully queued message to ${formattedTo}. Twilio SID: ${parsedData.sid}`);
+      this.logger.log(
+        `[WhatsApp Real] Successfully queued message to ${formattedTo}. Twilio SID: ${parsedData.sid}`,
+      );
       return { success: true, sid: parsedData.sid, status: parsedData.status };
     } catch (error: any) {
-      this.logger.error(`Failed to send WhatsApp notification: ${error.message}`);
+      this.logger.error(
+        `Failed to send WhatsApp notification: ${error.message}`,
+      );
       return { success: false, error: error.message };
     }
   }

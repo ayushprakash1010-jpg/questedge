@@ -1,7 +1,14 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CalibrationStatus, CycleStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateCalibrationSessionDto, MoveAssessmentDto } from './dto/calibration.dto';
+import {
+  CreateCalibrationSessionDto,
+  MoveAssessmentDto,
+} from './dto/calibration.dto';
 
 export interface DecisionLogEntry {
   employeeId: string;
@@ -16,8 +23,14 @@ export interface DecisionLogEntry {
 export class CalibrationService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(orgId: string, userId: string, dto: CreateCalibrationSessionDto) {
-    const cycle = await this.prisma.appraisalCycle.findFirst({ where: { id: dto.cycleId, orgId } });
+  async create(
+    orgId: string,
+    userId: string,
+    dto: CreateCalibrationSessionDto,
+  ) {
+    const cycle = await this.prisma.appraisalCycle.findFirst({
+      where: { id: dto.cycleId, orgId },
+    });
     if (!cycle) throw new NotFoundException('Cycle not found');
     return this.prisma.calibrationSession.create({
       data: {
@@ -42,7 +55,9 @@ export class CalibrationService {
   async findOne(orgId: string, id: string) {
     const s = await this.prisma.calibrationSession.findFirst({
       where: { id, cycle: { orgId } },
-      include: { cycle: { select: { id: true, name: true, ratingScale: true } } },
+      include: {
+        cycle: { select: { id: true, name: true, ratingScale: true } },
+      },
     });
     if (!s) throw new NotFoundException('Calibration session not found');
     return s;
@@ -80,7 +95,8 @@ export class CalibrationService {
       actualPct[k] = Math.round((actual[k] / total) * 1000) / 10;
     }
 
-    const decisionLog = (session.decisionLog as unknown as DecisionLogEntry[]) ?? [];
+    const decisionLog =
+      (session.decisionLog as unknown as DecisionLogEntry[]) ?? [];
 
     const moves = decisionLog.length;
     const forceFitWarning = total > 0 && moves / total > 0.1;
@@ -100,19 +116,39 @@ export class CalibrationService {
    * Move an employee's calibrated rating. Records the decision and re-rates
    * the underlying MANAGER assessment. Locked sessions are immutable.
    */
-  async move(orgId: string, sessionId: string, userId: string, dto: MoveAssessmentDto) {
+  async move(
+    orgId: string,
+    sessionId: string,
+    userId: string,
+    dto: MoveAssessmentDto,
+  ) {
     const session = await this.findOne(orgId, sessionId);
-    if (session.status === CalibrationStatus.COMPLETED || session.status === CalibrationStatus.CANCELLED) {
-      throw new BadRequestException(`Session is ${session.status}; rating moves are frozen`);
+    if (
+      session.status === CalibrationStatus.COMPLETED ||
+      session.status === CalibrationStatus.CANCELLED
+    ) {
+      throw new BadRequestException(
+        `Session is ${session.status}; rating moves are frozen`,
+      );
     }
-    if (session.facilitatorId !== userId && !session.participantUserIds.includes(userId)) {
+    if (
+      session.facilitatorId !== userId &&
+      !session.participantUserIds.includes(userId)
+    ) {
       throw new BadRequestException('Not a participant of this session');
     }
 
     const a = await this.prisma.appraisalAssessment.findUnique({
-      where: { cycleId_employeeId_type: { cycleId: session.cycleId, employeeId: dto.employeeId, type: 'MANAGER' } },
+      where: {
+        cycleId_employeeId_type: {
+          cycleId: session.cycleId,
+          employeeId: dto.employeeId,
+          type: 'MANAGER',
+        },
+      },
     });
-    if (!a) throw new NotFoundException('Manager assessment not found for employee');
+    if (!a)
+      throw new NotFoundException('Manager assessment not found for employee');
 
     const oldRating = a.finalRating ? Number(a.finalRating) : null;
     const log = (session.decisionLog as unknown as DecisionLogEntry[]) ?? [];
@@ -128,7 +164,10 @@ export class CalibrationService {
     await this.prisma.$transaction([
       this.prisma.appraisalAssessment.update({
         where: { id: a.id },
-        data: { finalRating: dto.newRating, ratingLabel: `Calibrated to ${dto.newRating}` },
+        data: {
+          finalRating: dto.newRating,
+          ratingLabel: `Calibrated to ${dto.newRating}`,
+        },
       }),
       this.prisma.calibrationSession.update({
         where: { id: sessionId },
@@ -148,7 +187,8 @@ export class CalibrationService {
    */
   async lock(orgId: string, sessionId: string, userId: string) {
     const session = await this.findOne(orgId, sessionId);
-    if (session.facilitatorId !== userId) throw new BadRequestException('Only the facilitator can lock');
+    if (session.facilitatorId !== userId)
+      throw new BadRequestException('Only the facilitator can lock');
     if (session.status === CalibrationStatus.COMPLETED) return session;
 
     await this.prisma.$transaction([

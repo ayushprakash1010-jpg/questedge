@@ -4,6 +4,6 @@ import { ClaimScopeService } from './claim-scope.service';
 
 @Module({
   controllers: [ClaimScopeController],
-  providers: [ClaimScopeService]
+  providers: [ClaimScopeService],
 })
 export class ClaimScopeModule {}

@@ -1,5 +1,12 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { IsArray, IsNumber, IsObject, IsOptional, IsUUID, Min } from 'class-validator';
+import {
+  IsArray,
+  IsNumber,
+  IsObject,
+  IsOptional,
+  IsUUID,
+  Min,
+} from 'class-validator';
 
 export class CreateBudgetDto {
   @ApiProperty()
@@ -17,13 +24,20 @@ export class CreateBudgetDto {
   bonusPoolINR!: number;
 
   @ApiPropertyOptional({
-    description: 'Per-scope splits: [{ scope: { department, level }, hikeINR, bonusINR }]',
+    description:
+      'Per-scope splits: [{ scope: { department, level }, hikeINR, bonusINR }]',
   })
   @IsOptional()
   @IsArray()
-  splits?: Array<{ scope: Record<string, string>; hikeINR: number; bonusINR: number }>;
+  splits?: Array<{
+    scope: Record<string, string>;
+    hikeINR: number;
+    bonusINR: number;
+  }>;
 
-  @ApiProperty({ description: 'ratingToHikePercent: { "5": 15, "4": 10, ... }' })
+  @ApiProperty({
+    description: 'ratingToHikePercent: { "5": 15, "4": 10, ... }',
+  })
   @IsObject()
   matrix!: Record<string, number>;
 
@@ -36,7 +50,11 @@ export class CreateBudgetDto {
   })
   @IsOptional()
   @IsArray()
-  marketCorrection?: Array<{ scope: Record<string, string>; adjustmentPercent: number; reason: string }>;
+  marketCorrection?: Array<{
+    scope: Record<string, string>;
+    adjustmentPercent: number;
+    reason: string;
+  }>;
 
   @ApiPropertyOptional({
     description: 'Retention bumps by tier: [{ riskTier, additionalPercent }]',

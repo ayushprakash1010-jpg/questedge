@@ -19,7 +19,10 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { BgvVendorRouter } from '../../integrations/bgv/bgv.service';
 import { JobQueueService } from '../job-queue/job-queue.service';
 import { InitiateBgvDto } from './dto/initiate-bgv.dto';
-import { detectDiscrepancies, findingFromHits } from './services/discrepancy-detector';
+import {
+  detectDiscrepancies,
+  findingFromHits,
+} from './services/discrepancy-detector';
 import { BgvAiService, BgvAiSummary } from './services/bgv-ai.service';
 
 @Injectable()
@@ -42,10 +45,16 @@ export class BgvService {
     if (!candidate) throw new NotFoundException('Candidate not found');
 
     const existing = await this.prisma.bgvProfile.findFirst({
-      where: { orgId, candidateId: dto.candidateId, offerId: dto.offerId ?? null },
+      where: {
+        orgId,
+        candidateId: dto.candidateId,
+        offerId: dto.offerId ?? null,
+      },
     });
     if (existing) {
-      throw new BadRequestException(`BGV profile already exists for this candidate (id=${existing.id})`);
+      throw new BadRequestException(
+        `BGV profile already exists for this candidate (id=${existing.id})`,
+      );
     }
 
     const provider = await this.router.getProviderForOrg(orgId);
@@ -81,7 +90,15 @@ export class BgvService {
       where: { orgId, ...(opts.status && { status: opts.status }) },
       include: {
         candidate: { select: { id: true, name: true, email: true } },
-        checks: { select: { id: true, type: true, status: true, finding: true, costInPaise: true } },
+        checks: {
+          select: {
+            id: true,
+            type: true,
+            status: true,
+            finding: true,
+            costInPaise: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -107,7 +124,9 @@ export class BgvService {
       where: { consentToken: token },
       include: {
         organization: { select: { id: true, name: true } },
-        candidate: { select: { id: true, name: true, email: true, phone: true } },
+        candidate: {
+          select: { id: true, name: true, email: true, phone: true },
+        },
         checks: { select: { type: true } },
       },
     });
@@ -127,20 +146,31 @@ export class BgvService {
       data: { consentOtp: otp, consentOtpExp: exp },
     });
     // TODO: send via MSG91 once Phase 5C lands; for now log so devs can grab in console
-    this.logger.warn(`[BGV consent OTP] candidate=${p.candidate.email} otp=${otp}`);
+    this.logger.warn(
+      `[BGV consent OTP] candidate=${p.candidate.email} otp=${otp}`,
+    );
     return { sent: true, channel: 'console-dev', expiresInSec: 600 };
   }
 
-  async verifyConsent(token: string, otp: string, signedName: string, ipAddress: string | undefined) {
+  async verifyConsent(
+    token: string,
+    otp: string,
+    signedName: string,
+    ipAddress: string | undefined,
+  ) {
     const p = await this.findByConsentToken(token);
     if (p.status !== BgvProfileStatus.CONSENT_PENDING) {
       throw new BadRequestException(`Consent already ${p.status}`);
     }
-    if (!p.consentOtp || !p.consentOtpExp) throw new BadRequestException('OTP not yet sent');
-    if (p.consentOtpExp < new Date()) throw new BadRequestException('OTP expired — request a new one');
+    if (!p.consentOtp || !p.consentOtpExp)
+      throw new BadRequestException('OTP not yet sent');
+    if (p.consentOtpExp < new Date())
+      throw new BadRequestException('OTP expired — request a new one');
     if (p.consentOtp !== otp) throw new BadRequestException('Invalid OTP');
 
-    const ipHash = ipAddress ? createHash('sha256').update(ipAddress).digest('hex') : null;
+    const ipHash = ipAddress
+      ? createHash('sha256').update(ipAddress).digest('hex')
+      : null;
     await this.prisma.bgvProfile.update({
       where: { id: p.id },
       data: {
@@ -162,7 +192,10 @@ export class BgvService {
   async dispatchPendingChecks(profileId: string) {
     const profile = await this.prisma.bgvProfile.findUnique({
       where: { id: profileId },
-      include: { candidate: true, checks: { where: { status: BgvCheckStatus.QUEUED } } },
+      include: {
+        candidate: true,
+        checks: { where: { status: BgvCheckStatus.QUEUED } },
+      },
     });
     if (!profile || profile.checks.length === 0) return;
 
@@ -170,7 +203,11 @@ export class BgvService {
     let vendorRefId = profile.vendorRefId;
     if (!vendorRefId) {
       const r = await provider.initiateProfile({
-        candidate: { fullName: profile.candidate.name, email: profile.candidate.email, phone: profile.candidate.phone ?? undefined },
+        candidate: {
+          fullName: profile.candidate.name,
+          email: profile.candidate.email,
+          phone: profile.candidate.phone ?? undefined,
+        },
         orgRefId: profile.orgId,
       });
       vendorRefId = r.vendorRefId;
@@ -185,7 +222,10 @@ export class BgvService {
         const r = await provider.submitCheck({
           vendorProfileRefId: vendorRefId,
           type: check.type,
-          payload: { candidateName: profile.candidate.name, email: profile.candidate.email },
+          payload: {
+            candidateName: profile.candidate.name,
+            email: profile.candidate.email,
+          },
         });
         await this.prisma.bgvCheck.update({
           where: { id: check.id },
@@ -228,7 +268,14 @@ export class BgvService {
 
   async applyVendorStatus(
     checkId: string,
-    status: { status: string; finding?: string; reportUrl?: string; rawResponse?: unknown; failureReason?: string; costInPaise?: number },
+    status: {
+      status: string;
+      finding?: string;
+      reportUrl?: string;
+      rawResponse?: unknown;
+      failureReason?: string;
+      costInPaise?: number;
+    },
   ) {
     const check = await this.prisma.bgvCheck.findUnique({
       where: { id: checkId },
@@ -236,14 +283,24 @@ export class BgvService {
     });
     if (!check) return;
 
-    const finishing = status.status === 'COMPLETED' || status.status === 'FAILED' || status.status === 'CANCELLED';
+    const finishing =
+      status.status === 'COMPLETED' ||
+      status.status === 'FAILED' ||
+      status.status === 'CANCELLED';
 
     let finding: BgvFinding = (status.finding as BgvFinding) ?? check.finding;
     if (status.status === 'COMPLETED' && status.rawResponse) {
-      const hits = detectDiscrepancies(check.type, status.rawResponse, { name: check.profile.candidate.name });
+      const hits = detectDiscrepancies(check.type, status.rawResponse, {
+        name: check.profile.candidate.name,
+      });
       if (hits.length > 0) {
         finding = findingFromHits(hits);
-        await this.maybeOpenDiscrepancyTicket(check.profile.id, check.profile.orgId, check.type, hits);
+        await this.maybeOpenDiscrepancyTicket(
+          check.profile.id,
+          check.profile.orgId,
+          check.type,
+          hits,
+        );
       }
     }
 
@@ -266,7 +323,10 @@ export class BgvService {
   private async maybeFinalizeProfile(profileId: string) {
     const profile = await this.prisma.bgvProfile.findUnique({
       where: { id: profileId },
-      include: { checks: true, candidate: { select: { name: true, email: true } } },
+      include: {
+        checks: true,
+        candidate: { select: { name: true, email: true } },
+      },
     });
     if (!profile) return;
     const allTerminal = profile.checks.every(
@@ -276,13 +336,28 @@ export class BgvService {
         c.status === BgvCheckStatus.CANCELLED,
     );
     if (!allTerminal) return;
-    if (profile.status === BgvProfileStatus.COMPLETED || profile.status === BgvProfileStatus.CANCELLED) return;
+    if (
+      profile.status === BgvProfileStatus.COMPLETED ||
+      profile.status === BgvProfileStatus.CANCELLED
+    )
+      return;
 
-    const discrepancyCount = profile.checks.filter((c) => c.finding === BgvFinding.DISCREPANCY).length;
-    const failedCount = profile.checks.filter((c) => c.status === BgvCheckStatus.FAILED).length;
+    const discrepancyCount = profile.checks.filter(
+      (c) => c.finding === BgvFinding.DISCREPANCY,
+    ).length;
+    const failedCount = profile.checks.filter(
+      (c) => c.status === BgvCheckStatus.FAILED,
+    ).length;
 
     let risk: BgvRiskScore = BgvRiskScore.GREEN;
-    if (discrepancyCount > 2 || profile.checks.some((c) => c.type === BgvCheckType.CRIMINAL_COURT && c.finding === BgvFinding.DISCREPANCY)) {
+    if (
+      discrepancyCount > 2 ||
+      profile.checks.some(
+        (c) =>
+          c.type === BgvCheckType.CRIMINAL_COURT &&
+          c.finding === BgvFinding.DISCREPANCY,
+      )
+    ) {
       risk = BgvRiskScore.RED;
     } else if (discrepancyCount > 0 || failedCount > 0) {
       risk = BgvRiskScore.AMBER;
@@ -308,7 +383,10 @@ export class BgvService {
     await this.prisma.bgvProfile.update({
       where: { id: profileId },
       data: {
-        status: discrepancyCount > 0 ? BgvProfileStatus.NEEDS_REVIEW : BgvProfileStatus.COMPLETED,
+        status:
+          discrepancyCount > 0
+            ? BgvProfileStatus.NEEDS_REVIEW
+            : BgvProfileStatus.COMPLETED,
         riskScore: risk,
         completedAt: new Date(),
         aiSummary: (aiSummary ?? null) as any,
@@ -318,7 +396,9 @@ export class BgvService {
     // Hand off to joining when GREEN + linked offer
     if (risk === BgvRiskScore.GREEN && profile.offerId) {
       try {
-        const j = await this.prisma.candidateJoining.findUnique({ where: { offerId: profile.offerId } });
+        const j = await this.prisma.candidateJoining.findUnique({
+          where: { offerId: profile.offerId },
+        });
         if (j && j.status !== 'READY_TO_JOIN') {
           await this.prisma.candidateJoining.update({
             where: { id: j.id },
@@ -338,12 +418,16 @@ export class BgvService {
     hits: Array<{ rule: string; severity: string; message: string }>,
   ) {
     const high = hits.find((h) => h.severity === 'HIGH');
-    const priority: TicketPriority = high ? TicketPriority.HIGH : TicketPriority.MEDIUM;
+    const priority: TicketPriority = high
+      ? TicketPriority.HIGH
+      : TicketPriority.MEDIUM;
     await this.prisma.supportTicket.create({
       data: {
         orgId,
         title: `BGV discrepancy: ${checkType}`,
-        description: hits.map((h) => `[${h.severity}] ${h.rule}: ${h.message}`).join('\n'),
+        description: hits
+          .map((h) => `[${h.severity}] ${h.rule}: ${h.message}`)
+          .join('\n'),
         category: TicketCategory.BGV_DISCREPANCY,
         priority,
         reportedBy: 'system',
@@ -354,7 +438,13 @@ export class BgvService {
 
   // ── HR overrides ──────────────────────────────────────────────
 
-  async overrideFinding(orgId: string, checkId: string, userId: string, finding: BgvFinding, justification: string) {
+  async overrideFinding(
+    orgId: string,
+    checkId: string,
+    userId: string,
+    finding: BgvFinding,
+    justification: string,
+  ) {
     const check = await this.prisma.bgvCheck.findFirst({
       where: { id: checkId, profile: { orgId } },
     });
@@ -381,7 +471,10 @@ export class BgvService {
       where: { id: checkId, profile: { orgId } },
     });
     if (!check) throw new NotFoundException('Check not found');
-    if (check.retryCount >= 3) throw new BadRequestException('Max auto-retries reached; manual override required');
+    if (check.retryCount >= 3)
+      throw new BadRequestException(
+        'Max auto-retries reached; manual override required',
+      );
     await this.prisma.bgvCheck.update({
       where: { id: checkId },
       data: { status: BgvCheckStatus.QUEUED, failureReason: null },
@@ -396,7 +489,10 @@ export class BgvService {
       where: { id: profileId },
       data: {
         status: BgvProfileStatus.CANCELLED,
-        aiSummary: { cancelledReason: reason, cancelledAt: new Date().toISOString() } as any,
+        aiSummary: {
+          cancelledReason: reason,
+          cancelledAt: new Date().toISOString(),
+        } as any,
       },
     });
   }
@@ -416,7 +512,12 @@ export class BgvService {
             }
           : {}),
       },
-      select: { type: true, costInPaise: true, profileId: true, profile: { select: { candidateId: true } } },
+      select: {
+        type: true,
+        costInPaise: true,
+        profileId: true,
+        profile: { select: { candidateId: true } },
+      },
     });
 
     const byType: Record<string, number> = {};
@@ -426,7 +527,8 @@ export class BgvService {
       const cost = c.costInPaise ?? 0;
       total += cost;
       byType[c.type] = (byType[c.type] ?? 0) + cost;
-      byCandidate[c.profile.candidateId] = (byCandidate[c.profile.candidateId] ?? 0) + cost;
+      byCandidate[c.profile.candidateId] =
+        (byCandidate[c.profile.candidateId] ?? 0) + cost;
     }
     return {
       currency: 'INR',

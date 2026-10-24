@@ -22,15 +22,23 @@ export class DigioClient implements IESignProvider {
   private readonly sandbox: boolean;
 
   constructor(private readonly config: ConfigService) {
-    this.baseUrl = this.config.get<string>('DIGIO_BASE_URL', DIGIO_BASE_URL_DEFAULT);
+    this.baseUrl = this.config.get<string>(
+      'DIGIO_BASE_URL',
+      DIGIO_BASE_URL_DEFAULT,
+    );
     this.clientId = this.config.get<string>('DIGIO_CLIENT_ID', '');
     this.clientSecret = this.config.get<string>('DIGIO_CLIENT_SECRET', '');
-    this.webhookSecret = this.config.get<string>('DIGIO_WEBHOOK_SECRET', 'dev-webhook-secret');
+    this.webhookSecret = this.config.get<string>(
+      'DIGIO_WEBHOOK_SECRET',
+      'dev-webhook-secret',
+    );
     this.sandbox = this.config.get<string>('DIGIO_SANDBOX', 'true') !== 'false';
   }
 
   private authHeader(): string {
-    const token = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64');
+    const token = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString(
+      'base64',
+    );
     return `Basic ${token}`;
   }
 
@@ -38,8 +46,13 @@ export class DigioClient implements IESignProvider {
     if (this.sandbox && !this.clientId) {
       // Local dev fallback so the flow is testable end-to-end without sandbox creds
       const fakeId = `dev-digio-${Date.now()}`;
-      this.logger.warn(`Digio sandbox stubbed (no clientId) — issuing fake reqId ${fakeId}`);
-      return { providerReqId: fakeId, signUrl: `https://digio.example/sign/${fakeId}` };
+      this.logger.warn(
+        `Digio sandbox stubbed (no clientId) — issuing fake reqId ${fakeId}`,
+      );
+      return {
+        providerReqId: fakeId,
+        signUrl: `https://digio.example/sign/${fakeId}`,
+      };
     }
 
     const body = {
@@ -77,27 +90,39 @@ export class DigioClient implements IESignProvider {
     if (this.sandbox && providerReqId.startsWith('dev-digio-')) {
       return { status: 'PENDING' };
     }
-    const res = await fetch(`${this.baseUrl}/v2/client/document/${providerReqId}`, {
-      headers: { Authorization: this.authHeader() },
-    });
+    const res = await fetch(
+      `${this.baseUrl}/v2/client/document/${providerReqId}`,
+      {
+        headers: { Authorization: this.authHeader() },
+      },
+    );
     if (!res.ok) throw new Error(`Digio getStatus failed: ${res.status}`);
     const data: any = await res.json();
     return mapDigioStatus(data);
   }
 
   async downloadSigned(providerReqId: string): Promise<Buffer> {
-    const res = await fetch(`${this.baseUrl}/v2/client/document/${providerReqId}/download`, {
-      headers: { Authorization: this.authHeader() },
-    });
+    const res = await fetch(
+      `${this.baseUrl}/v2/client/document/${providerReqId}/download`,
+      {
+        headers: { Authorization: this.authHeader() },
+      },
+    );
     if (!res.ok) throw new Error(`Digio downloadSigned failed: ${res.status}`);
     const arr = await res.arrayBuffer();
     return Buffer.from(arr);
   }
 
-  verifyWebhook(headers: Record<string, string | string[] | undefined>, rawBody: Buffer): boolean {
-    const sig = (headers['x-digio-signature'] || headers['X-Digio-Signature']) as string | undefined;
+  verifyWebhook(
+    headers: Record<string, string | string[] | undefined>,
+    rawBody: Buffer,
+  ): boolean {
+    const sig = (headers['x-digio-signature'] ||
+      headers['X-Digio-Signature']) as string | undefined;
     if (!sig) return false;
-    const expected = createHmac('sha256', this.webhookSecret).update(rawBody).digest('hex');
+    const expected = createHmac('sha256', this.webhookSecret)
+      .update(rawBody)
+      .digest('hex');
     try {
       return timingSafeEqual(Buffer.from(expected), Buffer.from(sig));
     } catch {
@@ -105,7 +130,9 @@ export class DigioClient implements IESignProvider {
     }
   }
 
-  parseWebhookEvent(body: unknown): { providerReqId: string; status: ESignStatusResult['status'] } | null {
+  parseWebhookEvent(
+    body: unknown,
+  ): { providerReqId: string; status: ESignStatusResult['status'] } | null {
     if (!body || typeof body !== 'object') return null;
     const b: any = body;
     const id = b.entity_id ?? b.document_id ?? b.id;
@@ -136,7 +163,9 @@ export class DigioClient implements IESignProvider {
 }
 
 function mapDigioStatus(data: any): ESignStatusResult {
-  const raw = (data?.agreement_status ?? data?.status ?? '').toString().toLowerCase();
+  const raw = (data?.agreement_status ?? data?.status ?? '')
+    .toString()
+    .toLowerCase();
   if (raw.includes('completed') || raw.includes('signed')) {
     return {
       status: 'SIGNED',
@@ -145,8 +174,10 @@ function mapDigioStatus(data: any): ESignStatusResult {
     };
   }
   if (raw.includes('expired')) return { status: 'EXPIRED' };
-  if (raw.includes('failed') || raw.includes('rejected')) return { status: 'FAILED' };
+  if (raw.includes('failed') || raw.includes('rejected'))
+    return { status: 'FAILED' };
   if (raw.includes('viewed')) return { status: 'VIEWED' };
-  if (raw.includes('sent') || raw.includes('initiated')) return { status: 'SENT' };
+  if (raw.includes('sent') || raw.includes('initiated'))
+    return { status: 'SENT' };
   return { status: 'PENDING' };
 }
