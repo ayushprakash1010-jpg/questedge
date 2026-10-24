@@ -41,19 +41,24 @@ export class PlatformObservabilityService {
       }),
     ]);
 
-    // Daily breakdown via raw query
-    const byDayRaw = await this.prisma.$queryRaw<
-      { date: string; calls: bigint; cost: bigint }[]
-    >`
-      SELECT
-        DATE_TRUNC('day', "created_at")::date::text AS date,
-        COUNT(*) AS calls,
-        COALESCE(SUM("cost_in_paise"), 0) AS cost
-      FROM "ai_call_logs"
-      WHERE "created_at" >= ${from}
-      GROUP BY 1
-      ORDER BY 1 ASC
-    `;
+    // Daily breakdown via raw query with fallback
+    let byDayRaw: { date: string; calls: bigint; cost: bigint }[] = [];
+    try {
+      byDayRaw = await this.prisma.$queryRaw<
+        { date: string; calls: bigint; cost: bigint }[]
+      >`
+        SELECT
+          DATE_TRUNC('day', "createdAt")::date::text AS date,
+          COUNT(*) AS calls,
+          COALESCE(SUM("cost_in_paise"), 0) AS cost
+        FROM "ai_call_logs"
+        WHERE "createdAt" >= ${from}
+        GROUP BY 1
+        ORDER BY 1 ASC
+      `;
+    } catch {
+      byDayRaw = [];
+    }
 
     const failedCount = await this.prisma.aiCallLog.count({
       where: { ...where, status: 'ERROR' },
