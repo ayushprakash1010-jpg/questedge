@@ -90,17 +90,30 @@ export default function AuditLogsPage() {
     setSearchInput(""); setEntityType(""); setOrgId(""); setFrom(""); setTo("");
   }
 
-  function downloadCsv() {
+  async function downloadCsv() {
     const params = new URLSearchParams();
     if (search) params.set("action", search);
     if (entityType) params.set("entityType", entityType);
     if (orgId) params.set("orgId", orgId);
     if (from) params.set("from", from);
     if (to) params.set("to", to);
-    window.open(`/api/support/audit-log/export?${params}`, "_blank");
+    try {
+      const res = await fetch(`/api/support/audit-log/export?${params}`);
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      alert(`Export failed: ${e.message}`);
+    }
   }
 
   const hasFilters = searchInput || entityType || orgId || from || to;
+
 
   return (
     <div className="space-y-6">

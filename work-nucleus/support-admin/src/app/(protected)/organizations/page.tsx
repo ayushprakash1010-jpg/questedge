@@ -83,11 +83,23 @@ export default function OrganizationsPage() {
   useEffect(() => { fetchOrgs(); }, [fetchOrgs]);
   useAutoRefresh(fetchOrgs, POLL_INTERVAL, autoRefresh);
 
-  function exportCsv() {
+  async function exportCsv() {
     const params = new URLSearchParams();
     if (search) params.set("search", search);
     if (industry) params.set("industry", industry);
-    window.open(`/api/support/organizations/export?${params}`, "_blank");
+    try {
+      const res = await fetch(`/api/support/organizations/export?${params}`);
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `organizations-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      alert(`Export failed: ${e.message}`);
+    }
   }
 
   return (

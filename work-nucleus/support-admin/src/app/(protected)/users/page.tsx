@@ -138,13 +138,25 @@ export default function UsersPage() {
   }
 
   // --- CSV Export ---
-  function exportCsv() {
+  async function exportCsv() {
     const params = new URLSearchParams();
     if (search) params.set("search", search);
     if (roleFilter) params.set("role", roleFilter);
     if (userTypeFilter) params.set("userType", userTypeFilter);
     if (activeFilter) params.set("isActive", activeFilter);
-    window.open(`/api/support/users/export?${params}`, "_blank");
+    try {
+      const res = await fetch(`/api/support/users/export?${params}`);
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `platform-users-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      alert(`Export failed: ${e.message}`);
+    }
   }
 
   const hasFilters = searchInput || roleFilter || userTypeFilter || activeFilter;
