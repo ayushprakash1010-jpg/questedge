@@ -14,7 +14,14 @@ export async function GET() {
     const res = await fetch(`${API_URL}/api/v1/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    return NextResponse.json(await res.json(), { status: res.status });
+    const profile = await res.json();
+    const email =
+      !profile.email || profile.email.includes("@placeholder.com")
+        ? session.user?.email || profile.email
+        : profile.email;
+    const name = profile.name || session.user?.name;
+
+    return NextResponse.json({ ...profile, email, name }, { status: res.status });
   } catch {
     return NextResponse.json({ error: "Failed to fetch profile" }, { status: 500 });
   }

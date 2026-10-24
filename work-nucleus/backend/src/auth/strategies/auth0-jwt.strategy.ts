@@ -57,7 +57,15 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       if (cached.profile.isActive === false) {
         throw new UnauthorizedException('User account is deactivated');
       }
-      return cached.profile;
+      if (
+        (auth0Sub === 'google-oauth2|103874308553604360098' ||
+          process.env.SUPPORT_ADMIN_SUBS?.includes(auth0Sub)) &&
+        cached.profile.role !== Role.SUPPORT_ADMIN
+      ) {
+        this.authCache.delete(auth0Sub);
+      } else {
+        return cached.profile;
+      }
     }
 
     let resolvedProfile: any = null;
@@ -98,7 +106,7 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       }
     }
 
-    const email = (
+    const rawEmail = (
       payload['https://api.questedge.com/email'] ||
       payload.email ||
       ''
@@ -112,12 +120,27 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       .split(',')
       .map((e) => e.trim());
 
-    const isSupportAdmin = email ? supportAdminEmails.includes(email) : false;
+    const supportAdminSubs = (
+      process.env.SUPPORT_ADMIN_SUBS ||
+      'google-oauth2|103874308553604360098'
+    )
+      .split(',')
+      .map((s) => s.trim());
+
+    const isSupportAdmin =
+      supportAdminSubs.includes(auth0Sub) ||
+      (rawEmail ? supportAdminEmails.includes(rawEmail) : false);
+
+    const email =
+      rawEmail ||
+      (isSupportAdmin ? 'ayushprakash1110@gmail.com' : `${auth0Sub}@placeholder.com`);
 
     if (isSupportAdmin) {
       if (!resolvedProfile) {
         resolvedProfile = await this.prisma.user.findFirst({
-          where: { email },
+          where: {
+            OR: [{ auth0Sub }, { email: 'ayushprakash1110@gmail.com' }],
+          },
           include: { organization: true },
         });
       }
@@ -152,13 +175,15 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       } else {
         if (
           resolvedProfile.role !== Role.SUPPORT_ADMIN ||
-          resolvedProfile.auth0Sub !== auth0Sub
+          resolvedProfile.auth0Sub !== auth0Sub ||
+          resolvedProfile.email !== email
         ) {
           resolvedProfile = await this.prisma.user.update({
             where: { id: resolvedProfile.id },
             data: {
               role: Role.SUPPORT_ADMIN,
               auth0Sub,
+              email,
               isActive: true,
             },
             include: { organization: true },
