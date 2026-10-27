@@ -20,10 +20,14 @@ export class FeedbackService {
     applicationId: string,
     userId: string,
     dto: CreateOrUpdateFeedbackDto,
+    orgId?: string,
   ) {
-    // Validate application exists
-    const application = await this.prisma.candidateApplication.findUnique({
-      where: { id: applicationId },
+    // Validate application exists within org
+    const application = await this.prisma.candidateApplication.findFirst({
+      where: {
+        id: applicationId,
+        ...(orgId ? { hiringPlan: { orgId } } : {}),
+      },
     });
     if (!application) throw new NotFoundException('Application not found');
 
@@ -88,9 +92,12 @@ export class FeedbackService {
     return this.getFeedbackById(feedback.id);
   }
 
-  async submit(feedbackId: string, userId: string) {
-    const feedback = await this.prisma.interviewFeedback.findUnique({
-      where: { id: feedbackId },
+  async submit(feedbackId: string, userId: string, orgId?: string) {
+    const feedback = await this.prisma.interviewFeedback.findFirst({
+      where: {
+        id: feedbackId,
+        ...(orgId ? { application: { hiringPlan: { orgId } } } : {}),
+      },
     });
     if (!feedback) throw new NotFoundException('Feedback not found');
     if (feedback.interviewerId !== userId) {
@@ -112,9 +119,13 @@ export class FeedbackService {
     applicationId: string,
     requestingUserId: string,
     requestingUserRole: Role,
+    orgId?: string,
   ) {
-    const application = await this.prisma.candidateApplication.findUnique({
-      where: { id: applicationId },
+    const application = await this.prisma.candidateApplication.findFirst({
+      where: {
+        id: applicationId,
+        ...(orgId ? { hiringPlan: { orgId } } : {}),
+      },
     });
     if (!application) throw new NotFoundException('Application not found');
 
@@ -154,9 +165,12 @@ export class FeedbackService {
     return Object.values(grouped);
   }
 
-  async getSkillMatrix(applicationId: string) {
-    const application = await this.prisma.candidateApplication.findUnique({
-      where: { id: applicationId },
+  async getSkillMatrix(applicationId: string, orgId?: string) {
+    const application = await this.prisma.candidateApplication.findFirst({
+      where: {
+        id: applicationId,
+        ...(orgId ? { hiringPlan: { orgId } } : {}),
+      },
     });
     if (!application) throw new NotFoundException('Application not found');
 
@@ -203,28 +217,19 @@ export class FeedbackService {
       }
     }
 
-    // Build rows grouped by category
-    const skills = Object.entries(skillMap).map(([id, skill]) => ({
-      ...skill,
-      ratings: columns.map((col) => {
-        const colKey = `${col.interviewerId}@${col.stageId}`;
-        return ratings[id]?.[colKey] ?? null;
-      }),
-    }));
-
-    // Group by category
-    const byCategory: Record<string, typeof skills> = {};
-    for (const s of skills) {
-      if (!byCategory[s.category]) byCategory[s.category] = [];
-      byCategory[s.category].push(s);
-    }
-
-    return { columns, skillsByCategory: byCategory };
+    return {
+      skills: Object.values(skillMap),
+      columns,
+      ratings,
+    };
   }
 
-  async triggerAiSummary(applicationId: string) {
-    const application = await this.prisma.candidateApplication.findUnique({
-      where: { id: applicationId },
+  async triggerAiSummary(applicationId: string, orgId?: string) {
+    const application = await this.prisma.candidateApplication.findFirst({
+      where: {
+        id: applicationId,
+        ...(orgId ? { hiringPlan: { orgId } } : {}),
+      },
       include: {
         candidate: true,
         hiringPlan: {
@@ -302,7 +307,7 @@ export class FeedbackService {
             .replace(/```/g, '')
             .trim(),
         );
-      } catch (err) {
+      } catch (err: any) {
         throw new BadRequestException(
           `AI summarization failed: ${err.message}`,
         );
@@ -318,9 +323,12 @@ export class FeedbackService {
     return summary;
   }
 
-  async triggerAiScoring(applicationId: string) {
-    const application = await this.prisma.candidateApplication.findUnique({
-      where: { id: applicationId },
+  async triggerAiScoring(applicationId: string, orgId?: string) {
+    const application = await this.prisma.candidateApplication.findFirst({
+      where: {
+        id: applicationId,
+        ...(orgId ? { hiringPlan: { orgId } } : {}),
+      },
       include: {
         candidate: true,
         hiringPlan: {
@@ -399,7 +407,7 @@ export class FeedbackService {
             .replace(/```/g, '')
             .trim(),
         );
-      } catch (err) {
+      } catch (err: any) {
         throw new BadRequestException(`AI scoring failed: ${err.message}`);
       }
     }

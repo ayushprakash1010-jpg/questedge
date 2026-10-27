@@ -8,7 +8,9 @@ import { TopBar } from "@/components/top-bar";
 import { useProfile } from "@/hooks/use-profile";
 import { registerServiceWorker } from "@/lib/pwa";
 
-const IS_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+const IS_MOCK =
+  process.env.NODE_ENV !== "production" &&
+  process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
 
 // Map userType from backend OR current URL path → sidebar theme
 function resolveSidebarUserType(
@@ -97,10 +99,24 @@ export default function ProtectedLayout({
     }
     return (
       <div className="flex h-screen">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 z-50 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg ring-2 ring-white ring-offset-2 ring-offset-indigo-600 outline-none transition-all"
+        >
+          Skip to main content
+        </a>
         <Sidebar userType={sidebarUserType} />
         <div className="flex flex-1 flex-col overflow-hidden">
           <TopBar />
-          <main className="flex-1 overflow-y-auto bg-background p-6">{children}</main>
+          <main
+            id="main-content"
+            tabIndex={-1}
+            role="main"
+            aria-label="Main Content"
+            className="flex-1 overflow-y-auto bg-background p-6 outline-none"
+          >
+            {children}
+          </main>
         </div>
       </div>
     );
@@ -163,10 +179,24 @@ export default function ProtectedLayout({
 
   return (
     <div className="flex h-screen">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 z-50 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg ring-2 ring-white ring-offset-2 ring-offset-indigo-600 outline-none transition-all"
+      >
+        Skip to main content
+      </a>
       <Sidebar userType={sidebarUserType} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
-        <main className="flex-1 overflow-y-auto bg-background p-6">{children}</main>
+        <main
+          id="main-content"
+          tabIndex={-1}
+          role="main"
+          aria-label="Main Content"
+          className="flex-1 overflow-y-auto bg-background p-6 outline-none"
+        >
+          {children}
+        </main>
       </div>
     </div>
   );

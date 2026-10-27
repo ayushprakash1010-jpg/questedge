@@ -6,6 +6,12 @@ export class SearchService {
   constructor(private readonly prisma: PrismaService) {}
 
   async search(orgId: string, query: string) {
+    // P0-05: Defence-in-depth — Prisma ignores undefined in where,
+    // which would search all tenants. Fail explicitly.
+    if (!orgId) {
+      return { candidates: [], hiringPlans: [], jobDescriptions: [] };
+    }
+
     if (!query || query.length < 2) {
       return { candidates: [], hiringPlans: [], jobDescriptions: [] };
     }

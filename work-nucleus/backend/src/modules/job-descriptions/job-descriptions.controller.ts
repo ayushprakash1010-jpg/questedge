@@ -35,26 +35,39 @@ export class JobDescriptionsController {
 
   @Get('latest')
   @ApiOperation({ summary: 'Get latest JD (prefers approved)' })
-  findLatest(@Param('planId', ParseUUIDPipe) planId: string) {
-    return this.jdService.findLatest(planId);
+  findLatest(
+    @Param('planId', ParseUUIDPipe) planId: string,
+    @CurrentUser('orgId') orgId: string,
+  ) {
+    return this.jdService.findLatest(planId, orgId);
   }
 
   @Get('versions')
   @ApiOperation({ summary: 'List all JD versions' })
-  listVersions(@Param('planId', ParseUUIDPipe) planId: string) {
-    return this.jdService.listVersions(planId);
+  listVersions(
+    @Param('planId', ParseUUIDPipe) planId: string,
+    @CurrentUser('orgId') orgId: string,
+  ) {
+    return this.jdService.listVersions(planId, orgId);
   }
 
   @Get(':jdId')
   @ApiOperation({ summary: 'Get specific JD by ID' })
-  findOne(@Param('jdId', ParseUUIDPipe) jdId: string) {
-    return this.jdService.findOne(jdId);
+  findOne(
+    @Param('jdId', ParseUUIDPipe) jdId: string,
+    @CurrentUser('orgId') orgId: string,
+  ) {
+    return this.jdService.findOne(jdId, orgId);
   }
 
   @Patch(':jdId')
   @ApiOperation({ summary: 'Update JD (manual edit)' })
-  update(@Param('jdId', ParseUUIDPipe) jdId: string, @Body() dto: UpdateJdDto) {
-    return this.jdService.update(jdId, dto);
+  update(
+    @Param('jdId', ParseUUIDPipe) jdId: string,
+    @Body() dto: UpdateJdDto,
+    @CurrentUser('orgId') orgId: string,
+  ) {
+    return this.jdService.update(jdId, dto, orgId);
   }
 
   @Post(':jdId/approve')
@@ -62,7 +75,8 @@ export class JobDescriptionsController {
   approve(
     @Param('jdId', ParseUUIDPipe) jdId: string,
     @CurrentUser('id') userId: string,
+    @CurrentUser('orgId') orgId: string,
   ) {
-    return this.jdService.approve(jdId, userId);
+    return this.jdService.approve(jdId, userId, orgId);
   }
 }

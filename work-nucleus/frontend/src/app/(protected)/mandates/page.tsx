@@ -15,8 +15,13 @@ import {
   FileText,
   CheckCircle2,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useUser } from "@auth0/nextjs-auth0/client";
+import { CardGridSkeleton } from "@/components/ui/skeleton-states";
+import { MarketplaceEmptyState } from "@/components/ui/marketplace-empty-state";
+import { ErrorBanner } from "@/components/ui/error-state";
 
 // ── Stat Card ────────────────────────────────────────────────────
 
@@ -65,29 +70,47 @@ export default function MandatesPage() {
   const { user } = useUser();
   const [mandates, setMandates] = useState<Mandate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  // Debounce search query to prevent backend request storms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const fetchMandates = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       // Get token from Auth0 session
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
 
       const result = await getOrgMandates(accessToken, {
-        q: searchQuery || undefined,
+        q: debouncedSearch || undefined,
         status: (statusFilter as any) || undefined,
+        page,
+        limit: 12,
       });
       setMandates(result.data);
       setTotal(result.meta.total);
-    } catch (err) {
+      setTotalPages(result.meta.totalPages || 1);
+    } catch (err: any) {
       console.error("Failed to load mandates", err);
+      setError(err?.message || "Failed to load job mandates from server.");
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, statusFilter]);
+  }, [debouncedSearch, statusFilter, page]);
 
   useEffect(() => {
     fetchMandates();
@@ -173,7 +196,7 @@ export default function MandatesPage() {
             {STATUS_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
-                onClick={() => setStatusFilter(opt.value)}
+                onClick={() => { setStatusFilter(opt.value); setPage(1); }}
                 className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
                   statusFilter === opt.value
                     ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
@@ -186,40 +209,99 @@ export default function MandatesPage() {
           </div>
         </div>
 
+        {/* Error state */}
+        {error && (
+          <div className="mb-6">
+            <ErrorBanner
+              message={error}
+              onRetry={fetchMandates}
+              onResetFilters={
+                searchQuery || statusFilter
+                  ? () => {
+                      setSearchQuery("");
+                      setStatusFilter("");
+                    }
+                  : undefined
+              }
+            />
+          </div>
+        )}
+
+        {/* Screen Reader Live Status Announcement */}
+        <div aria-live="polite" aria-atomic="true" className="sr-only">
+          {loading
+            ? "Loading job mandates..."
+            : mandates.length === 0
+            ? "No job mandates found."
+            : `Showing ${mandates.length} job ${mandates.length === 1 ? "mandate" : "mandates"}${
+                total ? ` of ${total}` : ""
+              }`}
+        </div>
+
         {/* Mandate grid */}
-        {loading ? (
-          <div className="flex items-center justify-center py-24">
-            <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
-          </div>
+        {loading && mandates.length === 0 ? (
+          <CardGridSkeleton count={6} columns={3} />
         ) : mandates.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-indigo-50 flex items-center justify-center mb-4">
-              <FileText className="h-8 w-8 text-indigo-300" />
-            </div>
-            <h3 className="text-lg font-semibold text-slate-700 mb-1">No mandates yet</h3>
-            <p className="text-sm text-slate-400 max-w-sm mb-6">
-              Create your first mandate to start receiving referrals from top recruiters.
-            </p>
-            <Button
-              className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2"
-              onClick={() => router.push("/mandates/create")}
-            >
-              <Plus className="h-4 w-4" />
-              Create First Mandate
-            </Button>
-          </div>
+          debouncedSearch || statusFilter ? (
+            <MarketplaceEmptyState
+              preset="search"
+              title="No Mandates Found"
+              description="No mandates match your active search keyword or status filter. Try clearing filters to see all postings."
+              secondaryAction={{
+                label: "Clear filters",
+                onClick: () => {
+                  setSearchQuery("");
+                  setStatusFilter("");
+                },
+              }}
+            />
+          ) : (
+            <MarketplaceEmptyState
+              preset="mandates"
+              primaryAction={{
+                label: "Create First Mandate",
+                onClick: () => router.push("/mandates/create"),
+                icon: Plus,
+              }}
+            />
+          )
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {mandates.map((mandate) => (
-              <MandateCard
-                key={mandate.id}
-                {...mandate}
-                recruiterCount={mandate._count?.participations}
-                referralCount={mandate._count?.referrals}
-                viewAs="company"
-                onClick={(id) => router.push(`/mandates/${id}`)}
-              />
-            ))}
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {mandates.map((mandate) => (
+                <MandateCard
+                  key={mandate.id}
+                  {...mandate}
+                  recruiterCount={mandate._count?.participations}
+                  referralCount={mandate._count?.referrals}
+                  viewAs="company"
+                  onClick={(id) => router.push(`/mandates/${id}`)}
+                />
+              ))}
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-3 pt-4">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-40 hover:bg-slate-50 transition-colors shadow-sm"
+                >
+                  <ChevronLeft className="h-4 w-4" /> Previous
+                </button>
+                <span className="text-sm text-slate-600">
+                  Page <strong>{page}</strong> of <strong>{totalPages}</strong>
+                </span>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-40 hover:bg-slate-50 transition-colors shadow-sm"
+                >
+                  Next <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

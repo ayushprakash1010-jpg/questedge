@@ -18,14 +18,20 @@ export async function GET(req: NextRequest) {
     } else {
       const params = new URLSearchParams();
       const page = req.nextUrl.searchParams.get("page");
+      const limit = req.nextUrl.searchParams.get("limit");
       const unreadOnly = req.nextUrl.searchParams.get("unreadOnly");
+      const category = req.nextUrl.searchParams.get("category") || type;
+
       if (page) params.set("page", page);
+      if (limit) params.set("limit", limit);
       if (unreadOnly) params.set("unreadOnly", unreadOnly);
+      if (category && category !== "unread-count") params.set("type", category);
       if (params.toString()) endpoint += `?${params}`;
     }
 
     const res = await fetch(endpoint, {
       headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
     });
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });

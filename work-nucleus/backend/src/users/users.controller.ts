@@ -62,10 +62,11 @@ export class UsersController {
   @ApiResponse({ status: 404, description: 'User not found' })
   update(
     @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') callerId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateUserDto,
   ) {
-    return this.usersService.update(orgId, id, dto);
+    return this.usersService.update(orgId, id, dto, callerId);
   }
 
   @Delete(':id')

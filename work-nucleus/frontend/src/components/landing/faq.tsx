@@ -7,35 +7,43 @@ import { ChevronDown } from "lucide-react";
 const faqs = [
   {
     question: "What is QuestEdge?",
-    answer: "QuestEdge is a referral-based hiring marketplace that connects companies with independent recruiters. Companies post hiring mandates and set referral rewards. Recruiters browse the marketplace and refer candidates from their trusted networks. Candidates receive a secure consent link before their profile is shared with any company.",
+    answer:
+      "QuestEdge is an AI-powered referral hiring marketplace connecting companies with independent recruiters and talent networks. Companies publish open mandates with referral bounties, recruiters lock 48-hour exclusive claim scopes to refer vetted candidates, and candidates review and consent to roles before their information is shared.",
   },
   {
-    question: "How does the referral reward system work?",
-    answer: "Companies set a referral reward amount when posting a mandate — typically a fixed fee or a percentage of the candidate's annual CTC. When a referred candidate is hired and completes a defined tenure (e.g., 90 days), the reward is released to the recruiter's wallet. No hire = no payment.",
+    question: "How does the referral reward lifecycle work?",
+    answer:
+      "Companies configure referral rewards when posting a mandate. Rewards transition through a 5-stage lifecycle: 'Potential' when candidate consent is given, 'Eligible' upon offer generation, 'Pending Approval' once the candidate joins, and 'Approved' after tenure completion (e.g., 90 days). Once approved, payouts are processed directly to the recruiter. No hire = zero cost.",
   },
   {
-    question: "Who can become a recruiter on QuestEdge?",
-    answer: "Any independent recruiter, talent consultant, or professional with a strong network in their domain can apply to join. We verify identity and professional background before granting marketplace access. A verified badge on your profile signals trust to companies and candidates.",
+    question: "What is 48-Hour Claim Scope exclusivity?",
+    answer:
+      "A Claim Scope grants a recruiter exclusive rights for 48 hours to refer a specific candidate to an open mandate. Candidate email and phone hashes are checked to prevent duplicate submissions, eliminate recruiter disputes, and ensure the recruiter who brought the talent is protected.",
   },
   {
     question: "How does candidate consent work?",
-    answer: "When a recruiter refers a candidate, the candidate receives a secure consent link via email. The link shows the full role details — company name, JD, salary range, and who referred them. The candidate can accept or decline. Their profile is only shared with the company after explicit acceptance.",
+    answer:
+      "When a recruiter refers a candidate, the candidate receives an encrypted email invitation. The candidate reviews full details — company name, job description, compensation range, and the referring recruiter's note — before accepting. The candidate's contact info and resume are only revealed to the hiring team after explicit acceptance.",
   },
   {
-    question: "When do recruiters get paid?",
-    answer: "Rewards are tracked as 'potential' when a candidate accepts the referral, 'pending' when the candidate is hired, and 'confirmed' once the tenure period is completed. Payment is processed to the recruiter's registered account within 7 business days of confirmation.",
+    question: "How does the Gemini AI screening engine assist hiring teams?",
+    answer:
+      "QuestEdge leverages Google Gemini AI to analyze candidate resumes against mandate rubrics. It produces fit percentage scores, highlights technical strengths, and flags missing requirements so hiring teams can prioritize the highest-probability candidates first.",
   },
   {
-    question: "What happens if a hired candidate leaves before the tenure period?",
-    answer: "Each mandate specifies a tenure period (e.g., 90 days). If the candidate leaves before completing that period, the reward status moves to 'cancelled' and no payment is made. This protects companies from paying for short-tenure hires.",
+    question: "How does QuestEdge protect candidate privacy and comply with data laws?",
+    answer:
+      "QuestEdge is built for full compliance with the Digital Personal Data Protection (DPDP) Act 2023 and GDPR Article 20. Phone numbers and emails are SHA-256 hashed for collision detection without exposing raw PII. Candidates have full self-service access to export their data package or invoke instant Right-to-be-Forgotten data scrubbing.",
   },
   {
-    question: "Is my data safe and private as a candidate?",
-    answer: "Absolutely. Your profile is never visible to companies without your explicit consent. You can review the full role details before deciding. If you decline, your information is not retained by the company. All data is encrypted at rest and in transit, with Auth0 enterprise-grade authentication.",
+    question: "What happens if a hired candidate leaves before completing tenure?",
+    answer:
+      "Each mandate specifies a tenure duration (typically 60 to 90 days). If a candidate resigns or is terminated before completing this period, the reward is cancelled, and the company is never billed for that hire.",
   },
   {
-    question: "How is QuestEdge different from traditional recruitment agencies?",
-    answer: "Traditional agencies charge large upfront retainers or flat percentages regardless of outcome. QuestEdge is performance-only — companies pay only on successful hires. Recruiters are independent professionals with real networks (not cold callers), and candidates get full transparency before any company sees their profile.",
+    question: "Who can register as a recruiter on QuestEdge?",
+    answer:
+      "Independent recruiters, specialized headhunters, and industry professionals with vetted domain networks can register for free. Verified recruiter profiles build trust with companies, gain access to higher bounty tiers, and unlock automated AI candidate matching.",
   },
 ];
 
@@ -47,28 +55,29 @@ export function FAQ() {
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <span className="text-sm font-semibold uppercase tracking-wider text-indigo-600">
-            FAQ
+            Frequently Asked Questions
           </span>
           <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Frequently asked questions
+            Everything you need to know about QuestEdge
           </h2>
+          <p className="mt-4 text-base text-slate-600">
+            Learn how our referral marketplace, claim scopes, AI screening, and escrow protection work.
+          </p>
         </div>
 
         <div className="mt-16 space-y-3">
           {faqs.map((faq, i) => (
             <div
               key={i}
-              className="rounded-xl border border-slate-200 bg-white transition-colors hover:border-indigo-200"
+              className="rounded-2xl border border-slate-200 overflow-hidden transition-colors hover:border-slate-300"
             >
               <button
                 onClick={() => setOpenIndex(openIndex === i ? null : i)}
-                className="flex w-full items-center justify-between px-6 py-5 text-left"
+                className="flex w-full items-center justify-between p-5 text-left text-sm font-semibold text-slate-900"
               >
-                <span className="text-sm font-semibold text-slate-900">
-                  {faq.question}
-                </span>
+                <span>{faq.question}</span>
                 <ChevronDown
-                  className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${
+                  className={`h-4 w-4 shrink-0 text-slate-500 transition-transform duration-200 ${
                     openIndex === i ? "rotate-180" : ""
                   }`}
                 />
@@ -80,11 +89,10 @@ export function FAQ() {
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
                   >
-                    <p className="px-6 pb-5 text-sm leading-relaxed text-slate-600">
+                    <div className="border-t border-slate-100 px-5 pb-5 pt-3 text-sm leading-relaxed text-slate-600">
                       {faq.answer}
-                    </p>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>

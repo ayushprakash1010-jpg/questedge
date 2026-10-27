@@ -16,6 +16,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
+    const request = ctx.getRequest<any>();
+
+    const requestId =
+      request?.id || (request?.headers?.['x-request-id'] as string) || undefined;
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let code = 'INTERNAL_ERROR';
@@ -61,7 +65,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     if (status >= 500) {
       this.logger.error(
-        `${code}: ${message}`,
+        `[${requestId || 'no-id'}] ${code}: ${message}`,
         exception instanceof Error ? exception.stack : undefined,
       );
     }
@@ -73,6 +77,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         ...(details ? { details } : {}),
       },
       statusCode: status,
+      ...(requestId ? { requestId } : {}),
+      timestamp: new Date().toISOString(),
     });
   }
 

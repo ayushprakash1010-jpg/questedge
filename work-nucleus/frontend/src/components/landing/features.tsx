@@ -5,30 +5,91 @@ import {
   Building2, Target, UserCircle,
   FileText, Gift, Search, BarChart3, ShieldCheck, Inbox,
   Network, DollarSign, Sparkles, Bell, Eye, CheckCircle,
+  Lock, Clock, FileCheck2, Zap
 } from "lucide-react";
 
 const companyFeatures = [
-  { icon: FileText, title: "Post Mandates in Minutes", description: "Define roles, required skills, salary range, and referral rewards in a structured form. Go live instantly." },
-  { icon: Gift, title: "Set Referral Rewards", description: "Offer performance-based rewards. Pay only when a referred candidate joins and completes their tenure." },
-  { icon: Inbox, title: "Referral Inbox", description: "Review referred candidates in one place. Accept, reject, or move them through your hiring pipeline." },
-  { icon: Sparkles, title: "AI Candidate Screening", description: "Auto-score every referred candidate against your mandate criteria before your team reviews them." },
-  { icon: BarChart3, title: "Hiring Analytics", description: "Track mandates, active referrals, reward commitments, and pipeline velocity in your real-time dashboard." },
+  {
+    icon: FileText,
+    title: "Structured Mandate Publishing",
+    description: "Define job roles, required skills, salary bands, and performance referral bounties in minutes."
+  },
+  {
+    icon: Sparkles,
+    title: "Gemini AI Candidate Screening",
+    description: "Auto-evaluates every referred candidate's resume against mandate criteria with fit percentages and skill gap analysis."
+  },
+  {
+    icon: Inbox,
+    title: "Referral Inbox & SLA Nudges",
+    description: "Manage candidate referrals with time-stamped status updates, recruiter notes, and 48-hour review nudges."
+  },
+  {
+    icon: BarChart3,
+    title: "5-Stage Pipeline Funnel",
+    description: "Track conversion rates across Referred → Consented → Screened → Interviewed → Hired with time-to-hire velocity."
+  },
+  {
+    icon: Gift,
+    title: "Escrow Reward Distribution",
+    description: "Monitor reward commitments across Potential, Pending Approval, and Approved statuses. Pay only on tenure completion."
+  },
 ];
 
 const recruiterFeatures = [
-  { icon: Search, title: "Browse the Marketplace", description: "Filter open mandates by domain, skills, location, reward amount, and experience level." },
-  { icon: Network, title: "One-Click Candidate Referral", description: "Submit candidates from your network in seconds. The platform handles consent collection automatically." },
-  { icon: Sparkles, title: "AI Match Engine", description: "Get instant AI suggestions of past candidates from your network who fit a new mandate's requirements." },
-  { icon: DollarSign, title: "Earnings Tracker & Wallet", description: "See potential, pending, and confirmed earnings. Track the status of every referral reward in real time." },
-  { icon: Bell, title: "Status Notifications", description: "Get notified the moment a candidate you referred is accepted, moves to interview, or is hired." },
+  {
+    icon: Search,
+    title: "Marketplace Mandate Discovery",
+    description: "Search open company mandates filtered by domain, location, compensation, and bounty payout rewards."
+  },
+  {
+    icon: Clock,
+    title: "48-Hour Claim Scope Exclusivity",
+    description: "Lock candidate referral scopes for 48 hours to protect your placement rights and prevent duplicate submissions."
+  },
+  {
+    icon: Network,
+    title: "Hash-Shielded Candidate Referrals",
+    description: "Submit candidate referrals securely. SHA-256 hashing prevents collisions while safeguarding candidate privacy."
+  },
+  {
+    icon: DollarSign,
+    title: "Real-Time Bounty Wallet",
+    description: "Track potential, eligible, pending approval, and paid earnings with transparent payout timelines."
+  },
+  {
+    icon: Bell,
+    title: "Live Lifecycle Notifications",
+    description: "Receive instant updates when your candidate consents, advances to interview, receives an offer, or is hired."
+  },
 ];
 
 const candidateFeatures = [
-  { icon: CheckCircle, title: "Receive Referral Invites", description: "A recruiter refers you to a role that matches your profile. You get a secure consent link via email." },
-  { icon: Eye, title: "Review Before You Consent", description: "See full role details — company, JD, salary band — before deciding whether to accept the referral." },
-  { icon: ShieldCheck, title: "Privacy-First Consent", description: "Your profile is only shared with the company after you explicitly accept. Decline anytime, no strings attached." },
-  { icon: BarChart3, title: "Track Your Journey", description: "Follow your application status across every stage in real time — interview, offer, onboarding." },
-  { icon: UserCircle, title: "Portable Profile", description: "Build a rich profile once. Recruiters can refer you to multiple mandates with your permission." },
+  {
+    icon: Eye,
+    title: "Two-Way Consent Verification",
+    description: "Inspect full role details — company name, salary range, and job expectations — before consenting to share your profile."
+  },
+  {
+    icon: Sparkles,
+    title: "AI Resume Extraction",
+    description: "Upload your resume PDF to instantly extract your professional experience, top skills, and links with zero manual typing."
+  },
+  {
+    icon: ShieldCheck,
+    title: "DPDP & GDPR Data Privacy",
+    description: "Full compliance with DPDP Section 11 and GDPR Article 20, including one-click data export and right-to-be-forgotten erasure."
+  },
+  {
+    icon: BarChart3,
+    title: "Live Application Tracking",
+    description: "Follow your referral progress transparently through screening, interviews, background verification, and offers."
+  },
+  {
+    icon: UserCircle,
+    title: "Portable Candidate Profile",
+    description: "Maintain a verified talent profile that trusted recruiters can match to multiple exclusive opportunities with your consent."
+  },
 ];
 
 const roles = [
@@ -36,7 +97,7 @@ const roles = [
     id: "for-companies",
     icon: Building2,
     role: "For Companies",
-    tagline: "Hire faster with the power of trusted networks",
+    tagline: "Hire verified talent faster with trusted recruiter networks",
     color: "from-indigo-500 to-indigo-600",
     accent: "text-indigo-600",
     border: "border-indigo-100",
@@ -47,7 +108,7 @@ const roles = [
     id: "for-recruiters",
     icon: Target,
     role: "For Recruiters",
-    tagline: "Monetise your network. Earn on every successful placement",
+    tagline: "Monetize your network with 48h protected claim scopes",
     color: "from-violet-500 to-violet-600",
     accent: "text-violet-600",
     border: "border-violet-100",
@@ -58,7 +119,7 @@ const roles = [
     id: "for-candidates",
     icon: UserCircle,
     role: "For Candidates",
-    tagline: "Get referred into roles that actually match your career",
+    tagline: "Get referred with consent-first privacy and AI match insights",
     color: "from-emerald-500 to-emerald-600",
     accent: "text-emerald-600",
     border: "border-emerald-100",
@@ -77,20 +138,20 @@ export function Features() {
         {/* Section header */}
         <div className="mx-auto max-w-2xl text-center">
           <span className="text-sm font-semibold uppercase tracking-wider text-indigo-600">
-            Everything You Need
+            Comprehensive Platform Features
           </span>
           <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Built for every role in the{" "}
-            <span className="text-indigo-600">referral loop</span>
+            Built for every side of the{" "}
+            <span className="text-indigo-600">talent ecosystem</span>
           </h2>
           <p className="mt-4 text-lg text-slate-600">
-            QuestEdge is the only platform designed from the ground up for all three sides of referral-based hiring.
+            QuestEdge delivers purpose-built workflows for companies, independent recruiters, and candidates with automated compliance and escrow protection.
           </p>
         </div>
 
         {/* Role panels */}
         <div className="mt-20 space-y-20">
-          {roles.map((role, ri) => (
+          {roles.map((role) => (
             <div key={role.id} id={role.id}>
               {/* Role header */}
               <div className="mb-8 flex items-center gap-4">
@@ -116,13 +177,13 @@ export function Features() {
                   <motion.div
                     key={feat.title}
                     variants={item}
-                    className={`rounded-2xl border ${role.border} ${role.bg} p-5 transition-all hover:shadow-md`}
+                    className={`rounded-2xl border ${role.border} ${role.bg} p-5 transition-all hover:shadow-md hover:border-slate-300`}
                   >
                     <div className={`inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br ${role.color} shadow-sm`}>
                       <feat.icon className="h-4 w-4 text-white" />
                     </div>
                     <h4 className="mt-3 text-sm font-semibold text-slate-900">{feat.title}</h4>
-                    <p className="mt-1.5 text-xs leading-relaxed text-slate-500">{feat.description}</p>
+                    <p className="mt-1.5 text-xs leading-relaxed text-slate-600">{feat.description}</p>
                   </motion.div>
                 ))}
               </motion.div>
@@ -133,4 +194,3 @@ export function Features() {
     </section>
   );
 }
-

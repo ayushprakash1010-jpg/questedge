@@ -13,7 +13,14 @@ import { StageType } from '@prisma/client';
 export class PipelineService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createStage(hiringPlanId: string, dto: CreateStageDto) {
+  async createStage(hiringPlanId: string, dto: CreateStageDto, orgId?: string) {
+    if (orgId) {
+      const plan = await this.prisma.hiringPlan.findFirst({
+        where: { id: hiringPlanId, orgId },
+      });
+      if (!plan) throw new NotFoundException('Hiring plan not found');
+    }
+
     const { interviewers, skillsToEvaluate, ...stageData } = dto;
 
     // Get the next order position
@@ -43,11 +50,18 @@ export class PipelineService {
         });
       }
 
-      return this.getStageById(stage.id);
+      return this.getStageById(stage.id, orgId);
     });
   }
 
-  async getStages(hiringPlanId: string) {
+  async getStages(hiringPlanId: string, orgId?: string) {
+    if (orgId) {
+      const plan = await this.prisma.hiringPlan.findFirst({
+        where: { id: hiringPlanId, orgId },
+      });
+      if (!plan) throw new NotFoundException('Hiring plan not found');
+    }
+
     return this.prisma.pipelineStage.findMany({
       where: { hiringPlanId },
       orderBy: { stageOrder: 'asc' },
@@ -64,9 +78,12 @@ export class PipelineService {
     });
   }
 
-  async getStageById(id: string) {
-    const stage = await this.prisma.pipelineStage.findUnique({
-      where: { id },
+  async getStageById(id: string, orgId?: string) {
+    const stage = await this.prisma.pipelineStage.findFirst({
+      where: {
+        id,
+        ...(orgId ? { hiringPlan: { orgId } } : {}),
+      },
       include: {
         interviewers: {
           include: {
@@ -79,8 +96,8 @@ export class PipelineService {
     return stage;
   }
 
-  async updateStage(id: string, dto: UpdateStageDto) {
-    await this.getStageById(id);
+  async updateStage(id: string, dto: UpdateStageDto, orgId?: string) {
+    await this.getStageById(id, orgId);
     const { interviewers, skillsToEvaluate, ...stageData } = dto;
 
     return this.prisma.$transaction(async (tx) => {
@@ -107,12 +124,12 @@ export class PipelineService {
         }
       }
 
-      return this.getStageById(id);
+      return this.getStageById(id, orgId);
     });
   }
 
-  async deleteStage(id: string) {
-    const stage = await this.getStageById(id);
+  async deleteStage(id: string, orgId?: string) {
+    await this.getStageById(id, orgId);
 
     // Check if any active candidates are in this stage
     const activeCount = await this.prisma.candidateApplication.count({
@@ -129,7 +146,14 @@ export class PipelineService {
     return { deleted: true };
   }
 
-  async reorderStages(hiringPlanId: string, dto: ReorderStagesDto) {
+  async reorderStages(hiringPlanId: string, dto: ReorderStagesDto, orgId?: string) {
+    if (orgId) {
+      const plan = await this.prisma.hiringPlan.findFirst({
+        where: { id: hiringPlanId, orgId },
+      });
+      if (!plan) throw new NotFoundException('Hiring plan not found');
+    }
+
     return this.prisma.$transaction(
       dto.stageIds.map((id, index) =>
         this.prisma.pipelineStage.update({
@@ -140,7 +164,14 @@ export class PipelineService {
     );
   }
 
-  async createDefaultTemplate(hiringPlanId: string) {
+  async createDefaultTemplate(hiringPlanId: string, orgId?: string) {
+    if (orgId) {
+      const plan = await this.prisma.hiringPlan.findFirst({
+        where: { id: hiringPlanId, orgId },
+      });
+      if (!plan) throw new NotFoundException('Hiring plan not found');
+    }
+
     const existing = await this.prisma.pipelineStage.count({
       where: { hiringPlanId },
     });
@@ -174,6 +205,6 @@ export class PipelineService {
       })),
     });
 
-    return this.getStages(hiringPlanId);
+    return this.getStages(hiringPlanId, orgId);
   }
 }

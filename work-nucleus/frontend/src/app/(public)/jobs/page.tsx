@@ -146,12 +146,22 @@ export default function JobsPage() {
 
   // Filters
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [workModel, setWorkModel] = useState("");
   const [domain, setDomain] = useState("");
   const [experience, setExperience] = useState("");
   const [minReward, setMinReward] = useState<number | undefined>();
   const [page, setPage] = useState(1);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Debounce search input to avoid hitting public API on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -160,7 +170,7 @@ export default function JobsPage() {
       const filters: MandateFilters = {
         page,
         limit: 12,
-        ...(search && { q: search }),
+        ...(debouncedSearch && { q: debouncedSearch }),
         ...(workModel && { workModel }),
         ...(domain && { department: domain }),
         ...(minReward && { minReward }),
@@ -174,13 +184,14 @@ export default function JobsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, workModel, domain, minReward]);
+  }, [page, debouncedSearch, workModel, domain, minReward]);
 
   useEffect(() => { load(); }, [load]);
 
   // Reset page when filters change
   const resetFilters = () => {
     setSearch("");
+    setDebouncedSearch("");
     setWorkModel("");
     setDomain("");
     setExperience("");
@@ -221,13 +232,18 @@ export default function JobsPage() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="text"
+              aria-label="Search mandates by role, skill, or company"
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               placeholder="Search by role, skill, or company..."
               className="w-full rounded-2xl border-0 bg-white py-4 pl-11 pr-4 text-sm text-slate-800 shadow-lg placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400"
             />
             {search && (
-              <button onClick={() => { setSearch(""); setPage(1); }} className="absolute right-4 top-1/2 -translate-y-1/2">
+              <button
+                onClick={() => { setSearch(""); setDebouncedSearch(""); setPage(1); }}
+                className="absolute right-4 top-1/2 -translate-y-1/2"
+                aria-label="Clear search query"
+              >
                 <X className="h-4 w-4 text-slate-400 hover:text-slate-600" />
               </button>
             )}
@@ -269,7 +285,7 @@ export default function JobsPage() {
         {/* Toolbar */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-slate-600" aria-live="polite" aria-atomic="true">
               <span className="font-semibold text-slate-900">{total}</span> mandates
             </p>
             {activeFilterCount > 0 && (
@@ -280,6 +296,8 @@ export default function JobsPage() {
           </div>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-expanded={sidebarOpen}
+            aria-label="Toggle search filters"
             className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-colors ${
               activeFilterCount > 0
                 ? "border-indigo-300 bg-indigo-50 text-indigo-700"

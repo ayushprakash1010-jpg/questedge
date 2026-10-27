@@ -47,6 +47,13 @@ We use Render to host the NestJS API.
    - `AUTH0_MANAGEMENT_CLIENT_ID`: *Auth0 Machine-to-Machine App Client ID*
    - `AUTH0_MANAGEMENT_CLIENT_SECRET`: *Auth0 Machine-to-Machine App Client Secret*
    - `AUTH0_SYNC_SECRET`: *Your Auth0 webhook sync secret*
+   - `SUPPORT_ADMIN_SUBS`: *Comma-separated list of Auth0 subject IDs authorized as platform admins*
+   - `FRONTEND_URL`: *Production frontend URL (e.g., https://questedge.vercel.app) for outgoing email links*
+   - `GEMINI_API_KEY`: *Google Gemini API key for AI screening, JD generation, and candidate summaries*
+   - `DIGIO_WEBHOOK_SECRET`: *Unique secret for e-sign webhook verification (never use dev-* placeholders)*
+   - `AUTHBRIDGE_WEBHOOK_SECRET`: *Unique secret for BGV webhook verification (never use dev-* placeholders)*
+   - `MSG91_WEBHOOK_SECRET`: *Unique secret for SMS/WhatsApp webhook verification (never use dev-* placeholders)*
+   - `ENABLE_SWAGGER`: *Optional ("true" or "false") — gates Swagger /api/docs in production (default false)*
    - `REDIS_HOST`: *Your Upstash Redis Host*
    - `REDIS_PORT`: *Your Upstash Redis Port*
    - `REDIS_PASSWORD`: *(If provided by Upstash, otherwise omit or update your backend code to support it)*

@@ -46,12 +46,14 @@ export class AuthBridgeProvider implements IBgvProvider {
   constructor(private readonly config: ConfigService) {
     this.baseUrl = this.config.get<string>('AUTHBRIDGE_BASE_URL', DEFAULT_BASE);
     this.apiKey = this.config.get<string>('AUTHBRIDGE_API_KEY', '');
+    const isProd = process.env.NODE_ENV === 'production';
     this.webhookSecret = this.config.get<string>(
       'AUTHBRIDGE_WEBHOOK_SECRET',
-      'dev-webhook-secret',
+      isProd ? '' : 'dev-webhook-secret',
     );
-    this.sandbox =
-      this.config.get<string>('AUTHBRIDGE_SANDBOX', 'true') !== 'false';
+    this.sandbox = isProd
+      ? this.config.get<string>('AUTHBRIDGE_SANDBOX') === 'true'
+      : this.config.get<string>('AUTHBRIDGE_SANDBOX', 'true') !== 'false';
   }
 
   private headers(): Record<string, string> {

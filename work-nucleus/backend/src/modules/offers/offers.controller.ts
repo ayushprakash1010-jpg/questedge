@@ -105,11 +105,12 @@ export class OffersController {
   @ApiOperation({
     summary: 'Generate AI draft for the offer body free-text section',
   })
-  draftBody(
+  async draftBody(
     @CurrentUser('orgId') orgId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: { tone?: string },
   ) {
+    await this.service.findOne(orgId, id);
     return this.ai.draftOfferBody(id, body?.tone);
   }
 
@@ -128,10 +129,11 @@ export class OffersController {
   @ApiOperation({
     summary: 'Force-poll the e-sign provider for current status',
   })
-  refresh(
+  async refresh(
     @CurrentUser('orgId') orgId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
+    await this.service.findOne(orgId, id);
     return this.esign.refreshStatus(id);
   }
 

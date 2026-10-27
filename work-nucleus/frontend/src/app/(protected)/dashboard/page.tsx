@@ -47,6 +47,8 @@ interface Overview {
   activeMandates: number;
   pendingReferrals: number;
   rewardCommitments: number;
+  rewardBreakdown?: Record<string, { count: number; total: number }>;
+  avgRewardPerHire?: number;
   recentPendingReferrals: any[];
   recentActivity?: any[];
 }
@@ -57,6 +59,7 @@ interface FunnelStage {
   passed: number;
   rejected: number;
   passThroughRate: number;
+  conversionRate?: number;
   avgDays: number;
 }
 
@@ -795,6 +798,48 @@ export default function DashboardPage() {
         />
       </div>
 
+      {/* Reward Distribution Breakdown */}
+      {overview?.rewardBreakdown && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+          <div>
+            <p className="text-[11px] text-slate-500 font-medium">Potential Pool</p>
+            <p className="text-base font-bold text-slate-800 mt-0.5">
+              ₹{Number(overview.rewardBreakdown.POTENTIAL?.total || 0).toLocaleString("en-IN")}
+            </p>
+            <p className="text-[10px] text-slate-400">
+              {overview.rewardBreakdown.POTENTIAL?.count || 0} active candidate claims
+            </p>
+          </div>
+          <div>
+            <p className="text-[11px] text-slate-500 font-medium">Pending Approval</p>
+            <p className="text-base font-bold text-amber-600 mt-0.5">
+              ₹{Number(overview.rewardBreakdown.PENDING_APPROVAL?.total || 0).toLocaleString("en-IN")}
+            </p>
+            <p className="text-[10px] text-slate-400">
+              {overview.rewardBreakdown.PENDING_APPROVAL?.count || 0} candidate offers accepted
+            </p>
+          </div>
+          <div>
+            <p className="text-[11px] text-slate-500 font-medium">Approved Rewards</p>
+            <p className="text-base font-bold text-indigo-600 mt-0.5">
+              ₹{Number(overview.rewardBreakdown.APPROVED?.total || 0).toLocaleString("en-IN")}
+            </p>
+            <p className="text-[10px] text-slate-400">
+              {overview.rewardBreakdown.APPROVED?.count || 0} awaiting escrow release
+            </p>
+          </div>
+          <div>
+            <p className="text-[11px] text-slate-500 font-medium">Avg Reward / Hire</p>
+            <p className="text-base font-bold text-emerald-600 mt-0.5">
+              ₹{Number(overview.avgRewardPerHire || 0).toLocaleString("en-IN")}
+            </p>
+            <p className="text-[10px] text-slate-400">
+              Total Paid: ₹{Number(overview.rewardBreakdown.PAID?.total || 0).toLocaleString("en-IN")}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Core Pipeline & Action Center */}
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2 flex flex-col space-y-4">
@@ -838,6 +883,23 @@ export default function DashboardPage() {
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
+
+                {/* Stage conversion velocity bar */}
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2 overflow-x-auto text-xs">
+                  {funnel.map((stage: any, i: number) => (
+                    <div key={stage.name} className="flex items-center gap-1.5 shrink-0">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-slate-400 font-medium">{stage.name}</span>
+                        <span className="font-bold text-slate-800">{stage.entered}</span>
+                      </div>
+                      {i < funnel.length - 1 && (
+                        <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded ml-1">
+                          {stage.passThroughRate ?? stage.conversionRate ?? 0}% →
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           ) : hasProgressData ? (

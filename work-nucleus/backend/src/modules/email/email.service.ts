@@ -1,6 +1,25 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Resend } from 'resend';
 
+function escapeHtml(str: unknown): string {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function sanitizeUrl(url?: string): string | null {
+  if (!url) return null;
+  // Allow relative URLs starting with / or absolute http/https URLs
+  if (url.startsWith('/') || url.startsWith('http://') || url.startsWith('https://')) {
+    return encodeURI(url);
+  }
+  return null;
+}
+
 @Injectable()
 export class EmailService {
   private resend: Resend;
@@ -35,7 +54,7 @@ export class EmailService {
       } else {
         this.logger.log(`Email sent to ${to} (ID: ${data?.id})`);
       }
-    } catch (err) {
+    } catch (err: any) {
       this.logger.error(`Exception while sending email: ${err.message}`);
     }
   }
@@ -46,14 +65,18 @@ export class EmailService {
     body: string,
     actionUrl?: string,
   ) {
+    const safeTitle = escapeHtml(title);
+    const safeBody = escapeHtml(body);
+    const safeActionUrl = sanitizeUrl(actionUrl);
+
     const html = `
-      <div style="font-family: sans-serif; max-w: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
-        <h2 style="color: #0f172a; margin-top: 0;">${title}</h2>
-        <p style="color: #475569; font-size: 16px; line-height: 1.5;">${body}</p>
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+        <h2 style="color: #0f172a; margin-top: 0;">${safeTitle}</h2>
+        <p style="color: #475569; font-size: 16px; line-height: 1.5;">${safeBody}</p>
         ${
-          actionUrl
+          safeActionUrl
             ? `<div style="margin-top: 30px;">
-                 <a href="${actionUrl}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">View Details</a>
+                 <a href="${safeActionUrl}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">View Details</a>
                </div>`
             : ''
         }

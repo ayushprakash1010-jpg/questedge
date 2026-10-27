@@ -157,19 +157,43 @@ export class ReferralsService {
       })
       .catch((e) => console.error('Email sending failed:', e));
 
-    // 8. Create Notification for Candidate (if they are registered)
+    // 8. Create Notification for Candidate (if registered)
     if (candidate.auth0Sub) {
       this.notificationsService.create({
-        userId: candidate.auth0Sub,
+        userId: candidate.id,
         orgId: mandate.orgId,
         type: 'CONSENT_REQUESTED',
         title: 'New Referral Request',
         body: `${recruiter.name} has referred you for ${mandate.title} at ${mandate.organization.name}.`,
         entityType: 'REFERRAL',
         entityId: result.id,
-        actionUrl: `/candidate/consents`,
+        actionUrl: `/candidate/referrals`,
+        toEmail: candidate.email,
       });
     }
+
+    // 9. Create in-app Notification for Company Admins
+    this.prisma.user
+      .findMany({
+        where: { orgId: mandate.orgId, role: { in: ['ADMIN', 'HR'] } },
+        select: { id: true, email: true },
+        take: 5,
+      })
+      .then((admins) => {
+        for (const admin of admins) {
+          this.notificationsService.create({
+            userId: admin.id,
+            orgId: mandate.orgId,
+            type: 'REFERRAL_SUBMITTED',
+            title: 'New Candidate Referral',
+            body: `${recruiter.name} referred ${candidate.name} for ${mandate.title}.`,
+            entityType: 'REFERRAL',
+            entityId: result.id,
+            actionUrl: `/mandates/${mandate.id}/referrals`,
+          });
+        }
+      })
+      .catch(() => null);
 
     return {
       success: true,
@@ -178,10 +202,14 @@ export class ReferralsService {
     };
   }
 
-  // Get recruiter's referrals
-  async getMyReferrals(recruiterId: string) {
+  // Get recruiter's referrals (capped with pagination defaults)
+  async getMyReferrals(recruiterId: string, limit = 50, offset = 0) {
+    const take = Math.min(Math.max(limit || 50, 1), 100);
+    const skip = Math.max(offset || 0, 0);
     return this.prisma.referral.findMany({
       where: { recruiterId },
+      take,
+      skip,
       include: {
         mandate: {
           select: {

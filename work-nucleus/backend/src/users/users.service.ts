@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -9,7 +10,7 @@ import { Auth0ManagementService } from '../auth/auth0-management.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
@@ -103,13 +104,55 @@ export class UsersService {
     return user;
   }
 
-  async update(orgId: string, userId: string, dto: UpdateUserDto) {
+  async update(
+    orgId: string,
+    userId: string,
+    dto: UpdateUserDto,
+    callerId: string,
+  ) {
+    // ── P0-02: Block self-role-edit ─────────────────────────────
+    if (dto.role && userId === callerId) {
+      throw new ForbiddenException('You cannot change your own role.');
+    }
+
     const user = await this.prisma.user.findFirst({
       where: { id: userId, orgId },
     });
 
     if (!user) {
       throw new NotFoundException('User not found');
+    }
+
+    // ── P0-02: Prevent removal of the last ADMIN ───────────────
+    if (
+      dto.role &&
+      dto.role !== Role.ADMIN &&
+      user.role === Role.ADMIN
+    ) {
+      const adminCount = await this.prisma.user.count({
+        where: { orgId, role: Role.ADMIN, isActive: true },
+      });
+      if (adminCount <= 1) {
+        throw new ForbiddenException(
+          'Cannot change the role of the last active admin. Promote another user to ADMIN first.',
+        );
+      }
+    }
+
+    // ── P0-02: Prevent deactivation of the last ADMIN ──────────
+    if (
+      dto.isActive === false &&
+      user.role === Role.ADMIN &&
+      user.isActive
+    ) {
+      const adminCount = await this.prisma.user.count({
+        where: { orgId, role: Role.ADMIN, isActive: true },
+      });
+      if (adminCount <= 1) {
+        throw new ForbiddenException(
+          'Cannot deactivate the last active admin.',
+        );
+      }
     }
 
     const updated = await this.prisma.user.update({

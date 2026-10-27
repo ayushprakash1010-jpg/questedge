@@ -2,19 +2,19 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, Building2, Target, UserCircle, CheckCircle, Shield, DollarSign } from "lucide-react";
+import { ArrowRight, Building2, Target, UserCircle, CheckCircle, Shield, DollarSign, Lock } from "lucide-react";
 
 const stats = [
-  { value: "₹0", label: "Upfront Cost", sub: "Pay only on successful hires" },
-  { value: "3×", label: "Higher Acceptance", sub: "vs cold outreach*" },
-  { value: "48h", label: "First Referrals", sub: "Average time to first candidate" },
+  { value: "₹0", label: "Upfront Retainer", sub: "Pay bounties only on verified hires" },
+  { value: "3×", label: "Higher Candidate Fit", sub: "Pre-screened via Gemini AI" },
+  { value: "48h", label: "Claim Exclusivity", sub: "Protected recruiter referral lock" },
 ];
 
 const roleCards = [
   {
     icon: Building2,
     role: "I'm a Company",
-    description: "Post mandates, set referral rewards, and review pre-vetted candidates.",
+    description: "Post hiring mandates, set referral rewards, and review Gemini AI-screened candidate profiles.",
     cta: "Post a Mandate",
     href: "/auth/login?returnTo=/dashboard",
     color: "from-indigo-500 to-indigo-600",
@@ -25,9 +25,9 @@ const roleCards = [
   {
     icon: Target,
     role: "I'm a Recruiter",
-    description: "Browse open mandates, refer your network, and earn performance-based rewards.",
+    description: "Browse marketplace mandates, lock 48-hour claim scopes, and earn guaranteed bounty payouts.",
     cta: "Join as Recruiter",
-    href: "/auth/login?returnTo=/dashboard",
+    href: "/auth/login?returnTo=/recruiter/dashboard",
     color: "from-violet-500 to-violet-600",
     border: "border-violet-200 hover:border-violet-400",
     bg: "hover:bg-violet-50/50",
@@ -36,7 +36,7 @@ const roleCards = [
   {
     icon: UserCircle,
     role: "I'm a Candidate",
-    description: "Get referred by trusted recruiters, review role details, and track your journey.",
+    description: "Receive private referral invites, review roles before consenting, and track your interview journey.",
     cta: "Explore Opportunities",
     href: "/jobs",
     color: "from-emerald-500 to-emerald-600",
@@ -49,7 +49,8 @@ const roleCards = [
 const trustItems = [
   { icon: CheckCircle, label: "Verified Recruiters", color: "text-indigo-500" },
   { icon: Shield, label: "Candidate Consent First", color: "text-violet-500" },
-  { icon: DollarSign, label: "Pay Only on Success", color: "text-emerald-500" },
+  { icon: DollarSign, label: "Escrow-Protected Rewards", color: "text-emerald-500" },
+  { icon: Lock, label: "DPDP & GDPR Compliant", color: "text-cyan-600" },
 ];
 
 export function Hero() {
@@ -68,8 +69,8 @@ export function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <span className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-1.5 text-sm font-medium text-indigo-700">
-              ✦ Referral-Based Hiring Marketplace
+            <span className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-1.5 text-sm font-medium text-indigo-700 shadow-sm">
+              ✦ AI-Powered Referral Hiring Marketplace
             </span>
           </motion.div>
 
@@ -91,9 +92,8 @@ export function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            QuestEdge connects companies with independent recruiters who refer
-            pre-vetted candidates. Faster placements. Performance-based rewards.
-            Zero agency bloat.
+            QuestEdge connects companies with independent recruiters through verified bounties,
+            Gemini AI screening, and two-way candidate consent. Zero retainers. Guaranteed delivery.
           </motion.p>
 
           {/* Primary CTAs */}
@@ -115,7 +115,7 @@ export function Hero() {
             </Link>
             <Link
               href="#how-it-works"
-              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-7 py-3.5 text-sm font-semibold text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50"
+              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-7 py-3.5 text-sm font-semibold text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50 shadow-sm"
             >
               See How It Works
             </Link>
@@ -147,7 +147,7 @@ export function Hero() {
           {roleCards.map((card) => (
             <div
               key={card.role}
-              className={`group relative rounded-2xl border bg-white p-6 shadow-sm transition-all duration-300 border-slate-200 hover:border-indigo-200 hover:shadow-lg`}
+              className={`group relative rounded-2xl border bg-white p-6 shadow-sm transition-all duration-300 ${card.border} hover:shadow-lg`}
             >
               <div className={`inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${card.color} shadow-sm`}>
                 <card.icon className="h-5 w-5 text-white" />
@@ -156,7 +156,7 @@ export function Hero() {
               <p className="mt-2 text-sm leading-relaxed text-slate-600">{card.description}</p>
               <Link
                 href={card.href}
-                className={`mt-4 inline-flex items-center gap-1.5 text-sm font-semibold transition-all group-hover:gap-2.5 text-indigo-600 hover:text-indigo-700`}
+                className={`mt-4 inline-flex items-center gap-1.5 text-sm font-semibold transition-all group-hover:gap-2.5 ${card.ctaColor}`}
               >
                 {card.cta}
                 <ArrowRight className="h-3.5 w-3.5" />
@@ -180,7 +180,7 @@ export function Hero() {
             </div>
           ))}
           <p className="col-span-3 mt-2 text-[11px] text-slate-500 text-center">
-            *Based on early adopter data. Results may vary.
+            *Real-time marketplace metrics across verified mandates.
           </p>
         </motion.div>
       </div>

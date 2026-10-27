@@ -10,6 +10,7 @@ import { Mandate, MandateStatus, Prisma } from '@prisma/client';
 import { CreateMandateDto } from './dto/create-mandate.dto';
 import { UpdateMandateDto } from './dto/update-mandate.dto';
 import { FilterMandateDto } from './dto/filter-mandate.dto';
+import { calculateReferralReward } from '../rewards/rewards.service';
 
 // ── Shared response shapes ───────────────────────────────────────
 
@@ -166,6 +167,26 @@ export class MandatesService {
   // ── Company: CRUD ──────────────────────────────────────────────
 
   async create(orgId: string, dto: CreateMandateDto): Promise<Mandate> {
+    if (
+      dto.compensationMin !== undefined &&
+      dto.compensationMax !== undefined &&
+      dto.compensationMin > dto.compensationMax
+    ) {
+      throw new BadRequestException(
+        'Minimum compensation cannot exceed maximum compensation.',
+      );
+    }
+
+    if (
+      dto.referralRewardType === 'PERCENTAGE' &&
+      dto.referralRewardAmount !== undefined &&
+      (dto.referralRewardAmount < 0 || dto.referralRewardAmount > 100)
+    ) {
+      throw new BadRequestException(
+        'Percentage referral reward must be between 0 and 100%.',
+      );
+    }
+
     return this.prisma.mandate.create({
       data: {
         orgId,
@@ -215,6 +236,41 @@ export class MandatesService {
 
     if (mandate.status === 'CLOSED' || mandate.status === 'FILLED') {
       throw new ForbiddenException('Cannot edit a closed or filled mandate.');
+    }
+
+    const effectiveMin =
+      dto.compensationMin !== undefined
+        ? dto.compensationMin
+        : Number(mandate.compensationMin) || undefined;
+    const effectiveMax =
+      dto.compensationMax !== undefined
+        ? dto.compensationMax
+        : Number(mandate.compensationMax) || undefined;
+
+    if (
+      effectiveMin !== undefined &&
+      effectiveMax !== undefined &&
+      effectiveMin > effectiveMax
+    ) {
+      throw new BadRequestException(
+        'Minimum compensation cannot exceed maximum compensation.',
+      );
+    }
+
+    const effectiveType = dto.referralRewardType ?? mandate.referralRewardType;
+    const effectiveAmount =
+      dto.referralRewardAmount !== undefined
+        ? dto.referralRewardAmount
+        : Number(mandate.referralRewardAmount) || undefined;
+
+    if (
+      effectiveType === 'PERCENTAGE' &&
+      effectiveAmount !== undefined &&
+      (effectiveAmount < 0 || effectiveAmount > 100)
+    ) {
+      throw new BadRequestException(
+        'Percentage referral reward must be between 0 and 100%.',
+      );
     }
 
     return this.prisma.mandate.update({
@@ -701,6 +757,14 @@ export class MandatesService {
             expiresAt: true,
           },
         },
+        claimScope: {
+          select: {
+            id: true,
+            status: true,
+            ownershipStartsAt: true,
+            ownershipExpiresAt: true,
+          },
+        },
         reward: {
           select: {
             id: true,
@@ -724,8 +788,20 @@ export class MandatesService {
     // Verify the mandate belongs to this org
     await this.findOwnMandate(orgId, mandateId);
 
-    const referral = await this.prisma.referral.findFirst({
+    const referral: any = await this.prisma.referral.findFirst({
       where: { id: referralId, mandateId },
+      include: {
+        mandate: true,
+        candidateProfile: {
+          include: {
+            applications: {
+              where: { status: 'SELECTED' },
+              include: { offer: { include: { compensation: true } } },
+              take: 1,
+            },
+          },
+        },
+      },
     });
 
     if (!referral) {
@@ -749,20 +825,22 @@ export class MandatesService {
       );
     }
 
-    // Temporarily bypass current status check to ensure hiring works for testing
-    // if (
-    //   referral.status !== 'ACCEPTED' &&
-    //   referral.status !== 'CANDIDATE_ACCEPTED' &&
-    //   referral.status !== 'ACTIVATED' &&
-    //   referral.status !== 'UNDER_REVIEW' &&
-    //   referral.status !== 'SHORTLISTED' &&
-    //   referral.status !== 'INTERVIEW' &&
-    //   referral.status !== 'SELECTED'
-    // ) {
-    //   throw new BadRequestException(
-    //     `Cannot update referral status from '${referral.status}'. Candidate must have accepted the referral first.`,
-    //   );
-    // }
+    // F-11: Enforce candidate consent before company can progress referral.
+    // Progressing an unconsented, declined, or expired referral is strictly prohibited.
+    const eligibleCurrentStatuses = [
+      'CANDIDATE_ACCEPTED',
+      'ACTIVATED',
+      'UNDER_REVIEW',
+      'SHORTLISTED',
+      'INTERVIEW',
+      'SELECTED',
+    ];
+
+    if (!eligibleCurrentStatuses.includes(referral.status)) {
+      throw new BadRequestException(
+        `Cannot update referral status from '${referral.status}'. Candidate must have accepted the referral first.`,
+      );
+    }
 
     const updateData: any = {
       status: newStatus as any,
@@ -771,6 +849,19 @@ export class MandatesService {
     };
 
     if (newStatus === 'HIRED' || newStatus === 'SELECTED') {
+      let actualSalary: number | null = null;
+      const appWithOffer = referral.candidateProfile?.applications?.[0];
+      if (appWithOffer?.offer?.compensation?.fixedAnnual) {
+        actualSalary =
+          Number(appWithOffer.offer.compensation.fixedAnnual) +
+          Number(appWithOffer.offer.compensation.variableAnnual || 0);
+      }
+
+      const calculatedReward = calculateReferralReward(
+        referral.mandate,
+        actualSalary,
+      );
+
       // Update both referral and reward tracking
       const [updatedReferral] = await this.prisma.$transaction([
         this.prisma.referral.update({
@@ -786,6 +877,7 @@ export class MandatesService {
           where: { referralId, status: 'POTENTIAL' },
           data: {
             status: 'PENDING_APPROVAL',
+            rewardAmount: calculatedReward,
             eligibleAt: new Date(),
             ...(newStatus === 'HIRED' ? { hiredAt: new Date() } : {}),
           },

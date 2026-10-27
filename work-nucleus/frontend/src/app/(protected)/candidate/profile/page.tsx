@@ -1,19 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getCandidateProfile, upsertCandidateProfile, parseResumeText } from "@/lib/marketplace-api";
+import { getCandidateProfile, upsertCandidateProfile, parseResumeText, exportCandidateData, eraseCandidateData } from "@/lib/marketplace-api";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   Loader2, Save, CheckCircle2, User, Briefcase, GraduationCap,
   MapPin, ChevronRight, ChevronLeft, Plus, X, ArrowRight, Sparkles,
-  DollarSign, Clock, Target, UploadCloud, FileText
+  DollarSign, Clock, Target, UploadCloud, FileText, Download, Trash2, ShieldCheck
 } from "lucide-react";
 
 // ── PDF Helper ────────────────────────────────────────────────────
 async function extractTextFromPDF(file: File): Promise<string> {
   const pdfjsLib = await import("pdfjs-dist");
-  pdfjsLib.GlobalWorkerOptions.workerSrc = "//unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   let text = "";
@@ -162,6 +162,51 @@ export default function CandidateProfilePage() {
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const [isUploadingResume, setIsUploadingResume] = useState(false);
   const [resumeUploadStatus, setResumeUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [isExporting, setIsExporting] = useState(false);
+  const [isErasing, setIsErasing] = useState(false);
+
+  const handleExportData = async () => {
+    try {
+      setIsExporting(true);
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+      const data = await exportCandidateData(accessToken);
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `questedge-candidate-data-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Personal data exported successfully.");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to export data");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleEraseData = async () => {
+    const confirmed = window.confirm(
+      "Are you sure you want to erase your personal data? This will scrub your name, phone, email, resume, and profile links. This action cannot be undone."
+    );
+    if (!confirmed) return;
+
+    try {
+      setIsErasing(true);
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+      await eraseCandidateData(accessToken);
+      toast.success("Personal data has been securely scrubbed.");
+      router.push("/auth/logout");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to erase data");
+    } finally {
+      setIsErasing(false);
+    }
+  };
 
   const handleUnifiedResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -683,6 +728,49 @@ export default function CandidateProfilePage() {
             >
               Go to dashboard without saving <ArrowRight className="h-3 w-3" />
             </button>
+          </div>
+        )}
+
+        {/* P2-12 / P3: GDPR & DPDP Privacy Management */}
+        {!isNew && (
+          <div className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-emerald-600" />
+              <h3 className="text-base font-semibold text-slate-900">Privacy & Data-Subject Rights</h3>
+            </div>
+            <p className="text-xs text-slate-500">
+              Manage your personal data under the General Data Protection Regulation (GDPR) and the Digital Personal Data Protection Act 2023 (DPDP).
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 border-t border-slate-100">
+              <div className="space-y-0.5 text-left w-full sm:w-auto">
+                <p className="text-sm font-medium text-slate-700">Data Portability Export</p>
+                <p className="text-xs text-slate-400">Download a complete JSON record of your profile, referrals, and applications.</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleExportData}
+                disabled={isExporting}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-medium transition-colors"
+              >
+                {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4 text-slate-500" />}
+                Export Data
+              </button>
+            </div>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 border-t border-slate-100">
+              <div className="space-y-0.5 text-left w-full sm:w-auto">
+                <p className="text-sm font-medium text-red-600">Right to Erasure</p>
+                <p className="text-xs text-slate-400">Cryptographically anonymize and scrub your personal information and bookmarks.</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleEraseData}
+                disabled={isErasing}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-xs font-medium transition-colors"
+              >
+                {isErasing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-red-500" />}
+                Erase Account Data
+              </button>
+            </div>
           </div>
         )}
       </div>

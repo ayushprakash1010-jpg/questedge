@@ -9,13 +9,13 @@ const companyPlans = [
     name: "Free",
     price: "₹0",
     period: "",
-    description: "Get started with referral hiring at zero upfront cost.",
+    description: "Get started with referral hiring at zero upfront retainer.",
     features: [
       "Up to 2 active mandates",
       "Unlimited recruiters can apply",
-      "Basic referral inbox",
-      "Candidate consent flow",
-      "Email support",
+      "Referral inbox with 48h SLA nudges",
+      "Two-way candidate consent flow",
+      "Standard email support",
     ],
     cta: "Post Your First Mandate",
     popular: false,
@@ -25,13 +25,14 @@ const companyPlans = [
     name: "Growth",
     price: "₹999",
     period: "/mo",
-    description: "For teams actively scaling their referral hiring engine.",
+    description: "For scaling teams that need AI candidate screening and full funnel metrics.",
     features: [
-      "Unlimited mandates",
-      "AI candidate screening & scoring",
-      "Full hiring analytics dashboard",
-      "Reward tracking & management",
-      "Priority support",
+      "Unlimited active mandates",
+      "Gemini AI candidate fit screening",
+      "5-Stage hiring funnel analytics",
+      "Reward distribution breakdown",
+      "Candidate BGV verification pre-check",
+      "Priority customer support",
     ],
     cta: "Start Free Trial",
     popular: true,
@@ -41,14 +42,14 @@ const companyPlans = [
     name: "Enterprise",
     price: "Custom",
     period: "",
-    description: "For large organizations with compliance, scale, and integration needs.",
+    description: "For large organizations needing custom escrow, DPDP compliance, and dedicated support.",
     features: [
       "Everything in Growth",
-      "Dedicated CSM",
-      "Custom mandate workflows",
-      "Audit logging & compliance",
-      "SSO & RBAC",
-      "API access",
+      "Dedicated talent partner manager",
+      "Custom compensation & mandate approvals",
+      "Audit trail logging & DPDP compliance",
+      "Multi-tenant RBAC & SSO integration",
+      "REST API & webhook data export",
     ],
     cta: "Talk to Sales",
     popular: false,
@@ -58,35 +59,37 @@ const companyPlans = [
 
 const recruiterPlans = [
   {
-    name: "Free",
+    name: "Independent Recruiter",
     price: "₹0",
     period: "",
-    description: "Start earning from your network immediately.",
+    description: "Free to join. Start monetizing your network immediately.",
     features: [
-      "Browse all open mandates",
-      "Up to 5 referrals/month",
-      "Earnings tracker",
-      "Email notifications",
+      "Browse all verified company mandates",
+      "48-hour exclusive claim scope locks",
+      "Real-time bounty wallet tracker",
+      "Candidate consent email verification",
+      "Direct payout to registered bank account",
     ],
     cta: "Join as Recruiter",
     popular: false,
-    href: "/auth/login?returnTo=/dashboard",
+    href: "/auth/login?returnTo=/recruiter/dashboard",
   },
   {
-    name: "Pro",
+    name: "Talent Partner Pro",
     price: "₹299",
     period: "/mo",
-    description: "For power recruiters who refer at scale.",
+    description: "For agency recruiters and high-volume talent partners.",
     features: [
-      "Unlimited referrals",
-      "AI candidate match suggestions",
-      "Priority mandate access",
-      "Advanced earnings analytics",
-      "Priority support",
+      "Unlimited simultaneous claim scopes",
+      "Gemini AI network candidate matching",
+      "Early marketplace mandate access",
+      "Advanced placement velocity analytics",
+      "Verified Recruiter badge on profile",
+      "Fast-track payout processing",
     ],
-    cta: "Go Pro",
+    cta: "Activate Partner Pro",
     popular: true,
-    href: "/auth/login?returnTo=/dashboard",
+    href: "/auth/login?returnTo=/recruiter/dashboard",
   },
 ];
 
@@ -104,7 +107,7 @@ function PlanCard({ plan, i }: { plan: typeof companyPlans[0]; i: number }) {
       }`}
     >
       {plan.popular && (
-        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-500 px-4 py-1 text-xs font-semibold text-white">
+        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-500 px-4 py-1 text-xs font-semibold text-white shadow-sm">
           Most Popular
         </div>
       )}
@@ -142,27 +145,29 @@ export function Pricing() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <span className="text-sm font-semibold uppercase tracking-wider text-indigo-600">
-            Pricing
+            Transparent Pricing
           </span>
           <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Pay only for results
+            Pay only for verified hiring outcomes
           </h2>
           <p className="mt-4 text-lg text-slate-600">
-            No upfront fees. No agency retainers. Only pay when a referred candidate joins.
+            No agency retainers. Companies set their own bounty pools and pay only upon tenure completion.
           </p>
         </div>
 
         {/* No hire no fee banner */}
-        <div className="mt-10 mx-auto max-w-2xl rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 px-8 py-5 text-center text-white shadow-lg">
-          <span className="text-lg font-bold">💡 No Hire, No Fee</span>
-          <span className="ml-3 text-sm text-indigo-100">Companies pay the referral reward only after a successful placement + tenure completion.</span>
+        <div className="mt-10 mx-auto max-w-3xl rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 px-8 py-5 text-center text-white shadow-lg">
+          <span className="text-lg font-bold">💡 Performance-Backed Escrow</span>
+          <p className="mt-1 text-sm text-indigo-100">
+            Rewards are tracked across Potential → Eligible → Pending Approval → Approved stages and paid out securely upon successful tenure completion.
+          </p>
         </div>
 
         {/* Company Plans */}
         <div className="mt-16">
           <div className="mb-6 flex items-center gap-3">
             <span className="rounded-full bg-indigo-100 px-4 py-1.5 text-sm font-semibold text-indigo-700">For Companies</span>
-            <p className="text-sm text-slate-500">Monthly subscription for mandate management</p>
+            <p className="text-sm text-slate-500">Workspace plans for posting mandates and tracking candidate pipelines</p>
           </div>
           <div className="grid gap-8 lg:grid-cols-3">
             {companyPlans.map((plan, i) => <PlanCard key={plan.name} plan={plan} i={i} />)}
@@ -173,7 +178,7 @@ export function Pricing() {
         <div className="mt-16">
           <div className="mb-6 flex items-center gap-3">
             <span className="rounded-full bg-violet-100 px-4 py-1.5 text-sm font-semibold text-violet-700">For Recruiters</span>
-            <p className="text-sm text-slate-500">Plus earn referral rewards on every successful placement</p>
+            <p className="text-sm text-slate-500">Free to join with performance rewards on every successful candidate placement</p>
           </div>
           <div className="grid gap-8 lg:grid-cols-2 max-w-2xl">
             {recruiterPlans.map((plan, i) => <PlanCard key={plan.name} plan={plan} i={i} />)}
@@ -183,5 +188,3 @@ export function Pricing() {
     </section>
   );
 }
-
-

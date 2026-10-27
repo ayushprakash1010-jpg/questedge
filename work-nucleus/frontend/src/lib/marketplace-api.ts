@@ -248,6 +248,16 @@ export async function respondToConsent(token: string, accepted: boolean): Promis
   });
 }
 
+// ── Privacy & Data-Subject Rights (GDPR / DPDP) ───────────────────
+
+export async function exportCandidateData(token: string): Promise<any> {
+  return apiClient("/api/v1/candidate/privacy/export", { token });
+}
+
+export async function eraseCandidateData(token: string): Promise<{ success: boolean; message: string; erasedAt: string }> {
+  return apiClient("/api/v1/candidate/privacy/erasure", { method: "POST", token });
+}
+
 // ── Company: Referral Inbox APIs ─────────────────────────────────
 
 export async function getMandateReferrals(token: string, mandateId: string): Promise<any[]> {
@@ -297,6 +307,114 @@ export async function approveReward(token: string, rewardId: string): Promise<an
   return apiClient(`/api/v1/rewards/company/${rewardId}/approve`, { method: "POST", token });
 }
 
+// ── P4-01: Verification & Trust Profile APIs ─────────────────────
+
+export interface TrustScoreBreakdown {
+  placements: { score: number; weight: number; hiredCount: number };
+  tenure: { score: number; weight: number; months: number };
+  consentRate: { score: number; weight: number; rate: number };
+  verified: { score: number; weight: number; isVerified: boolean };
+  profileCompleteness: { score: number; weight: number; pct: number };
+}
+
+export interface TrustProfile {
+  id: string;
+  name: string;
+  headline: string | null;
+  avatarUrl: string | null;
+  specializations: string[];
+  experienceYears: number | null;
+  linkedinUrl: string | null;
+  isVerified: boolean;
+  verifiedAt: string | null;
+  trustScore: number;
+  trustTier: 'UNVERIFIED' | 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM';
+  trustBreakdown: TrustScoreBreakdown;
+  reputationTier: string;
+  hiredCount: number;
+}
+
+export async function submitVerificationRequest(
+  token: string,
+  payload: {
+    statement: string;
+    linkedinUrl?: string;
+    companyName?: string;
+    certifications?: string[];
+    evidenceUrls?: string[];
+  },
+): Promise<any> {
+  return apiClient('/api/v1/recruiter/verification-request', {
+    method: 'POST',
+    token,
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getMyTrustProfile(token: string): Promise<TrustProfile> {
+  return apiClient('/api/v1/recruiter/trust-profile', { token });
+}
+
+export async function getRecruiterTrustProfile(
+  token: string,
+  recruiterId: string,
+): Promise<TrustProfile> {
+  return apiClient(`/api/v1/recruiter/${recruiterId}/trust-profile`, { token });
+}
+
+// ── P4-05: Reward Disputes & Immutable Audit Trail APIs ──────────
+
+export interface DisputePayload {
+  reason: 'OWNERSHIP_CONFLICT' | 'CLAWBACK_EARLY_EXIT' | 'SALARY_MISMATCH' | 'FRAUDULENT_SUBMISSION' | 'OTHER';
+  details: string;
+  evidenceUrls?: string[];
+}
+
+export interface DisputeResolutionPayload {
+  decision: 'UPHELD' | 'REJECTED' | 'SETTLED';
+  resolutionNotes: string;
+  settlementAmount?: number;
+}
+
+export async function raiseRewardDispute(
+  token: string,
+  rewardId: string,
+  payload: DisputePayload,
+): Promise<any> {
+  return apiClient(`/api/v1/rewards/${rewardId}/dispute`, {
+    method: 'POST',
+    token,
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function resolveRewardDispute(
+  token: string,
+  rewardId: string,
+  payload: DisputeResolutionPayload,
+): Promise<any> {
+  return apiClient(`/api/v1/rewards/${rewardId}/resolve-dispute`, {
+    method: 'POST',
+    token,
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getRewardAuditTrail(
+  token: string,
+  rewardId: string,
+): Promise<any> {
+  return apiClient(`/api/v1/rewards/${rewardId}/audit-trail`, { token });
+}
+
+export async function getDisputedRewards(
+  token: string,
+  limit = 20,
+): Promise<any> {
+  return apiClient(`/api/v1/rewards/disputes?limit=${limit}`, { token });
+}
+
+
 // ── Notification APIs ────────────────────────────────────────────
 
 export async function getNotifications(token: string): Promise<any> {
@@ -314,3 +432,110 @@ export async function markNotificationsAsRead(token: string, ids: string[]): Pro
     body: JSON.stringify({ ids }),
   });
 }
+
+// ── AI Matching Types & APIs (P5-03) ─────────────────────────────
+
+export interface MatchScoreBreakdown {
+  skillsFit: number;
+  experienceFit: number;
+  roleDomainFit: number;
+  preferencesFit: number;
+}
+
+export type MatchVerdict = 'STRONG_MATCH' | 'GOOD_MATCH' | 'POTENTIAL_MATCH' | 'LOW_FIT';
+
+export interface MatchEvaluationResult {
+  matchScore: number;
+  verdict: MatchVerdict;
+  scoreBreakdown: MatchScoreBreakdown;
+  matchedSkills: string[];
+  missingSkills: string[];
+  strengths: string[];
+  gaps: string[];
+  aiSummary: string;
+  evaluatedAt: string;
+  isAiGenerated: boolean;
+}
+
+export interface MandateMatchItem {
+  mandate: Mandate;
+  match: MatchEvaluationResult;
+}
+
+export interface CandidateMatchItem {
+  candidate: {
+    id: string;
+    name: string;
+    email: string;
+    headline: string | null;
+    currentDesignation: string | null;
+    currentCompany: string | null;
+    experienceYears: number | null;
+    skills: string[];
+    currentLocation: string | null;
+    workModel: string | null;
+    noticePeriodDays: number | null;
+  };
+  match: MatchEvaluationResult;
+}
+
+export interface PreflightCheckPayload {
+  mandateId: string;
+  candidateProfileId?: string;
+  candidateName?: string;
+  candidateEmail?: string;
+  headline?: string;
+  skills?: string[];
+  experienceYears?: number;
+  expectedCtc?: number;
+  noticePeriodDays?: number;
+  currentLocation?: string;
+  workModel?: string;
+}
+
+export async function getCandidateMandateMatch(
+  token: string,
+  mandateId: string,
+): Promise<MatchEvaluationResult> {
+  return apiClient(`/api/v1/ai-matching/candidate/mandate/${mandateId}`, { token });
+}
+
+export async function getCandidateRecommendations(
+  token: string,
+  limit = 10,
+): Promise<MandateMatchItem[]> {
+  return apiClient(`/api/v1/ai-matching/candidate/recommendations?limit=${limit}`, { token });
+}
+
+export async function getRecruiterTalentPoolMatches(
+  token: string,
+  mandateId: string,
+  limit = 10,
+): Promise<CandidateMatchItem[]> {
+  return apiClient(
+    `/api/v1/ai-matching/recruiter/mandate/${mandateId}/talent-pool?limit=${limit}`,
+    { token },
+  );
+}
+
+export async function runPreflightMatchCheck(
+  token: string,
+  payload: PreflightCheckPayload,
+): Promise<MatchEvaluationResult> {
+  return apiClient('/api/v1/ai-matching/preflight-check', {
+    method: 'POST',
+    token,
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function syncReferralMatch(
+  token: string,
+  referralId: string,
+): Promise<any> {
+  return apiClient(`/api/v1/ai-matching/referral/${referralId}/sync`, {
+    method: 'POST',
+    token,
+  });
+}
+

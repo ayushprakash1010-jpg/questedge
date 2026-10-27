@@ -105,28 +105,27 @@ export class JobDescriptionsService {
               role: 'user',
               parts: [
                 {
-                  text: `Generate a detailed, professional Job Description. Return exactly a JSON object with a single "content" field containing HTML. The HTML should use <h1>, <h2>, <ul>, <li>, and <p> tags. Use this context: ${JSON.stringify(aiPayload)}`,
+                  text: `Generate a structured Job Description JSON based on this context: ${JSON.stringify(aiPayload)}. Output JSON with keys: "content", "fitmentMapping", "evaluationParameters".`,
                 },
               ],
             },
           ],
-          config: { responseMimeType: 'application/json', temperature: 0.7 },
+          config: { responseMimeType: 'application/json', temperature: 0.3 },
         });
-        const rawResponse = response.text || '{}';
         aiResponse = JSON.parse(
-          rawResponse
+          (response.text || '{}')
             .replace(/```json/g, '')
             .replace(/```/g, '')
             .trim(),
         );
       }
-    } catch (error) {
-      if (error instanceof BadRequestException) throw error;
-      this.logger.error(`AI service call failed: ${error}`);
-      throw new BadRequestException('AI service is unavailable');
+    } catch (err: any) {
+      this.logger.error(`AI generation failed: ${err.message}`);
+      aiResponse = {
+        content: `<h1>${plan.title}</h1><p>Department: ${plan.department}</p><p>Role description generation failed. Please edit manually.</p>`,
+      };
     }
 
-    // Save as new JD version
     const jd = await this.prisma.jobDescription.create({
       data: {
         hiringPlanId,
@@ -148,7 +147,14 @@ export class JobDescriptionsService {
     return jd;
   }
 
-  async findLatest(hiringPlanId: string) {
+  async findLatest(hiringPlanId: string, orgId?: string) {
+    if (orgId) {
+      const plan = await this.prisma.hiringPlan.findFirst({
+        where: { id: hiringPlanId, orgId },
+      });
+      if (!plan) throw new NotFoundException('Hiring plan not found');
+    }
+
     // Prefer approved, otherwise latest by version
     const approved = await this.prisma.jobDescription.findFirst({
       where: { hiringPlanId, status: JdStatus.APPROVED },
@@ -173,9 +179,12 @@ export class JobDescriptionsService {
     return latest;
   }
 
-  async findOne(id: string) {
-    const jd = await this.prisma.jobDescription.findUnique({
-      where: { id },
+  async findOne(id: string, orgId?: string) {
+    const jd = await this.prisma.jobDescription.findFirst({
+      where: {
+        id,
+        ...(orgId ? { hiringPlan: { orgId } } : {}),
+      },
       include: {
         createdBy: { select: { id: true, name: true } },
         approvedBy: { select: { id: true, name: true } },
@@ -185,8 +194,8 @@ export class JobDescriptionsService {
     return jd;
   }
 
-  async update(id: string, dto: UpdateJdDto) {
-    const jd = await this.findOne(id);
+  async update(id: string, dto: UpdateJdDto, orgId?: string) {
+    const jd = await this.findOne(id, orgId);
 
     if (jd.status === JdStatus.APPROVED || jd.status === JdStatus.PUBLISHED) {
       throw new BadRequestException(
@@ -211,8 +220,8 @@ export class JobDescriptionsService {
     });
   }
 
-  async approve(id: string, userId: string) {
-    const jd = await this.findOne(id);
+  async approve(id: string, userId: string, orgId?: string) {
+    const jd = await this.findOne(id, orgId);
 
     if (
       jd.status !== JdStatus.DRAFT &&
@@ -237,7 +246,14 @@ export class JobDescriptionsService {
     });
   }
 
-  async listVersions(hiringPlanId: string) {
+  async listVersions(hiringPlanId: string, orgId?: string) {
+    if (orgId) {
+      const plan = await this.prisma.hiringPlan.findFirst({
+        where: { id: hiringPlanId, orgId },
+      });
+      if (!plan) throw new NotFoundException('Hiring plan not found');
+    }
+
     return this.prisma.jobDescription.findMany({
       where: { hiringPlanId },
       orderBy: { version: 'desc' },

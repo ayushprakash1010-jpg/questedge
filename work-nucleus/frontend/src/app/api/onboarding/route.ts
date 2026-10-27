@@ -23,13 +23,46 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const apiUrl = getApiUrl();
-    const payload = {
-      ...body,
-      email: session.user.email,
-    };
-    console.log("[Onboarding API] Sending to backend:", apiUrl, "with payload:", payload);
+    const role = body.role || (body.orgName ? "company" : undefined);
 
-    const res = await fetch(`${apiUrl}/api/v1/auth/provision`, {
+    let targetEndpoint = `${apiUrl}/api/v1/auth/provision`;
+    let payload: any = {};
+
+    if (role === "recruiter") {
+      targetEndpoint = `${apiUrl}/api/v1/recruiter/profile`;
+      payload = {
+        name: body.name || session.user.name || "Recruiter",
+        phone: body.phone || undefined,
+        headline: body.headline || undefined,
+        specializations: body.specializations || [],
+        experienceYears: body.experienceYears ? Number(body.experienceYears) : undefined,
+        bio: body.bio || undefined,
+        linkedinUrl: body.linkedinUrl || undefined,
+      };
+    } else if (role === "candidate") {
+      targetEndpoint = `${apiUrl}/api/v1/candidate/profile`;
+      payload = {
+        name: body.name || session.user.name || "Candidate",
+        headline: body.headline || undefined,
+        currentDesignation: body.currentDesignation || undefined,
+        experienceYears: body.experienceYears ? Number(body.experienceYears) : undefined,
+        skills: body.skills || [],
+        workModel: body.workModel || undefined,
+        fallbackEmail: session.user.email,
+      };
+    } else {
+      // Company provisioning
+      payload = {
+        orgName: body.orgName,
+        industry: body.industry,
+        name: body.name || session.user.name,
+        email: session.user.email,
+      };
+    }
+
+    console.log("[Onboarding API] Sending to backend:", targetEndpoint, "for role:", role);
+
+    const res = await fetch(targetEndpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -41,8 +74,6 @@ export async function POST(req: NextRequest) {
     console.log("[Onboarding API] Backend responded with status:", res.status);
     
     const text = await res.text();
-    console.log("[Onboarding API] Backend response text:", text);
-
     let data;
     try {
       data = JSON.parse(text);
@@ -57,11 +88,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json({ success: true, role, data });
   } catch (err: any) {
     console.error("[Onboarding API] Catch-all error:", err);
     return NextResponse.json(
-      { error: "Failed to provision organization: " + err.message },
+      { error: "Failed to provision role: " + err.message },
       { status: 500 }
     );
   }

@@ -34,6 +34,7 @@ import {
 import { FeedbackDisplay } from "./feedback-display";
 import { FeedbackForm } from "./feedback-form";
 import { DecisionModal } from "./decision-modal";
+import { useFocusTrap } from "@/hooks/use-focus-trap";
 
 // Candidate detail surface — design-system-v2/ui-kit/04-Candidate-Detail.html.
 // Rendered as a wide right-edge drawer (max-w-7xl) so the two-column layout
@@ -399,6 +400,7 @@ export function CandidateSheet({
   const [stages, setStages] = useState<StageDef[]>([]);
   const [showDecisionModal, setShowDecisionModal] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
+  const drawerRef = useFocusTrap<HTMLDivElement>({ isOpen: true, onClose });
   const [savingNote, setSavingNote] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [questionsData, setQuestionsData] = useState<InterviewQuestionsData | null>(null);
@@ -550,10 +552,18 @@ export function CandidateSheet({
       <div
         className="flex-1 bg-slate-900/40 backdrop-blur-sm"
         onClick={onClose}
+        aria-hidden="true"
       />
 
       {/* Sheet */}
-      <div className="flex h-full w-full max-w-7xl flex-col overflow-hidden border-l border-slate-200 bg-slate-50 shadow-2xl">
+      <div
+        ref={drawerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={app ? `Candidate evaluation: ${app.candidate.name}` : "Candidate evaluation drawer"}
+        tabIndex={-1}
+        className="flex h-full w-full max-w-7xl flex-col overflow-hidden border-l border-slate-200 bg-slate-50 shadow-2xl outline-none"
+      >
         {loading || !app ? (
           <div className="flex h-full items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
@@ -575,8 +585,8 @@ export function CandidateSheet({
               </nav>
               <button
                 onClick={onClose}
-                aria-label="Close"
-                className="rounded-md p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+                aria-label="Close candidate evaluation drawer"
+                className="rounded-md p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -1312,6 +1322,40 @@ function PipelineStageList({
 
 function DocumentsSection({ app }: { app: ApplicationDetail }) {
   const resumeUrl = app.candidate.resumeUrl ?? null;
+  const [opening, setOpening] = useState(false);
+
+  const handleOpenResume = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!resumeUrl) return;
+    if (resumeUrl.startsWith("http://") || resumeUrl.startsWith("https://")) {
+      window.open(resumeUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    try {
+      setOpening(true);
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+      const API_URL =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+      const res = await fetch(
+        `${API_URL}/api/v1/candidate/profile/${app.candidate.id}/resume`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          window.open(data.url, "_blank", "noopener,noreferrer");
+        }
+      }
+    } catch (err) {
+      console.error("Failed to get presigned resume URL:", err);
+    } finally {
+      setOpening(false);
+    }
+  };
 
   return (
     <div className="border-b border-slate-200 px-5 py-4">
@@ -1320,18 +1364,18 @@ function DocumentsSection({ app }: { app: ApplicationDetail }) {
       </p>
       <div className="space-y-1.5">
         {resumeUrl ? (
-          <a
-            href={resumeUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 hover:border-indigo-200 hover:bg-white"
+          <button
+            type="button"
+            onClick={handleOpenResume}
+            disabled={opening}
+            className="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left hover:border-indigo-200 hover:bg-white disabled:opacity-60 transition-colors"
           >
             <FileText className="h-4 w-4 shrink-0 text-indigo-600" />
             <span className="flex-1 truncate text-xs font-medium text-slate-700">
               {app.candidate.name.replace(/\s+/g, "_")}_CV
             </span>
             <ExternalLink className="h-3 w-3 text-slate-400" />
-          </a>
+          </button>
         ) : (
           <p className="rounded-lg border border-dashed border-slate-200 px-3 py-3 text-center text-xs text-slate-400">
             No documents uploaded

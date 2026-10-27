@@ -6,8 +6,14 @@ export async function GET() {
     const { token } = await auth0.getAccessToken();
     return NextResponse.json({ accessToken: token });
   } catch (err: any) {
-    // If we're not logged in, or token doesn't exist, return a fallback mock token for development
-    // This allows the frontend to continue working in local dev even without strict Auth0 enforcement
+    // In production, unauthenticated requests must return 401 Unauthorized (P3-01 / P1-06)
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json(
+        { error: "Unauthorized", message: "User is not authenticated" },
+        { status: 401 },
+      );
+    }
+    // Local dev fallback allows testing without live Auth0 credentials
     return NextResponse.json({ accessToken: "mock-token-for-dev" });
   }
 }
