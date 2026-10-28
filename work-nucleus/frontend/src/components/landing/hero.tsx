@@ -103,7 +103,7 @@ export function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
           >
-            <Link
+            <a
               href="/auth/login?returnTo=/dashboard"
               className="group spring-lift flex items-center gap-2 rounded-xl bg-indigo-600 px-7 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-500/30 relative"
             >
@@ -112,7 +112,7 @@ export function Hero() {
                 Post a Mandate
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </span>
-            </Link>
+            </a>
             <Link
               href="#how-it-works"
               className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-7 py-3.5 text-sm font-semibold text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50 shadow-sm"
@@ -154,13 +154,23 @@ export function Hero() {
               </div>
               <h3 className="mt-4 text-base font-bold text-slate-900">{card.role}</h3>
               <p className="mt-2 text-sm leading-relaxed text-slate-600">{card.description}</p>
-              <Link
-                href={card.href}
-                className={`mt-4 inline-flex items-center gap-1.5 text-sm font-semibold transition-all group-hover:gap-2.5 ${card.ctaColor}`}
-              >
-                {card.cta}
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
+              {card.href.startsWith("/auth") ? (
+                <a
+                  href={card.href}
+                  className={`mt-4 inline-flex items-center gap-1.5 text-sm font-semibold transition-all group-hover:gap-2.5 ${card.ctaColor}`}
+                >
+                  {card.cta}
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </a>
+              ) : (
+                <Link
+                  href={card.href}
+                  className={`mt-4 inline-flex items-center gap-1.5 text-sm font-semibold transition-all group-hover:gap-2.5 ${card.ctaColor}`}
+                >
+                  {card.cta}
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              )}
             </div>
           ))}
         </motion.div>

@@ -125,16 +125,29 @@ function PlanCard({ plan, i }: { plan: typeof companyPlans[0]; i: number }) {
           </li>
         ))}
       </ul>
-      <Link
-        href={plan.href}
-        className={`mt-8 block rounded-xl px-4 py-3 text-center text-sm font-semibold transition-all ${
-          plan.popular
-            ? "bg-indigo-600 text-white shadow-sm hover:bg-indigo-700"
-            : "border border-slate-300 text-slate-700 hover:border-indigo-300 hover:bg-indigo-50"
-        }`}
-      >
-        {plan.cta}
-      </Link>
+      {plan.href.startsWith("/auth") ? (
+        <a
+          href={plan.href}
+          className={`mt-8 block rounded-xl px-4 py-3 text-center text-sm font-semibold transition-all ${
+            plan.popular
+              ? "bg-indigo-600 text-white shadow-sm hover:bg-indigo-700"
+              : "border border-slate-300 text-slate-700 hover:border-indigo-300 hover:bg-indigo-50"
+          }`}
+        >
+          {plan.cta}
+        </a>
+      ) : (
+        <Link
+          href={plan.href}
+          className={`mt-8 block rounded-xl px-4 py-3 text-center text-sm font-semibold transition-all ${
+            plan.popular
+              ? "bg-indigo-600 text-white shadow-sm hover:bg-indigo-700"
+              : "border border-slate-300 text-slate-700 hover:border-indigo-300 hover:bg-indigo-50"
+          }`}
+        >
+          {plan.cta}
+        </Link>
+      )}
     </motion.div>
   );
 }

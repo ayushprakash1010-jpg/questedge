@@ -88,12 +88,21 @@ export function LandingFooter() {
             <ul className="mt-4 space-y-3">
               {marketplaceLinks.map((link) => (
                 <li key={link.label}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-slate-400 transition-colors hover:text-indigo-400"
-                  >
-                    {link.label}
-                  </Link>
+                  {link.href.startsWith("/auth") ? (
+                    <a
+                      href={link.href}
+                      className="text-sm text-slate-400 transition-colors hover:text-indigo-400"
+                    >
+                      {link.label}
+                    </a>
+                  ) : (
+                    <Link
+                      href={link.href}
+                      className="text-sm text-slate-400 transition-colors hover:text-indigo-400"
+                    >
+                      {link.label}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>

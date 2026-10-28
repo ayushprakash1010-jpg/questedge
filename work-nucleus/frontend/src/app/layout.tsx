@@ -13,11 +13,18 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "QuestEdge",
   description: "The Referral-Based Hiring Marketplace",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/icon-192.png",
+  },
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "QuestEdge",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
   },
 };
 

@@ -30,13 +30,13 @@ export function CTABanner() {
               Post your mandate in under 5 minutes. Tap into verified independent recruiters,
               screen candidates with Gemini AI, and pay only on successful tenure completion.
             </p>
-            <Link
+            <a
               href="/auth/login?returnTo=/dashboard"
               className="group mt-6 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500"
             >
               Post a Mandate
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </Link>
+            </a>
           </div>
 
           {/* Recruiter CTA */}
@@ -49,13 +49,13 @@ export function CTABanner() {
               Monetize your talent network with 48-hour claim scope exclusivity.
               Browse active mandates, submit consent-verified referrals, and earn bounties.
             </p>
-            <Link
+            <a
               href="/auth/login?returnTo=/recruiter/dashboard"
               className="group mt-6 inline-flex items-center gap-2 rounded-xl bg-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-violet-500"
             >
               Join as Recruiter
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </Link>
+            </a>
           </div>
         </div>
 

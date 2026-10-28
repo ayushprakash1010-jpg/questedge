@@ -71,12 +71,12 @@ export function LandingHeader() {
 
         {/* CTA Buttons */}
         <div className="hidden items-center gap-3 md:flex">
-          <Link
+          <a
             href="/auth/login?returnTo=/dashboard"
             className="text-sm font-medium text-slate-700 transition-colors hover:text-indigo-600"
           >
             Log in
-          </Link>
+          </a>
 
           {/* Join dropdown */}
           <div className="relative">
@@ -92,7 +92,7 @@ export function LandingHeader() {
             {joinOpen && (
               <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 bg-white py-2 shadow-xl shadow-slate-200/60">
                 {joinOptions.map((opt) => (
-                  <Link
+                  <a
                     key={opt.label}
                     href={opt.href}
                     className={`flex items-start gap-3 px-4 py-3 transition-colors ${opt.bg}`}
@@ -102,7 +102,7 @@ export function LandingHeader() {
                       <div className="text-sm font-semibold text-slate-900">{opt.label}</div>
                       <div className="text-xs text-slate-500">{opt.sub}</div>
                     </div>
-                  </Link>
+                  </a>
                 ))}
               </div>
             )}
@@ -137,11 +137,11 @@ export function LandingHeader() {
               </Link>
             ))}
             <hr className="my-2" />
-            <Link href="/auth/login?returnTo=/dashboard" className="text-sm font-medium text-slate-700">
+            <a href="/auth/login?returnTo=/dashboard" className="text-sm font-medium text-slate-700">
               Log in
-            </Link>
+            </a>
             {joinOptions.map((opt) => (
-              <Link
+              <a
                 key={opt.label}
                 href={opt.href}
                 className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700"
@@ -149,7 +149,7 @@ export function LandingHeader() {
               >
                 <opt.icon className={`h-4 w-4 ${opt.color}`} />
                 {opt.label}
-              </Link>
+              </a>
             ))}
           </nav>
         </div>
