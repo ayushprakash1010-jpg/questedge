@@ -34,7 +34,7 @@ export default function ProtectedLayout({
   children: React.ReactNode;
 }) {
   const { user, isLoading: authLoading } = useUser();
-  const { profile, isLoading: profileLoading } = useProfile();
+  const { profile, error: profileError, isLoading: profileLoading, refreshProfile } = useProfile();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -52,13 +52,18 @@ export default function ProtectedLayout({
       return;
     }
 
-    // Logged in but not provisioned — redirect to onboarding
-    // (unless they are already on a role-specific profile setup page)
+    // If profile fetching failed due to backend connection issues, do NOT redirect to onboarding!
+    if (profileError) {
+      console.warn("[ProtectedLayout] Backend connection issue, skipping onboarding redirect:", profileError);
+      return;
+    }
+
+    // Logged in but explicitly verified as NOT provisioned in database
     const isRecruiterOrCandidate =
       (profile as any)?.userType === "RECRUITER" ||
       (profile as any)?.userType === "CANDIDATE";
 
-    if (profile && !profile.isProvisioned && !isRecruiterOrCandidate) {
+    if (profile && profile.isProvisioned === false && !isRecruiterOrCandidate) {
       if (!pathname.includes("/profile") && !pathname.includes("/onboarding")) {
         router.push("/onboarding");
         return;
@@ -85,7 +90,7 @@ export default function ProtectedLayout({
         return;
       }
     }
-  }, [user, profile, authLoading, profileLoading, router, pathname]);
+  }, [user, profile, profileError, authLoading, profileLoading, router, pathname]);
 
   const sidebarUserType = resolveSidebarUserType((profile as any)?.userType, pathname);
 
@@ -195,6 +200,20 @@ export default function ProtectedLayout({
           aria-label="Main Content"
           className="flex-1 overflow-y-auto bg-background p-6 outline-none"
         >
+          {profileError && (
+            <div className="mb-4 flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-sm">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">⚠️ Backend Service Notice:</span>
+                <span>{profileError}. The backend API may be booting up or connecting.</span>
+              </div>
+              <button
+                onClick={() => refreshProfile()}
+                className="rounded bg-amber-600 px-3 py-1 font-medium text-white hover:bg-amber-700 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          )}
           {children}
         </main>
       </div>

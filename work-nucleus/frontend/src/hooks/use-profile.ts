@@ -29,14 +29,22 @@ const IS_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
 export function useProfile() {
   const { user, isLoading: auth0Loading } = useUser();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchProfile = useCallback(async () => {
     try {
+      setError(null);
       const res = await fetch(`/api/profile?t=${Date.now()}`);
       const data = await res.json();
-      setProfile(data);
-    } catch {
+      if (!res.ok || data.error) {
+        setError(data.error || "Failed to fetch profile");
+        setProfile(null);
+      } else {
+        setProfile(data);
+      }
+    } catch (err: any) {
+      setError(err?.message || "Network error fetching profile");
       setProfile(null);
     } finally {
       setIsLoading(false);
@@ -64,6 +72,7 @@ export function useProfile() {
 
   return {
     profile,
+    error,
     isLoading: IS_MOCK ? isLoading : auth0Loading || isLoading,
     user: IS_MOCK ? ({ email: "admin@acme.com", name: "Priya Sharma" } as typeof user) : user,
     refreshProfile: fetchProfile,

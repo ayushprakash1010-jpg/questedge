@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
 import { getApiUrl } from "@/lib/api-url";
 
-const API_URL = getApiUrl();
+export const dynamic = "force-dynamic";
 
 // GET /api/analytics?type=overview|funnel|time-to-hire|cost|interviewers|progress|sources
 export async function GET(req: NextRequest) {
@@ -20,15 +20,29 @@ export async function GET(req: NextRequest) {
     if (hiringPlanId) params.set("hiringPlanId", hiringPlanId);
     if (groupBy) params.set("groupBy", groupBy);
 
-    const endpoint = `${API_URL}/api/v1/analytics/${type}${params.toString() ? `?${params}` : ""}`;
+    const apiUrl = getApiUrl();
+    const endpoint = `${apiUrl}/api/v1/analytics/${type}${params.toString() ? `?${params}` : ""}`;
 
     const res = await fetch(endpoint, {
       headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
     });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      return NextResponse.json(
+        { error: `Backend analytics error (${res.status})`, endpoint, details: text },
+        { status: res.status }
+      );
+    }
+
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
-  } catch {
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: "Failed to connect to backend analytics", apiUrl: getApiUrl(), details: err?.message },
+      { status: 500 }
+    );
   }
 }
 
@@ -38,15 +52,18 @@ export async function POST() {
     const session = await auth0.getSession();
     if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     const { token: accessToken } = await auth0.getAccessToken();
+    const apiUrl = getApiUrl();
 
-    const res = await fetch(`${API_URL}/api/v1/analytics/insights`, {
+    const res = await fetch(`${apiUrl}/api/v1/analytics/insights`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
     });
     const data = await res.json().catch(() => ({}));
-    // Response shape: { insights, generatedAt, generatedBy }
     return NextResponse.json(data, { status: res.status });
-  } catch {
-    return NextResponse.json({ error: "Failed to generate insights" }, { status: 500 });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: "Failed to generate insights: " + err?.message },
+      { status: 500 }
+    );
   }
 }

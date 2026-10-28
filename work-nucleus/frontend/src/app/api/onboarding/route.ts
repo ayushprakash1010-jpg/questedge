@@ -77,13 +77,13 @@ export async function POST(req: NextRequest) {
     let data;
     try {
       data = JSON.parse(text);
-    } catch (e) {
+    } catch {
       data = { message: text };
     }
 
     if (!res.ok) {
       return NextResponse.json(
-        { error: data.message || "Provisioning failed" },
+        { error: data.message || `Backend provisioning error (${res.status}): ${text}` },
         { status: res.status }
       );
     }
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     console.error("[Onboarding API] Catch-all error:", err);
     return NextResponse.json(
-      { error: "Failed to provision role: " + err.message },
+      { error: `Backend connection error (${getApiUrl()}): ${err.message}` },
       { status: 500 }
     );
   }

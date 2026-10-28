@@ -19,9 +19,23 @@ export async function GET() {
       cache: "no-store",
     });
 
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      console.error(`[API /profile] Backend returned ${res.status} from ${apiUrl}/api/v1/auth/me:`, text);
+      return NextResponse.json(
+        { error: "Backend error", status: res.status, apiUrl, details: text },
+        { status: res.status }
+      );
+    }
+
     const data = await res.json();
     return NextResponse.json(data);
-  } catch {
-    return NextResponse.json({ error: "Failed to fetch profile" }, { status: 500 });
+  } catch (err: any) {
+    const apiUrl = getApiUrl();
+    console.error(`[API /profile] Failed to connect to backend at ${apiUrl}:`, err);
+    return NextResponse.json(
+      { error: "Failed to connect to backend", apiUrl, details: err?.message },
+      { status: 500 }
+    );
   }
 }
