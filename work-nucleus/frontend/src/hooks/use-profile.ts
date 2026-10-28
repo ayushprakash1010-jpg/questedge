@@ -1,10 +1,11 @@
 "use client";
 
 import { useUser } from "@auth0/nextjs-auth0/client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
-interface UserProfile {
+export interface UserProfile {
   isProvisioned: boolean;
+  userType?: "COMPANY_USER" | "RECRUITER" | "CANDIDATE";
   id?: string;
   email: string;
   name?: string;
@@ -15,6 +16,12 @@ interface UserProfile {
     name: string;
     industry?: string;
   };
+  phone?: string;
+  headline?: string;
+  specializations?: string[];
+  experienceYears?: number;
+  linkedinUrl?: string;
+  isVerified?: boolean;
 }
 
 const IS_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
@@ -23,6 +30,18 @@ export function useProfile() {
   const { user, isLoading: auth0Loading } = useUser();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const fetchProfile = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/profile?t=${Date.now()}`);
+      const data = await res.json();
+      setProfile(data);
+    } catch {
+      setProfile(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     // In mock mode, fetch profile directly (no Auth0 user needed)
@@ -40,24 +59,13 @@ export function useProfile() {
       return;
     }
 
-    async function fetchProfile() {
-      try {
-        const res = await fetch(`/api/profile?t=${Date.now()}`);
-        const data = await res.json();
-        setProfile(data);
-      } catch {
-        setProfile(null);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
     fetchProfile();
-  }, [user, auth0Loading]);
+  }, [user, auth0Loading, fetchProfile]);
 
   return {
     profile,
     isLoading: IS_MOCK ? isLoading : auth0Loading || isLoading,
     user: IS_MOCK ? ({ email: "admin@acme.com", name: "Priya Sharma" } as typeof user) : user,
+    refreshProfile: fetchProfile,
   };
 }

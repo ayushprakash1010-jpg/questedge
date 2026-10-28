@@ -14,7 +14,10 @@ import * as multer from 'multer';
     AiScreeningModule,
     NotificationsModule,
     FileUploadModule,
-    MulterModule.register({ storage: multer.memoryStorage() }),
+    MulterModule.register({
+      storage: multer.memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+    }),
   ],
   controllers: [CandidatePortalController],
   providers: [CandidatePortalService],

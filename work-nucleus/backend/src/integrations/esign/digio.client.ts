@@ -28,11 +28,14 @@ export class DigioClient implements IESignProvider {
     );
     this.clientId = this.config.get<string>('DIGIO_CLIENT_ID', '');
     this.clientSecret = this.config.get<string>('DIGIO_CLIENT_SECRET', '');
+    const isProd = process.env.NODE_ENV === 'production';
     this.webhookSecret = this.config.get<string>(
       'DIGIO_WEBHOOK_SECRET',
-      'dev-webhook-secret',
+      isProd ? '' : 'dev-webhook-secret',
     );
-    this.sandbox = this.config.get<string>('DIGIO_SANDBOX', 'true') !== 'false';
+    this.sandbox = isProd
+      ? this.config.get<string>('DIGIO_SANDBOX') === 'true'
+      : this.config.get<string>('DIGIO_SANDBOX', 'true') !== 'false';
   }
 
   private authHeader(): string {

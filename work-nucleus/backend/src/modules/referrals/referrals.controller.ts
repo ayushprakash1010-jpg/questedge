@@ -1,4 +1,12 @@
-import { Controller, Post, Body, UseGuards, Req, Get } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Req,
+  Get,
+  Query,
+} from '@nestjs/common';
 import { ReferralsService } from './referrals.service';
 import { CreateReferralDto } from './dto/create-referral.dto';
 import {
@@ -36,7 +44,15 @@ export class ReferralsController {
     summary: 'Get all referrals submitted by the current recruiter',
   })
   @ApiResponse({ status: 200, description: 'List of referrals returned.' })
-  getMyReferrals(@Req() req: any) {
-    return this.referralsService.getMyReferrals(req.user.id);
+  getMyReferrals(
+    @Req() req: any,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    return this.referralsService.getMyReferrals(
+      req.user.id,
+      limit ? parseInt(limit, 10) : 50,
+      offset ? parseInt(offset, 10) : 0,
+    );
   }
 }

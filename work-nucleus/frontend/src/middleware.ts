@@ -2,10 +2,30 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { handleMockRequest, isMockMode } from "./lib/mock/router";
 
+const PROTECTED_PREFIXES = [
+  "/dashboard",
+  "/company",
+  "/recruiter",
+  "/candidate",
+  "/candidates",
+  "/hiring-plans",
+  "/mandates",
+  "/offers",
+  "/bgv",
+  "/appraisal",
+  "/compensation",
+  "/admin",
+  "/profile",
+  "/support",
+  "/training",
+  "/onboarding",
+  "/notifications",
+];
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // ── Mock mode: intercept API routes and bypass auth ────────
+  // ── Mock mode (Development only): intercept API routes and bypass auth ────────
   if (isMockMode()) {
     if (pathname.startsWith("/api/") && !pathname.startsWith("/api/auth")) {
       let body: unknown = undefined;
@@ -25,7 +45,7 @@ export async function middleware(request: NextRequest) {
       if (mockResponse) return mockResponse;
     }
 
-    // Skip Auth0 for all other routes — allow pages to render freely
+    // Skip Auth0 for all other routes in mock mode — allow pages to render freely
     if (pathname.startsWith("/auth/login") || pathname.startsWith("/auth/callback")) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
@@ -46,6 +66,20 @@ export async function middleware(request: NextRequest) {
 
   if (pathname.startsWith("/auth")) {
     return authResponse;
+  }
+
+  // ── Server-side protected route guard (P3-01) ─────────────────
+  const isProtected = PROTECTED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+
+  if (isProtected) {
+    const session = await auth0.getSession(request);
+    if (!session || !session.user) {
+      const loginUrl = new URL("/auth/login", request.url);
+      loginUrl.searchParams.set("returnTo", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
   }
 
   return authResponse;

@@ -1,115 +1,187 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Loader2, UserPlus, Building2, ExternalLink, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import {
+  Loader2,
+  UserPlus,
+  Building2,
+  ExternalLink,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Briefcase,
+  Sparkles,
+} from "lucide-react";
 import Link from "next/link";
 import { RewardBadge } from "@/components/marketplace/MandateCard";
+import { TableSkeleton } from "@/components/ui/skeleton-states";
+import { MarketplaceEmptyState } from "@/components/ui/marketplace-empty-state";
+import { ErrorBanner } from "@/components/ui/error-state";
 
 export default function MyReferralsPage() {
   const [referrals, setReferrals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const tokenRes = await fetch("/api/auth/token");
-        const { accessToken } = await tokenRes.json();
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/v1/referrals/my`, {
+  const fetchReferrals = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"}/api/v1/referrals/my`,
+        {
           headers: { Authorization: `Bearer ${accessToken}` },
-        });
-        const data = await response.json();
-        setReferrals(data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
+        },
+      );
+      if (!response.ok) {
+        throw new Error("Failed to load referrals list from server.");
       }
-    })();
+      const data = await response.json();
+      setReferrals(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.message || "Failed to load referrals.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    fetchReferrals();
+  }, [fetchReferrals]);
+
   const getStatusBadge = (status: string) => {
-    switch(status) {
-      case 'PENDING_CONSENT':
-      case 'CONSENT_REQUESTED':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800"><Clock className="h-3 w-3" /> Awaiting Consent</span>;
-      case 'ACTIVATED':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800"><CheckCircle2 className="h-3 w-3" /> Active in Pipeline</span>;
-      case 'CANDIDATE_DECLINED':
-      case 'WITHDRAWN':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800"><XCircle className="h-3 w-3" /> Declined</span>;
+    switch (status) {
+      case "PENDING_CONSENT":
+      case "CONSENT_REQUESTED":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+            <Clock className="h-3 w-3" /> Awaiting Consent
+          </span>
+        );
+      case "ACTIVATED":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+            <CheckCircle2 className="h-3 w-3" /> Active in Pipeline
+          </span>
+        );
+      case "CANDIDATE_DECLINED":
+      case "WITHDRAWN":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
+            <XCircle className="h-3 w-3" /> Declined
+          </span>
+        );
       default:
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-100 text-sky-800">{status.replace('_', ' ')}</span>;
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-100 text-sky-800">
+            {status.replace("_", " ")}
+          </span>
+        );
     }
-  }
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 pb-16">
       <div className="bg-white border-b border-slate-200 px-6 py-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">My Referrals</h1>
-            <p className="text-sm text-slate-500">Track the status of candidates you've referred to companies.</p>
+            <p className="text-sm text-slate-500">
+              Track the status of candidates you've referred to companies.
+            </p>
           </div>
-          <Link href="/recruiter/discover" className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition-colors">
-            Refer New Candidate
+          <Link
+            href="/recruiter/discover"
+            className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition-colors flex items-center gap-2"
+          >
+            <UserPlus className="h-4 w-4" /> Refer New Candidate
           </Link>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+        {/* Error Banner */}
+        {error && (
+          <ErrorBanner
+            message={error}
+            onRetry={fetchReferrals}
+          />
+        )}
+
         {loading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-sky-400" />
-          </div>
+          <TableSkeleton rows={6} columns={5} hasAvatar={true} />
         ) : referrals.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
-            <div className="mx-auto w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-              <UserPlus className="h-8 w-8 text-slate-400" />
-            </div>
-            <h3 className="text-lg font-bold text-slate-900 mb-2">No referrals yet</h3>
-            <p className="text-slate-500 mb-6 max-w-md mx-auto">Start browsing mandates and referring your top talent to earn rewards.</p>
-            <Link href="/recruiter/discover" className="bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-900 px-6 py-2.5 rounded-lg text-sm font-medium transition-all">
-              Browse Open Mandates
-            </Link>
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+            <MarketplaceEmptyState
+              preset="referrals"
+              primaryAction={{
+                label: "Browse Open Mandates",
+                href: "/recruiter/discover",
+                icon: Briefcase,
+              }}
+            />
           </div>
         ) : (
-          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
             <table className="w-full text-left text-sm whitespace-nowrap">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
                 <tr>
                   <th className="px-6 py-3 font-semibold">Candidate</th>
-                  <th className="px-6 py-3 font-semibold">Mandate & Company</th>
-                  <th className="px-6 py-3 font-semibold">Reward Status</th>
-                  <th className="px-6 py-3 font-semibold">Referral Status</th>
+                  <th className="px-6 py-3 font-semibold">Job Mandate</th>
+                  <th className="px-6 py-3 font-semibold">Reward Pool</th>
+                  <th className="px-6 py-3 font-semibold">Consent & Status</th>
                   <th className="px-6 py-3 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {referrals.map((ref) => (
-                  <tr key={ref.id} className="hover:bg-slate-50/50 transition-colors">
+                  <tr key={ref.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="px-6 py-4">
-                      <div className="font-medium text-slate-900">{ref.candidateProfile.name}</div>
-                      <div className="text-slate-500 text-xs mt-0.5">{ref.candidateProfile.email}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-slate-900">{ref.mandate.title}</div>
-                      <div className="text-slate-500 text-xs mt-0.5 flex items-center gap-1">
-                        <Building2 className="h-3 w-3" /> {ref.mandate.organization.name}
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-sky-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
+                          {ref.candidateProfile?.name?.[0] ?? "C"}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-900">
+                            {ref.candidateProfile?.name}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {ref.candidateProfile?.email}
+                          </p>
+                        </div>
                       </div>
                     </td>
+
                     <td className="px-6 py-4">
-                      {ref.mandate.referralRewardAmount ? (
-                        <RewardBadge amount={ref.mandate.referralRewardAmount} currency={ref.mandate.currency} />
+                      <p className="font-medium text-slate-900">{ref.mandate?.title}</p>
+                      <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                        <Building2 className="h-3 w-3 text-slate-400" />
+                        {ref.mandate?.organization?.name}
+                      </p>
+                    </td>
+
+                    <td className="px-6 py-4">
+                      {ref.mandate?.referralRewardAmount ? (
+                        <RewardBadge
+                          amount={ref.mandate.referralRewardAmount}
+                          currency={ref.mandate.currency}
+                        />
                       ) : (
-                        <span className="text-slate-400 italic">No reward</span>
+                        <span className="text-xs text-slate-400">—</span>
                       )}
                     </td>
-                    <td className="px-6 py-4">
-                      {getStatusBadge(ref.status)}
-                    </td>
+
+                    <td className="px-6 py-4">{getStatusBadge(ref.status)}</td>
+
                     <td className="px-6 py-4 text-right">
-                      <Link href={`/recruiter/mandates/${ref.mandateId}`} className="text-sky-600 hover:text-sky-800 font-medium inline-flex items-center gap-1">
-                        View <ExternalLink className="h-3 w-3" />
+                      <Link
+                        href={`/recruiter/mandates/${ref.mandateId}`}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-sky-600 hover:text-sky-800"
+                      >
+                        Inspect Mandate <ExternalLink className="h-3 w-3" />
                       </Link>
                     </td>
                   </tr>

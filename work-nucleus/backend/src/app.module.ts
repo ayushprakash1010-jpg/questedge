@@ -56,6 +56,8 @@ import { OffersModule } from './modules/offers/offers.module';
 import { PeerFeedbackModule } from './modules/peer-feedback/peer-feedback.module';
 import { PublishingModule } from './modules/publishing/publishing.module';
 import { SupportModule } from './modules/support/support.module';
+import { AiMatchingModule } from './modules/ai-matching/ai-matching.module';
+import { HireDetectionModule } from './modules/hire-detection/hire-detection.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -103,6 +105,7 @@ import { SupportModule } from './modules/support/support.module';
     ClaimScopeModule,
     RewardsModule,
     AiScreeningModule,
+    AiMatchingModule,
     EmailModule,
     BgvIntegrationsModule,
     ESignModule,
@@ -120,6 +123,7 @@ import { SupportModule } from './modules/support/support.module';
     PeerFeedbackModule,
     PublishingModule,
     SupportModule,
+    HireDetectionModule,
   ],
   providers: [
     {

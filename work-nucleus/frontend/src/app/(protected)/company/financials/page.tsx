@@ -2,14 +2,28 @@
 
 import { useState, useEffect } from "react";
 import { getCompanyRewards, approveReward } from "@/lib/marketplace-api";
-import { IndianRupee, Loader2, Building, ShieldCheck, FileCheck, History } from "lucide-react";
+import {
+  IndianRupee,
+  Loader2,
+  Building,
+  ShieldCheck,
+  FileCheck,
+  History,
+  AlertTriangle,
+  Scale,
+} from "lucide-react";
 import { toast } from "@/components/ui/toaster";
+import { RewardAuditModal } from "@/components/rewards/reward-audit-modal";
+import { RewardDisputeModal } from "@/components/rewards/reward-dispute-modal";
 
 export default function CompanyFinancialsPage() {
   const [rewards, setRewards] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [addingFunds, setAddingFunds] = useState(false);
+  const [auditRewardId, setAuditRewardId] = useState<string | null>(null);
+  const [disputeReward, setDisputeReward] = useState<any | null>(null);
+
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -105,6 +119,15 @@ export default function CompanyFinancialsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Demo / Sandbox Banner (P0-10) */}
+      <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 text-amber-800 text-sm flex items-center justify-between">
+        <div className="flex items-center gap-2 max-w-5xl">
+          <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
+          <span><strong>Sandbox Demo Mode:</strong> Escrow deposits and bounty settlements are simulated for preview purposes. Real payment gateway ledger integration is in active development.</span>
+        </div>
+        <span className="text-xs font-semibold uppercase tracking-wider bg-amber-200 text-amber-900 px-2 py-0.5 rounded">Preview</span>
+      </div>
+
       {/* Header */}
       <div className="bg-white border-b border-slate-200 px-6 py-10">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
@@ -121,7 +144,7 @@ export default function CompanyFinancialsPage() {
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg font-semibold flex items-center gap-2 transition-colors disabled:opacity-70"
           >
             {addingFunds ? <Loader2 className="h-5 w-5 animate-spin" /> : <IndianRupee className="h-5 w-5" />}
-            {addingFunds ? "Processing..." : "Add Funds to Escrow"}
+            {addingFunds ? "Processing..." : "Simulate Escrow Deposit (Demo)"}
           </button>
         </div>
       </div>
@@ -192,20 +215,56 @@ export default function CompanyFinancialsPage() {
                         ₹{reward.rewardAmount.toLocaleString()}
                       </td>
                       <td className="px-6 py-4">
-                        {reward.status === "PENDING_APPROVAL" || reward.status === "ELIGIBLE" ? (
+                        <div className="flex items-center gap-2 flex-wrap">
                           <button
-                            onClick={() => handleApprove(reward.id)}
-                            disabled={processingId === reward.id}
-                            className="text-xs font-semibold bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg border border-indigo-200 hover:bg-indigo-100 transition-colors flex items-center gap-1 disabled:opacity-50"
+                            onClick={() => setAuditRewardId(reward.id)}
+                            className="text-xs font-medium text-slate-600 hover:text-indigo-600 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-indigo-300 transition-colors flex items-center gap-1"
+                            title="View cryptographic SHA-256 audit trail"
                           >
-                            {processingId === reward.id && <Loader2 className="h-3 w-3 animate-spin" />}
-                            Release Funds
+                            <ShieldCheck className="w-3.5 h-3.5 text-indigo-500" />
+                            Audit
                           </button>
-                        ) : (
-                          <span className="text-xs font-medium text-slate-400 bg-slate-100 px-3 py-1.5 rounded-lg">
-                            {reward.status}
-                          </span>
-                        )}
+
+                          {reward.status === "DISPUTED" ? (
+                            <span className="text-xs font-semibold bg-amber-50 text-amber-800 px-2.5 py-1.5 rounded-lg border border-amber-200 flex items-center gap-1">
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                              Disputed
+                            </span>
+                          ) : reward.status !== "CANCELLED" && (
+                            <button
+                              onClick={() =>
+                                setDisputeReward({
+                                  id: reward.id,
+                                  rewardAmount: reward.rewardAmount,
+                                  currency: reward.currency,
+                                  candidateName: reward.referral?.candidateProfile?.name,
+                                  mandateTitle: reward.referral?.mandate?.title,
+                                  recruiterName: reward.recruiter?.name,
+                                })
+                              }
+                              className="text-xs font-medium text-slate-500 hover:text-amber-600 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-amber-300 transition-colors flex items-center gap-1"
+                              title="Raise formal dispute (e.g. early exit / duplicate)"
+                            >
+                              <Scale className="w-3.5 h-3.5" />
+                              Dispute
+                            </button>
+                          )}
+
+                          {reward.status === "PENDING_APPROVAL" || reward.status === "ELIGIBLE" ? (
+                            <button
+                              onClick={() => handleApprove(reward.id)}
+                              disabled={processingId === reward.id}
+                              className="text-xs font-semibold bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg border border-indigo-200 hover:bg-indigo-100 transition-colors flex items-center gap-1 disabled:opacity-50"
+                            >
+                              {processingId === reward.id && <Loader2 className="h-3 w-3 animate-spin" />}
+                              Release Funds
+                            </button>
+                          ) : reward.status !== "DISPUTED" ? (
+                            <span className="text-xs font-medium text-slate-400 bg-slate-100 px-3 py-1.5 rounded-lg">
+                              {reward.status}
+                            </span>
+                          ) : null}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -215,6 +274,22 @@ export default function CompanyFinancialsPage() {
           )}
         </div>
       </div>
+
+      {/* P4-05: Cryptographic Audit Trail Modal */}
+      <RewardAuditModal
+        rewardId={auditRewardId || ""}
+        isOpen={!!auditRewardId}
+        onClose={() => setAuditRewardId(null)}
+      />
+
+      {/* P4-05: Reward Dispute Modal */}
+      <RewardDisputeModal
+        reward={disputeReward}
+        isOpen={!!disputeReward}
+        onClose={() => setDisputeReward(null)}
+        onDisputeRaised={() => fetchData()}
+      />
     </div>
   );
 }
+

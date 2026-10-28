@@ -1,8 +1,7 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
-import { Public } from '../../auth/decorators/public.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { AiCostService } from './ai-cost.service';
 
@@ -20,35 +19,9 @@ export class AiCostController {
   }
 }
 
-/**
- * Internal endpoint for the FastAPI service to ship per-call telemetry.
- * Public (no Auth0) but gated by the same X-Internal-API-Key middleware that
- * already protects the AI service inbound calls.
- */
-@ApiTags('AI Cost Internal')
-@Public()
-@Controller('api/v2/ai-cost/internal')
-export class AiCostInternalController {
-  constructor(private readonly service: AiCostService) {}
-
-  @Post('log')
-  @ApiOperation({
-    summary: 'Log a single AI call (for AI service to ship telemetry)',
-  })
-  log(
-    @Body()
-    body: {
-      orgId?: string;
-      agentName: string;
-      modelUsed: string;
-      tokensInput?: number;
-      tokensOutput?: number;
-      costInPaise?: number;
-      cacheHit?: boolean;
-      status: string;
-      latencyMs?: number;
-    },
-  ) {
-    return this.service.logCall(body);
-  }
-}
+// ── P0-08: AiCostInternalController REMOVED ──────────────────
+// The @Public() endpoint allowed unauthenticated writes to ai cost logs.
+// The comment said it was protected by X-Internal-API-Key middleware,
+// but no such middleware exists. If the AI service needs to log costs,
+// implement a proper internal API key guard first (see P1-10).
+// Audit ref: H-01.

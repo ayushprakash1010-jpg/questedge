@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AddToPipelineDto } from './dto/add-to-pipeline.dto';
@@ -21,7 +22,15 @@ export class ApplicationsService {
     private readonly config: ConfigService,
   ) {}
 
-  async addToPipeline(hiringPlanId: string, dto: AddToPipelineDto) {
+  async addToPipeline(hiringPlanId: string, dto: AddToPipelineDto, orgId?: string) {
+    // P0-04: Verify the hiring plan belongs to the caller's org
+    if (orgId) {
+      const plan = await this.prisma.hiringPlan.findFirst({
+        where: { id: hiringPlanId, orgId },
+      });
+      if (!plan) throw new NotFoundException('Hiring plan not found');
+    }
+
     // Get the first stage
     const firstStage = await this.prisma.pipelineStage.findFirst({
       where: { hiringPlanId },
@@ -67,11 +76,19 @@ export class ApplicationsService {
         },
       });
 
-      return this.getDetail(application.id);
+      return this.getDetail(application.id, orgId);
     });
   }
 
-  async getKanbanBoard(hiringPlanId: string) {
+  async getKanbanBoard(hiringPlanId: string, orgId?: string) {
+    // P0-04: Verify ownership
+    if (orgId) {
+      const plan = await this.prisma.hiringPlan.findFirst({
+        where: { id: hiringPlanId, orgId },
+      });
+      if (!plan) throw new NotFoundException('Hiring plan not found');
+    }
+
     const stages = await this.prisma.pipelineStage.findMany({
       where: { hiringPlanId },
       orderBy: { stageOrder: 'asc' },
@@ -139,9 +156,13 @@ export class ApplicationsService {
     });
   }
 
-  async moveCandidate(applicationId: string, dto: MoveCandidateDto) {
-    const application = await this.prisma.candidateApplication.findUnique({
-      where: { id: applicationId },
+  async moveCandidate(applicationId: string, dto: MoveCandidateDto, orgId?: string) {
+    // P0-04: Scope lookup through hiring plan org
+    const application = await this.prisma.candidateApplication.findFirst({
+      where: {
+        id: applicationId,
+        ...(orgId ? { hiringPlan: { orgId } } : {}),
+      },
       include: { currentStage: true },
     });
 
@@ -200,13 +221,17 @@ export class ApplicationsService {
         },
       });
 
-      return this.getDetail(applicationId);
+      return this.getDetail(applicationId, orgId);
     });
   }
 
-  async updateStatus(applicationId: string, dto: UpdateApplicationStatusDto) {
-    const application = await this.prisma.candidateApplication.findUnique({
-      where: { id: applicationId },
+  async updateStatus(applicationId: string, dto: UpdateApplicationStatusDto, orgId?: string) {
+    // P0-04: Scope lookup through hiring plan org
+    const application = await this.prisma.candidateApplication.findFirst({
+      where: {
+        id: applicationId,
+        ...(orgId ? { hiringPlan: { orgId } } : {}),
+      },
     });
     if (!application) throw new NotFoundException('Application not found');
 
@@ -260,7 +285,7 @@ export class ApplicationsService {
         data: updateData,
       });
 
-      return this.getDetail(applicationId);
+      return this.getDetail(applicationId, orgId);
     });
 
     if (dto.status === ApplicationStatus.SELECTED && application.referralId) {
@@ -274,9 +299,13 @@ export class ApplicationsService {
     return result;
   }
 
-  async getDetail(applicationId: string) {
-    const app = await this.prisma.candidateApplication.findUnique({
-      where: { id: applicationId },
+  async getDetail(applicationId: string, orgId?: string) {
+    // P0-04: Scope through hiring plan org to prevent cross-tenant access
+    const app = await this.prisma.candidateApplication.findFirst({
+      where: {
+        id: applicationId,
+        ...(orgId ? { hiringPlan: { orgId } } : {}),
+      },
       include: {
         candidate: true,
         hiringPlan: {
@@ -300,7 +329,15 @@ export class ApplicationsService {
     return app;
   }
 
-  async getPipelineStats(hiringPlanId: string) {
+  async getPipelineStats(hiringPlanId: string, orgId?: string) {
+    // P0-04: Verify ownership
+    if (orgId) {
+      const plan = await this.prisma.hiringPlan.findFirst({
+        where: { id: hiringPlanId, orgId },
+      });
+      if (!plan) throw new NotFoundException('Hiring plan not found');
+    }
+
     const [totalActive, totalSelected, totalRejected, stages] =
       await Promise.all([
         this.prisma.candidateApplication.count({
@@ -343,9 +380,13 @@ export class ApplicationsService {
     };
   }
 
-  async generateInterviewQuestions(appId: string) {
-    const app = await this.prisma.candidateApplication.findUnique({
-      where: { id: appId },
+  async generateInterviewQuestions(appId: string, orgId?: string) {
+    // P0-04: Scope through hiring plan org
+    const app = await this.prisma.candidateApplication.findFirst({
+      where: {
+        id: appId,
+        ...(orgId ? { hiringPlan: { orgId } } : {}),
+      },
       include: {
         candidate: true,
         hiringPlan: {

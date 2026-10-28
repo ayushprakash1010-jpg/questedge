@@ -13,6 +13,7 @@ import {
   HeadBucketCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import * as path from 'path';
 
 const ALLOWED_MIME_TYPES = [
   'application/pdf',
@@ -21,6 +22,49 @@ const ALLOWED_MIME_TYPES = [
 ];
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+/**
+ * Validates file magic bytes to verify content matches declared MIME type (P0-12 / F-14).
+ * Rejects executables, scripts, or corrupt files masquerading as documents.
+ */
+function validateMagicBytes(buffer: Buffer, mimetype: string): boolean {
+  if (!buffer || buffer.length < 4) return false;
+
+  // PDF: %PDF- (0x25 0x50 0x44 0x46)
+  if (
+    buffer[0] === 0x25 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x44 &&
+    buffer[3] === 0x46
+  ) {
+    return mimetype === 'application/pdf';
+  }
+
+  // DOCX: ZIP archive header PK\x03\x04 (0x50 0x4B 0x03 0x04)
+  if (
+    buffer[0] === 0x50 &&
+    buffer[1] === 0x4b &&
+    buffer[2] === 0x03 &&
+    buffer[3] === 0x04
+  ) {
+    return (
+      mimetype ===
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    );
+  }
+
+  // DOC (legacy Microsoft Compound File Binary Format / OLE2): 0xD0 0xCF 0x11 0xE0
+  if (
+    buffer[0] === 0xd0 &&
+    buffer[1] === 0xcf &&
+    buffer[2] === 0x11 &&
+    buffer[3] === 0xe0
+  ) {
+    return mimetype === 'application/msword';
+  }
+
+  return false;
+}
 
 @Injectable()
 export class FileUploadService implements OnModuleInit {
@@ -50,7 +94,7 @@ export class FileUploadService implements OnModuleInit {
       try {
         await this.s3.send(new CreateBucketCommand({ Bucket: this.bucket }));
         this.logger.log(`Bucket "${this.bucket}" created`);
-      } catch (err) {
+      } catch (err: any) {
         this.logger.warn(
           `Failed to create bucket "${this.bucket}": ${err.message}. File uploads will fail until configured.`,
         );
@@ -62,16 +106,32 @@ export class FileUploadService implements OnModuleInit {
     file: Express.Multer.File,
     candidateId: string,
   ): Promise<string> {
+    if (!file || !file.buffer) {
+      throw new BadRequestException('No file content provided.');
+    }
+
     if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
       throw new BadRequestException(
         'Invalid file type. Only PDF, DOCX, and DOC files are allowed.',
       );
     }
-    if (file.size > MAX_FILE_SIZE) {
+
+    if (file.size > MAX_FILE_SIZE || file.buffer.length > MAX_FILE_SIZE) {
       throw new BadRequestException('File size must not exceed 10 MB.');
     }
 
-    const key = `resumes/${candidateId}/${Date.now()}-${file.originalname}`;
+    // P0-12: Magic byte validation to prevent MIME spoofing
+    if (!validateMagicBytes(file.buffer, file.mimetype)) {
+      throw new BadRequestException(
+        'File contents do not match the expected document format.',
+      );
+    }
+
+    // P0-12: Sanitize candidate ID and filename to prevent path traversal in S3 keys
+    const safeCandidateId = candidateId.replace(/[^a-zA-Z0-9_-]/g, '');
+    const rawFilename = path.basename(file.originalname || 'resume.pdf');
+    const safeFilename = rawFilename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const key = `resumes/${safeCandidateId}/${Date.now()}-${safeFilename}`;
 
     await this.s3.send(
       new PutObjectCommand({

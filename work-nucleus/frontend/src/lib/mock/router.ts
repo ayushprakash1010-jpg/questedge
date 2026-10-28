@@ -7,6 +7,9 @@ import * as data from "./data";
 type Params = URLSearchParams;
 
 export function isMockMode(): boolean {
+  if (process.env.NODE_ENV === "production") {
+    return false;
+  }
   return process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
 }
 

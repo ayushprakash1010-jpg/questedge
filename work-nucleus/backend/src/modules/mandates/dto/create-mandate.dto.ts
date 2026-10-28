@@ -9,6 +9,7 @@ import {
   IsOptional,
   IsString,
   Min,
+  IsIn,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { MandateParticipationType } from '@prisma/client';
@@ -80,6 +81,7 @@ export class CreateMandateDto {
   })
   @IsOptional()
   @IsNumber()
+  @Min(0)
   @Type(() => Number)
   compensationMin?: number;
 
@@ -89,6 +91,7 @@ export class CreateMandateDto {
   })
   @IsOptional()
   @IsNumber()
+  @Min(0)
   @Type(() => Number)
   compensationMax?: number;
 
@@ -118,17 +121,18 @@ export class CreateMandateDto {
   participationType?: MandateParticipationType;
 
   @ApiPropertyOptional({
-    description: 'Fixed referral reward amount',
+    description: 'Referral reward amount (fixed currency or percentage)',
     example: 50000,
   })
   @IsOptional()
   @IsNumber()
+  @Min(0)
   @Type(() => Number)
   referralRewardAmount?: number;
 
   @ApiPropertyOptional({ enum: ['FIXED', 'PERCENTAGE'], example: 'FIXED' })
   @IsOptional()
-  @IsString()
+  @IsIn(['FIXED', 'PERCENTAGE'])
   referralRewardType?: string;
 
   @ApiPropertyOptional({

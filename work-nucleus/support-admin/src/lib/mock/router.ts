@@ -228,6 +228,57 @@ export function handleMockRequest(
     return json({ action: body?.action || "unknown", affected: Math.floor(Math.random() * 10) + 1 });
   }
 
+  // ── Hire Bypass Flags & Trust Scores ────────────────────────
+  if (pathname === "/api/support/bypass-flags/stats" && m === "GET") {
+    return json(data.BYPASS_STATS);
+  }
+
+  if (pathname === "/api/support/bypass-flags" && m === "GET") {
+    let flags = [...data.BYPASS_FLAGS];
+    const risk = params.get("riskLevel");
+    const isResolved = params.get("isResolved");
+    if (risk) flags = flags.filter((f) => f.riskLevel === risk);
+    if (isResolved !== null && isResolved !== undefined && isResolved !== "") {
+      const resolvedBool = isResolved === "true";
+      flags = flags.filter((f) => f.isResolved === resolvedBool);
+    }
+    return json({
+      data: flags,
+      meta: { total: flags.length, page: 1, limit: 20, totalPages: 1 },
+    });
+  }
+
+  const bypassResolveMatch = pathname.match(/^\/api\/support\/bypass-flags\/([^/]+)\/resolve$/);
+  if (bypassResolveMatch && m === "PATCH") {
+    const flagId = bypassResolveMatch[1];
+    const flag = data.BYPASS_FLAGS.find((f) => f.id === flagId);
+    if (flag) {
+      flag.isResolved = true;
+      flag.resolution = body?.resolution || "CONFIRMED_HIRE";
+      flag.notes = body?.notes || "Resolved by admin";
+      (flag as any).resolvedAt = new Date().toISOString();
+      return json({ success: true, flag });
+    }
+    return json({ error: "Flag not found" }, 404);
+  }
+
+  if (pathname === "/api/support/bypass-flags/scan" && m === "POST") {
+    return json({
+      message: "Detection scan completed successfully",
+      staleReferralScan: { checked: 14, flagged: 1 },
+      hireConfirmation: { sent: 4, alreadyConfirmed: 2 },
+      candidateCheckIns: { sent: 6, expired: 1 },
+      trustScores: { updatedCount: 5 },
+    });
+  }
+
+  if (pathname === "/api/support/trust-scores" && m === "GET") {
+    return json({
+      data: data.COMPANY_TRUST_SCORES,
+      meta: { total: data.COMPANY_TRUST_SCORES.length, page: 1, limit: 20, totalPages: 1 },
+    });
+  }
+
   return null; // no match
 }
 

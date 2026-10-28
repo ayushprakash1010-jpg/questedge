@@ -166,6 +166,7 @@ export class AnalyticsService {
         rewardCommitmentsAgg,
         recentPendingReferrals,
         recentActivityRaw,
+        rewardBreakdownRaw,
       ] = await Promise.all([
         this.prisma.referral.count({
           where: {
@@ -201,7 +202,37 @@ export class AnalyticsService {
             mandate: { select: { title: true } },
           },
         }),
+        this.prisma.rewardTracking.groupBy({
+          by: ['status'],
+          where: { orgId },
+          _sum: { rewardAmount: true },
+          _count: { id: true },
+        }),
       ]);
+
+      const rewardBreakdown: Record<string, { count: number; total: number }> = {
+        POTENTIAL: { count: 0, total: 0 },
+        ELIGIBLE: { count: 0, total: 0 },
+        PENDING_APPROVAL: { count: 0, total: 0 },
+        APPROVED: { count: 0, total: 0 },
+        PAID: { count: 0, total: 0 },
+      };
+      for (const item of rewardBreakdownRaw) {
+        rewardBreakdown[item.status] = {
+          count: item._count.id,
+          total: Number(item._sum.rewardAmount ?? 0),
+        };
+      }
+      const paidOrApprovedHires =
+        (rewardBreakdown['PAID']?.count || 0) +
+        (rewardBreakdown['APPROVED']?.count || 0);
+      const totalPaidOrApproved =
+        (rewardBreakdown['PAID']?.total || 0) +
+        (rewardBreakdown['APPROVED']?.total || 0);
+      const avgRewardPerHire =
+        paidOrApprovedHires > 0
+          ? Math.round(totalPaidOrApproved / paidOrApprovedHires)
+          : 0;
 
       return {
         activePlans,
@@ -218,6 +249,8 @@ export class AnalyticsService {
         pendingReferrals,
         rewardCommitments:
           rewardCommitmentsAgg._sum.rewardAmount?.toNumber() || 0,
+        rewardBreakdown,
+        avgRewardPerHire,
         recentPendingReferrals,
         recentActivity: recentActivityRaw.map((r) => ({
           id: `ref-${r.id}`,
@@ -251,14 +284,17 @@ export class AnalyticsService {
         });
 
         if (referrals.length > 0) {
-          const totalSourced = referrals.length;
-          const consentGiven = referrals.filter(
-            (r) => r.status !== 'PENDING_CONSENT',
+          const totalReferred = referrals.length;
+          const totalConsented = referrals.filter(
+            (r) =>
+              ![
+                'PENDING_CONSENT',
+                'CONSENT_REQUESTED',
+                'CANDIDATE_DECLINED',
+              ].includes(r.status),
           ).length;
-          const reviewOrAbove = referrals.filter((r) =>
+          const totalScreened = referrals.filter((r) =>
             [
-              'CANDIDATE_ACCEPTED',
-              'ACTIVATED',
               'UNDER_REVIEW',
               'SHORTLISTED',
               'INTERVIEW',
@@ -266,87 +302,101 @@ export class AnalyticsService {
               'HIRED',
             ].includes(r.status),
           ).length;
-          const shortlistedOrAbove = referrals.filter((r) =>
-            ['SHORTLISTED', 'INTERVIEW', 'SELECTED', 'HIRED'].includes(
-              r.status,
-            ),
-          ).length;
-          const interviewOrAbove = referrals.filter((r) =>
+          const totalInterviewed = referrals.filter((r) =>
             ['INTERVIEW', 'SELECTED', 'HIRED'].includes(r.status),
           ).length;
-          const offerOrAbove = referrals.filter((r) =>
+          const totalHired = referrals.filter((r) =>
             ['SELECTED', 'HIRED'].includes(r.status),
           ).length;
 
           return [
             {
-              id: 'stage-sourced',
-              name: 'Sourced',
+              id: 'stage-referred',
+              name: 'Referred',
               stageType: 'SOURCING',
               stageOrder: 1,
-              entered: totalSourced,
-              passed: consentGiven,
-              rejected: 0,
+              entered: totalReferred,
+              passed: totalConsented,
+              rejected: referrals.filter(
+                (r) => r.status === 'CANDIDATE_DECLINED',
+              ).length,
               passThroughRate:
-                totalSourced > 0
-                  ? Math.round((consentGiven / totalSourced) * 100)
-                  : 100,
+                totalReferred > 0
+                  ? Math.round((totalConsented / totalReferred) * 100)
+                  : 0,
+              conversionRate:
+                totalReferred > 0
+                  ? Math.round((totalConsented / totalReferred) * 100)
+                  : 0,
               avgDays: 1,
             },
             {
-              id: 'stage-review',
-              name: 'Screening',
-              stageType: 'SCREENING',
+              id: 'stage-consented',
+              name: 'Consented',
+              stageType: 'CONSENT',
               stageOrder: 2,
-              entered: reviewOrAbove,
-              passed: shortlistedOrAbove,
-              rejected: referrals.filter(
-                (r) =>
-                  r.status === 'REJECTED' || r.status === 'CANDIDATE_DECLINED',
-              ).length,
+              entered: totalConsented,
+              passed: totalScreened,
+              rejected: referrals.filter((r) => r.status === 'REJECTED').length,
               passThroughRate:
-                reviewOrAbove > 0
-                  ? Math.round((shortlistedOrAbove / reviewOrAbove) * 100)
+                totalConsented > 0
+                  ? Math.round((totalScreened / totalConsented) * 100)
+                  : 0,
+              conversionRate:
+                totalConsented > 0
+                  ? Math.round((totalScreened / totalConsented) * 100)
                   : 0,
               avgDays: 2,
             },
             {
-              id: 'stage-shortlisted',
-              name: 'Shortlisted',
-              stageType: 'TECHNICAL',
+              id: 'stage-screened',
+              name: 'Screened',
+              stageType: 'SCREENING',
               stageOrder: 3,
-              entered: shortlistedOrAbove,
-              passed: interviewOrAbove,
+              entered: totalScreened,
+              passed: totalInterviewed,
               rejected: 0,
               passThroughRate:
-                shortlistedOrAbove > 0
-                  ? Math.round((interviewOrAbove / shortlistedOrAbove) * 100)
+                totalScreened > 0
+                  ? Math.round((totalInterviewed / totalScreened) * 100)
+                  : 0,
+              conversionRate:
+                totalScreened > 0
+                  ? Math.round((totalInterviewed / totalScreened) * 100)
                   : 0,
               avgDays: 3,
             },
             {
-              id: 'stage-interview',
-              name: 'Interview',
-              stageType: 'LEADERSHIP',
+              id: 'stage-interviewed',
+              name: 'Interviewed',
+              stageType: 'INTERVIEW',
               stageOrder: 4,
-              entered: interviewOrAbove,
-              passed: offerOrAbove,
+              entered: totalInterviewed,
+              passed: totalHired,
               rejected: 0,
               passThroughRate:
-                interviewOrAbove > 0
-                  ? Math.round((offerOrAbove / interviewOrAbove) * 100)
+                totalInterviewed > 0
+                  ? Math.round((totalHired / totalInterviewed) * 100)
+                  : 0,
+              conversionRate:
+                totalInterviewed > 0
+                  ? Math.round((totalHired / totalInterviewed) * 100)
                   : 0,
               avgDays: 4,
             },
             {
-              id: 'stage-offer',
-              name: 'Offer / Hired',
-              stageType: 'OFFER',
+              id: 'stage-hired',
+              name: 'Hired',
+              stageType: 'HIRED',
               stageOrder: 5,
-              entered: offerOrAbove,
-              passed: offerOrAbove,
+              entered: totalHired,
+              passed: totalHired,
               rejected: 0,
               passThroughRate: 100,
+              conversionRate:
+                totalReferred > 0
+                  ? Math.round((totalHired / totalReferred) * 100)
+                  : 0,
               avgDays: 2,
             },
           ];
@@ -426,23 +476,40 @@ export class AnalyticsService {
     groupBy: 'role' | 'department' | 'quarter' = 'department',
   ) {
     return this.cached(`tth:${orgId}:${groupBy}`, async () => {
-      const apps = await this.prisma.candidateApplication.findMany({
-        where: {
-          hiringPlan: { orgId },
-          status: ApplicationStatus.SELECTED,
-          completedAt: { not: null },
-        },
-        include: {
-          hiringPlan: {
-            select: {
-              designation: true,
-              department: true,
-              quarter: true,
-              year: true,
+      const [apps, hiredRefs] = await Promise.all([
+        this.prisma.candidateApplication.findMany({
+          where: {
+            hiringPlan: { orgId },
+            status: ApplicationStatus.SELECTED,
+            completedAt: { not: null },
+          },
+          include: {
+            hiringPlan: {
+              select: {
+                designation: true,
+                department: true,
+                quarter: true,
+                year: true,
+              },
             },
           },
-        },
-      });
+        }),
+        this.prisma.referral.findMany({
+          where: {
+            mandate: { orgId },
+            status: { in: ['SELECTED', 'HIRED'] },
+          },
+          include: {
+            mandate: {
+              select: {
+                title: true,
+                department: true,
+                createdAt: true,
+              },
+            },
+          },
+        }),
+      ]);
 
       const groups: Record<string, number[]> = {};
       for (const a of apps) {
@@ -456,6 +523,24 @@ export class AnalyticsService {
         else if (groupBy === 'quarter')
           key = `Q${a.hiringPlan.quarter} ${a.hiringPlan.year}`;
         else key = a.hiringPlan.department;
+
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(days);
+      }
+
+      for (const ref of hiredRefs) {
+        const days = Math.max(
+          1,
+          Math.ceil(
+            (ref.updatedAt.getTime() - ref.createdAt.getTime()) /
+              (1000 * 60 * 60 * 24),
+          ),
+        );
+        let key: string;
+        if (groupBy === 'role') key = ref.mandate.title;
+        else if (groupBy === 'quarter')
+          key = `Q${Math.floor(ref.updatedAt.getMonth() / 3) + 1} ${ref.updatedAt.getFullYear()}`;
+        else key = ref.mandate.department || 'General';
 
         if (!groups[key]) groups[key] = [];
         groups[key].push(days);
@@ -488,20 +573,40 @@ export class AnalyticsService {
             cd.getMonth() === d.getMonth()
           );
         });
+        const monthRefs = hiredRefs.filter((r) => {
+          const ud = new Date(r.updatedAt);
+          return (
+            ud.getFullYear() === d.getFullYear() &&
+            ud.getMonth() === d.getMonth()
+          );
+        });
+        const allCompletedCount = monthApps.length + monthRefs.length;
+        const totalCompletedDays =
+          monthApps.reduce(
+            (s, a) =>
+              s +
+              Math.ceil(
+                (new Date(a.completedAt!).getTime() -
+                  new Date(a.appliedAt).getTime()) /
+                  (1000 * 60 * 60 * 24),
+              ),
+            0,
+          ) +
+          monthRefs.reduce(
+            (s, r) =>
+              s +
+              Math.max(
+                1,
+                Math.ceil(
+                  (r.updatedAt.getTime() - r.createdAt.getTime()) /
+                    (1000 * 60 * 60 * 24),
+                ),
+              ),
+            0,
+          );
         const avg =
-          monthApps.length > 0
-            ? Math.round(
-                monthApps.reduce(
-                  (s, a) =>
-                    s +
-                    Math.ceil(
-                      (new Date(a.completedAt!).getTime() -
-                        new Date(a.appliedAt).getTime()) /
-                        (1000 * 60 * 60 * 24),
-                    ),
-                  0,
-                ) / monthApps.length,
-              )
+          allCompletedCount > 0
+            ? Math.round(totalCompletedDays / allCompletedCount)
             : 0;
         trend.push({
           month: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,

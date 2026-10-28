@@ -60,3 +60,23 @@ venv/
 
 # OS
 Thumbs.db
+
+# ── Audit remediation (P0-01) ──────────────────────────────────
+# AI assistant session logs (may contain local paths, tokens, PII)
+user_inputs.txt
+
+# Database dumps (may contain PII)
+db-dump.json
+db-dump*.json
+
+# Ad-hoc debug and fix scripts that should not run in production
+backend/dump.js
+backend/check.js
+backend/check-referrals.js
+backend/fix-rewards.ts
+backend/scratch/
+backend/test-prisma-missing-orgId.ts
+
+# Build info cache
+*.tsbuildinfo
+

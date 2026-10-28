@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { getRecruiterRewards } from "@/lib/marketplace-api";
-import { IndianRupee, Loader2, CreditCard, Wallet, Clock, ArrowUpRight, History } from "lucide-react";
+import { IndianRupee, Loader2, CreditCard, Wallet, Clock, ArrowUpRight, History, AlertTriangle } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 export default function RecruiterFinancialsPage() {
+  const router = useRouter();
   const [data, setData] = useState<{ rewards: any[]; pipelinePotential: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -54,6 +56,15 @@ export default function RecruiterFinancialsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Demo / Sandbox Banner (P0-10) */}
+      <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 text-amber-800 text-sm flex items-center justify-between">
+        <div className="flex items-center gap-2 max-w-5xl">
+          <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
+          <span><strong>Sandbox Demo Mode:</strong> Escrow deposits and bounty settlements are simulated for preview purposes. Real payment gateway ledger integration is in active development.</span>
+        </div>
+        <span className="text-xs font-semibold uppercase tracking-wider bg-amber-200 text-amber-900 px-2 py-0.5 rounded">Preview</span>
+      </div>
+
       {/* Header */}
       <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white px-6 py-10">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
@@ -64,9 +75,12 @@ export default function RecruiterFinancialsPage() {
             </h1>
             <p className="text-slate-400 mt-2">Manage your earnings, pending payouts, and pipeline potential.</p>
           </div>
-          <button className="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-semibold flex items-center gap-2 transition-colors">
+          <button 
+            onClick={() => router.push("/recruiter/earnings")}
+            className="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-semibold flex items-center gap-2 transition-colors"
+          >
             <ArrowUpRight className="h-5 w-5" />
-            Withdraw Funds
+            Manage Earnings & Withdrawals
           </button>
         </div>
       </div>

@@ -23,9 +23,13 @@ export class DecisionsService {
     applicationId: string,
     userId: string,
     dto: MakeDecisionDto,
+    orgId?: string,
   ) {
-    const application = await this.prisma.candidateApplication.findUnique({
-      where: { id: applicationId },
+    const application = await this.prisma.candidateApplication.findFirst({
+      where: {
+        id: applicationId,
+        ...(orgId ? { hiringPlan: { orgId } } : {}),
+      },
       include: {
         candidate: true,
         hiringPlan: {
@@ -34,6 +38,7 @@ export class DecisionsService {
             title: true,
             designation: true,
             department: true,
+            orgId: true,
           },
         },
         decision: true,
@@ -105,7 +110,7 @@ export class DecisionsService {
     // Draft communication via AI (non-blocking)
     this.draftCommunication(decision.id, application, dto).catch(() => {});
 
-    return this.getDecision(applicationId);
+    return this.getDecision(applicationId, orgId);
   }
 
   private async draftCommunication(
@@ -113,12 +118,6 @@ export class DecisionsService {
     application: any,
     dto: MakeDecisionDto,
   ) {
-    const aiServiceUrl = this.config.get(
-      'AI_SERVICE_URL',
-      'http://localhost:8000',
-    );
-    const apiKey = this.config.get('INTERNAL_API_KEY', 'dev-internal-key');
-
     // Determine feedback tone from submitted feedback
     const feedbacks = await this.prisma.interviewFeedback.findMany({
       where: { applicationId: application.id, isSubmitted: true },
@@ -185,9 +184,12 @@ export class DecisionsService {
     }
   }
 
-  async approveDecision(applicationId: string, userId: string) {
-    const decision = await this.prisma.selectionDecision.findUnique({
-      where: { applicationId },
+  async approveDecision(applicationId: string, userId: string, orgId?: string) {
+    const decision = await this.prisma.selectionDecision.findFirst({
+      where: {
+        applicationId,
+        ...(orgId ? { application: { hiringPlan: { orgId } } } : {}),
+      },
     });
     if (!decision) throw new NotFoundException('Decision not found');
     if (decision.approvedById)
@@ -206,9 +208,13 @@ export class DecisionsService {
   async updateCommunication(
     applicationId: string,
     dto: UpdateCommunicationDto,
+    orgId?: string,
   ) {
-    const decision = await this.prisma.selectionDecision.findUnique({
-      where: { applicationId },
+    const decision = await this.prisma.selectionDecision.findFirst({
+      where: {
+        applicationId,
+        ...(orgId ? { application: { hiringPlan: { orgId } } } : {}),
+      },
     });
     if (!decision) throw new NotFoundException('Decision not found');
 
@@ -218,9 +224,12 @@ export class DecisionsService {
     });
   }
 
-  async markCommunicationSent(applicationId: string) {
-    const decision = await this.prisma.selectionDecision.findUnique({
-      where: { applicationId },
+  async markCommunicationSent(applicationId: string, orgId?: string) {
+    const decision = await this.prisma.selectionDecision.findFirst({
+      where: {
+        applicationId,
+        ...(orgId ? { application: { hiringPlan: { orgId } } } : {}),
+      },
     });
     if (!decision) throw new NotFoundException('Decision not found');
 
@@ -230,9 +239,12 @@ export class DecisionsService {
     });
   }
 
-  async getDecision(applicationId: string) {
-    const decision = await this.prisma.selectionDecision.findUnique({
-      where: { applicationId },
+  async getDecision(applicationId: string, orgId?: string) {
+    const decision = await this.prisma.selectionDecision.findFirst({
+      where: {
+        applicationId,
+        ...(orgId ? { application: { hiringPlan: { orgId } } } : {}),
+      },
       include: {
         decidedBy: { select: { id: true, name: true, email: true } },
         approvedBy: { select: { id: true, name: true } },
@@ -251,9 +263,12 @@ export class DecisionsService {
     return decision;
   }
 
-  async getTimeline(applicationId: string) {
-    const application = await this.prisma.candidateApplication.findUnique({
-      where: { id: applicationId },
+  async getTimeline(applicationId: string, orgId?: string) {
+    const application = await this.prisma.candidateApplication.findFirst({
+      where: {
+        id: applicationId,
+        ...(orgId ? { hiringPlan: { orgId } } : {}),
+      },
       include: {
         candidate: { select: { name: true } },
         hiringPlan: { select: { title: true } },
@@ -362,9 +377,14 @@ export class DecisionsService {
     return { candidateName: application.candidate.name, totalDays, events };
   }
 
-  async getDecisionsForPlan(hiringPlanId: string) {
+  async getDecisionsForPlan(hiringPlanId: string, orgId?: string) {
     return this.prisma.selectionDecision.findMany({
-      where: { application: { hiringPlanId } },
+      where: {
+        application: {
+          hiringPlanId,
+          ...(orgId ? { hiringPlan: { orgId } } : {}),
+        },
+      },
       include: {
         application: {
           include: {

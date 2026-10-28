@@ -38,11 +38,14 @@ export class Msg91Client {
     this.authKey = this.config.get<string>('MSG91_AUTH_KEY', '');
     this.senderId = this.config.get<string>('MSG91_SMS_SENDER_ID', 'WRKNCS');
     this.waChannelNumber = this.config.get<string>('MSG91_WA_NUMBER', '');
+    const isProd = process.env.NODE_ENV === 'production';
     this.webhookSecret = this.config.get<string>(
       'MSG91_WEBHOOK_SECRET',
-      'dev-msg91-secret',
+      isProd ? '' : 'dev-msg91-secret',
     );
-    this.sandbox = this.config.get<string>('MSG91_SANDBOX', 'true') !== 'false';
+    this.sandbox = isProd
+      ? this.config.get<string>('MSG91_SANDBOX') === 'true'
+      : this.config.get<string>('MSG91_SANDBOX', 'true') !== 'false';
   }
 
   async sendSms(req: SmsRequest): Promise<MessageResult> {

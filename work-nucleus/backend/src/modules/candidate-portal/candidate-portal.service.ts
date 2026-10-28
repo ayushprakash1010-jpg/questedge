@@ -4,21 +4,26 @@ import {
   BadRequestException,
   ConflictException,
   GoneException,
+  ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AiScreeningService } from '../ai-screening/ai-screening.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { CandidateProfile, ConsentStatus } from '@prisma/client';
+import { CandidateProfile, ConsentStatus, Role } from '@prisma/client';
 import {
   UpsertCandidateProfileDto,
   DirectApplyDto,
 } from './dto/candidate-portal.dto';
 import { FilterMandateDto } from '../mandates/dto/filter-mandate.dto';
 import { PaginatedResult } from '../mandates/mandates.service';
+import { calculateReferralReward } from '../rewards/rewards.service';
 
 @Injectable()
 export class CandidatePortalService {
+  private readonly logger = new Logger(CandidatePortalService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly aiScreening: AiScreeningService,
@@ -31,6 +36,7 @@ export class CandidatePortalService {
     auth0Sub: string,
     email: string,
     dto: UpsertCandidateProfileDto,
+    emailVerified: boolean = false,
   ): Promise<CandidateProfile> {
     const cleanEmail = email ? email.toLowerCase().trim() : '';
     if (!cleanEmail)
@@ -49,6 +55,29 @@ export class CandidatePortalService {
     const existingBySub = auth0Sub
       ? await this.prisma.candidateProfile.findUnique({ where: { auth0Sub } })
       : null;
+
+    if (auth0Sub && !existingBySub) {
+      if (this.prisma.user) {
+        const existingUser = await this.prisma.user.findUnique({
+          where: { auth0Sub },
+        });
+        if (existingUser) {
+          throw new ConflictException(
+            'User is already registered as a company user',
+          );
+        }
+      }
+      if (this.prisma.recruiterProfile) {
+        const existingRecruiter = await this.prisma.recruiterProfile.findUnique({
+          where: { auth0Sub },
+        });
+        if (existingRecruiter) {
+          throw new ConflictException(
+            'User is already registered as a recruiter',
+          );
+        }
+      }
+    }
 
     let existingByHash = await this.prisma.candidateProfile.findUnique({
       where: { emailHash },
@@ -136,6 +165,19 @@ export class CandidatePortalService {
 
     // 4. Update existing profile
     if (canonical) {
+      // ── P0-06: Never overwrite a non-null auth0Sub with a different value ──
+      // If the profile already has an auth0Sub that differs from the caller,
+      // the caller does NOT own this profile. Refuse the takeover.
+      if (
+        canonical.auth0Sub &&
+        canonical.auth0Sub !== auth0Sub
+      ) {
+        throw new ConflictException(
+          'This email is associated with a different account. ' +
+          'Please log in with the original account or contact support.',
+        );
+      }
+
       return this.prisma.candidateProfile.update({
         where: { id: canonical.id },
         data: {
@@ -192,6 +234,7 @@ export class CandidatePortalService {
   async getMyProfile(
     auth0Sub: string,
     email?: string,
+    emailVerified: boolean = false,
   ): Promise<CandidateProfile> {
     let profile = await this.prisma.candidateProfile.findUnique({
       where: { auth0Sub },
@@ -233,8 +276,10 @@ export class CandidatePortalService {
         },
       });
 
-      if (profile && !profile.auth0Sub) {
-        // Auto-link auth0Sub to this candidate's referral profile
+      if (profile && !profile.auth0Sub && emailVerified) {
+        // P0-06: Only auto-link auth0Sub if:
+        // 1. The profile has no existing auth0Sub (unclaimed)
+        // 2. The caller's email is verified (from JWT claim)
         profile = await this.prisma.candidateProfile.update({
           where: { id: profile.id },
           data: { auth0Sub },
@@ -271,6 +316,76 @@ export class CandidatePortalService {
       where: { id: candidateId },
       data: { resumeUrl },
     });
+  }
+
+  /**
+   * Retrieves candidate resume key after verifying that the caller is authorized to view it (P2-06).
+   * - Candidate can view their own resume.
+   * - Company users can view resumes of candidates who applied or were referred to their company.
+   * - Recruiters can view resumes of candidates they referred.
+   */
+  async getCandidateResumeKeyWithAuth(
+    user: any,
+    candidateId: string,
+  ): Promise<string> {
+    const candidate = await this.prisma.candidateProfile.findUnique({
+      where: { id: candidateId },
+    });
+    if (!candidate) {
+      throw new NotFoundException('Candidate profile not found.');
+    }
+    if (!candidate.resumeUrl) {
+      throw new NotFoundException('No resume uploaded for this candidate.');
+    }
+
+    // 1. Candidate themselves
+    if (user.auth0Sub && candidate.auth0Sub === user.auth0Sub) {
+      return candidate.resumeUrl;
+    }
+
+    // 2. Company user: Candidate has an application or referral with their organization
+    if (user.orgId) {
+      const hasApplication = await this.prisma.candidateApplication.findFirst({
+        where: {
+          candidateId,
+          hiringPlan: { orgId: user.orgId },
+        },
+      });
+      if (hasApplication) return candidate.resumeUrl;
+
+      const hasReferral = await this.prisma.referral.findFirst({
+        where: {
+          candidateProfileId: candidateId,
+          mandate: { orgId: user.orgId },
+        },
+      });
+      if (hasReferral) return candidate.resumeUrl;
+    }
+
+    // 3. Recruiter: Recruiter referred this candidate
+    if (user.auth0Sub) {
+      const recruiterProfile = await this.prisma.recruiterProfile.findUnique({
+        where: { auth0Sub: user.auth0Sub },
+      });
+      if (recruiterProfile) {
+        const hasReferral = await this.prisma.referral.findFirst({
+          where: {
+            candidateProfileId: candidateId,
+            recruiterId: recruiterProfile.id,
+          },
+        });
+        if (hasReferral) return candidate.resumeUrl;
+      }
+    }
+
+    // 4. Platform / Support Admin
+    if (user.role === Role.SUPPORT_ADMIN || user.role === Role.SUPPORT_REP) {
+      return candidate.resumeUrl;
+    }
+
+    throw new ForbiddenException(
+      'You do not have permission to access this candidate resume.',
+    );
   }
 
   // ── Job Discovery ────────────────────────────────────────────────
@@ -621,6 +736,9 @@ export class CandidatePortalService {
 
     // If accepted and the mandate has a reward, create a RewardTracking record
     if (accepted && consent.referral.mandate.referralRewardAmount) {
+      const calculatedReward = calculateReferralReward(
+        consent.referral.mandate,
+      );
       txOps.push(
         this.prisma.rewardTracking.create({
           data: {
@@ -628,7 +746,7 @@ export class CandidatePortalService {
             mandateId: consent.referral.mandate.id,
             orgId: consent.referral.mandate.orgId,
             recruiterId: consent.referral.recruiterId,
-            rewardAmount: consent.referral.mandate.referralRewardAmount,
+            rewardAmount: calculatedReward,
             currency: consent.referral.mandate.currency,
             status: 'POTENTIAL',
           },
@@ -650,11 +768,11 @@ export class CandidatePortalService {
 
     // Also Notify Company (Company Admin)
     if (accepted) {
-      // Find company admins
+      // Find company admins (P2-05 / F-12: Match by role: Role.ADMIN or userType: COMPANY_ADMIN)
       const admins = await this.prisma.user.findMany({
         where: {
           orgId: consent.referral.mandate.orgId,
-          userType: 'COMPANY_ADMIN',
+          OR: [{ role: Role.ADMIN }, { userType: 'COMPANY_ADMIN' }],
         },
       });
       for (const admin of admins) {
@@ -702,5 +820,191 @@ export class CandidatePortalService {
       dto.skills.length > 0 &&
       dto.currentLocation
     );
+  }
+
+  // ── P2-12: Privacy & Data-Subject Rights (GDPR / DPDP) ───────────
+
+  /**
+   * Export all personal data belonging to candidate
+   * Complies with GDPR Art. 20 (Data Portability) and DPDP Act 2023 Sec. 11.
+   */
+  async exportCandidateData(profileId: string) {
+    const profile: any = await this.prisma.candidateProfile.findUnique({
+      where: { id: profileId },
+      include: {
+        applications: {
+          select: {
+            id: true,
+            status: true,
+            appliedAt: true,
+            hiringPlan: {
+              select: {
+                id: true,
+                title: true,
+                designation: true,
+                department: true,
+                organization: { select: { id: true, name: true } },
+              },
+            },
+          },
+        },
+        referrals: {
+          select: {
+            id: true,
+            status: true,
+            recruiterNote: true,
+            createdAt: true,
+            mandate: {
+              select: {
+                id: true,
+                title: true,
+                organization: { select: { id: true, name: true } },
+              },
+            },
+            recruiter: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        consents: {
+          select: {
+            id: true,
+            status: true,
+            respondedAt: true,
+            expiresAt: true,
+            requestedAt: true,
+          },
+        },
+        savedJobs: {
+          select: {
+            id: true,
+            savedAt: true,
+            mandate: {
+              select: {
+                id: true,
+                title: true,
+                organization: { select: { id: true, name: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Candidate profile not found');
+    }
+
+    return {
+      exportDate: new Date().toISOString(),
+      formatVersion: '1.0',
+      compliance: 'GDPR_ARTICLE_20_AND_DPDP_SECTION_11',
+      dataSubject: {
+        id: profile.id,
+        auth0Sub: profile.auth0Sub,
+        email: profile.email,
+        name: profile.name,
+        phone: profile.phone,
+        headline: profile.headline,
+        currentCompany: profile.currentCompany,
+        currentDesignation: profile.currentDesignation,
+        experienceYears: profile.experienceYears,
+        skills: profile.skills,
+        education: profile.education,
+        certifications: profile.certifications,
+        currentLocation: profile.currentLocation,
+        preferredLocations: profile.preferredLocations,
+        currentCtc: profile.currentCtc,
+        expectedCtc: profile.expectedCtc,
+        noticePeriodDays: profile.noticePeriodDays,
+        preferredRoles: profile.preferredRoles,
+        preferredIndustries: profile.preferredIndustries,
+        workModel: profile.workModel,
+        profileLinks: profile.profileLinks,
+        resumeUrl: profile.resumeUrl,
+        createdAt: profile.createdAt,
+        updatedAt: profile.updatedAt,
+      },
+      applications: profile.applications,
+      referrals: profile.referrals,
+      consents: profile.consents,
+      savedJobs: profile.savedJobs,
+    };
+  }
+
+  /**
+   * Right to erasure / Anonymization
+   * Cryptographically anonymizes and scrubs candidate PII while maintaining auditability.
+   * Complies with GDPR Art. 17 (Right to Erasure) and DPDP Act 2023 Sec. 12.
+   */
+  async eraseCandidateData(profileId: string) {
+    const profile = await this.prisma.candidateProfile.findUnique({
+      where: { id: profileId },
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Candidate profile not found');
+    }
+
+    const anonymizedEmail = `erased-${profile.id.slice(0, 8)}@deleted.questedge.local`;
+    const anonymizedEmailHash = crypto
+      .createHash('sha256')
+      .update(anonymizedEmail)
+      .digest('hex');
+
+    // Perform erasure inside a transaction
+    await this.prisma.$transaction([
+      // 1. Remove saved jobs
+      this.prisma.savedJob.deleteMany({
+        where: { candidateProfileId: profileId },
+      }),
+
+      // 2. Expire any pending consents
+      this.prisma.candidateConsent.updateMany({
+        where: { candidateProfileId: profileId, status: ConsentStatus.PENDING },
+        data: { status: ConsentStatus.EXPIRED },
+      }),
+
+      // 3. Anonymize the candidate profile PII
+      this.prisma.candidateProfile.update({
+        where: { id: profileId },
+        data: {
+          name: 'Deleted Candidate',
+          email: anonymizedEmail,
+          emailHash: anonymizedEmailHash,
+          phone: null,
+          phoneHash: null,
+          auth0Sub: null,
+          headline: null,
+          currentCompany: null,
+          currentDesignation: null,
+          currentLocation: null,
+          resumeUrl: null,
+          skills: [],
+          education: [],
+          certifications: [],
+          preferredLocations: [],
+          preferredRoles: [],
+          preferredIndustries: [],
+          profileLinks: {},
+          isProfileComplete: false,
+          isActive: false,
+        },
+      }),
+    ]);
+
+    this.logger.log(
+      `Candidate profile ${profileId} personal data successfully scrubbed and anonymized.`,
+    );
+
+    return {
+      success: true,
+      message:
+        'Candidate personal data has been securely scrubbed and anonymized in compliance with GDPR and DPDP standards.',
+      erasedAt: new Date().toISOString(),
+    };
   }
 }

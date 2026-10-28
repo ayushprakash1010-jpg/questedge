@@ -12,6 +12,7 @@ import {
   Clock,
   CheckCircle2,
   Building2,
+  Sparkles,
 } from "lucide-react";
 
 export type MandateStatus = "DRAFT" | "ACTIVE" | "PAUSED" | "FILLED" | "CLOSED";
@@ -34,6 +35,8 @@ interface MandateCardProps {
   isJoined?: boolean;
   isSaved?: boolean;
   viewAs?: "company" | "recruiter" | "candidate";
+  aiMatchScore?: number;
+  aiMatchVerdict?: string;
   onJoin?: (id: string) => void;
   onSave?: (id: string) => void;
   onClick?: (id: string) => void;
@@ -108,6 +111,8 @@ export function MandateCard({
   isJoined = false,
   isSaved = false,
   viewAs = "company",
+  aiMatchScore,
+  aiMatchVerdict,
   onJoin,
   onSave,
   onClick,
@@ -132,7 +137,7 @@ export function MandateCard({
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
               <Building2 className="h-3 w-3" />
               {organization.name}
@@ -142,6 +147,21 @@ export function MandateCard({
                 <span className="text-slate-300">·</span>
                 <span className="text-xs text-slate-400">{department}</span>
               </>
+            )}
+            {aiMatchScore !== undefined && (
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border",
+                  aiMatchScore >= 80
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : aiMatchScore >= 65
+                    ? "bg-blue-50 text-blue-700 border-blue-200"
+                    : "bg-amber-50 text-amber-700 border-amber-200"
+                )}
+              >
+                <Sparkles className="h-2.5 w-2.5 text-indigo-500" />
+                {aiMatchScore}% Match
+              </span>
             )}
           </div>
           <h3 className="font-semibold text-slate-900 text-base leading-tight truncate group-hover:text-indigo-700 transition-colors">

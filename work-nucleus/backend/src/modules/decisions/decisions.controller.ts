@@ -15,6 +15,7 @@ import {
   UpdateCommunicationDto,
 } from './dto/make-decision.dto';
 import { Roles } from '../../auth/decorators/roles.decorator';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Role } from '@prisma/client';
 
 @ApiTags('Decisions')
@@ -29,24 +30,29 @@ export class DecisionsController {
   makeDecision(
     @Param('appId', ParseUUIDPipe) appId: string,
     @Body() dto: MakeDecisionDto,
-    @Req() req: any,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('orgId') orgId: string,
   ) {
-    return this.decisionsService.makeDecision(appId, req.user.id, dto);
+    return this.decisionsService.makeDecision(appId, userId, dto, orgId);
   }
 
   @Get('api/v1/applications/:appId/decision')
   @ApiOperation({ summary: 'Get decision for application' })
-  getDecision(@Param('appId', ParseUUIDPipe) appId: string) {
-    return this.decisionsService.getDecision(appId);
+  getDecision(
+    @Param('appId', ParseUUIDPipe) appId: string,
+    @CurrentUser('orgId') orgId: string,
+  ) {
+    return this.decisionsService.getDecision(appId, orgId);
   }
 
   @Post('api/v1/applications/:appId/decision/approve')
   @ApiOperation({ summary: 'Approve a decision' })
   approveDecision(
     @Param('appId', ParseUUIDPipe) appId: string,
-    @Req() req: any,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('orgId') orgId: string,
   ) {
-    return this.decisionsService.approveDecision(appId, req.user.id);
+    return this.decisionsService.approveDecision(appId, userId, orgId);
   }
 
   @Patch('api/v1/applications/:appId/decision/communication')
@@ -54,26 +60,36 @@ export class DecisionsController {
   updateCommunication(
     @Param('appId', ParseUUIDPipe) appId: string,
     @Body() dto: UpdateCommunicationDto,
+    @CurrentUser('orgId') orgId: string,
   ) {
-    return this.decisionsService.updateCommunication(appId, dto);
+    return this.decisionsService.updateCommunication(appId, dto, orgId);
   }
 
   @Post('api/v1/applications/:appId/decision/send')
   @ApiOperation({ summary: 'Mark communication as sent' })
-  markSent(@Param('appId', ParseUUIDPipe) appId: string) {
-    return this.decisionsService.markCommunicationSent(appId);
+  markSent(
+    @Param('appId', ParseUUIDPipe) appId: string,
+    @CurrentUser('orgId') orgId: string,
+  ) {
+    return this.decisionsService.markCommunicationSent(appId, orgId);
   }
 
   @Get('api/v1/applications/:appId/timeline')
   @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER, Role.INTERVIEWER)
   @ApiOperation({ summary: 'Get full candidate timeline' })
-  getTimeline(@Param('appId', ParseUUIDPipe) appId: string) {
-    return this.decisionsService.getTimeline(appId);
+  getTimeline(
+    @Param('appId', ParseUUIDPipe) appId: string,
+    @CurrentUser('orgId') orgId: string,
+  ) {
+    return this.decisionsService.getTimeline(appId, orgId);
   }
 
   @Get('api/v1/hiring-plans/:planId/decisions')
   @ApiOperation({ summary: 'Get all decisions for a hiring plan' })
-  getDecisionsForPlan(@Param('planId', ParseUUIDPipe) planId: string) {
-    return this.decisionsService.getDecisionsForPlan(planId);
+  getDecisionsForPlan(
+    @Param('planId', ParseUUIDPipe) planId: string,
+    @CurrentUser('orgId') orgId: string,
+  ) {
+    return this.decisionsService.getDecisionsForPlan(planId, orgId);
   }
 }

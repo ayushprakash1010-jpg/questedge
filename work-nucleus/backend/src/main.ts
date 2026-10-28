@@ -5,10 +5,35 @@ import * as express from 'express';
 import { AppModule } from './app.module';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { validateEnvironment } from './config/env.validation';
 
 async function bootstrap() {
+  // P0-09: Fail-fast boot-time environment validation
+  validateEnvironment();
+
   const app = await NestFactory.create(AppModule, { bodyParser: false });
   const logger = new Logger('Bootstrap');
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  // P1-04: Trust reverse proxy (Render, Vercel, ALB) & disable server fingerprinting
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.set('trust proxy', 1);
+  expressApp.disable('x-powered-by');
+
+  // P1-04: Security headers middleware
+  app.use((_req: express.Request, res: express.Response, next: express.NextFunction) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '0');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    if (isProduction) {
+      res.setHeader(
+        'Strict-Transport-Security',
+        'max-age=31536000; includeSubDomains; preload',
+      );
+    }
+    next();
+  });
 
   // Capture raw body on every JSON request so webhook HMAC verification has access
   app.use(
@@ -21,19 +46,19 @@ async function bootstrap() {
   );
   app.use(express.urlencoded({ extended: true }));
 
-  // Global validation pipe — whitelist unknown fields to prevent mass-assignment
+  // Global validation pipe — reject unknown fields to prevent mass-assignment
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
       whitelist: true,
-      forbidNonWhitelisted: false, // warn but don't reject for backwards compat
+      forbidNonWhitelisted: true, // P0-09: reject unknown fields
     }),
   );
 
   // Global exception filter
   app.useGlobalFilters(new GlobalExceptionFilter());
 
-  // Global logging interceptor
+  // Global logging interceptor (with request ID and redaction)
   app.useGlobalInterceptors(new LoggingInterceptor());
 
   // CORS — allow both local dev origins and production Vercel deployments
@@ -51,19 +76,24 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // Swagger
-  const config = new DocumentBuilder()
-    .setTitle('QuestEdge API')
-    .setDescription('QuestEdge HR Platform API')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  // P1-04: Gate Swagger — enabled in dev or when explicitly opted in via ENABLE_SWAGGER=true
+  const enableSwagger = !isProduction || process.env.ENABLE_SWAGGER === 'true';
+  if (enableSwagger) {
+    const config = new DocumentBuilder()
+      .setTitle('QuestEdge API')
+      .setDescription('QuestEdge HR Platform API')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
+    logger.log('Swagger documentation enabled at /api/docs');
+  } else {
+    logger.log('Swagger documentation disabled in production (set ENABLE_SWAGGER=true to override)');
+  }
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
   logger.log(`Application running on http://localhost:${port}`);
-  logger.log(`Swagger docs at http://localhost:${port}/api/docs`);
 }
 bootstrap();

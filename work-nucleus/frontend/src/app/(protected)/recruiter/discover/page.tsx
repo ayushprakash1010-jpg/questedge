@@ -15,6 +15,9 @@ import {
   TrendingUp,
   ChevronDown,
 } from "lucide-react";
+import { CardGridSkeleton } from "@/components/ui/skeleton-states";
+import { MarketplaceEmptyState } from "@/components/ui/marketplace-empty-state";
+import { ErrorBanner } from "@/components/ui/error-state";
 
 const WORK_MODELS = ["Remote", "Hybrid", "On-site"];
 const SKILLS_SUGGESTIONS = [
@@ -26,6 +29,7 @@ export default function RecruiterDiscoverPage() {
   const router = useRouter();
   const [mandates, setMandates] = useState<Mandate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
 
@@ -41,9 +45,21 @@ export default function RecruiterDiscoverPage() {
 
   const debouncedSearch = useRef<NodeJS.Timeout | null>(null);
 
+  const clearAllFilters = () => {
+    setSearch("");
+    setLocation("");
+    setWorkModel("");
+    setDepartment("");
+    setIndustry("");
+    setSelectedSkills([]);
+    setMinReward("");
+    setPage(1);
+  };
+
   const fetchMandates = useCallback(async (reset = false) => {
     try {
       setLoading(true);
+      setError(null);
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
 
@@ -68,6 +84,9 @@ export default function RecruiterDiscoverPage() {
         setMandates((prev) => (page === 1 ? result.data : [...prev, ...result.data]));
       }
       setTotal(result.meta.total);
+    } catch (err: any) {
+      console.error("Failed to discover mandates", err);
+      setError(err?.message || "Failed to load open marketplace mandates.");
     } finally {
       setLoading(false);
     }
@@ -268,18 +287,36 @@ export default function RecruiterDiscoverPage() {
             </p>
           </div>
 
+          {/* Error Banner */}
+          {error && (
+            <ErrorBanner
+              message={error}
+              onRetry={() => fetchMandates(true)}
+              onResetFilters={clearAllFilters}
+            />
+          )}
+
+          {/* Screen Reader Live Status Announcement */}
+          <div aria-live="polite" aria-atomic="true" className="sr-only">
+            {loading
+              ? "Loading active mandate opportunities..."
+              : mandates.length === 0
+              ? "No job mandates match your filters."
+              : `Found ${mandates.length} mandate ${mandates.length === 1 ? "opportunity" : "opportunities"}`}
+          </div>
+
           {loading && mandates.length === 0 ? (
-            <div className="flex items-center justify-center py-24">
-              <Loader2 className="h-8 w-8 animate-spin text-sky-400" />
-            </div>
+            <CardGridSkeleton count={6} columns={2} />
           ) : mandates.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-sky-50 flex items-center justify-center mb-4">
-                <TrendingUp className="h-8 w-8 text-sky-300" />
-              </div>
-              <h3 className="text-lg font-semibold text-slate-700 mb-1">No mandates match your filters</h3>
-              <p className="text-sm text-slate-400">Try adjusting your search or clearing filters</p>
-            </div>
+            <MarketplaceEmptyState
+              preset="search"
+              title="No Mandates Match Your Search"
+              description="Try adjusting your keywords, work model, or compensation filters to discover active opportunities."
+              secondaryAction={{
+                label: "Clear all filters",
+                onClick: clearAllFilters,
+              }}
+            />
           ) : (
             <>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

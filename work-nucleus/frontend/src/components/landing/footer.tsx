@@ -10,7 +10,7 @@ const productLinks = [
 
 const marketplaceLinks = [
   { label: "Post a Mandate", href: "/auth/login?returnTo=/dashboard" },
-  { label: "Join as Recruiter", href: "/auth/login?returnTo=/dashboard" },
+  { label: "Join as Recruiter", href: "/auth/login?returnTo=/recruiter/dashboard" },
   { label: "Browse Open Roles", href: "/jobs" },
   { label: "Recruiter Verification", href: "/#how-it-works" },
 ];
@@ -36,7 +36,7 @@ export function LandingFooter() {
           <div className="lg:col-span-2">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-600 to-violet-500">
-                <span className="text-sm font-bold text-white">W</span>
+                <span className="text-sm font-bold text-white">Q</span>
               </div>
               <span className="text-lg font-bold text-white">
                 QuestEdge

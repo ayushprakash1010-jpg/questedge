@@ -1,36 +1,54 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DollarSign, TrendingUp, Clock, AlertCircle } from "lucide-react";
+import {
+  DollarSign,
+  TrendingUp,
+  Clock,
+  AlertCircle,
+  ShieldCheck,
+  Scale,
+} from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toaster";
 import { withdrawReward } from "@/lib/marketplace-api";
+import { StatsGridSkeleton, TableSkeleton } from "@/components/ui/skeleton-states";
+import { MarketplaceEmptyState } from "@/components/ui/marketplace-empty-state";
+import { ErrorBanner } from "@/components/ui/error-state";
+import { RewardAuditModal } from "@/components/rewards/reward-audit-modal";
+import { RewardDisputeModal } from "@/components/rewards/reward-dispute-modal";
+
 
 export default function EarningsDashboard() {
   const router = useRouter();
   const [data, setData] = useState<{ rewards: any[]; pipelinePotential: number } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
+  const [auditRewardId, setAuditRewardId] = useState<string | null>(null);
+  const [disputeReward, setDisputeReward] = useState<any | null>(null);
 
   const fetchEarnings = async () => {
     try {
+      setLoading(true);
+      setError(null);
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-      // Fix any missing rewards before loading (maintenance endpoint — disabled for demo)
-      // await fetch(`${API_URL}/api/v1/rewards/fix`, {
-      //   headers: { Authorization: `Bearer ${accessToken}` },
-      // }).catch(console.error);
 
       const res = await fetch(`${API_URL}/api/v1/rewards/recruiter`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
+      if (!res.ok) {
+        throw new Error("Failed to load recruiter earnings data from server.");
+      }
       const json = await res.json();
       setData(json);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setError(err?.message || "Failed to load earnings records.");
     } finally {
       setLoading(false);
     }
@@ -47,7 +65,7 @@ export default function EarningsDashboard() {
       const { accessToken } = await tokenRes.json();
       
       await withdrawReward(accessToken, rewardId);
-      
+      toast.success("Simulated withdrawal recorded (Demo Mode). Test reference generated.");
       await fetchEarnings();
     } catch (err: any) {
       console.error("Withdraw Error:", err);
@@ -58,36 +76,58 @@ export default function EarningsDashboard() {
   };
 
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin h-8 w-8 border-4 border-sky-500 border-t-transparent rounded-full" />
-      </div>
-    );
-  }
-
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val);
   };
 
   const availableToWithdraw = data?.rewards
-    .filter(r => r.status === "APPROVED")
-    .reduce((sum, r) => sum + Number(r.rewardAmount), 0) || 0;
+    ? data.rewards
+        .filter(r => r.status === "APPROVED")
+        .reduce((sum, r) => sum + Number(r.rewardAmount), 0)
+    : 0;
 
   const totalWithdrawn = data?.rewards
-    .filter(r => r.status === "PAID")
-    .reduce((sum, r) => sum + Number(r.rewardAmount), 0) || 0;
+    ? data.rewards
+        .filter(r => r.status === "PAID")
+        .reduce((sum, r) => sum + Number(r.rewardAmount), 0)
+    : 0;
 
   const totalPending = data?.rewards
-    .filter(r => r.status === "ELIGIBLE" || r.status === "PENDING_APPROVAL")
-    .reduce((sum, r) => sum + Number(r.rewardAmount), 0) || 0;
+    ? data.rewards
+        .filter(r => r.status === "ELIGIBLE" || r.status === "PENDING_APPROVAL")
+        .reduce((sum, r) => sum + Number(r.rewardAmount), 0)
+    : 0;
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
-      <h1 className="text-2xl font-bold text-slate-900 mb-8">Earnings & Rewards</h1>
+    <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+      <h1 className="text-2xl font-bold text-slate-900">Earnings & Rewards</h1>
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      {/* Demo / Sandbox Banner (P0-10) */}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-amber-800 text-sm flex items-start gap-3">
+        <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+        <div>
+          <p className="font-semibold text-amber-900">Simulated Payout Environment</p>
+          <p className="text-amber-700 text-xs mt-0.5">Automated bank transfers and payouts are currently operating in sandbox simulation mode. Withdrawals generate test payment references for workflow testing.</p>
+        </div>
+      </div>
+
+      {/* Error state */}
+      {error && (
+        <ErrorBanner
+          message={error}
+          onRetry={fetchEarnings}
+        />
+      )}
+
+      {loading ? (
+        <div className="space-y-6">
+          <StatsGridSkeleton count={4} />
+          <TableSkeleton rows={5} columns={6} hasAvatar={false} />
+        </div>
+      ) : (
+        <>
+          {/* Metrics Row */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm relative overflow-hidden group hover:border-emerald-200 transition-all">
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-100 rounded-full blur-3xl -mr-10 -mt-10 opacity-50 group-hover:opacity-70 transition-opacity"></div>
           <div className="relative">
@@ -140,16 +180,13 @@ export default function EarningsDashboard() {
         </div>
         
         {(!data?.rewards || data.rewards.length === 0) ? (
-          <div className="p-12 flex flex-col items-center justify-center text-slate-500">
-            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-              <AlertCircle className="h-8 w-8 text-slate-400" />
-            </div>
-            <p className="text-sm font-semibold text-slate-800 mb-1">No rewards triggered yet</p>
-            <p className="text-sm mb-6 text-center max-w-sm">When your referred candidates get hired, your earned rewards will appear here.</p>
-            <Button onClick={() => router.push("/recruiter/discover")}>
-              Discover High-Reward Jobs
-            </Button>
-          </div>
+          <MarketplaceEmptyState
+            preset="earnings"
+            primaryAction={{
+              label: "Discover High-Reward Jobs",
+              href: "/recruiter/discover",
+            }}
+          />
         ) : (
           <table className="w-full text-left border-collapse">
             <thead>
@@ -189,16 +226,51 @@ export default function EarningsDashboard() {
                     {reward.eligibleAt ? formatDistanceToNow(new Date(reward.eligibleAt), { addSuffix: true }) : '-'}
                   </td>
                   <td className="p-4 text-right">
-                    {reward.status === 'APPROVED' && (
-                      <Button
-                        size="sm"
-                        onClick={() => handleWithdraw(reward.id)}
-                        disabled={withdrawingId === reward.id}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                    <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                      <button
+                        onClick={() => setAuditRewardId(reward.id)}
+                        className="inline-flex items-center gap-1 text-xs text-slate-600 hover:text-indigo-600 px-2 py-1 rounded border border-slate-200 hover:border-indigo-300 transition-colors"
+                        title="View immutable cryptographic audit trail"
                       >
-                        {withdrawingId === reward.id ? 'Withdrawing...' : 'Withdraw'}
-                      </Button>
-                    )}
+                        <ShieldCheck className="w-3.5 h-3.5 text-indigo-500" />
+                        Audit
+                      </button>
+
+                      {reward.status === "DISPUTED" ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                          <AlertCircle className="w-3 h-3 text-amber-600" />
+                          Disputed
+                        </span>
+                      ) : reward.status !== "CANCELLED" && (
+                        <button
+                          onClick={() =>
+                            setDisputeReward({
+                              id: reward.id,
+                              rewardAmount: reward.rewardAmount,
+                              currency: reward.currency,
+                              candidateName: reward.referral?.candidateProfile?.name,
+                              mandateTitle: reward.referral?.mandate?.title,
+                            })
+                          }
+                          className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-amber-600 px-2 py-1 rounded border border-slate-200 hover:border-amber-300 transition-colors"
+                          title="Raise formal dispute"
+                        >
+                          <Scale className="w-3.5 h-3.5" />
+                          Dispute
+                        </button>
+                      )}
+
+                      {reward.status === "APPROVED" && (
+                        <Button
+                          size="sm"
+                          onClick={() => handleWithdraw(reward.id)}
+                          disabled={withdrawingId === reward.id}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm text-xs"
+                        >
+                          {withdrawingId === reward.id ? "Processing..." : "Withdraw (Demo)"}
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -206,6 +278,24 @@ export default function EarningsDashboard() {
           </table>
         )}
       </div>
-    </div>
+    </>
+  )}
+
+  {/* P4-05: Cryptographic Audit Trail Modal */}
+  <RewardAuditModal
+    rewardId={auditRewardId || ""}
+    isOpen={!!auditRewardId}
+    onClose={() => setAuditRewardId(null)}
+  />
+
+  {/* P4-05: Reward Dispute Modal */}
+  <RewardDisputeModal
+    reward={disputeReward}
+    isOpen={!!disputeReward}
+    onClose={() => setDisputeReward(null)}
+    onDisputeRaised={() => fetchEarnings()}
+  />
+</div>
   );
 }
+

@@ -29,6 +29,8 @@ import { KpiCard } from "@/components/shared/kpi-card";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { TrustProfileCard } from "@/components/recruiter/trust-profile-card";
+
 
 // ── Referral status step ──────────────────────────────────────────
 
@@ -37,18 +39,27 @@ function FunnelBar({
   value,
   max,
   color,
+  conversionRate,
 }: {
   label: string;
   value: number;
   max: number;
   color: string;
+  conversionRate?: number;
 }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between text-sm">
-        <span className="text-slate-600">{label}</span>
-        <span className="font-semibold text-slate-900">{value}</span>
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-slate-600 font-medium">{label}</span>
+        <div className="flex items-center gap-2">
+          {conversionRate !== undefined && (
+            <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded">
+              {conversionRate}% pass
+            </span>
+          )}
+          <span className="font-bold text-slate-900">{value}</span>
+        </div>
       </div>
       <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
         <div
@@ -128,7 +139,7 @@ export default function RecruiterDashboardPage() {
     );
   }
 
-  const { stats, recentReferrals, topMandates, profile } = dashboard;
+  const { stats, recentReferrals, topMandates, profile, funnel, rewardBreakdown, timeToHire } = dashboard;
   const totalReferrals = stats.totalReferrals;
 
   return (
@@ -139,8 +150,12 @@ export default function RecruiterDashboardPage() {
       />
 
       <div className="space-y-8 pb-8">
+        {/* P4-01: Trust Profile & Verification Tier */}
+        <TrustProfileCard />
+
         {/* KPI row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
           <KpiCard
             title="Total Earned"
             value={`₹${(stats.totalEarnings / 1000).toFixed(0)}K`}
@@ -163,7 +178,7 @@ export default function RecruiterDashboardPage() {
           <KpiCard
             title="Placement Rate"
             value={`${stats.placementSuccessRate || 0}%`}
-            subValue="Candidates hired"
+            subValue={timeToHire?.avgDays ? `Avg ${timeToHire.avgDays}d to hire` : "Candidates hired"}
             icon={<TrendingUp />}
             accent="purple"
           />
@@ -175,6 +190,42 @@ export default function RecruiterDashboardPage() {
             accent="cyan"
           />
         </div>
+
+        {/* Reward Distribution Breakdown */}
+        {rewardBreakdown && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+            <div>
+              <p className="text-[11px] text-slate-500 font-medium">Potential Pool</p>
+              <p className="text-base font-bold text-slate-800 mt-0.5">
+                ₹{Number(rewardBreakdown.potential || 0).toLocaleString("en-IN")}
+              </p>
+              <p className="text-[10px] text-slate-400">In pipeline</p>
+            </div>
+            <div>
+              <p className="text-[11px] text-slate-500 font-medium">Pending Approval</p>
+              <p className="text-base font-bold text-amber-600 mt-0.5">
+                ₹{Number(rewardBreakdown.pendingApproval || 0).toLocaleString("en-IN")}
+              </p>
+              <p className="text-[10px] text-slate-400">Offers made</p>
+            </div>
+            <div>
+              <p className="text-[11px] text-slate-500 font-medium">Approved Rewards</p>
+              <p className="text-base font-bold text-indigo-600 mt-0.5">
+                ₹{Number(rewardBreakdown.approved || 0).toLocaleString("en-IN")}
+              </p>
+              <p className="text-[10px] text-slate-400">Awaiting release</p>
+            </div>
+            <div>
+              <p className="text-[11px] text-slate-500 font-medium">Disbursed Total</p>
+              <p className="text-base font-bold text-emerald-600 mt-0.5">
+                ₹{Number(rewardBreakdown.paid || 0).toLocaleString("en-IN")}
+              </p>
+              <p className="text-[10px] text-slate-400">
+                {rewardBreakdown.avgPerHire > 0 ? `Avg ₹${rewardBreakdown.avgPerHire.toLocaleString("en-IN")}/hire` : "Paid out"}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Referral Velocity Chart */}
         <Card>
@@ -210,18 +261,62 @@ export default function RecruiterDashboardPage() {
           {/* Referral funnel */}
           <Card>
             <CardHeader>
-              <CardTitle>Referral Funnel</CardTitle>
+              <CardTitle>Referral Funnel & Conversion</CardTitle>
+              <p className="text-xs text-slate-400">Conversion velocity across recruitment stages</p>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <FunnelBar label="Total Referred" value={totalReferrals} max={totalReferrals} color="bg-cyan-500" />
-              <FunnelBar label="Awaiting Consent" value={stats.pendingConsents} max={totalReferrals} color="bg-amber-400" />
-              <FunnelBar label="In Pipeline" value={stats.activePipeline} max={totalReferrals} color="bg-indigo-500" />
-              <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-sm">
-                <span className="text-slate-500">Activation rate</span>
-                <span className="font-bold text-indigo-600">
-                  {totalReferrals > 0 ? Math.round((stats.activePipeline / totalReferrals) * 100) : 0}%
-                </span>
+            <CardContent className="space-y-3.5">
+              <FunnelBar
+                label="1. Referred"
+                value={funnel?.referred ?? totalReferrals}
+                max={totalReferrals}
+                color="bg-cyan-500"
+              />
+              <FunnelBar
+                label="2. Consented"
+                value={funnel?.consented ?? (totalReferrals - stats.pendingConsents)}
+                max={totalReferrals}
+                color="bg-sky-500"
+                conversionRate={funnel?.rates?.referredToConsented}
+              />
+              <FunnelBar
+                label="3. Screened"
+                value={funnel?.screened ?? stats.activePipeline}
+                max={totalReferrals}
+                color="bg-indigo-500"
+                conversionRate={funnel?.rates?.consentedToScreened}
+              />
+              <FunnelBar
+                label="4. Interviewed"
+                value={funnel?.interviewed ?? 0}
+                max={totalReferrals}
+                color="bg-purple-500"
+                conversionRate={funnel?.rates?.screenedToInterviewed}
+              />
+              <FunnelBar
+                label="5. Placed / Hired"
+                value={funnel?.hired ?? stats.placementSuccessRate ?? 0}
+                max={totalReferrals}
+                color="bg-emerald-500"
+                conversionRate={funnel?.rates?.interviewedToHired}
+              />
+
+              <div className="pt-3 mt-2 border-t border-slate-100 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-500 font-medium">Overall Conversion</span>
+                  <span className="font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                    {funnel?.rates?.overallConversion ?? stats.placementSuccessRate ?? 0}%
+                  </span>
+                </div>
+                {timeToHire?.avgDays ? (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-500">Avg Time to Placement</span>
+                    <span className="font-semibold text-slate-800">
+                      {timeToHire.avgDays} days
+                    </span>
+                  </div>
+                ) : null}
               </div>
+
               {totalReferrals === 0 && (
                 <div className="pt-2">
                   <Button variant="outline" className="w-full text-sky-600 border-sky-200 hover:bg-sky-50" onClick={() => router.push("/recruiter/discover")}>

@@ -13,6 +13,7 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -84,6 +85,43 @@ export class CandidatePortalController {
     return this.candidatePortalService.getMyProfile(user.auth0Sub, user.email);
   }
 
+  @Get('profile/resume')
+  @ApiOperation({
+    summary: 'Get short-lived presigned download URL for own resume (Candidate)',
+  })
+  async getMyResumeUrl(@CurrentUser() user: any) {
+    const profile = await this.candidatePortalService.getMyProfile(
+      user.auth0Sub,
+      user.email,
+    );
+    if (!profile.resumeUrl) {
+      throw new NotFoundException('No resume uploaded for this profile.');
+    }
+    const downloadUrl = await this.fileUploadService.getPresignedUrl(
+      profile.resumeUrl,
+    );
+    return { url: downloadUrl, expiresInSeconds: 3600 };
+  }
+
+  @Get('profile/:id/resume')
+  @ApiOperation({
+    summary:
+      'Get short-lived presigned download URL for candidate resume (authorized candidate, recruiter, or company member)',
+  })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
+  async getCandidateResumeUrl(
+    @CurrentUser() user: any,
+    @Param('id') candidateId: string,
+  ) {
+    const resumeKey =
+      await this.candidatePortalService.getCandidateResumeKeyWithAuth(
+        user,
+        candidateId,
+      );
+    const downloadUrl = await this.fileUploadService.getPresignedUrl(resumeKey);
+    return { url: downloadUrl, expiresInSeconds: 3600 };
+  }
+
   @Patch('profile/resume')
   @ApiOperation({ summary: 'Update resume URL after file upload' })
   async updateResume(
@@ -102,7 +140,11 @@ export class CandidatePortalController {
     summary: 'Upload resume PDF/DOCX directly — stores to S3 and saves URL',
   })
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('resume'))
+  @UseInterceptors(
+    FileInterceptor('resume', {
+      limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+    }),
+  )
   async uploadResumeDirect(
     @CurrentUser() user: any,
     @UploadedFile() file: Express.Multer.File,
@@ -251,5 +293,34 @@ export class CandidatePortalController {
       dto.accepted,
       ipAddress,
     );
+  }
+
+  // ── Privacy & Data-Subject Rights (GDPR / DPDP) ───────────────────
+
+  @Get('privacy/export')
+  @ApiOperation({
+    summary:
+      'Data Portability: Export all personal data belonging to candidate (GDPR Art. 20 / DPDP Sec. 11)',
+  })
+  async exportMyData(@CurrentUser() user: any) {
+    const profile = await this.candidatePortalService.getMyProfile(
+      user.auth0Sub,
+      user.email,
+    );
+    return this.candidatePortalService.exportCandidateData(profile.id);
+  }
+
+  @Post('privacy/erasure')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Right to Erasure: Cryptographically anonymize and scrub candidate personal data (GDPR Art. 17 / DPDP Sec. 12)',
+  })
+  async eraseMyData(@CurrentUser() user: any) {
+    const profile = await this.candidatePortalService.getMyProfile(
+      user.auth0Sub,
+      user.email,
+    );
+    return this.candidatePortalService.eraseCandidateData(profile.id);
   }
 }

@@ -18,6 +18,7 @@ import {
   Star,
   ShieldCheck,
   Wallet,
+  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -55,6 +56,7 @@ const companyNavSections: NavSection[] = [
   {
     title: "Organization",
     items: [
+      { label: "Notifications", href: "/notifications", icon: Bell },
       { label: "Reports", href: "/admin/reports", icon: BarChart3 },
       { label: "Admin Settings", href: "/admin/users", icon: Shield },
       { label: "Support", href: "/support", icon: LifeBuoy },
@@ -75,6 +77,7 @@ const recruiterNavSections: NavSection[] = [
   {
     title: "Account",
     items: [
+      { label: "Notifications", href: "/notifications", icon: Bell },
       { label: "Earnings", href: "/recruiter/earnings", icon: IndianRupee },
       { label: "Profile", href: "/recruiter/profile", icon: UserCircle },
       { label: "Support", href: "/support", icon: LifeBuoy },
@@ -95,6 +98,7 @@ const candidateNavSections: NavSection[] = [
   {
     title: "Account",
     items: [
+      { label: "Notifications", href: "/notifications", icon: Bell },
       { label: "Profile", href: "/candidate/profile", icon: UserCircle },
     ],
   },

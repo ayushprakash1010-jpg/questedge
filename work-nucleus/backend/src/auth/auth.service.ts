@@ -32,6 +32,20 @@ export class AuthService {
       throw new ConflictException('User is already provisioned');
     }
 
+    const existingRecruiter = await this.prisma.recruiterProfile.findUnique({
+      where: { auth0Sub },
+    });
+    if (existingRecruiter) {
+      throw new ConflictException('User is already registered as a recruiter');
+    }
+
+    const existingCandidate = await this.prisma.candidateProfile.findUnique({
+      where: { auth0Sub },
+    });
+    if (existingCandidate) {
+      throw new ConflictException('User is already registered as a candidate');
+    }
+
     // Create org + admin user in a transaction
     const result = await this.prisma.$transaction(async (tx) => {
       const organization = await tx.organization.create({
