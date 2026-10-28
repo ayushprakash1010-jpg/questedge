@@ -30,7 +30,7 @@ jobs:
           cache-dependency-path: work-nucleus/backend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Generate Prisma Client
         run: npx prisma generate
@@ -60,7 +60,7 @@ jobs:
           cache-dependency-path: work-nucleus/frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: TypeScript type-check
         run: npx tsc --noEmit
@@ -91,7 +91,7 @@ jobs:
           cache-dependency-path: work-nucleus/support-admin/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: TypeScript type-check
         run: npx tsc --noEmit
