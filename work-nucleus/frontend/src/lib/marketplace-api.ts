@@ -132,6 +132,10 @@ export async function closeMandate(token: string, id: string): Promise<Mandate> 
   return apiClient(`/api/v1/mandates/${id}/close`, { method: "POST", token });
 }
 
+export async function fillMandate(token: string, id: string): Promise<Mandate> {
+  return apiClient(`/api/v1/mandates/${id}/fill`, { method: "POST", token });
+}
+
 export async function deleteMandate(token: string, id: string): Promise<void> {
   return apiClient(`/api/v1/mandates/${id}`, { method: "DELETE", token });
 }

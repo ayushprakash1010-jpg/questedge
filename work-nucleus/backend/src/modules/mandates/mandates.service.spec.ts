@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../comms/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { WhatsappService } from '../notifications/whatsapp.service';
+import { HireDetectionService } from '../hire-detection/hire-detection.service';
 
 describe('MandatesService', () => {
   let service: MandatesService;
@@ -40,6 +41,12 @@ describe('MandatesService', () => {
           provide: WhatsappService,
           useValue: {
             sendNotification: jest.fn(),
+          },
+        },
+        {
+          provide: HireDetectionService,
+          useValue: {
+            onMandateStatusChange: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Store, Users, FileText, Trophy } from "lucide-react";
+import { Store, Users, FileText, Trophy, ShieldAlert } from "lucide-react";
 
 export default function MarketplacePage() {
   const sections = [
@@ -29,6 +29,14 @@ export default function MarketplacePage() {
       color: "text-amber-600",
       bg: "bg-amber-50",
     },
+    {
+      href: "/marketplace/bypass-detection",
+      icon: ShieldAlert,
+      title: "Bypass Detection & Trust",
+      description: "Audit suspected off-platform hires, review automated surveillance signals, and inspect company trust scores.",
+      color: "text-red-600",
+      bg: "bg-red-50",
+    },
   ];
 
   return (
@@ -41,7 +49,7 @@ export default function MarketplacePage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {sections.map((s) => (
           <Link
             key={s.href}

@@ -45,6 +45,7 @@ export interface MandateWithStats extends Mandate {
 import { EmailService } from '../comms/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { WhatsappService } from '../notifications/whatsapp.service';
+import { HireDetectionService } from '../hire-detection/hire-detection.service';
 
 @Injectable()
 export class MandatesService {
@@ -53,6 +54,7 @@ export class MandatesService {
     private readonly emailService: EmailService,
     private readonly notifications: NotificationsService,
     private readonly whatsappService: WhatsappService,
+    private readonly hireDetection: HireDetectionService,
   ) {}
 
   // ── Helpers ────────────────────────────────────────────────────
@@ -425,11 +427,41 @@ export class MandatesService {
   async close(orgId: string, id: string): Promise<Mandate> {
     await this.findOwnMandate(orgId, id);
 
-    return this.prisma.mandate.update({
+    const updated = await this.prisma.mandate.update({
       where: { id },
       data: { status: 'CLOSED' },
       include: { organization: { select: { id: true, name: true } } },
     });
+
+    // Hire bypass detection: auto-trigger candidate check-ins
+    this.hireDetection
+      .onMandateStatusChange(id, 'CLOSED')
+      .catch((e) => console.error('Hire detection hook failed:', e));
+
+    return updated;
+  }
+
+  async fill(orgId: string, id: string): Promise<Mandate> {
+    const mandate = await this.findOwnMandate(orgId, id);
+
+    if (mandate.status !== 'ACTIVE' && mandate.status !== 'PAUSED') {
+      throw new BadRequestException(
+        `Cannot mark a ${mandate.status} mandate as filled. Only ACTIVE or PAUSED mandates can be filled.`,
+      );
+    }
+
+    const updated = await this.prisma.mandate.update({
+      where: { id },
+      data: { status: 'FILLED', filledAt: new Date() },
+      include: { organization: { select: { id: true, name: true } } },
+    });
+
+    // Hire bypass detection: auto-trigger candidate check-ins for all active referrals
+    this.hireDetection
+      .onMandateStatusChange(id, 'FILLED')
+      .catch((e) => console.error('Hire detection hook failed:', e));
+
+    return updated;
   }
 
   async remove(orgId: string, id: string): Promise<void> {

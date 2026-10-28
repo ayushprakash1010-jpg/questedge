@@ -475,6 +475,30 @@ enum OwnershipStatus {
   OVERRIDDEN
 }
 
+// ── Hire Bypass Detection Enums ─────────────────────────────────
+
+enum StatusCheckResponse {
+  HIRED
+  IN_PROCESS
+  REJECTED
+  NOT_INTERESTED
+  NO_RESPONSE
+}
+
+enum BypassRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TrustLevel {
+  TRUSTED
+  STANDARD
+  FLAGGED
+  SUSPENDED
+}
+
 // ── Core Models ─────────────────────────────────────────────────
 
 model Organization {
@@ -510,7 +534,8 @@ model Organization {
   aiCallLogs            AiCallLog[]
 
   // ── Referral Hire Marketplace Relations ──
-  mandates Mandate[]
+  mandates   Mandate[]
+  trustScore CompanyTrustScore?
 
   @@map("organizations")
 }
@@ -1709,6 +1734,7 @@ model CandidateProfile {
   consents     CandidateConsent[]
   applications CandidateApplication[]
   savedJobs    SavedJob[]
+  statusChecks CandidateStatusCheck[]
 
   @@map("candidate_profiles")
 }
@@ -1827,12 +1853,20 @@ model Referral {
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
 
-  mandate          Mandate           @relation(fields: [mandateId], references: [id])
-  recruiter        RecruiterProfile  @relation(fields: [recruiterId], references: [id])
-  candidateProfile CandidateProfile  @relation(fields: [candidateProfileId], references: [id])
+  // ── Hire Bypass Detection Fields ──
+  lastCheckedAt         DateTime? @map("last_checked_at")
+  statusCheckCount      Int       @default(0) @map("status_check_count")
+  candidateReportedHire Boolean   @default(false) @map("candidate_reported_hire")
+  bypassRiskScore       Int       @default(0) @map("bypass_risk_score")
+
+  mandate          Mandate               @relation(fields: [mandateId], references: [id])
+  recruiter        RecruiterProfile      @relation(fields: [recruiterId], references: [id])
+  candidateProfile CandidateProfile      @relation(fields: [candidateProfileId], references: [id])
   consent          CandidateConsent?
   reward           RewardTracking?
   claimScope       ClaimScope?
+  statusChecks     CandidateStatusCheck[]
+  bypassFlags      HireBypassFlag[]
 
   @@unique([mandateId, candidateProfileId])
   @@index([recruiterId])
@@ -1924,4 +1958,76 @@ model SavedJob {
 
   @@unique([candidateProfileId, mandateId])
   @@map("saved_jobs")
+}
+
+// ── Hire Bypass Detection: Candidate Status Check (Option 2) ────
+
+model CandidateStatusCheck {
+  id                 String              @id @default(uuid()) @db.Uuid
+  referralId         String              @map("referral_id") @db.Uuid
+  candidateProfileId String              @map("candidate_profile_id") @db.Uuid
+  checkType          String              @map("check_type") // PERIODIC | MANDATE_FILLED | MANDATE_CLOSED | MANUAL
+  question           String
+  response           StatusCheckResponse?
+  responseDetails    String?             @map("response_details")
+  respondedAt        DateTime?           @map("responded_at")
+  checkToken         String              @unique @map("check_token")
+  expiresAt          DateTime            @map("expires_at")
+  reminderCount      Int                 @default(0) @map("reminder_count")
+  createdAt          DateTime            @default(now())
+
+  referral         Referral         @relation(fields: [referralId], references: [id], onDelete: Cascade)
+  candidateProfile CandidateProfile @relation(fields: [candidateProfileId], references: [id])
+
+  @@index([referralId])
+  @@index([checkToken])
+  @@map("candidate_status_checks")
+}
+
+// ── Hire Bypass Detection: Company Trust Score (Option 6) ───────
+
+model CompanyTrustScore {
+  id               String     @id @default(uuid()) @db.Uuid
+  orgId            String     @unique @db.Uuid
+  responseRate     Decimal    @default(0) @map("response_rate") @db.Decimal(5, 2)
+  hireReportRate   Decimal    @default(0) @map("hire_report_rate") @db.Decimal(5, 2)
+  avgResponseDays  Int        @default(0) @map("avg_response_days")
+  totalReferrals   Int        @default(0) @map("total_referrals")
+  reportedHires    Int        @default(0) @map("reported_hires")
+  disputeCount     Int        @default(0) @map("dispute_count")
+  trustLevel       TrustLevel @default(STANDARD) @map("trust_level")
+  lastCalculatedAt DateTime   @default(now()) @map("last_calculated_at")
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@map("company_trust_scores")
+}
+
+// ── Hire Bypass Detection: Bypass Flags (Option 4) ──────────────
+
+model HireBypassFlag {
+  id           String         @id @default(uuid()) @db.Uuid
+  referralId   String?        @map("referral_id") @db.Uuid
+  mandateId    String         @map("mandate_id") @db.Uuid
+  orgId        String         @db.Uuid
+  riskLevel    BypassRiskLevel @map("risk_level")
+  riskScore    Int            @default(0) @map("risk_score")
+  signals      Json           @default("[]") // Array of detected signals
+  description  String         @db.Text
+  isResolved   Boolean        @default(false) @map("is_resolved")
+  resolvedById String?        @map("resolved_by_id") @db.Uuid
+  resolvedAt   DateTime?      @map("resolved_at")
+  resolution   String?        // CONFIRMED_HIRE | FALSE_POSITIVE | UNDER_REVIEW
+  notes        String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  referral Referral? @relation(fields: [referralId], references: [id])
+
+  @@index([orgId, isResolved])
+  @@index([mandateId])
+  @@index([riskLevel, isResolved])
+  @@map("hire_bypass_flags")
 }

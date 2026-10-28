@@ -207,6 +207,20 @@ export class MandatesController {
     return this.mandatesService.close(user.orgId, id);
   }
 
+  // ── Company: Mark mandate as filled ───────────────────────────
+
+  @Post(':id/fill')
+  @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Company Admin: Mark a mandate as FILLED (positions have been hired)' })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
+  async fill(
+    @CurrentUser() user: any,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.mandatesService.fill(user.orgId, id);
+  }
+
   // ── Company: Delete ──────────────────────────────────────────
 
   @Delete(':id')
