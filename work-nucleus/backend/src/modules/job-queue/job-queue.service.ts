@@ -12,6 +12,7 @@ import type { SendOptions, WorkOptions, ScheduleOptions, Job } from 'pg-boss';
 export class JobQueueService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(JobQueueService.name);
   public boss: PgBoss;
+  private startPromise: Promise<PgBoss> | null = null;
 
   constructor(private readonly config: ConfigService) {
     const connectionString = this.config.get<string>('DATABASE_URL')!;
@@ -21,13 +22,22 @@ export class JobQueueService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  async onModuleInit() {
-    this.boss.on('error', (error: Error) => {
-      this.logger.error(`pg-boss error: ${error.message}`, error.stack);
-    });
+  private async ensureStarted(): Promise<PgBoss> {
+    if (!this.startPromise) {
+      this.boss.on('error', (error: Error) => {
+        this.logger.error(`pg-boss error: ${error.message}`, error.stack);
+      });
 
-    await this.boss.start();
-    this.logger.log('pg-boss started');
+      this.startPromise = this.boss.start().then((boss) => {
+        this.logger.log('pg-boss started');
+        return boss;
+      });
+    }
+    return this.startPromise;
+  }
+
+  async onModuleInit() {
+    await this.ensureStarted();
   }
 
   async onModuleDestroy() {
@@ -39,10 +49,15 @@ export class JobQueueService implements OnModuleInit, OnModuleDestroy {
    * Create a queue if it doesn't already exist. Idempotent.
    */
   async ensureQueue(name: string) {
-    const existing = await this.boss.getQueue(name);
-    if (!existing) {
-      await this.boss.createQueue(name);
-      this.logger.log(`Created queue "${name}"`);
+    await this.ensureStarted();
+    try {
+      const existing = await this.boss.getQueue(name);
+      if (!existing) {
+        await this.boss.createQueue(name);
+        this.logger.log(`Created queue "${name}"`);
+      }
+    } catch (err: any) {
+      this.logger.warn(`Failed to ensure queue "${name}": ${err.message}`);
     }
   }
 
@@ -52,11 +67,17 @@ export class JobQueueService implements OnModuleInit, OnModuleDestroy {
     data?: object,
     options?: ScheduleOptions,
   ) {
-    await this.boss.schedule(name, cron, data ?? {}, options);
-    this.logger.log(`Scheduled cron "${name}" with expression "${cron}"`);
+    await this.ensureStarted();
+    try {
+      await this.boss.schedule(name, cron, data ?? {}, options);
+      this.logger.log(`Scheduled cron "${name}" with expression "${cron}"`);
+    } catch (err: any) {
+      this.logger.warn(`Failed to schedule cron "${name}": ${err.message}`);
+    }
   }
 
   async enqueue(name: string, data: object, options?: SendOptions) {
+    await this.ensureStarted();
     const jobId = await this.boss.send(name, data, options);
     this.logger.log(`Enqueued job "${name}" → ${jobId}`);
     return jobId;
@@ -70,7 +91,12 @@ export class JobQueueService implements OnModuleInit, OnModuleDestroy {
     handler: (job: Job<T>[]) => Promise<void>,
     options?: WorkOptions,
   ) {
-    await this.boss.work<T>(name, options ?? {}, handler);
-    this.logger.log(`Worker registered for "${name}"`);
+    await this.ensureStarted();
+    try {
+      await this.boss.work<T>(name, options ?? {}, handler);
+      this.logger.log(`Worker registered for "${name}"`);
+    } catch (err: any) {
+      this.logger.warn(`Failed to register worker "${name}": ${err.message}`);
+    }
   }
 }
