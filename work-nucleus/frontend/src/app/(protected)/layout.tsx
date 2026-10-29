@@ -73,6 +73,19 @@ export default function ProtectedLayout({
     // Role-based routing enforcement
     if (profile && profile.isProvisioned) {
       const uType = (profile as any).userType;
+
+      // Allow shared routes accessible by all authenticated roles
+      const isSharedRoute =
+        pathname === "/notifications" ||
+        pathname.startsWith("/notifications/") ||
+        pathname === "/support" ||
+        pathname.startsWith("/support/") ||
+        pathname === "/profile" ||
+        pathname.startsWith("/profile/");
+
+      if (isSharedRoute) {
+        return;
+      }
       if (uType === "RECRUITER" && !pathname.startsWith("/recruiter")) {
         router.push("/recruiter/dashboard");
         return;
