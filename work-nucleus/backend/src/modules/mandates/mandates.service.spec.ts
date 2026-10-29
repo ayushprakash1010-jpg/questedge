@@ -58,4 +58,16 @@ describe('MandatesService', () => {
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
+
+  it('should parse date-only application deadline to IST end of day', () => {
+    const parsed = (service as any).parseApplicationDeadline('2026-10-30');
+    expect(parsed).toBeDefined();
+    expect(parsed.toISOString()).toBe('2026-10-30T18:29:59.999Z');
+  });
+
+  it('should parse UTC midnight date string to IST end of day', () => {
+    const parsed = (service as any).parseApplicationDeadline('2026-10-30T00:00:00.000Z');
+    expect(parsed).toBeDefined();
+    expect(parsed.toISOString()).toBe('2026-10-30T18:29:59.999Z');
+  });
 });

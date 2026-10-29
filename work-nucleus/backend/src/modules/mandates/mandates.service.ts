@@ -84,8 +84,10 @@ export class MandatesService {
 
   private parseApplicationDeadline(val?: string): Date | undefined {
     if (!val) return undefined;
-    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
-      return new Date(`${val}T23:59:59.999Z`);
+    // Set deadline to 11:59:59 PM in Indian Standard Time (IST, UTC+5:30)
+    if (/^\d{4}-\d{2}-\d{2}(T00:00:00(\.000)?Z?)?$/.test(val)) {
+      const datePart = val.slice(0, 10);
+      return new Date(`${datePart}T23:59:59.999+05:30`);
     }
     const d = new Date(val);
     return isNaN(d.getTime()) ? undefined : d;
