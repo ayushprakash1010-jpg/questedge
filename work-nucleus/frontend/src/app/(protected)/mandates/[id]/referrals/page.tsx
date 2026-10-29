@@ -25,6 +25,9 @@ import {
   AlertTriangle,
   FileText,
   MapPin,
+  Sparkles,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CardGridSkeleton } from "@/components/ui/skeleton-states";
@@ -451,17 +454,24 @@ function ReferralCard({
   onStatusChange,
   onRefresh,
   updating,
+  initialExpandedAi = false,
 }: {
   referral: Referral;
   mandateId: string;
   onStatusChange: (referralId: string, newStatus: string) => void;
   onRefresh: () => Promise<void>;
   updating: boolean;
+  initialExpandedAi?: boolean;
 }) {
   const isActionable = ACTIONABLE_STATUSES.includes(referral.status);
   const [showActions, setShowActions] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
+  const [showAiBreakdown, setShowAiBreakdown] = useState(initialExpandedAi);
   const [isRetrying, setIsRetrying] = useState(false);
+
+  useEffect(() => {
+    setShowAiBreakdown(initialExpandedAi);
+  }, [initialExpandedAi]);
 
   const handleOpenResume = () => {
     const nameParam = encodeURIComponent(referral.candidateProfile?.name || "Candidate");
@@ -477,6 +487,18 @@ function ReferralCard({
     try {
       parsedAi = JSON.parse(referral.aiSummary);
     } catch {}
+  }
+
+  const strengthsCount = parsedAi?.strengths?.length ?? 0;
+  const missingCount = parsedAi?.missingSkills?.length ?? 0;
+
+  let breakdownLabel = "View Match Breakdown";
+  if (strengthsCount > 0 && missingCount > 0) {
+    breakdownLabel = `View Match Breakdown (${strengthsCount} Strengths, ${missingCount} Gaps)`;
+  } else if (strengthsCount > 0) {
+    breakdownLabel = `View Match Breakdown (${strengthsCount} Strengths)`;
+  } else if (missingCount > 0) {
+    breakdownLabel = `View Match Breakdown (${missingCount} Gaps)`;
   }
 
   return (
@@ -578,122 +600,156 @@ function ReferralCard({
         )}
       </div>
 
-      {/* AI Score Evaluation */}
+      {/* AI Fit Quick Bar & Collapsible Breakdown */}
       {referral.aiMatchScore != null ? (
-        <div className="p-6">
-          <div className="rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50/70 via-indigo-50/30 to-white p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-600 text-white text-xs font-bold shadow-xs">
-                  <Star className="h-3.5 w-3.5 fill-white" />
-                  {referral.aiMatchScore}% AI Match
-                </span>
-                <span className="text-xs font-medium text-indigo-900/70 hidden sm:inline">
-                  Automated Candidate-to-Mandate Rubric Fit
-                </span>
-              </div>
-              <button
-                type="button"
-                disabled={isRetrying}
-                onClick={async () => {
-                  try {
-                    setIsRetrying(true);
-                    const tokenRes = await fetch("/api/auth/token");
-                    const { accessToken } = await tokenRes.json();
-                    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-                    await fetch(`${API_URL}/api/v1/mandates/${mandateId}/referrals/${referral.id}/trigger-ai`, {
-                      method: "POST",
-                      headers: { Authorization: `Bearer ${accessToken}` },
-                    });
-                    await onRefresh();
-                    setIsRetrying(false);
-                  } catch (err) {
-                    console.error(err);
-                    setIsRetrying(false);
-                  }
-                }}
-                className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-semibold bg-white hover:bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-lg transition-colors shadow-2xs disabled:opacity-50"
-              >
-                {isRetrying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                {isRetrying ? "Evaluating..." : "Re-evaluate"}
-              </button>
+        <>
+          <div className="px-6 py-2.5 bg-gradient-to-r from-indigo-50/70 via-slate-50/40 to-white border-b border-indigo-100/60 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-600 text-white text-xs font-bold shadow-2xs shrink-0">
+                <Star className="h-3.5 w-3.5 fill-white" />
+                {referral.aiMatchScore}% AI Match
+              </span>
+              {referral.aiMatchSummary && !showAiBreakdown && (
+                <p className="text-xs text-slate-600 truncate font-medium max-w-xl hidden sm:block">
+                  {referral.aiMatchSummary}
+                </p>
+              )}
             </div>
 
-            {referral.aiMatchSummary && (
-              <p className="text-sm text-slate-700 leading-relaxed bg-white/80 border border-indigo-100/70 p-3.5 rounded-lg shadow-2xs">
-                {referral.aiMatchSummary}
-              </p>
-            )}
+            <button
+              type="button"
+              onClick={() => setShowAiBreakdown(!showAiBreakdown)}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-white hover:bg-indigo-50/80 border border-indigo-200/90 px-3.5 py-1.5 rounded-lg transition-all shadow-2xs shrink-0 ml-auto"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
+              {showAiBreakdown ? "Hide Match Breakdown" : breakdownLabel}
+              {showAiBreakdown ? (
+                <ChevronUp className="h-3.5 w-3.5 text-indigo-500" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5 text-indigo-500" />
+              )}
+            </button>
+          </div>
 
-            {parsedAi && ((parsedAi.strengths?.length ?? 0) > 0 || (parsedAi.missingSkills?.length ?? 0) > 0) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
-                {parsedAi.strengths && parsedAi.strengths.length > 0 && (
-                  <div className="rounded-lg border border-emerald-200/80 bg-emerald-50/50 p-4 space-y-2">
-                    <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-800">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                      Key Strengths
-                    </div>
-                    <ul className="space-y-1.5">
-                      {parsedAi.strengths.map((s: string, idx: number) => (
-                        <li key={idx} className="text-xs text-emerald-950 leading-relaxed flex items-start gap-2">
-                          <span className="text-emerald-500 font-bold shrink-0 mt-0.5">•</span>
-                          <span>{s}</span>
-                        </li>
-                      ))}
-                    </ul>
+          {/* Expanded AI Rubric & Breakdown */}
+          {showAiBreakdown && (
+            <div className="p-6 bg-gradient-to-b from-indigo-50/20 to-white border-b border-slate-100 transition-all">
+              <div className="rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50/70 via-indigo-50/30 to-white p-5 space-y-4 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-600 text-white text-xs font-bold shadow-xs">
+                      <Star className="h-3.5 w-3.5 fill-white" />
+                      {referral.aiMatchScore}% AI Match
+                    </span>
+                    <span className="text-xs font-medium text-indigo-900/70 hidden sm:inline">
+                      Automated Candidate-to-Mandate Rubric Fit
+                    </span>
                   </div>
+                  <button
+                    type="button"
+                    disabled={isRetrying}
+                    onClick={async () => {
+                      try {
+                        setIsRetrying(true);
+                        const tokenRes = await fetch("/api/auth/token");
+                        const { accessToken } = await tokenRes.json();
+                        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+                        await fetch(`${API_URL}/api/v1/mandates/${mandateId}/referrals/${referral.id}/trigger-ai`, {
+                          method: "POST",
+                          headers: { Authorization: `Bearer ${accessToken}` },
+                        });
+                        await onRefresh();
+                        setIsRetrying(false);
+                      } catch (err) {
+                        console.error(err);
+                        setIsRetrying(false);
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-semibold bg-white hover:bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-lg transition-colors shadow-2xs disabled:opacity-50"
+                  >
+                    {isRetrying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                    {isRetrying ? "Evaluating..." : "Re-evaluate"}
+                  </button>
+                </div>
+
+                {referral.aiMatchSummary && (
+                  <p className="text-sm text-slate-700 leading-relaxed bg-white/80 border border-indigo-100/70 p-3.5 rounded-lg shadow-2xs">
+                    {referral.aiMatchSummary}
+                  </p>
                 )}
 
-                {parsedAi.missingSkills && parsedAi.missingSkills.length > 0 && (
-                  <div className="rounded-lg border border-rose-200/80 bg-rose-50/50 p-4 space-y-2">
-                    <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-rose-800">
-                      <AlertCircle className="h-3.5 w-3.5 text-rose-500" />
-                      Missing / Skill Gaps
-                    </div>
-                    <ul className="space-y-1.5">
-                      {parsedAi.missingSkills.map((s: string, idx: number) => (
-                        <li key={idx} className="text-xs text-rose-950 leading-relaxed flex items-start gap-2">
-                          <span className="text-rose-400 font-bold shrink-0 mt-0.5">•</span>
-                          <span>{s}</span>
-                        </li>
-                      ))}
-                    </ul>
+                {parsedAi && ((parsedAi.strengths?.length ?? 0) > 0 || (parsedAi.missingSkills?.length ?? 0) > 0) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
+                    {parsedAi.strengths && parsedAi.strengths.length > 0 && (
+                      <div className="rounded-lg border border-emerald-200/80 bg-emerald-50/50 p-4 space-y-2">
+                        <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-800">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                          Key Strengths
+                        </div>
+                        <ul className="space-y-1.5">
+                          {parsedAi.strengths.map((s: string, idx: number) => (
+                            <li key={idx} className="text-xs text-emerald-950 leading-relaxed flex items-start gap-2">
+                              <span className="text-emerald-500 font-bold shrink-0 mt-0.5">•</span>
+                              <span>{s}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {parsedAi.missingSkills && parsedAi.missingSkills.length > 0 && (
+                      <div className="rounded-lg border border-rose-200/80 bg-rose-50/50 p-4 space-y-2">
+                        <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-rose-800">
+                          <AlertCircle className="h-3.5 w-3.5 text-rose-500" />
+                          Missing / Skill Gaps
+                        </div>
+                        <ul className="space-y-1.5">
+                          {parsedAi.missingSkills.map((s: string, idx: number) => (
+                            <li key={idx} className="text-xs text-rose-950 leading-relaxed flex items-start gap-2">
+                              <span className="text-rose-400 font-bold shrink-0 mt-0.5">•</span>
+                              <span>{s}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        </div>
+            </div>
+          )}
+        </>
       ) : (
-        <div className="p-6">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 flex flex-col items-center justify-center text-center">
-            <Star className="h-6 w-6 text-slate-300 mb-2" />
-            <p className="text-xs text-slate-500 mb-3 font-medium">AI Evaluation Failed or Pending</p>
-            <button
-              disabled={isRetrying}
-              onClick={async () => {
-                try {
-                  setIsRetrying(true);
-                  const tokenRes = await fetch("/api/auth/token");
-                  const { accessToken } = await tokenRes.json();
-                  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-                  await fetch(`${API_URL}/api/v1/mandates/${mandateId}/referrals/${referral.id}/trigger-ai`, {
-                    method: "POST",
-                    headers: { Authorization: `Bearer ${accessToken}` },
-                  });
-                  await onRefresh();
-                  setIsRetrying(false);
-                } catch (err) {
-                  console.error(err);
-                  setIsRetrying(false);
-                }
-              }}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors disabled:opacity-50"
-            >
-              {isRetrying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-              {isRetrying ? "Evaluating..." : "Retry AI Match"}
-            </button>
+        <div className="px-6 py-2.5 bg-slate-50/70 border-b border-slate-100 flex items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-slate-500">
+            <Star className="h-4 w-4 text-slate-300" />
+            <span className="font-medium">AI Evaluation Pending / Not Available</span>
           </div>
+          <button
+            type="button"
+            disabled={isRetrying}
+            onClick={async () => {
+              try {
+                setIsRetrying(true);
+                const tokenRes = await fetch("/api/auth/token");
+                const { accessToken } = await tokenRes.json();
+                const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+                await fetch(`${API_URL}/api/v1/mandates/${mandateId}/referrals/${referral.id}/trigger-ai`, {
+                  method: "POST",
+                  headers: { Authorization: `Bearer ${accessToken}` },
+                });
+                await onRefresh();
+                setIsRetrying(false);
+              } catch (err) {
+                console.error(err);
+                setIsRetrying(false);
+              }
+            }}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 px-3 py-1 rounded-md shadow-2xs transition-colors disabled:opacity-50"
+          >
+            {isRetrying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            {isRetrying ? "Evaluating..." : "Run AI Match"}
+          </button>
         </div>
       )}
 
@@ -892,6 +948,7 @@ export default function MandateReferralsPage() {
   const [filter, setFilter] = useState("");
   const [updating, setUpdating] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
+  const [globalExpandAi, setGlobalExpandAi] = useState(false);
 
   const fetchReferrals = useCallback(async () => {
     try {
@@ -1073,35 +1130,57 @@ export default function MandateReferralsPage() {
           ))}
         </div>
 
-        {/* Filter tabs */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {FILTER_TABS.map((tab) => (
+        {/* Filter tabs & Expand All Control */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+            {FILTER_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setFilter(tab.value)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                  filter === tab.value
+                    ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                    : "bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:text-indigo-600"
+                }`}
+              >
+                {tab.label}
+                {tab.value === "" && referrals.length > 0 && (
+                  <span className="ml-1.5 text-xs opacity-75">{referrals.length}</span>
+                )}
+                {tab.value === "action" && needsAction > 0 && (
+                  <span className="ml-1.5 text-xs opacity-75">{needsAction}</span>
+                )}
+                {tab.value === "sla_alerts" && slaAlerts > 0 && (
+                  <span className="ml-1.5 text-xs px-1.5 py-0.2 rounded-full bg-amber-500 text-white font-bold">
+                    {slaAlerts}
+                  </span>
+                )}
+                {tab.value === "consent" && consentPending > 0 && (
+                  <span className="ml-1.5 text-xs opacity-75">{consentPending}</span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {filtered.length > 0 && (
             <button
-              key={tab.value}
-              onClick={() => setFilter(tab.value)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                filter === tab.value
-                  ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                  : "bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:text-indigo-600"
-              }`}
+              type="button"
+              onClick={() => setGlobalExpandAi(!globalExpandAi)}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-indigo-600 bg-white hover:bg-slate-50 border border-slate-200/90 px-3 py-1.5 rounded-lg transition-colors shadow-2xs ml-auto"
             >
-              {tab.label}
-              {tab.value === "" && referrals.length > 0 && (
-                <span className="ml-1.5 text-xs opacity-75">{referrals.length}</span>
-              )}
-              {tab.value === "action" && needsAction > 0 && (
-                <span className="ml-1.5 text-xs opacity-75">{needsAction}</span>
-              )}
-              {tab.value === "sla_alerts" && slaAlerts > 0 && (
-                <span className="ml-1.5 text-xs px-1.5 py-0.2 rounded-full bg-amber-500 text-white font-bold">
-                  {slaAlerts}
-                </span>
-              )}
-              {tab.value === "consent" && consentPending > 0 && (
-                <span className="ml-1.5 text-xs opacity-75">{consentPending}</span>
+              {globalExpandAi ? (
+                <>
+                  <Minimize2 className="h-3.5 w-3.5 text-slate-500" />
+                  Collapse All Match Breakdowns
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="h-3.5 w-3.5 text-slate-500" />
+                  Expand All Match Breakdowns
+                </>
               )}
             </button>
-          ))}
+          )}
         </div>
 
         {/* Error State */}
@@ -1148,6 +1227,7 @@ export default function MandateReferralsPage() {
                 onStatusChange={handleStatusChange}
                 onRefresh={refreshSilently}
                 updating={updating}
+                initialExpandedAi={globalExpandAi}
               />
             ))}
           </div>
