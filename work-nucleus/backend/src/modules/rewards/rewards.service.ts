@@ -284,8 +284,14 @@ export class RewardsService {
     if (!reward) throw new NotFoundException('Reward not found');
     if (reward.recruiterId !== recruiter.id)
       throw new BadRequestException('Unauthorized');
+    // Idempotent: if already paid, return existing record without error
+    if (reward.status === RewardStatus.PAID) {
+      return reward;
+    }
     if (reward.status !== RewardStatus.APPROVED) {
-      throw new BadRequestException('Reward is not available for withdrawal');
+      throw new BadRequestException(
+        `Reward is not available for withdrawal (current status: )`,
+      );
     }
 
     return this.prisma.rewardTracking.update({

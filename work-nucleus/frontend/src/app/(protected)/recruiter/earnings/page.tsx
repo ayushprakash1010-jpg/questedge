@@ -270,6 +270,11 @@ export default function EarningsDashboard() {
                           {withdrawingId === reward.id ? "Processing..." : "Withdraw (Demo)"}
                         </Button>
                       )}
+                      {reward.status === "PAID" && reward.paymentRef && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 bg-emerald-50 px-2 py-1 rounded border border-emerald-200">
+                          ✓ {reward.paymentRef}
+                        </span>
+                      )}
                     </div>
                   </td>
                 </tr>
