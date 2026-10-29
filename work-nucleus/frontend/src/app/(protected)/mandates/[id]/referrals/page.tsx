@@ -24,6 +24,7 @@ import {
   Lock,
   AlertTriangle,
   FileText,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CardGridSkeleton } from "@/components/ui/skeleton-states";
@@ -392,23 +393,23 @@ function ReferralTimeline({ referral }: { referral: Referral }) {
   ];
 
   return (
-    <div className="mt-4 pt-4 border-t border-slate-100 bg-slate-50/70 -mx-5 -mb-4 px-5 py-4 rounded-b-xl space-y-3">
-      <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
-        <span className="flex items-center gap-1.5">
-          <History className="h-3.5 w-3.5 text-indigo-600" />
+    <div className="border-t border-slate-200 bg-slate-50/80 px-6 py-5 space-y-4">
+      <div className="flex items-center justify-between text-xs font-semibold text-slate-800 pb-2 border-b border-slate-200/60">
+        <span className="flex items-center gap-2">
+          <History className="h-4 w-4 text-indigo-600" />
           Lifecycle & SLA Audit Trail
         </span>
-        <span className="text-[11px] font-normal text-slate-500 font-mono">
-          Ref ID: {referral.id.slice(0, 8)}...
+        <span className="text-xs font-mono text-slate-500 bg-white border border-slate-200 px-2.5 py-0.5 rounded-md shadow-2xs">
+          Ref ID: {referral.id.slice(0, 8)}
         </span>
       </div>
 
-      <div className="relative pl-6 space-y-3.5 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
+      <div className="relative pl-6 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-300">
         {steps.map((st, i) => (
-          <div key={i} className="relative text-xs">
+          <div key={i} className="relative text-xs pr-2">
             {/* Timeline dot */}
             <div
-              className={`absolute -left-[21px] top-0.5 h-3.5 w-3.5 rounded-full border-2 flex items-center justify-center bg-white ${
+              className={`absolute -left-[21px] top-0.5 h-3.5 w-3.5 rounded-full border-2 flex items-center justify-center bg-white shadow-2xs ${
                 st.failed
                   ? "border-rose-500 bg-rose-50"
                   : st.completed
@@ -422,17 +423,19 @@ function ReferralTimeline({ referral }: { referral: Referral }) {
               {st.failed && <div className="h-1.5 w-1.5 rounded-full bg-rose-600" />}
             </div>
 
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
               <span
-                className={`font-semibold ${
-                  st.failed ? "text-rose-700" : st.completed ? "text-slate-800" : "text-slate-600"
+                className={`font-bold text-xs ${
+                  st.failed ? "text-rose-700" : st.completed ? "text-slate-900" : "text-slate-600"
                 }`}
               >
                 {st.title}
               </span>
-              <span className="text-[10px] text-slate-400 font-mono shrink-0">{st.date}</span>
+              <span className="text-xs text-slate-500 font-mono bg-white border border-slate-200/80 px-2.5 py-0.5 rounded-md self-start sm:self-auto shrink-0 shadow-2xs">
+                {st.date}
+              </span>
             </div>
-            <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">{st.desc}</p>
+            <p className="text-xs text-slate-600 mt-1 leading-relaxed pr-2">{st.desc}</p>
           </div>
         ))}
       </div>
@@ -459,7 +462,6 @@ function ReferralCard({
   const [showActions, setShowActions] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
-  const [openingResume, setOpeningResume] = useState(false);
 
   const handleOpenResume = () => {
     const nameParam = encodeURIComponent(referral.candidateProfile?.name || "Candidate");
@@ -470,47 +472,57 @@ function ReferralCard({
   const consentSla = getConsentSla(referral.consent, referral.status);
   const reviewSla = getReviewSla(referral);
 
+  let parsedAi: { strengths?: string[]; missingSkills?: string[] } | null = null;
+  if (referral.aiSummary) {
+    try {
+      parsedAi = JSON.parse(referral.aiSummary);
+    } catch {}
+  }
+
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-      {/* Card header */}
-      <div className="px-5 py-4 flex items-start justify-between gap-4">
-        <div className="flex items-center gap-3 min-w-0">
-          {/* Avatar */}
-          <div className="h-11 w-11 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white font-bold text-base flex-shrink-0">
+    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-md transition-all overflow-hidden">
+      {/* Card Header */}
+      <div className="p-6 pb-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white font-bold text-lg shrink-0 shadow-xs">
             {referral.candidateProfile.name.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0">
-            <p className="font-semibold text-slate-900 truncate">
-              {referral.candidateProfile.name}
-            </p>
-            <p className="text-sm text-slate-500 truncate">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h3 className="font-bold text-base text-slate-900">
+                {referral.candidateProfile.name}
+              </h3>
+              {ownership.status !== "none" && (
+                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border ${ownership.badgeClass}`}>
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  {ownership.label}
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-slate-600 mt-0.5 font-medium">
               {referral.candidateProfile.currentDesignation ??
                 referral.candidateProfile.headline ??
-                "—"}
+                "Candidate"}
               {referral.candidateProfile.currentCompany
                 ? ` · ${referral.candidateProfile.currentCompany}`
                 : ""}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2.5 shrink-0">
+
+        <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
           {referral.candidateProfile.resumeUrl ? (
             <button
               type="button"
               onClick={handleOpenResume}
-              disabled={openingResume}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors shadow-2xs"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors shadow-2xs"
               title="Open candidate resume in new tab"
             >
-              {openingResume ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-600" />
-              ) : (
-                <FileText className="h-3.5 w-3.5 text-indigo-600" />
-              )}
+              <FileText className="h-4 w-4 text-indigo-600" />
               View Resume
             </button>
           ) : (
-            <span className="text-[11px] text-slate-400 font-medium px-2 py-0.5 rounded bg-slate-50 border border-slate-100">
+            <span className="text-xs text-slate-400 font-medium px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200">
               No Resume
             </span>
           )}
@@ -518,76 +530,145 @@ function ReferralCard({
         </div>
       </div>
 
-      {/* SLA & Ownership Badges */}
-      {(reviewSla || ownership.status !== "none" || consentSla.isUrgent) && (
-        <div className="px-5 pb-2.5 flex flex-wrap items-center gap-2">
+      {/* Meta & Skills Bar */}
+      <div className="px-6 py-3 bg-slate-50/70 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
+        <div className="flex flex-wrap items-center gap-4">
+          {referral.candidateProfile.experienceYears !== undefined && (
+            <span className="flex items-center gap-1.5 font-medium text-slate-700">
+              <Briefcase className="h-3.5 w-3.5 text-slate-400" />
+              {referral.candidateProfile.experienceYears}y exp
+            </span>
+          )}
+          {referral.candidateProfile.currentLocation && (
+            <span className="flex items-center gap-1.5 font-medium text-slate-700">
+              <MapPin className="h-3.5 w-3.5 text-slate-400" />
+              {referral.candidateProfile.currentLocation}
+            </span>
+          )}
           {reviewSla && (
             <span
-              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold border ${
+              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-semibold border ${
                 reviewSla.isBreached
                   ? "bg-rose-50 text-rose-700 border-rose-200 animate-pulse"
                   : "bg-amber-50 text-amber-800 border-amber-200"
               }`}
             >
-              <Timer className="h-3 w-3" />
+              <Timer className="h-3.5 w-3.5" />
               {reviewSla.label}
             </span>
           )}
-          {ownership.status !== "none" && (
-            <span
-              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-medium border ${ownership.badgeClass}`}
-            >
-              <ShieldCheck className="h-3 w-3" />
-              {ownership.label}
-            </span>
-          )}
-          {consentSla.isUrgent && (
-            <span
-              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold border ${consentSla.badgeClass}`}
-            >
-              <AlertTriangle className="h-3 w-3" />
-              {consentSla.label}
-            </span>
-          )}
         </div>
-      )}
 
-      {/* Meta row */}
-      <div className="px-5 pb-3 flex flex-wrap items-center gap-4 text-xs text-slate-500">
-        {referral.candidateProfile.experienceYears !== undefined && (
-          <span className="flex items-center gap-1">
-            <Briefcase className="h-3.5 w-3.5" />
-            {referral.candidateProfile.experienceYears}y exp
-          </span>
-        )}
-        {referral.candidateProfile.currentLocation && (
-          <span>📍 {referral.candidateProfile.currentLocation}</span>
-        )}
-        {referral.candidateProfile.skills?.slice(0, 4).map((s) => (
-          <span
-            key={s}
-            className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium"
-          >
-            {s}
-          </span>
-        ))}
-        {(referral.candidateProfile.skills?.length ?? 0) > 4 && (
-          <span className="text-slate-400">
-            +{referral.candidateProfile.skills.length - 4}
-          </span>
+        {referral.candidateProfile.skills && referral.candidateProfile.skills.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {referral.candidateProfile.skills.slice(0, 5).map((s) => (
+              <span
+                key={s}
+                className="px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-700 text-xs font-medium shadow-2xs"
+              >
+                {s}
+              </span>
+            ))}
+            {referral.candidateProfile.skills.length > 5 && (
+              <span className="text-xs text-slate-400 font-medium px-1">
+                +{referral.candidateProfile.skills.length - 5} more
+              </span>
+            )}
+          </div>
         )}
       </div>
 
-      {/* AI Score (If available) */}
+      {/* AI Score Evaluation */}
       {referral.aiMatchScore != null ? (
-        <div className="mx-5 mb-3 rounded-lg border border-indigo-100 bg-indigo-50/50 p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <Star className="h-4 w-4 text-indigo-600 fill-indigo-600" />
-              <span className="text-sm font-bold text-indigo-900">
-                {referral.aiMatchScore}% AI Match
-              </span>
+        <div className="p-6">
+          <div className="rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50/70 via-indigo-50/30 to-white p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-600 text-white text-xs font-bold shadow-xs">
+                  <Star className="h-3.5 w-3.5 fill-white" />
+                  {referral.aiMatchScore}% AI Match
+                </span>
+                <span className="text-xs font-medium text-indigo-900/70 hidden sm:inline">
+                  Automated Candidate-to-Mandate Rubric Fit
+                </span>
+              </div>
+              <button
+                type="button"
+                disabled={isRetrying}
+                onClick={async () => {
+                  try {
+                    setIsRetrying(true);
+                    const tokenRes = await fetch("/api/auth/token");
+                    const { accessToken } = await tokenRes.json();
+                    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+                    await fetch(`${API_URL}/api/v1/mandates/${mandateId}/referrals/${referral.id}/trigger-ai`, {
+                      method: "POST",
+                      headers: { Authorization: `Bearer ${accessToken}` },
+                    });
+                    await onRefresh();
+                    setIsRetrying(false);
+                  } catch (err) {
+                    console.error(err);
+                    setIsRetrying(false);
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-semibold bg-white hover:bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-lg transition-colors shadow-2xs disabled:opacity-50"
+              >
+                {isRetrying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                {isRetrying ? "Evaluating..." : "Re-evaluate"}
+              </button>
             </div>
+
+            {referral.aiMatchSummary && (
+              <p className="text-sm text-slate-700 leading-relaxed bg-white/80 border border-indigo-100/70 p-3.5 rounded-lg shadow-2xs">
+                {referral.aiMatchSummary}
+              </p>
+            )}
+
+            {parsedAi && ((parsedAi.strengths?.length ?? 0) > 0 || (parsedAi.missingSkills?.length ?? 0) > 0) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
+                {parsedAi.strengths && parsedAi.strengths.length > 0 && (
+                  <div className="rounded-lg border border-emerald-200/80 bg-emerald-50/50 p-4 space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-800">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                      Key Strengths
+                    </div>
+                    <ul className="space-y-1.5">
+                      {parsedAi.strengths.map((s: string, idx: number) => (
+                        <li key={idx} className="text-xs text-emerald-950 leading-relaxed flex items-start gap-2">
+                          <span className="text-emerald-500 font-bold shrink-0 mt-0.5">•</span>
+                          <span>{s}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {parsedAi.missingSkills && parsedAi.missingSkills.length > 0 && (
+                  <div className="rounded-lg border border-rose-200/80 bg-rose-50/50 p-4 space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-rose-800">
+                      <AlertCircle className="h-3.5 w-3.5 text-rose-500" />
+                      Missing / Skill Gaps
+                    </div>
+                    <ul className="space-y-1.5">
+                      {parsedAi.missingSkills.map((s: string, idx: number) => (
+                        <li key={idx} className="text-xs text-rose-950 leading-relaxed flex items-start gap-2">
+                          <span className="text-rose-400 font-bold shrink-0 mt-0.5">•</span>
+                          <span>{s}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="p-6">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 flex flex-col items-center justify-center text-center">
+            <Star className="h-6 w-6 text-slate-300 mb-2" />
+            <p className="text-xs text-slate-500 mb-3 font-medium">AI Evaluation Failed or Pending</p>
             <button
               disabled={isRetrying}
               onClick={async () => {
@@ -607,204 +688,107 @@ function ReferralCard({
                   setIsRetrying(false);
                 }
               }}
-              className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1 font-medium disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors disabled:opacity-50"
             >
-              {isRetrying ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-              {isRetrying ? "..." : "Re-evaluate"}
+              {isRetrying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+              {isRetrying ? "Evaluating..." : "Retry AI Match"}
             </button>
           </div>
-          {referral.aiMatchSummary && (
-            <p className="text-xs text-indigo-700/80 leading-relaxed mb-3">
-              {referral.aiMatchSummary}
-            </p>
-          )}
-          {(() => {
-            if (!referral.aiSummary) return null;
-            try {
-              const parsed = JSON.parse(referral.aiSummary);
-              if (!parsed.strengths && !parsed.missingSkills) return null;
-
-              return (
-                <div className="flex flex-col gap-2 mt-3 pt-3 border-t border-indigo-100/50">
-                  {parsed.strengths && parsed.strengths.length > 0 && (
-                    <div className="flex gap-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 w-16 shrink-0 mt-0.5">
-                        Strengths
-                      </span>
-                      <div className="flex flex-wrap gap-1">
-                        {parsed.strengths.map((s: string) => (
-                          <span
-                            key={s}
-                            className="px-1.5 py-0.5 rounded-sm bg-emerald-100 text-[10px] text-emerald-700"
-                          >
-                            {s}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {parsed.missingSkills && parsed.missingSkills.length > 0 && (
-                    <div className="flex gap-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-rose-500 w-16 shrink-0 mt-0.5">
-                        Missing
-                      </span>
-                      <div className="flex flex-wrap gap-1">
-                        {parsed.missingSkills.map((s: string) => (
-                          <span
-                            key={s}
-                            className="px-1.5 py-0.5 rounded-sm bg-rose-100/50 text-[10px] text-rose-600"
-                          >
-                            {s}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            } catch {
-              return null;
-            }
-          })()}
-        </div>
-      ) : (
-        <div className="mx-5 mb-3 rounded-lg border border-slate-200 bg-slate-50 p-4 flex flex-col items-center justify-center text-center">
-          <Star className="h-5 w-5 text-slate-300 mb-2" />
-          <p className="text-xs text-slate-500 mb-3">AI Evaluation Failed or Pending</p>
-          <button
-            disabled={isRetrying}
-            onClick={async () => {
-              try {
-                setIsRetrying(true);
-                const tokenRes = await fetch("/api/auth/token");
-                const { accessToken } = await tokenRes.json();
-                const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-                await fetch(`${API_URL}/api/v1/mandates/${mandateId}/referrals/${referral.id}/trigger-ai`, {
-                  method: "POST",
-                  headers: { Authorization: `Bearer ${accessToken}` },
-                });
-                await onRefresh();
-                setIsRetrying(false);
-              } catch (err) {
-                console.error(err);
-                setIsRetrying(false);
-              }
-            }}
-            className={`flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded shadow-sm transition-colors disabled:cursor-not-allowed ${
-              isRetrying
-                ? "bg-indigo-600 text-white border border-indigo-600 shadow-md"
-                : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            {isRetrying && <Loader2 className="h-3 w-3 animate-spin text-white" />}
-            {isRetrying ? "Evaluating..." : "Retry AI Match"}
-          </button>
         </div>
       )}
 
-      {/* Recruiter row */}
-      <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="h-6 w-6 rounded-full bg-sky-100 flex items-center justify-center">
-            <Users className="h-3.5 w-3.5 text-sky-600" />
+      {/* Recruiter & Consent Row */}
+      <div className="px-6 py-3.5 border-t border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-between gap-4 text-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="h-7 w-7 rounded-full bg-sky-100 flex items-center justify-center font-bold text-sky-700 text-xs">
+            {referral.recruiter.name.charAt(0)}
           </div>
-          <span className="text-sm text-slate-600">
-            Referred by{" "}
-            <span className="font-medium text-slate-800">{referral.recruiter.name}</span>
+          <span className="text-slate-600">
+            Referred by <strong className="text-slate-800">{referral.recruiter.name}</strong>
           </span>
           {referral.recruiter.isVerified && (
-            <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+            <span title="Verified Recruiter"><ShieldCheck className="h-4 w-4 text-emerald-500" /></span>
           )}
         </div>
-        {referral.reward && (
-          <span className="text-xs font-semibold text-violet-600 bg-violet-50 px-2.5 py-1 rounded-full border border-violet-100">
-            ₹{Number(referral.reward.rewardAmount).toLocaleString()} reward
-          </span>
-        )}
+
+        <div className="flex items-center gap-4 flex-wrap">
+          {referral.consent ? (
+            <div className="flex items-center gap-1.5 text-slate-600">
+              {referral.consent.status === "ACCEPTED" ? (
+                <>
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                  <span>
+                    Consent accepted {referral.consent.respondedAt ? new Date(referral.consent.respondedAt).toLocaleDateString() : ""}
+                  </span>
+                  <span className="ml-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    Verified
+                  </span>
+                </>
+              ) : referral.consent.status === "DECLINED" ? (
+                <>
+                  <XCircle className="h-4 w-4 text-rose-500 shrink-0" />
+                  <span className="text-rose-600 font-medium">Consent declined by candidate</span>
+                </>
+              ) : (
+                <>
+                  <Clock className="h-4 w-4 text-amber-500 shrink-0" />
+                  <span>
+                    Consent pending · expires {new Date(referral.consent.expiresAt).toLocaleDateString()}
+                  </span>
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 text-slate-400">
+              <Clock className="h-3.5 w-3.5" />
+              <span>No consent record (Legacy / Direct)</span>
+            </div>
+          )}
+
+          {referral.reward && (
+            <span className="text-xs font-bold text-violet-700 bg-violet-50 border border-violet-200 px-3 py-1 rounded-full">
+              ₹{Number(referral.reward.rewardAmount).toLocaleString()} reward
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Consent row */}
-      {referral.consent ? (
-        <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2 text-slate-600">
-            {referral.consent.status === "ACCEPTED" ? (
-              <>
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                <span>
-                  Consent accepted{" "}
-                  {referral.consent.respondedAt
-                    ? new Date(referral.consent.respondedAt).toLocaleDateString()
-                    : ""}
-                </span>
-              </>
-            ) : referral.consent.status === "DECLINED" ? (
-              <>
-                <XCircle className="h-3.5 w-3.5 text-rose-500 shrink-0" />
-                <span className="text-rose-600 font-medium">Consent declined by candidate</span>
-              </>
-            ) : (
-              <>
-                <Clock className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                <span>
-                  Consent pending · expires{" "}
-                  {new Date(referral.consent.expiresAt).toLocaleDateString()}
-                </span>
-              </>
-            )}
-          </div>
-          <span
-            className={`px-2 py-0.5 rounded text-[10px] font-medium border ${consentSla.badgeClass}`}
-          >
-            {consentSla.status === "accepted"
-              ? "Verified"
-              : consentSla.status === "declined"
-              ? "Declined"
-              : `${consentSla.hoursLeft}h left`}
-          </span>
-        </div>
-      ) : (
-        <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-400">
-          <Clock className="h-3.5 w-3.5" />
-          <span>No consent record (Legacy / Direct)</span>
-        </div>
-      )}
-
-      {/* Footer Actions & Audit Timeline Toggle */}
-      <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between gap-3 flex-wrap">
+      {/* Footer Toolbar: Pipeline Actions + Timeline Toggle */}
+      <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between gap-4 flex-wrap bg-white">
         <div>
           {isActionable ? (
             !showActions ? (
               <button
+                type="button"
                 onClick={() => setShowActions(true)}
-                className="flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-xs transition-colors"
               >
-                Move stage <ChevronRight className="h-4 w-4" />
+                Move Pipeline Stage <ChevronRight className="h-4 w-4" />
               </button>
             ) : (
-              <div className="space-y-2 py-1">
-                <p className="text-xs text-slate-500 font-medium">Move candidate to:</p>
-                <div className="flex flex-wrap gap-2">
-                  {PIPELINE_ACTIONS.map((action) => (
-                    <button
-                      key={action.status}
-                      disabled={updating || referral.status === action.status}
-                      onClick={() => {
-                        onStatusChange(referral.id, action.status);
-                        setShowActions(false);
-                      }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-                        action.status === "REJECTED"
-                          ? "bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
-                          : "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100"
-                      }`}
-                    >
-                      {updating ? "..." : action.label}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-slate-500 font-semibold mr-1">Move candidate to:</span>
+                {PIPELINE_ACTIONS.map((action) => (
+                  <button
+                    key={action.status}
+                    disabled={updating || referral.status === action.status}
+                    onClick={() => {
+                      onStatusChange(referral.id, action.status);
+                      setShowActions(false);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                      action.status === "REJECTED"
+                        ? "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                        : "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100"
+                    }`}
+                  >
+                    {updating ? "..." : action.label}
+                  </button>
+                ))}
                 <button
+                  type="button"
                   onClick={() => setShowActions(false)}
-                  className="text-xs text-slate-400 hover:text-slate-600 mt-1"
+                  className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1"
                 >
                   Cancel
                 </button>
@@ -819,18 +803,22 @@ function ReferralCard({
               <XCircle className="h-3.5 w-3.5" /> Pipeline locked: Candidate declined
             </span>
           ) : (
-            <span className="text-xs text-slate-400">
-              Stage finalized: {STATUS_CONFIG[referral.status]?.label ?? referral.status}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-slate-500">Current Stage:</span>
+              <span className="text-xs font-bold text-slate-800 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md">
+                {STATUS_CONFIG[referral.status]?.label ?? referral.status}
+              </span>
+            </div>
           )}
         </div>
 
         <button
+          type="button"
           onClick={() => setShowTimeline(!showTimeline)}
-          className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors ml-auto"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-indigo-600 bg-slate-50 hover:bg-slate-100 px-3.5 py-2 rounded-lg border border-slate-200 transition-colors ml-auto shadow-2xs"
         >
-          <History className="h-3.5 w-3.5" />
-          {showTimeline ? "Hide Audit" : "Audit & Timeline"}
+          <History className="h-4 w-4 text-slate-500" />
+          {showTimeline ? "Hide Audit & Timeline" : "View Audit & Timeline"}
           {showTimeline ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
         </button>
       </div>
@@ -1127,7 +1115,7 @@ export default function MandateReferralsPage() {
 
         {/* Content */}
         {loading ? (
-          <CardGridSkeleton count={4} columns={2} />
+          <CardGridSkeleton count={3} columns={1} />
         ) : filtered.length === 0 ? (
           <MarketplaceEmptyState
             preset="referrals"
@@ -1151,7 +1139,7 @@ export default function MandateReferralsPage() {
             }}
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-6">
             {filtered.map((referral) => (
               <ReferralCard
                 key={referral.id}
