@@ -28,6 +28,19 @@ function resolveSidebarUserType(
   return "company";
 }
 
+// Helper to identify routes shared across all roles
+function isSharedRoute(pathname?: string): boolean {
+  if (!pathname) return false;
+  return (
+    pathname === "/notifications" ||
+    pathname.startsWith("/notifications/") ||
+    pathname === "/support" ||
+    pathname.startsWith("/support/") ||
+    pathname === "/profile" ||
+    pathname.startsWith("/profile/")
+  );
+}
+
 export default function ProtectedLayout({
   children,
 }: {
@@ -166,7 +179,7 @@ export default function ProtectedLayout({
   }
 
   // If the useEffect is about to redirect to a specific role dashboard, show a spinner
-  if (profile && profile.isProvisioned) {
+  if (profile && profile.isProvisioned && !isSharedRoute(pathname)) {
     const uType = (profile as any).userType;
     if (uType === "RECRUITER" && !pathname.startsWith("/recruiter")) {
       return (
