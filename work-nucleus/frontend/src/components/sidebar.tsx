@@ -136,6 +136,13 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
   const config = roleConfig[userType] ?? roleConfig.company;
   const { sections, activeBg, logoGradient } = config;
 
+  const homeHref =
+    userType === "recruiter"
+      ? "/recruiter/dashboard"
+      : userType === "candidate"
+      ? "/candidate/dashboard"
+      : "/dashboard";
+
   return (
     <aside
       className="flex h-full flex-col border-r border-slate-200/60 bg-white"
@@ -146,7 +153,7 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
         className="flex items-center border-b border-slate-200/60 px-5"
         style={{ height: "var(--topbar-height)" }}
       >
-        <Link href="/" className="flex items-center gap-2.5">
+        <Link href={homeHref} className="flex items-center gap-2.5">
           <div
             className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br ${logoGradient} shadow-[0_2px_6px_rgba(0,0,0,0.15)]`}
           >

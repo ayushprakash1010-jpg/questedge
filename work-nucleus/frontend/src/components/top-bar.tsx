@@ -31,6 +31,17 @@ export function TopBar() {
     profile?.role === "SUPPORT_ADMIN" ||
     (profile as any)?.userType === "PLATFORM_ADMIN";
 
+  const isCompanyAdmin =
+    profile?.role === "ADMIN" ||
+    (profile as any)?.userType === "COMPANY_ADMIN";
+
+  const profileHref =
+    (profile as any)?.userType === "RECRUITER"
+      ? "/recruiter/profile"
+      : (profile as any)?.userType === "CANDIDATE"
+      ? "/candidate/profile"
+      : "/profile";
+
   const initials = displayName
     ? displayName
         .split(" ")
@@ -87,12 +98,14 @@ export function TopBar() {
           </DropdownMenuTrigger>
 
           <DropdownMenuContent align="end" className="min-w-[208px]">
-            <DropdownMenuItem onClick={() => (window.location.href = "/profile")}>
+            <DropdownMenuItem onClick={() => (window.location.href = profileHref)}>
               <User className="h-4 w-4" /> Profile
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => (window.location.href = "/admin")}>
-              <Settings className="h-4 w-4" /> Admin
-            </DropdownMenuItem>
+            {isCompanyAdmin && (
+              <DropdownMenuItem onClick={() => (window.location.href = "/admin")}>
+                <Settings className="h-4 w-4" /> Admin
+              </DropdownMenuItem>
+            )}
             {isSuperAdmin && (
               <DropdownMenuItem onClick={() => window.open(SUPPORT_ADMIN_URL, "_blank")}>
                 <Shield className="h-4 w-4 text-indigo-600" /> Support Admin Portal
