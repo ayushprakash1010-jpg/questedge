@@ -81,14 +81,21 @@ export class EmailService {
         from: `"QuestEdge Referral" <${fromEmail}>`,
         to: params.toEmail,
         subject: `${params.recruiterName} referred you for ${params.mandateTitle} at ${params.companyName}`,
+        text: `Hi ${params.candidateName},\n\n${params.recruiterName} thinks you would be a great fit for the ${params.mandateTitle} role at ${params.companyName}.\n\nPlease review and accept the referral representation to proceed:\n${consentLink}\n\nIf you did not expect this referral, you can safely ignore this email.\n\n— QuestEdge Platform`,
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>You've been referred!</h2>
-            <p>Hi ${safeCandidate},</p>
-            <p><strong>${safeRecruiter}</strong> thinks you'd be a great fit for the <strong>${safeMandate}</strong> role at <strong>${safeCompany}</strong>.</p>
-            <p>Please review and accept the referral to proceed:</p>
-            <a href="${consentLink}" style="display: inline-block; padding: 10px 20px; margin-top: 20px; background-color: #059669; color: white; text-decoration: none; border-radius: 5px;">Review Referral</a>
-            <p style="margin-top: 30px; font-size: 12px; color: #666;">If you didn't expect this email, you can safely ignore it.</p>
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; line-height: 1.6; color: #1e293b;">
+            <div style="padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+              <h2 style="color: #0f172a; margin-top: 0;">You've been referred!</h2>
+              <p>Hi ${safeCandidate},</p>
+              <p><strong>${safeRecruiter}</strong> thinks you'd be a great fit for the <strong>${safeMandate}</strong> role at <strong>${safeCompany}</strong>.</p>
+              <p>Please review and accept the referral representation to proceed:</p>
+              <div style="margin: 28px 0;">
+                <a href="${consentLink}" style="display: inline-block; padding: 12px 24px; background-color: #4f46e5; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px;">Review & Accept Referral</a>
+              </div>
+              <p style="font-size: 13px; color: #64748b; margin-top: 24px; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+                This email was sent via QuestEdge Verified Candidate Representation. If you did not expect this referral, you can safely ignore this email.
+              </p>
+            </div>
           </div>
         `,
       });
@@ -133,11 +140,17 @@ export class EmailService {
         from: `"QuestEdge Updates" <${fromEmail}>`,
         to: params.toEmail,
         subject: `Update on your referral for ${params.candidateName}`,
+        text: `Hi ${params.recruiterName},\n\nThe status of your referral ${params.candidateName} for the ${params.mandateTitle} role has changed to: ${params.newStatus}.\n\n— QuestEdge Platform`,
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>Referral Status Update</h2>
-            <p>Hi ${safeRecruiter},</p>
-            <p>The status of your referral <strong>${safeCandidate}</strong> for the <strong>${safeMandate}</strong> role has changed to: <strong>${safeStatus}</strong>.</p>
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; line-height: 1.6; color: #1e293b;">
+            <div style="padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+              <h2 style="color: #0f172a; margin-top: 0;">Referral Status Update</h2>
+              <p>Hi ${safeRecruiter},</p>
+              <p>The status of your referral <strong>${safeCandidate}</strong> for the <strong>${safeMandate}</strong> role has changed to: <strong>${safeStatus}</strong>.</p>
+              <p style="font-size: 13px; color: #64748b; margin-top: 24px; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+                QuestEdge Platform Notification
+              </p>
+            </div>
           </div>
         `,
       });
@@ -187,14 +200,21 @@ export class EmailService {
         from: `"QuestEdge" <${fromEmail}>`,
         to: params.toEmail,
         subject: `Quick update on your application for ${params.mandateTitle}`,
+        text: `Hi ${params.candidateName},\n\nWe'd like to know the status of your application for the ${params.mandateTitle} role at ${params.companyName}.\n\nHave you received an offer or been hired? Please let us know:\n${checkLink}\n\nThis helps us ensure recruiters are properly rewarded for connecting you with this opportunity.\n\n— QuestEdge Platform`,
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>Application Status Check</h2>
-            <p>Hi ${safeCandidate},</p>
-            <p>We'd like to know the status of your application for the <strong>${safeMandate}</strong> role at <strong>${safeCompany}</strong>.</p>
-            <p>Have you received an offer or been hired? Please let us know — it only takes a moment.</p>
-            <a href="${checkLink}" style="display: inline-block; padding: 12px 24px; margin-top: 20px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">Update Your Status</a>
-            <p style="margin-top: 30px; font-size: 12px; color: #666;">This helps us ensure recruiters are properly rewarded for connecting you with this opportunity.</p>
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; line-height: 1.6; color: #1e293b;">
+            <div style="padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+              <h2 style="color: #0f172a; margin-top: 0;">Application Status Check</h2>
+              <p>Hi ${safeCandidate},</p>
+              <p>We'd like to know the status of your application for the <strong>${safeMandate}</strong> role at <strong>${safeCompany}</strong>.</p>
+              <p>Have you received an offer or been hired? Please let us know — it only takes a moment.</p>
+              <div style="margin: 28px 0;">
+                <a href="${checkLink}" style="display: inline-block; padding: 12px 24px; background-color: #4f46e5; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px;">Update Your Status</a>
+              </div>
+              <p style="font-size: 13px; color: #64748b; margin-top: 24px; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+                This helps us ensure recruiters are properly rewarded for connecting you with this opportunity.
+              </p>
+            </div>
           </div>
         `,
       });
