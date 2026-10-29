@@ -609,69 +609,67 @@ function ReferralCard({
                 <Star className="h-3.5 w-3.5 fill-white" />
                 {referral.aiMatchScore}% AI Match
               </span>
-              {referral.aiMatchSummary && !showAiBreakdown && (
+              {referral.aiMatchSummary && !showAiBreakdown ? (
                 <p className="text-xs text-slate-600 truncate font-medium max-w-xl hidden sm:block">
                   {referral.aiMatchSummary}
                 </p>
+              ) : (
+                <span className="text-xs font-semibold text-indigo-900/80 hidden sm:inline">
+                  Automated Candidate-to-Mandate Rubric Fit
+                </span>
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={() => setShowAiBreakdown(!showAiBreakdown)}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-white hover:bg-indigo-50/80 border border-indigo-200/90 px-3.5 py-1.5 rounded-lg transition-all shadow-2xs shrink-0 ml-auto"
-            >
-              <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
-              {showAiBreakdown ? "Hide Match Breakdown" : breakdownLabel}
-              {showAiBreakdown ? (
-                <ChevronUp className="h-3.5 w-3.5 text-indigo-500" />
-              ) : (
-                <ChevronDown className="h-3.5 w-3.5 text-indigo-500" />
+            <div className="flex items-center gap-2 shrink-0 ml-auto">
+              {showAiBreakdown && (
+                <button
+                  type="button"
+                  disabled={isRetrying}
+                  onClick={async () => {
+                    try {
+                      setIsRetrying(true);
+                      const tokenRes = await fetch("/api/auth/token");
+                      const { accessToken } = await tokenRes.json();
+                      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+                      await fetch(`${API_URL}/api/v1/mandates/${mandateId}/referrals/${referral.id}/trigger-ai`, {
+                        method: "POST",
+                        headers: { Authorization: `Bearer ${accessToken}` },
+                      });
+                      await onRefresh();
+                      setIsRetrying(false);
+                    } catch (err) {
+                      console.error(err);
+                      setIsRetrying(false);
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-semibold bg-white hover:bg-indigo-50 border border-indigo-200 px-2.5 py-1.5 rounded-lg transition-colors shadow-2xs disabled:opacity-50"
+                  title="Re-run AI candidate rubric evaluation"
+                >
+                  {isRetrying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                  {isRetrying ? "Evaluating..." : "Re-evaluate"}
+                </button>
               )}
-            </button>
+
+              <button
+                type="button"
+                onClick={() => setShowAiBreakdown(!showAiBreakdown)}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-white hover:bg-indigo-50/80 border border-indigo-200/90 px-3.5 py-1.5 rounded-lg transition-all shadow-2xs shrink-0"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
+                {showAiBreakdown ? "Hide Match Breakdown" : breakdownLabel}
+                {showAiBreakdown ? (
+                  <ChevronUp className="h-3.5 w-3.5 text-indigo-500" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5 text-indigo-500" />
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Expanded AI Rubric & Breakdown */}
           {showAiBreakdown && (
             <div className="p-6 bg-gradient-to-b from-indigo-50/20 to-white border-b border-slate-100 transition-all">
               <div className="rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50/70 via-indigo-50/30 to-white p-5 space-y-4 shadow-2xs">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-600 text-white text-xs font-bold shadow-xs">
-                      <Star className="h-3.5 w-3.5 fill-white" />
-                      {referral.aiMatchScore}% AI Match
-                    </span>
-                    <span className="text-xs font-medium text-indigo-900/70 hidden sm:inline">
-                      Automated Candidate-to-Mandate Rubric Fit
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={isRetrying}
-                    onClick={async () => {
-                      try {
-                        setIsRetrying(true);
-                        const tokenRes = await fetch("/api/auth/token");
-                        const { accessToken } = await tokenRes.json();
-                        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-                        await fetch(`${API_URL}/api/v1/mandates/${mandateId}/referrals/${referral.id}/trigger-ai`, {
-                          method: "POST",
-                          headers: { Authorization: `Bearer ${accessToken}` },
-                        });
-                        await onRefresh();
-                        setIsRetrying(false);
-                      } catch (err) {
-                        console.error(err);
-                        setIsRetrying(false);
-                      }
-                    }}
-                    className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-semibold bg-white hover:bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-lg transition-colors shadow-2xs disabled:opacity-50"
-                  >
-                    {isRetrying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                    {isRetrying ? "Evaluating..." : "Re-evaluate"}
-                  </button>
-                </div>
-
                 {referral.aiMatchSummary && (
                   <p className="text-sm text-slate-700 leading-relaxed bg-white/80 border border-indigo-100/70 p-3.5 rounded-lg shadow-2xs">
                     {referral.aiMatchSummary}
