@@ -92,7 +92,8 @@ const candidateNavSections: NavSection[] = [
       { label: "Dashboard", href: "/candidate/dashboard", icon: LayoutDashboard },
       { label: "Browse Jobs", href: "/candidate/jobs", icon: Compass },
       { label: "Saved Jobs", href: "/candidate/jobs?saved=true", icon: Heart },
-      { label: "My Applications", href: "/candidate/referrals", icon: Users },
+      { label: "My Applications", href: "/candidate/applications", icon: Briefcase },
+      { label: "Referral Requests", href: "/candidate/referrals", icon: Users },
     ],
   },
   {

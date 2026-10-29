@@ -212,7 +212,7 @@ export default function CandidateApplicationsPage() {
                         </div>
                         <div className="mt-4 flex items-center gap-2 text-xs text-slate-400">
                           <Clock className="h-3.5 w-3.5" />
-                          Applied {formatDistanceToNow(new Date(app.appliedAt))} ago
+                          Applied {app.appliedAt ? formatDistanceToNow(new Date(app.appliedAt)) : "recently"} ago
                         </div>
                       </div>
                     </div>
@@ -234,18 +234,18 @@ export default function CandidateApplicationsPage() {
                       className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex items-start gap-4 hover:shadow-sm transition-shadow"
                     >
                       <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-xl font-bold text-emerald-600 shrink-0">
-                        {ref.mandate?.organization?.name?.[0] ?? "?"}
+                        {ref.mandate?.organization?.name?.[0] ?? "C"}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between">
                           <div>
                             <h3 className="font-bold text-slate-900 text-base">
-                              {ref.mandate?.title}
+                              {ref.mandate?.title ?? "Position"}
                             </h3>
                             <div className="flex items-center gap-3 mt-1 text-sm text-slate-500 flex-wrap">
-                              <span className="flex items-center gap-1">
+                              <span className="flex items-center gap-1 font-medium text-slate-700">
                                 <Building2 className="h-3.5 w-3.5" />{" "}
-                                {ref.mandate?.organization?.name}
+                                {ref.mandate?.organization?.name ?? "Company"}
                               </span>
                               {ref.mandate?.location && (
                                 <span className="flex items-center gap-1">
@@ -257,7 +257,7 @@ export default function CandidateApplicationsPage() {
                           </div>
                           <div className="text-right">
                             <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200">
-                              Status: {ref.status.replace(/_/g, " ")}
+                              Status: {(ref.status || "ACCEPTED").replace(/_/g, " ")}
                             </span>
                           </div>
                         </div>
@@ -271,13 +271,13 @@ export default function CandidateApplicationsPage() {
                               {ref.recruiter?.name?.[0] ?? "R"}
                             </div>
                             <span className="text-sm font-medium text-slate-800">
-                              {ref.recruiter?.name}
+                              {ref.recruiter?.name ?? "Recruiter"}
                             </span>
                           </div>
                         </div>
                         <div className="mt-4 flex items-center gap-2 text-xs text-slate-400">
                           <Clock className="h-3.5 w-3.5" />
-                          Updated {formatDistanceToNow(new Date(ref.updatedAt))} ago
+                          Updated {ref.updatedAt ? formatDistanceToNow(new Date(ref.updatedAt)) : ref.createdAt ? formatDistanceToNow(new Date(ref.createdAt)) : "recently"} ago
                         </div>
                       </div>
                     </div>

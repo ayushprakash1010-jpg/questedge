@@ -255,12 +255,16 @@ export default function CandidateDashboardPage() {
         {/* Stats row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 -mt-10 relative z-10">
           {[
-            { title: "Pending Consents", value: consents.length, icon: Bell, color: "amber", sub: consents.length > 0 ? "Action required" : "All clear" },
-            { title: "Active Referrals", value: profile._count?.referrals ?? 0, icon: Users, color: "indigo", sub: "Recruiters working for you" },
-            { title: "Saved Jobs", value: savedJobs.length, icon: Bookmark, color: "rose", sub: "Explore when ready" },
-            { title: "Applications", value: profile._count?.applications ?? 0, icon: FileText, color: "cyan", sub: "Submitted so far" },
-          ].map(({ title, value, icon: Icon, color, sub }) => (
-            <div key={title} className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+            { title: "Pending Consents", value: consents.length, icon: Bell, color: "amber", sub: consents.length > 0 ? "Action required" : "All clear", href: "/candidate/referrals" },
+            { title: "Active Referrals", value: profile._count?.referrals ?? 0, icon: Users, color: "indigo", sub: "Recruiters working for you", href: "/candidate/applications" },
+            { title: "Saved Jobs", value: savedJobs.length, icon: Bookmark, color: "rose", sub: "Explore when ready", href: "/candidate/jobs?saved=true" },
+            { title: "Applications", value: profile._count?.applications ?? 0, icon: FileText, color: "cyan", sub: "Submitted so far", href: "/candidate/applications" },
+          ].map(({ title, value, icon: Icon, color, sub, href }) => (
+            <div
+              key={title}
+              onClick={() => router.push(href)}
+              className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all group relative overflow-hidden cursor-pointer"
+            >
               <div className={`absolute top-0 right-0 w-24 h-24 rounded-full blur-3xl -mr-8 -mt-8 opacity-30 group-hover:opacity-50 transition-opacity bg-${color}-200`} />
               <div className="relative">
                 <div className="flex items-center justify-between mb-3">
