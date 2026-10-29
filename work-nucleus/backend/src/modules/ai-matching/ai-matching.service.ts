@@ -35,7 +35,7 @@ export class AiMatchingService {
     const rawKey = this.config.get<string>('GEMINI_API_KEY');
     this.hasApiKey = !!(rawKey && rawKey.trim().length > 0);
     this.modelName =
-      this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
+      this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-lite-latest';
   }
 
   // ── 1. Evaluate Candidate against Mandate (Main Entry) ──────────
@@ -129,37 +129,56 @@ export class AiMatchingService {
       },
     });
 
-    const matches: MandateMatchItem[] = [];
+    // 1. Fast deterministic scoring across mandates (< 5ms)
+    const scoredMandates = activeMandates.map((mandate) => ({
+      mandate,
+      deterministic: this.calculateDeterministicMatch(candidate, mandate),
+    }));
 
-    for (const mandate of activeMandates) {
-      const match = await this.evaluateCandidateAgainstMandate(candidate, mandate);
-      matches.push({
-        mandate: {
-          id: mandate.id,
-          title: mandate.title,
-          department: mandate.department,
-          location: mandate.location,
-          workModel: mandate.workModel,
-          mandatorySkills: Array.isArray(mandate.mandatorySkills)
-            ? (mandate.mandatorySkills as string[])
-            : [],
-          preferredSkills: Array.isArray(mandate.preferredSkills)
-            ? (mandate.preferredSkills as string[])
-            : [],
-          referralRewardAmount: mandate.referralRewardAmount
-            ? Number(mandate.referralRewardAmount)
-            : null,
-          currency: mandate.currency || 'INR',
-          organization: mandate.organization,
-        },
-        match,
-      });
-    }
+    scoredMandates.sort(
+      (a, b) => b.deterministic.matchScore - a.deterministic.matchScore,
+    );
+    const topMandates = scoredMandates.slice(0, Math.min(limit, 10));
+
+    // 2. Evaluate top matches in parallel
+    const matches: MandateMatchItem[] = await Promise.all(
+      topMandates.map(async ({ mandate, deterministic }) => {
+        let match = deterministic;
+        if (this.hasApiKey) {
+          try {
+            match = await this.evaluateCandidateAgainstMandate(candidate, mandate);
+          } catch {
+            match = deterministic;
+          }
+        }
+        return {
+          mandate: {
+            id: mandate.id,
+            title: mandate.title,
+            department: mandate.department,
+            location: mandate.location,
+            workModel: mandate.workModel,
+            mandatorySkills: Array.isArray(mandate.mandatorySkills)
+              ? (mandate.mandatorySkills as string[])
+              : [],
+            preferredSkills: Array.isArray(mandate.preferredSkills)
+              ? (mandate.preferredSkills as string[])
+              : [],
+            referralRewardAmount: mandate.referralRewardAmount
+              ? Number(mandate.referralRewardAmount)
+              : null,
+            currency: mandate.currency || 'INR',
+            organization: mandate.organization,
+          },
+          match,
+        };
+      }),
+    );
 
     // Sort descending by matchScore
     matches.sort((a, b) => b.match.matchScore - a.match.matchScore);
 
-    return matches.slice(0, Math.min(limit, 25));
+    return matches;
   }
 
   // ── 4. Recruiter Talent Pool Matching ───────────────────────────
@@ -189,30 +208,49 @@ export class AiMatchingService {
       .map((r) => r.candidateProfile)
       .filter((c): c is NonNullable<typeof c> => c !== null);
 
-    const results: CandidateMatchItem[] = [];
+    // 1. Fast deterministic heuristic scoring across all candidates in network (< 5ms)
+    const scoredCandidates = candidates.map((candidate) => ({
+      candidate,
+      deterministic: this.calculateDeterministicMatch(candidate, mandate),
+    }));
 
-    for (const candidate of candidates) {
-      const match = await this.evaluateCandidateAgainstMandate(candidate, mandate);
-      results.push({
-        candidate: {
-          id: candidate.id,
-          name: candidate.name,
-          email: candidate.email,
-          headline: candidate.headline,
-          currentDesignation: candidate.currentDesignation,
-          currentCompany: candidate.currentCompany,
-          experienceYears: candidate.experienceYears ? Number(candidate.experienceYears) : null,
-          skills: this.extractSkillsArray(candidate.skills),
-          currentLocation: candidate.currentLocation,
-          workModel: candidate.workModel,
-          noticePeriodDays: candidate.noticePeriodDays,
-        },
-        match,
-      });
-    }
+    scoredCandidates.sort(
+      (a, b) => b.deterministic.matchScore - a.deterministic.matchScore,
+    );
+    const topCandidates = scoredCandidates.slice(0, Math.min(limit, 6));
+
+    // 2. Evaluate top candidates in parallel
+    const results: CandidateMatchItem[] = await Promise.all(
+      topCandidates.map(async ({ candidate, deterministic }) => {
+        let match = deterministic;
+        if (this.hasApiKey) {
+          try {
+            match = await this.evaluateCandidateAgainstMandate(candidate, mandate);
+          } catch {
+            match = deterministic;
+          }
+        }
+        return {
+          candidate: {
+            id: candidate.id,
+            name: candidate.name,
+            email: candidate.email,
+            headline: candidate.headline,
+            currentDesignation: candidate.currentDesignation,
+            currentCompany: candidate.currentCompany,
+            experienceYears: candidate.experienceYears ? Number(candidate.experienceYears) : null,
+            skills: this.extractSkillsArray(candidate.skills),
+            currentLocation: candidate.currentLocation,
+            workModel: candidate.workModel,
+            noticePeriodDays: candidate.noticePeriodDays,
+          },
+          match,
+        };
+      }),
+    );
 
     results.sort((a, b) => b.match.matchScore - a.match.matchScore);
-    return results.slice(0, Math.min(limit, 25));
+    return results;
   }
 
   // ── 5. Preflight Check (Ad-hoc form check) ───────────────────────
@@ -485,7 +523,7 @@ Output ONLY valid JSON with this exact schema:
     const timeoutPromise = new Promise<never>((_, reject) => {
       timer = setTimeout(
         () => reject(new Error('Gemini matching generation timed out')),
-        25000,
+        5000,
       );
     });
 

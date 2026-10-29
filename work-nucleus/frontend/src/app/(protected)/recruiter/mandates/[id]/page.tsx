@@ -58,29 +58,40 @@ export default function RecruiterMandateDetail() {
   const [preflightResult, setPreflightResult] = useState<MatchEvaluationResult | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
     (async () => {
       try {
         const tokenRes = await fetch("/api/auth/token");
         const { accessToken } = await tokenRes.json();
-        const data = await getMandate(accessToken, id);
-        setMandate({ ...data, isJoined: false });
 
-        // Load AI matched talent pool in background
-        setTalentLoading(true);
+        // 1. Fetch mandate data and render the job card instantly (< 100ms)
+        const data = await getMandate(accessToken, id);
+        if (isMounted) {
+          setMandate({ ...data, isJoined: data.isJoined ?? false });
+          setLoading(false);
+        }
+
+        // 2. Load AI matched talent pool non-blockingly in the background
+        if (isMounted) setTalentLoading(true);
         try {
           const pool = await getRecruiterTalentPoolMatches(accessToken, id, 6);
-          setTalentMatches(pool);
+          if (isMounted) {
+            setTalentMatches(pool);
+          }
         } catch (e) {
           console.error("Failed to load talent pool matches:", e);
         } finally {
-          setTalentLoading(false);
+          if (isMounted) setTalentLoading(false);
         }
       } catch (err) {
         console.error(err);
-      } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     })();
+
+    return () => {
+      isMounted = false;
+    };
   }, [id]);
 
   const handleQuickRefer = (item: CandidateMatchItem) => {
