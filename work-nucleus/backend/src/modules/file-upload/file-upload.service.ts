@@ -145,10 +145,17 @@ export class FileUploadService implements OnModuleInit {
     return key;
   }
 
-  async getPresignedUrl(key: string): Promise<string> {
+  async getPresignedUrl(key: string, filename?: string): Promise<string> {
+    const cleanFilename = filename
+      ? filename.trim().replace(/[^a-zA-Z0-9._-]/g, '_')
+      : undefined;
+
     const command = new GetObjectCommand({
       Bucket: this.bucket,
       Key: key,
+      ...(cleanFilename
+        ? { ResponseContentDisposition: `inline; filename="${cleanFilename}"` }
+        : {}),
     });
     return getSignedUrl(this.s3, command, { expiresIn: 3600 });
   }

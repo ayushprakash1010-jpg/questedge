@@ -85,7 +85,7 @@ export class CandidatePortalController {
     return this.candidatePortalService.getMyProfile(user.auth0Sub, user.email);
   }
 
-  @Get('profile/resume')
+  @Get(['profile/resume', 'profile/my/resume'])
   @ApiOperation({
     summary: 'Get short-lived presigned download URL for own resume (Candidate)',
   })
@@ -97,9 +97,21 @@ export class CandidatePortalController {
     if (!profile.resumeUrl) {
       throw new NotFoundException('No resume uploaded for this profile.');
     }
-    const downloadUrl = await this.fileUploadService.getPresignedUrl(
-      profile.resumeUrl,
-    );
+    let downloadUrl: string;
+    if (
+      profile.resumeUrl.startsWith('http://') ||
+      profile.resumeUrl.startsWith('https://')
+    ) {
+      downloadUrl = profile.resumeUrl;
+    } else {
+      const cleanName = (profile.name || 'My')
+        .trim()
+        .replace(/[^a-zA-Z0-9_-]/g, '_');
+      downloadUrl = await this.fileUploadService.getPresignedUrl(
+        profile.resumeUrl,
+        `${cleanName}_Resume.pdf`,
+      );
+    }
     return { url: downloadUrl, expiresInSeconds: 3600 };
   }
 
@@ -113,7 +125,7 @@ export class CandidatePortalController {
     @CurrentUser() user: any,
     @Param('id') candidateId: string,
   ) {
-    const resumeKey =
+    const { resumeKey, candidateName } =
       await this.candidatePortalService.getCandidateResumeKeyWithAuth(
         user,
         candidateId,
@@ -122,7 +134,13 @@ export class CandidatePortalController {
     if (resumeKey.startsWith('http://') || resumeKey.startsWith('https://')) {
       downloadUrl = resumeKey;
     } else {
-      downloadUrl = await this.fileUploadService.getPresignedUrl(resumeKey);
+      const cleanName = (candidateName || 'Candidate')
+        .trim()
+        .replace(/[^a-zA-Z0-9_-]/g, '_');
+      downloadUrl = await this.fileUploadService.getPresignedUrl(
+        resumeKey,
+        `${cleanName}_Resume.pdf`,
+      );
     }
     return { url: downloadUrl, expiresInSeconds: 3600 };
   }

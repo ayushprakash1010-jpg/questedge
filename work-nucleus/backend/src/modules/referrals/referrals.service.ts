@@ -220,7 +220,7 @@ export class ReferralsService {
           },
         },
         candidateProfile: {
-          select: { name: true, email: true, headline: true },
+          select: { id: true, name: true, email: true, headline: true, resumeUrl: true },
         },
       },
       orderBy: { createdAt: 'desc' },

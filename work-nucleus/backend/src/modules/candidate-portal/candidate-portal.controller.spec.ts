@@ -6,6 +6,7 @@ import { FileUploadService } from '../file-upload/file-upload.service';
 describe('CandidatePortalController', () => {
   let controller: CandidatePortalController;
   let candidatePortalService: any;
+  let fileUploadService: any;
 
   beforeEach(async () => {
     candidatePortalService = {
@@ -13,6 +14,12 @@ describe('CandidatePortalController', () => {
       upsertProfile: jest.fn(),
       exportCandidateData: jest.fn(),
       eraseCandidateData: jest.fn(),
+      getCandidateResumeKeyWithAuth: jest.fn(),
+    };
+
+    fileUploadService = {
+      uploadResume: jest.fn(),
+      getPresignedUrl: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -24,10 +31,7 @@ describe('CandidatePortalController', () => {
         },
         {
           provide: FileUploadService,
-          useValue: {
-            uploadResume: jest.fn(),
-            getPresignedUrl: jest.fn(),
-          },
+          useValue: fileUploadService,
         },
       ],
     }).compile();
@@ -79,6 +83,41 @@ describe('CandidatePortalController', () => {
         'profile-uuid-1',
       );
       expect(result.success).toBe(true);
+    });
+
+    it('getMyResumeUrl should generate presigned url with clean filename', async () => {
+      candidatePortalService.getMyProfile.mockResolvedValue({
+        id: 'profile-uuid-1',
+        name: 'Jane Doe',
+        resumeUrl: 'resumes/jane/123-resume.pdf',
+      });
+      fileUploadService.getPresignedUrl.mockResolvedValue('https://s3.signed/Jane_Doe_Resume.pdf');
+
+      const result = await controller.getMyResumeUrl(mockUser);
+      expect(fileUploadService.getPresignedUrl).toHaveBeenCalledWith(
+        'resumes/jane/123-resume.pdf',
+        'Jane_Doe_Resume.pdf',
+      );
+      expect(result.url).toBe('https://s3.signed/Jane_Doe_Resume.pdf');
+    });
+
+    it('getCandidateResumeUrl should generate presigned url with candidate name in filename', async () => {
+      candidatePortalService.getCandidateResumeKeyWithAuth.mockResolvedValue({
+        resumeKey: 'resumes/ravi/456-resume.pdf',
+        candidateName: 'Ravi Kumar',
+      });
+      fileUploadService.getPresignedUrl.mockResolvedValue('https://s3.signed/Ravi_Kumar_Resume.pdf');
+
+      const result = await controller.getCandidateResumeUrl(mockUser, 'candidate-1');
+      expect(candidatePortalService.getCandidateResumeKeyWithAuth).toHaveBeenCalledWith(
+        mockUser,
+        'candidate-1',
+      );
+      expect(fileUploadService.getPresignedUrl).toHaveBeenCalledWith(
+        'resumes/ravi/456-resume.pdf',
+        'Ravi_Kumar_Resume.pdf',
+      );
+      expect(result.url).toBe('https://s3.signed/Ravi_Kumar_Resume.pdf');
     });
   });
 });

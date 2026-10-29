@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import {
   Loader2, Save, CheckCircle2, User, Briefcase, GraduationCap,
   MapPin, ChevronRight, ChevronLeft, Plus, X, ArrowRight, Sparkles,
-  DollarSign, Clock, Target, UploadCloud, FileText, Download, Trash2, ShieldCheck
+  DollarSign, Clock, Target, UploadCloud, FileText, Download, Trash2, ShieldCheck,
+  ExternalLink
 } from "lucide-react";
 
 // ── PDF Helper ────────────────────────────────────────────────────
@@ -179,6 +180,33 @@ export default function CandidateProfilePage() {
   const [resumeUploadStatus, setResumeUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [isExporting, setIsExporting] = useState(false);
   const [isErasing, setIsErasing] = useState(false);
+  const [isOpeningResume, setIsOpeningResume] = useState(false);
+
+  const handleViewMyResume = async () => {
+    try {
+      setIsOpeningResume(true);
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+      const res = await fetch(`${API_URL}/api/v1/candidate/profile/my/resume`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok) {
+        toast.error("Could not load your resume.");
+        return;
+      }
+      const data = await res.json();
+      if (data.url) {
+        window.open(data.url, "_blank", "noopener,noreferrer");
+      } else {
+        toast.error("Resume file not found.");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to open resume.");
+    } finally {
+      setIsOpeningResume(false);
+    }
+  };
 
   const handleExportData = async () => {
     try {
@@ -471,15 +499,30 @@ export default function CandidateProfilePage() {
                   <h3 className="text-sm font-bold text-emerald-900">
                     {resumeUploadStatus === 'success' ? 'Resume Uploaded & Parsed!' : 'Resume Upload & Auto-Fill 🪄'}
                   </h3>
-                  <p className="text-xs text-emerald-700 mt-0.5">
+                  <div className="text-xs text-emerald-700 mt-0.5">
                     {resumeUrl ? (
-                      <span className="flex items-center gap-1 mt-1 justify-center sm:justify-start">
-                        <FileText className="h-3 w-3" /> Resume saved securely.
-                      </span>
+                      <div className="flex items-center gap-2 mt-1 justify-center sm:justify-start flex-wrap">
+                        <span className="flex items-center gap-1 text-emerald-800 font-medium">
+                          <FileText className="h-3.5 w-3.5" /> Resume saved securely.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleViewMyResume}
+                          disabled={isOpeningResume}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-800 bg-emerald-200/70 hover:bg-emerald-200 px-2.5 py-1 rounded-md transition-colors shadow-xs"
+                        >
+                          {isOpeningResume ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <ExternalLink className="h-3 w-3" />
+                          )}
+                          Preview Resume
+                        </button>
+                      </div>
                     ) : (
-                      'Upload your PDF. We will save it for recruiters and let AI instantly populate your profile.'
+                      <p>Upload your PDF. We will save it for recruiters and let AI instantly populate your profile.</p>
                     )}
-                  </p>
+                  </div>
                 </div>
                 <div className="z-10 w-full sm:w-auto shrink-0 relative">
                   <input

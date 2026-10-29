@@ -11,6 +11,7 @@ import {
   XCircle,
   Briefcase,
   Sparkles,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
 import { RewardBadge } from "@/components/marketplace/MandateCard";
@@ -22,6 +23,34 @@ export default function MyReferralsPage() {
   const [referrals, setReferrals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [openingResumeId, setOpeningResumeId] = useState<string | null>(null);
+
+  const handleViewResume = async (candidateId: string) => {
+    try {
+      setOpeningResumeId(candidateId);
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+      const res = await fetch(`${apiUrl}/api/v1/candidate/profile/${candidateId}/resume`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok) {
+        alert("Failed to load candidate resume.");
+        return;
+      }
+      const data = await res.json();
+      if (data.url) {
+        window.open(data.url, "_blank", "noopener,noreferrer");
+      } else {
+        alert("Resume file not found.");
+      }
+    } catch (err) {
+      console.error("Failed to view resume", err);
+      alert("Failed to open resume.");
+    } finally {
+      setOpeningResumeId(null);
+    }
+  };
 
   const fetchReferrals = useCallback(async () => {
     try {
@@ -177,12 +206,30 @@ export default function MyReferralsPage() {
                     <td className="px-6 py-4">{getStatusBadge(ref.status)}</td>
 
                     <td className="px-6 py-4 text-right">
-                      <Link
-                        href={`/recruiter/mandates/${ref.mandateId}`}
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-sky-600 hover:text-sky-800"
-                      >
-                        Inspect Mandate <ExternalLink className="h-3 w-3" />
-                      </Link>
+                      <div className="flex items-center justify-end gap-3">
+                        {ref.candidateProfile?.resumeUrl && (
+                          <button
+                            type="button"
+                            onClick={() => handleViewResume(ref.candidateProfile.id)}
+                            disabled={openingResumeId === ref.candidateProfile.id}
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-md transition-colors shadow-xs"
+                            title="View Candidate Resume in new tab"
+                          >
+                            {openingResumeId === ref.candidateProfile.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <FileText className="h-3.5 w-3.5" />
+                            )}
+                            Resume
+                          </button>
+                        )}
+                        <Link
+                          href={`/recruiter/mandates/${ref.mandateId}`}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-sky-600 hover:text-sky-800"
+                        >
+                          Inspect Mandate <ExternalLink className="h-3 w-3" />
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}

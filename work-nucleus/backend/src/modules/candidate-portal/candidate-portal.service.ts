@@ -327,16 +327,17 @@ export class CandidatePortalService {
   async getCandidateResumeKeyWithAuth(
     user: any,
     candidateId: string,
-  ): Promise<string> {
+  ): Promise<{ resumeKey: string; candidateName: string }> {
     // 1. Check CandidateProfile first (referrals & candidate portal users)
     const profile = await this.prisma.candidateProfile.findUnique({
       where: { id: candidateId },
     });
 
     if (profile && profile.resumeUrl) {
+      const candidateName = profile.name || 'Candidate';
       // Candidate themselves
       if (user.auth0Sub && profile.auth0Sub === user.auth0Sub) {
-        return profile.resumeUrl;
+        return { resumeKey: profile.resumeUrl, candidateName };
       }
 
       // Company user: Candidate has an application or referral with their organization
@@ -351,7 +352,7 @@ export class CandidatePortalService {
             ],
           },
         });
-        if (hasApplication) return profile.resumeUrl;
+        if (hasApplication) return { resumeKey: profile.resumeUrl, candidateName };
 
         const hasReferral = await this.prisma.referral.findFirst({
           where: {
@@ -359,7 +360,7 @@ export class CandidatePortalService {
             mandate: { orgId: user.orgId },
           },
         });
-        if (hasReferral) return profile.resumeUrl;
+        if (hasReferral) return { resumeKey: profile.resumeUrl, candidateName };
       }
 
       // Recruiter: Recruiter referred this candidate
@@ -374,13 +375,13 @@ export class CandidatePortalService {
               recruiterId: recruiterProfile.id,
             },
           });
-          if (hasReferral) return profile.resumeUrl;
+          if (hasReferral) return { resumeKey: profile.resumeUrl, candidateName };
         }
       }
 
       // Platform / Support Admin
       if (user.role === Role.SUPPORT_ADMIN || user.role === Role.SUPPORT_REP) {
-        return profile.resumeUrl;
+        return { resumeKey: profile.resumeUrl, candidateName };
       }
     }
 
@@ -390,14 +391,15 @@ export class CandidatePortalService {
     });
 
     if (directCandidate && directCandidate.resumeUrl) {
+      const candidateName = directCandidate.name || 'Candidate';
       if (user.orgId && directCandidate.orgId === user.orgId) {
-        return directCandidate.resumeUrl;
+        return { resumeKey: directCandidate.resumeUrl, candidateName };
       }
       if (user.role === Role.SUPPORT_ADMIN || user.role === Role.SUPPORT_REP) {
-        return directCandidate.resumeUrl;
+        return { resumeKey: directCandidate.resumeUrl, candidateName };
       }
       if (user.email && user.email.toLowerCase() === directCandidate.email.toLowerCase()) {
-        return directCandidate.resumeUrl;
+        return { resumeKey: directCandidate.resumeUrl, candidateName };
       }
     }
 
