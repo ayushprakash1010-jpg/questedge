@@ -134,7 +134,12 @@ export class MandatesService {
   }
 
   private async getMandateStats(mandateId: string): Promise<MandateStats> {
-    const [totalApplications, referrals, activeRecruiters] = await Promise.all([
+    const [
+      totalApplications,
+      referrals,
+      activeParticipations,
+      distinctReferralRecruiters,
+    ] = await Promise.all([
       this.prisma.candidateApplication.count({ where: { mandateId } }),
       this.prisma.referral.groupBy({
         by: ['status'],
@@ -144,12 +149,32 @@ export class MandatesService {
       this.prisma.mandateParticipation.count({
         where: { mandateId, status: 'ACTIVE' },
       }),
+      this.prisma.referral.findMany({
+        where: { mandateId },
+        select: { recruiterId: true },
+        distinct: ['recruiterId'],
+      }),
     ]);
+
+    const activeRecruiters = Math.max(
+      activeParticipations,
+      distinctReferralRecruiters.length,
+    );
 
     const referralsByStatus: Record<string, number> = {};
     for (const r of referrals) {
       referralsByStatus[r.status] = r._count.status;
     }
+
+    const candidatesInPipeline =
+      totalApplications +
+      (referralsByStatus['CANDIDATE_ACCEPTED'] ?? 0) +
+      (referralsByStatus['ACTIVATED'] ?? 0) +
+      (referralsByStatus['UNDER_REVIEW'] ?? 0) +
+      (referralsByStatus['SHORTLISTED'] ?? 0) +
+      (referralsByStatus['INTERVIEW'] ?? 0) +
+      (referralsByStatus['SELECTED'] ?? 0) +
+      (referralsByStatus['HIRED'] ?? 0);
 
     return {
       totalApplications,
@@ -161,7 +186,7 @@ export class MandatesService {
         (referralsByStatus['PENDING_CONSENT'] ?? 0) +
         (referralsByStatus['CONSENT_REQUESTED'] ?? 0),
       referralsActivated: referralsByStatus['ACTIVATED'] ?? 0,
-      candidatesInPipeline: totalApplications,
+      candidatesInPipeline,
       activeRecruiters,
     };
   }
@@ -337,7 +362,15 @@ export class MandatesService {
     const mandate = await this.findOwnMandate(orgId, id);
     const stats = await this.getMandateStats(id);
 
-    return { ...mandate, stats } as MandateWithStats;
+    return {
+      ...mandate,
+      stats,
+      _count: {
+        referrals: stats.totalReferrals,
+        applications: stats.totalApplications,
+        participations: stats.activeRecruiters,
+      },
+    } as any;
   }
 
   async findForMarketplace(id: string, recruiterId?: string) {
@@ -740,13 +773,92 @@ export class MandatesService {
       });
     }
 
-    return applications.map((app) => ({
+    const appItems = applications.map((app) => ({
       ...app,
+      isReferral: Boolean(app.referralId),
       referral:
         app.referralId && referralsMap[app.referralId]
           ? referralsMap[app.referralId]
           : null,
     }));
+
+    // Fetch active/accepted referrals for this mandate to populate the Kanban board
+    const activeReferrals = await this.prisma.referral.findMany({
+      where: {
+        mandateId,
+        status: {
+          in: [
+            'CANDIDATE_ACCEPTED',
+            'ACTIVATED',
+            'UNDER_REVIEW',
+            'SHORTLISTED',
+            'INTERVIEW',
+            'SELECTED',
+            'HIRED',
+          ],
+        },
+      },
+      include: {
+        candidateProfile: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            headline: true,
+            experienceYears: true,
+          },
+        },
+        recruiter: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const existingReferralIds = new Set(referralIds);
+    const unlinkedReferrals = activeReferrals.filter(
+      (r) => !existingReferralIds.has(r.id),
+    );
+
+    const stageMap: Record<
+      string,
+      { id: string; name: string; stageOrder: number }
+    > = {
+      CANDIDATE_ACCEPTED: { id: 'sourced', name: 'Sourced', stageOrder: 1 },
+      ACTIVATED: { id: 'screening', name: 'Screening', stageOrder: 2 },
+      UNDER_REVIEW: { id: 'screening', name: 'Screening', stageOrder: 2 },
+      SHORTLISTED: { id: 'shortlisted', name: 'Shortlisted', stageOrder: 3 },
+      INTERVIEW: { id: 'interview', name: 'Interview', stageOrder: 4 },
+      SELECTED: { id: 'offer', name: 'Offer / Hired', stageOrder: 5 },
+      HIRED: { id: 'offer', name: 'Offer / Hired', stageOrder: 5 },
+    };
+
+    const referralItems = unlinkedReferrals.map((r) => ({
+      id: r.id,
+      candidateProfileId: r.candidateProfileId,
+      candidateProfile: r.candidateProfile,
+      mandateId: r.mandateId,
+      isReferral: true,
+      referralId: r.id,
+      referral: {
+        id: r.id,
+        recruiter: r.recruiter,
+        status: r.status,
+      },
+      currentStage: stageMap[r.status] || {
+        id: 'sourced',
+        name: 'Sourced',
+        stageOrder: 1,
+      },
+      status: r.status,
+      aiMatchScore: (r as any).aiMatchScore,
+      appliedAt: (r as any).createdAt,
+    }));
+
+    return [...appItems, ...referralItems];
   }
 
   // ── Company: Referral Inbox ─────────────────────────────────────

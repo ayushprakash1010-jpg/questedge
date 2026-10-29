@@ -6,8 +6,11 @@ import { cn } from "@/lib/utils";
 
 interface CandidateApplication {
   id: string;
+  isReferral?: boolean;
+  referralId?: string;
+  aiMatchScore?: number;
   candidateProfile: { name: string; email: string; headline: string; experienceYears: string | number };
-  referral?: { recruiter: { name: string } };
+  referral?: { recruiter: { name: string }; status?: string };
   currentStage: { id: string; name: string; stageOrder: number };
 }
 
@@ -25,7 +28,7 @@ const DEFAULT_STAGES = [
 
 export function PipelineKanban({ mandateId }: PipelineKanbanProps) {
   const [applications, setApplications] = useState<CandidateApplication[]>([]);
-  const [stages, setStages] = useState<{id: string, name: string}[]>(DEFAULT_STAGES);
+  const [stages, setStages] = useState<{id: string, name: string, stageOrder: number}[]>(DEFAULT_STAGES);
   const [loading, setLoading] = useState(true);
 
   // For native HTML5 DnD
@@ -46,18 +49,18 @@ export function PipelineKanban({ mandateId }: PipelineKanbanProps) {
       const data = await res.json();
       setApplications(Array.isArray(data) ? data : []);
       
-      // Extract unique stages
-      const uniqueStages = new Map();
+      // Ensure all default stages are always shown, and append any custom stages
+      const stageMap = new Map<string, { id: string; name: string; stageOrder: number }>();
+      DEFAULT_STAGES.forEach((s) => stageMap.set(s.id, s));
       if (Array.isArray(data)) {
         data.forEach((app: any) => {
-          if (app.currentStage) {
-            uniqueStages.set(app.currentStage.id, app.currentStage);
+          if (app.currentStage && !stageMap.has(app.currentStage.id)) {
+            stageMap.set(app.currentStage.id, app.currentStage);
           }
         });
       }
-      // Sort by stageOrder
-      const sortedStages = Array.from(uniqueStages.values()).sort((a: any, b: any) => a.stageOrder - b.stageOrder);
-      setStages(sortedStages.length > 0 ? sortedStages : DEFAULT_STAGES);
+      const sortedStages = Array.from(stageMap.values()).sort((a, b) => a.stageOrder - b.stageOrder);
+      setStages(sortedStages);
     } catch (err) {
       console.error("Failed to fetch pipeline", err);
       setStages(DEFAULT_STAGES);
@@ -80,10 +83,12 @@ export function PipelineKanban({ mandateId }: PipelineKanbanProps) {
     e.preventDefault();
     if (!draggedAppId) return;
 
+    const draggedItem = applications.find(a => a.id === draggedAppId);
+
     // Optimistic UI update
     setApplications(prev => prev.map(app => 
       app.id === draggedAppId 
-        ? { ...app, currentStage: stages.find(s => s.id === targetStageId) as any } 
+        ? { ...app, currentStage: (stages.find(s => s.id === targetStageId) || DEFAULT_STAGES.find(s => s.id === targetStageId) || app.currentStage) as any } 
         : app
     ));
 
@@ -91,14 +96,37 @@ export function PipelineKanban({ mandateId }: PipelineKanbanProps) {
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      await fetch(`${apiUrl}/api/v1/applications/${draggedAppId}/move`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`
-        },
-        body: JSON.stringify({ targetStageId })
-      });
+
+      if (draggedItem?.isReferral || draggedItem?.referral) {
+        // Map targetStageId to Referral status
+        const stageToStatusMap: Record<string, string> = {
+          sourced: "ACTIVATED",
+          screening: "UNDER_REVIEW",
+          shortlisted: "SHORTLISTED",
+          interview: "INTERVIEW",
+          offer: "HIRED",
+        };
+        const newStatus = stageToStatusMap[targetStageId] || "UNDER_REVIEW";
+        const referralId = draggedItem.referralId || draggedItem.id;
+
+        await fetch(`${apiUrl}/api/v1/mandates/${mandateId}/referrals/${referralId}/status`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ status: newStatus }),
+        });
+      } else {
+        await fetch(`${apiUrl}/api/v1/applications/${draggedAppId}/move`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`
+          },
+          body: JSON.stringify({ targetStageId })
+        });
+      }
     } catch (err) {
       console.error("Failed to move candidate", err);
       fetchPipeline(); // Revert on failure
@@ -153,10 +181,20 @@ export function PipelineKanban({ mandateId }: PipelineKanbanProps) {
                       <p className="text-xs text-slate-500 mb-2.5 line-clamp-2">{app.candidateProfile.headline || 'No headline provided'}</p>
                       
                       {/* Metadata tags */}
-                      <div className="flex flex-wrap gap-1.5 mb-2.5">
+                      <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
                         <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
                           <Award className="h-3 w-3" /> {app.candidateProfile.experienceYears || 0} yrs exp
                         </span>
+                        {app.aiMatchScore != null && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">
+                            ★ {app.aiMatchScore}% match
+                          </span>
+                        )}
+                        {app.referral?.status && (
+                          <span className="inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                            {app.referral.status.replace(/_/g, " ")}
+                          </span>
+                        )}
                       </div>
 
                       {/* Referral Badge vs Direct App */}

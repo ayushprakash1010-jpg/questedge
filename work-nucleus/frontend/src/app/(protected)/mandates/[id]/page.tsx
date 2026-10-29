@@ -140,9 +140,9 @@ export default function MandateDetailPage() {
             >
               <Inbox className="h-4 w-4" />
               Referral Inbox
-              {(mandate._count?.referrals ?? 0) > 0 && (
+              {((mandate as any).stats?.totalReferrals ?? mandate._count?.referrals ?? 0) > 0 && (
                 <span className="ml-1 bg-indigo-600 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">
-                  {mandate._count?.referrals}
+                  {(mandate as any).stats?.totalReferrals ?? mandate._count?.referrals}
                 </span>
               )}
             </Button>
@@ -297,7 +297,7 @@ export default function MandateDetailPage() {
                   <Users className="h-4 w-4 text-sky-500" /> Total Referrals
                 </span>
                 <span className="font-bold text-slate-900">
-                  {mandate._count?.referrals || 0}
+                  {(mandate as any).stats?.totalReferrals ?? mandate._count?.referrals ?? 0}
                 </span>
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-100">
@@ -305,7 +305,7 @@ export default function MandateDetailPage() {
                   <FileText className="h-4 w-4 text-violet-500" /> Direct Apps
                 </span>
                 <span className="font-bold text-slate-900">
-                  {mandate._count?.applications || 0}
+                  {(mandate as any).stats?.totalApplications ?? mandate._count?.applications ?? 0}
                 </span>
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-50 border border-emerald-100">
@@ -313,7 +313,7 @@ export default function MandateDetailPage() {
                   <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Active Recruiters
                 </span>
                 <span className="font-bold text-emerald-700">
-                  {mandate._count?.participations || 0}
+                  {(mandate as any).stats?.activeRecruiters ?? mandate._count?.participations ?? 0}
                 </span>
               </div>
             </div>
