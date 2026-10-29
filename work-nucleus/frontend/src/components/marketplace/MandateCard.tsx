@@ -160,15 +160,7 @@ export function MandateCard({
     if (isDeadlinePassed) {
       deadlineText = `Deadline passed (${formattedDeadline})`;
     } else {
-      const msLeft = effectiveDeadlineMs - Date.now();
-      const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
-      if (daysLeft <= 1) {
-        deadlineText = "Closes today";
-      } else if (daysLeft <= 3) {
-        deadlineText = `Closes in ${daysLeft} days`;
-      } else {
-        deadlineText = `Closes ${formattedDeadline}`;
-      }
+      deadlineText = `Deadline: ${formattedDeadline}`;
     }
   }
 
@@ -243,7 +235,7 @@ export function MandateCard({
         )}
         {(deadlineText || publishedDateStr) && (
           <div className="flex items-center gap-2.5 ml-auto text-xs">
-            {deadlineText && (
+            {deadlineText ? (
               <span
                 className={cn(
                   "flex items-center gap-1 font-medium",
@@ -252,6 +244,11 @@ export function MandateCard({
               >
                 <Clock className="h-3 w-3" />
                 {deadlineText}
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-slate-400">
+                <Clock className="h-3 w-3" />
+                No deadline
               </span>
             )}
             {publishedDateStr && (

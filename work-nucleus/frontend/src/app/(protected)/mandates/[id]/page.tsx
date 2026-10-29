@@ -132,10 +132,14 @@ export default function MandateDetailPage() {
             </div>
             <p className="text-sm text-slate-500">
               {mandate.department} · {mandate.location} · {mandate.workModel}
-              {mandate.applicationDeadline && (
+              {mandate.applicationDeadline ? (
                 <span className={isDeadlinePassed ? "ml-2 text-red-600 font-medium" : "ml-2 text-amber-700 font-medium"}>
                   · Deadline: {new Date(mandate.applicationDeadline).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                   {isDeadlinePassed ? " (Expired)" : ""}
+                </span>
+              ) : (
+                <span className="ml-2 text-slate-400">
+                  · Deadline: None (Open until filled)
                 </span>
               )}
             </p>
@@ -360,6 +364,31 @@ export default function MandateDetailPage() {
               </span>
               <span className="text-indigo-400 group-hover:translate-x-0.5 transition-transform">→</span>
             </button>
+          </div>
+
+          <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-2">
+            <h3 className="font-semibold text-slate-900 text-sm flex items-center gap-1.5">
+              <Clock className="h-4 w-4 text-indigo-500" /> Application Deadline
+            </h3>
+            {mandate.applicationDeadline ? (
+              <div>
+                <p className={isDeadlinePassed ? "text-sm font-semibold text-red-600" : "text-sm font-semibold text-slate-800"}>
+                  {new Date(mandate.applicationDeadline).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {isDeadlinePassed ? "Deadline has expired" : "Applications accepted until closing date"}
+                </p>
+              </div>
+            ) : (
+              <div>
+                <p className="text-sm font-medium text-slate-700">Open until filled</p>
+                <p className="text-xs text-slate-400 mt-0.5">No fixed closing deadline set for this mandate</p>
+              </div>
+            )}
           </div>
 
           <div className="bg-white rounded-xl border border-slate-200 p-5">

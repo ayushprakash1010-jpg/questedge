@@ -182,6 +182,10 @@ export class CandidatesService {
           ...(existing.applications || []),
           ...rc.applications,
         ];
+        // If the candidate has referrals, prioritize REFERRAL status
+        if (rc.source === 'REFERRAL') {
+          existing.source = 'REFERRAL';
+        }
       } else {
         candidateMap.set(key, rc);
       }
