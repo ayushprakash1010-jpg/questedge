@@ -6,6 +6,8 @@ import {
   getSavedJobs,
   toggleSaveJob,
   getCandidateRecommendations,
+  getMyApplications,
+  applyDirectly,
   Mandate,
   MatchEvaluationResult,
 } from "@/lib/marketplace-api";
@@ -22,10 +24,13 @@ import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
+  CheckCircle2,
+  X,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "@/components/ui/toaster";
 
 interface EnhancedMandate extends Mandate {
   aiMatchScore?: number;
@@ -55,6 +60,12 @@ export default function CandidateJobsPage() {
   const [selectedMandate, setSelectedMandate] = useState<EnhancedMandate | null>(null);
   const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
 
+  // Direct Apply State
+  const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
+  const [applyModalJob, setApplyModalJob] = useState<EnhancedMandate | null>(null);
+  const [isApplying, setIsApplying] = useState(false);
+  const [coverLetter, setCoverLetter] = useState("");
+
   useEffect(() => {
     if (isSavedParam) setViewMode("saved");
     else if (isAiParam) setViewMode("ai");
@@ -66,6 +77,22 @@ export default function CandidateJobsPage() {
       setLoading(true);
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
+
+      // Fetch user's existing applications/referrals to mark "Applied ✓"
+      getMyApplications(accessToken)
+        .then((appsData) => {
+          const ids = new Set<string>();
+          (appsData?.applications || []).forEach((a: any) => {
+            if (a.mandateId) ids.add(a.mandateId);
+            if (a.mandate?.id) ids.add(a.mandate.id);
+          });
+          (appsData?.referrals || []).forEach((r: any) => {
+            if (r.mandateId) ids.add(r.mandateId);
+            if (r.mandate?.id) ids.add(r.mandate.id);
+          });
+          setAppliedJobIds(ids);
+        })
+        .catch(() => {});
 
       if (viewMode === "saved") {
         // Fetch saved jobs
@@ -142,6 +169,33 @@ export default function CandidateJobsPage() {
   const handleCardClick = (job: EnhancedMandate) => {
     setSelectedMandate(job);
     setIsMatchModalOpen(true);
+  };
+
+  const handleOpenApply = (job: EnhancedMandate) => {
+    setApplyModalJob(job);
+    setCoverLetter("");
+  };
+
+  const handleSubmitApply = async () => {
+    if (!applyModalJob) return;
+    setIsApplying(true);
+    try {
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+      await applyDirectly(applyModalJob.id, accessToken, coverLetter);
+      setAppliedJobIds((prev) => new Set(prev).add(applyModalJob.id));
+      toast.success(
+        `Application submitted to ${applyModalJob.organization?.name || "the company"}! Track status in My Applications.`,
+      );
+      setApplyModalJob(null);
+      setIsMatchModalOpen(false);
+    } catch (err: any) {
+      toast.error(
+        err?.message || "Failed to submit application. Please try again.",
+      );
+    } finally {
+      setIsApplying(false);
+    }
   };
 
   return (
@@ -348,9 +402,11 @@ export default function CandidateJobsPage() {
                   {...job}
                   viewAs="candidate"
                   isSaved={job.isSaved ?? viewMode === "saved"}
+                  isApplied={appliedJobIds.has(job.id)}
                   aiMatchScore={job.aiMatchScore}
                   aiMatchVerdict={job.aiMatchVerdict}
                   onSave={handleSave}
+                  onApply={() => handleOpenApply(job)}
                   onClick={() => handleCardClick(job)}
                 />
               ))}
@@ -388,9 +444,120 @@ export default function CandidateJobsPage() {
         onClose={() => setIsMatchModalOpen(false)}
         mandate={selectedMandate}
         onSave={handleSave}
+        onApply={(id) => {
+          const j = jobs.find((x) => x.id === id) || selectedMandate;
+          if (j) handleOpenApply(j);
+        }}
         isSaved={selectedMandate?.isSaved ?? false}
+        isApplied={selectedMandate ? appliedJobIds.has(selectedMandate.id) : false}
         preloadedMatch={selectedMandate?.matchResult ?? null}
       />
+
+      {/* Direct Apply Dialog Modal */}
+      {applyModalJob && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setApplyModalJob(null)}
+        >
+          <div
+            className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-slate-100 flex items-start justify-between bg-gradient-to-r from-emerald-50/50 to-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-lg shrink-0">
+                  {applyModalJob.organization?.name?.[0] || "C"}
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-lg leading-tight">
+                    Apply to {applyModalJob.title}
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
+                    <span className="font-medium text-slate-700">{applyModalJob.organization?.name}</span>
+                    {applyModalJob.location && (
+                      <>
+                        <span>•</span>
+                        <span>{applyModalJob.location}</span>
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setApplyModalJob(null)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-4">
+              <div className="bg-emerald-50/70 border border-emerald-100 rounded-xl p-3.5 flex items-start gap-3">
+                <Sparkles className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+                <div className="text-xs text-emerald-900 leading-relaxed">
+                  <strong>Direct ATS Submission:</strong> Your unified profile, verified skills, and resume will be sent directly to the hiring managers at <strong>{applyModalJob.organization?.name || "the company"}</strong>.
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">
+                  Cover Note / Pitch <span className="font-normal text-slate-400 lowercase">(optional)</span>
+                </label>
+                <textarea
+                  value={coverLetter}
+                  onChange={(e) => setCoverLetter(e.target.value)}
+                  placeholder="Share a brief note about why you're a great fit for this position or any relevant projects..."
+                  rows={4}
+                  className="w-full text-sm rounded-xl border border-slate-200 p-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent placeholder:text-slate-400 resize-none"
+                />
+              </div>
+
+              {applyModalJob.mandatorySkills && applyModalJob.mandatorySkills.length > 0 && (
+                <div>
+                  <span className="text-xs text-slate-500 font-medium block mb-1.5">Required Skills:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {applyModalJob.mandatorySkills.slice(0, 6).map((skill: string) => (
+                      <span key={skill} className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded-md">
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setApplyModalJob(null)}
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                disabled={isApplying}
+                onClick={handleSubmitApply}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl shadow-sm hover:shadow transition-all"
+              >
+                {isApplying ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Submitting...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-4 w-4" /> Submit Application
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

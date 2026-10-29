@@ -30,7 +30,9 @@ interface AiMatchModalProps {
   onClose: () => void;
   mandate: Mandate | null;
   onSave?: (id: string) => void;
+  onApply?: (id: string) => void;
   isSaved?: boolean;
+  isApplied?: boolean;
   preloadedMatch?: MatchEvaluationResult | null;
 }
 
@@ -39,7 +41,9 @@ export function AiMatchModal({
   onClose,
   mandate,
   onSave,
+  onApply,
   isSaved = false,
+  isApplied = false,
   preloadedMatch = null,
 }: AiMatchModalProps) {
   const [match, setMatch] = useState<MatchEvaluationResult | null>(preloadedMatch);
@@ -420,13 +424,24 @@ export function AiMatchModal({
           <div className="flex items-center gap-2">
             {onSave && (
               <Button
-                variant={isSaved ? "outline" : "default"}
+                variant="outline"
                 size="sm"
                 onClick={() => onSave(mandate.id)}
-                className={isSaved ? "text-slate-600" : "bg-emerald-600 hover:bg-emerald-700 text-white"}
+                className={isSaved ? "text-slate-600 border-slate-200" : "text-slate-700 border-slate-300 hover:bg-slate-100"}
               >
                 <Bookmark className="h-4 w-4 mr-1.5" />
                 {isSaved ? "Saved ✓" : "Save Job"}
+              </Button>
+            )}
+            {onApply && (
+              <Button
+                size="sm"
+                disabled={isApplied}
+                onClick={() => onApply(mandate.id)}
+                className={isApplied ? "bg-slate-100 text-slate-500 border border-slate-200 cursor-default" : "bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs"}
+              >
+                <CheckCircle2 className="h-4 w-4 mr-1.5" />
+                {isApplied ? "Already Applied" : "Apply to Role"}
               </Button>
             )}
           </div>

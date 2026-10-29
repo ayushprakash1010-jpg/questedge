@@ -544,16 +544,55 @@ export class CandidatePortalService {
     }
 
     // hiringPlanId is required by the legacy CandidateApplication schema.
-    // Use the most recent active HiringPlan for this org as a placeholder.
-    const hiringPlan = await this.prisma.hiringPlan.findFirst({
+    // Use the most recent active HiringPlan for this org as a placeholder, or auto-provision one.
+    let hiringPlan = await this.prisma.hiringPlan.findFirst({
       where: { orgId: mandate.orgId, status: 'ACTIVE' },
       orderBy: { createdAt: 'desc' },
     });
 
     if (!hiringPlan) {
-      throw new BadRequestException(
-        'This company has not set up a hiring plan yet. Direct applications are unavailable.',
-      );
+      hiringPlan = await this.prisma.hiringPlan.findFirst({
+        where: { orgId: mandate.orgId },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+
+    if (!hiringPlan) {
+      let orgUser = await this.prisma.user.findFirst({
+        where: { orgId: mandate.orgId },
+      });
+      if (!orgUser) {
+        orgUser = await this.prisma.user.create({
+          data: {
+            orgId: mandate.orgId,
+            email: `hiring-${mandate.orgId.slice(0, 8)}@questedge.internal`,
+            auth0Sub: `internal|system-${mandate.orgId.slice(0, 8)}`,
+            name: `${mandate.organization?.name || 'Company'} Hiring Lead`,
+            role: 'ADMIN',
+            userType: 'COMPANY_USER',
+          },
+        });
+      }
+      hiringPlan = await this.prisma.hiringPlan.create({
+        data: {
+          orgId: mandate.orgId,
+          title: `${mandate.title} General Hiring`,
+          industry: 'Technology',
+          department: mandate.department || 'Engineering',
+          quarter: Math.floor(new Date().getMonth() / 3) + 1,
+          year: new Date().getFullYear(),
+          totalRoles: mandate.numberOfOpenings || 1,
+          status: 'ACTIVE',
+          budgetMin: mandate.compensationMin || 0,
+          budgetMax: mandate.compensationMax || 0,
+          currency: mandate.currency || 'INR',
+          hiringManagerId: orgUser.id,
+          reportingManagerName: mandate.hiringManagerName || 'Hiring Manager',
+          hodName: 'Engineering Lead',
+          designation: mandate.title,
+          createdById: orgUser.id,
+        },
+      });
     }
 
     return this.prisma.candidateApplication.create({

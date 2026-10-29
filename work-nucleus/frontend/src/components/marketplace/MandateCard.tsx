@@ -34,11 +34,13 @@ interface MandateCardProps {
   publishedAt?: string;
   isJoined?: boolean;
   isSaved?: boolean;
+  isApplied?: boolean;
   viewAs?: "company" | "recruiter" | "candidate";
   aiMatchScore?: number;
   aiMatchVerdict?: string;
   onJoin?: (id: string) => void;
   onSave?: (id: string) => void;
+  onApply?: (id: string) => void;
   onClick?: (id: string) => void;
 }
 
@@ -111,11 +113,13 @@ export function MandateCard({
   publishedAt,
   isJoined = false,
   isSaved = false,
+  isApplied = false,
   viewAs = "company",
   aiMatchScore,
   aiMatchVerdict,
   onJoin,
   onSave,
+  onApply,
   onClick,
 }: MandateCardProps) {
   const safeSkills = mandatorySkills || [];
@@ -259,19 +263,34 @@ export function MandateCard({
           )}
 
           {viewAs === "candidate" && (
-            <Button
-              size="sm"
-              variant={isSaved ? "outline" : "default"}
-              className={cn(
-                "h-7 px-3 text-xs font-semibold",
-                isSaved
-                  ? "border-slate-200 text-slate-600"
-                  : "bg-emerald-600 hover:bg-emerald-700 text-white"
-              )}
-              onClick={() => onSave?.(id)}
-            >
-              {isSaved ? "Saved ✓" : "Save Job"}
-            </Button>
+            <div className="flex items-center gap-1.5">
+              <Button
+                size="sm"
+                variant="outline"
+                className={cn(
+                  "h-7 px-2.5 text-xs font-semibold transition-all",
+                  isSaved
+                    ? "border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
+                    : "border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                )}
+                onClick={() => onSave?.(id)}
+              >
+                {isSaved ? "Saved ✓" : "Save"}
+              </Button>
+              <Button
+                size="sm"
+                disabled={isApplied}
+                className={cn(
+                  "h-7 px-3 text-xs font-semibold shadow-xs transition-all",
+                  isApplied
+                    ? "bg-slate-100 border border-slate-200 text-slate-500 cursor-default"
+                    : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-100"
+                )}
+                onClick={() => onApply?.(id)}
+              >
+                {isApplied ? "Applied ✓" : "Apply Now"}
+              </Button>
+            </div>
           )}
         </div>
       </div>

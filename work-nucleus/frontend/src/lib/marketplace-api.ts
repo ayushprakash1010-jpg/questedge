@@ -237,6 +237,18 @@ export async function getSavedJobs(token: string): Promise<any[]> {
   return apiClient("/api/v1/candidate/jobs/saved", { token });
 }
 
+export async function applyDirectly(
+  mandateId: string,
+  token: string,
+  coverLetter?: string
+): Promise<any> {
+  return apiClient(`/api/v1/candidate/jobs/${mandateId}/apply`, {
+    method: "POST",
+    token,
+    body: JSON.stringify({ coverLetter: coverLetter || "" }),
+  });
+}
+
 export async function getMyApplications(token: string): Promise<any> {
   return apiClient("/api/v1/candidate/applications", { token });
 }
