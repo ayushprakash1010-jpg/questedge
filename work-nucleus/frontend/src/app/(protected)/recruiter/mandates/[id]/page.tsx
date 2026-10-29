@@ -188,6 +188,10 @@ export default function RecruiterMandateDetail() {
 
   if (!mandate) return <div>Mandate not found</div>;
 
+  const isDeadlinePassed = mandate.applicationDeadline
+    ? new Date(mandate.applicationDeadline).getTime() < Date.now()
+    : false;
+
   return (
     <div className="min-h-screen bg-slate-50 relative pb-16">
       {/* Header Banner */}
@@ -221,7 +225,13 @@ export default function RecruiterMandateDetail() {
                     {mandate.workModel}
                   </span>
                 )}
-                <MandateStatusBadge status={mandate.status} />
+                <MandateStatusBadge status={mandate.status} isDeadlinePassed={isDeadlinePassed} />
+                {mandate.applicationDeadline && (
+                  <span className={isDeadlinePassed ? "text-red-600 font-medium" : "text-amber-700 font-medium"}>
+                    · Deadline: {new Date(mandate.applicationDeadline).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                    {isDeadlinePassed ? " (Expired)" : ""}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -230,15 +240,16 @@ export default function RecruiterMandateDetail() {
                 <RewardBadge amount={mandate.referralRewardAmount} currency={mandate.currency} />
               )}
               <Button
+                disabled={mandate.status !== "ACTIVE" || isDeadlinePassed}
                 onClick={() => {
                   setPreflightResult(null);
                   setIsModalOpen(true);
                 }}
                 size="lg"
-                className="bg-sky-600 hover:bg-sky-700 text-white shadow-md gap-2 w-full sm:w-auto"
+                className="bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white shadow-md gap-2 w-full sm:w-auto"
               >
                 <UserPlus className="h-4 w-4" />
-                Refer a Candidate
+                {isDeadlinePassed ? "Deadline Passed" : mandate.status !== "ACTIVE" ? "Mandate Closed" : "Refer a Candidate"}
               </Button>
             </div>
           </div>

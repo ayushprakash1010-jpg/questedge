@@ -121,7 +121,13 @@ export class AiMatchingService {
 
     // Fetch active published mandates
     const activeMandates = await this.prisma.mandate.findMany({
-      where: { status: 'ACTIVE' },
+      where: {
+        status: 'ACTIVE',
+        OR: [
+          { applicationDeadline: null },
+          { applicationDeadline: { gte: new Date() } },
+        ],
+      },
       take: 40,
       orderBy: { createdAt: 'desc' },
       include: {

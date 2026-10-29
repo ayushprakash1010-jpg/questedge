@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   ForbiddenException,
   BadRequestException,
@@ -49,6 +50,8 @@ import { HireDetectionService } from '../hire-detection/hire-detection.service';
 
 @Injectable()
 export class MandatesService {
+  private readonly logger = new Logger(MandatesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
@@ -56,6 +59,28 @@ export class MandatesService {
     private readonly whatsappService: WhatsappService,
     private readonly hireDetection: HireDetectionService,
   ) {}
+
+  /**
+   * Auto-close mandates whose application deadline has passed.
+   */
+  async autoCloseExpiredMandates(orgId?: string): Promise<void> {
+    try {
+      await this.prisma.mandate.updateMany({
+        where: {
+          status: MandateStatus.ACTIVE,
+          applicationDeadline: {
+            lt: new Date(),
+          },
+          ...(orgId ? { orgId } : {}),
+        },
+        data: {
+          status: MandateStatus.CLOSED,
+        },
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to auto-close expired mandates: ${err}`);
+    }
+  }
 
   // ── Helpers ────────────────────────────────────────────────────
 
@@ -320,6 +345,7 @@ export class MandatesService {
     orgId: string,
     filter: FilterMandateDto,
   ): Promise<PaginatedResult<Mandate>> {
+    await this.autoCloseExpiredMandates(orgId);
     const where = this.buildWhereClause(filter, { orgId });
     const page = filter.page ?? 1;
     const limit = Math.min(filter.limit ?? 20, 100);
@@ -359,6 +385,7 @@ export class MandatesService {
   }
 
   async findOne(orgId: string, id: string): Promise<MandateWithStats> {
+    await this.autoCloseExpiredMandates(orgId);
     const mandate = await this.findOwnMandate(orgId, id);
     const stats = await this.getMandateStats(id);
 
@@ -555,6 +582,7 @@ export class MandatesService {
     recruiterId: string,
     filter: FilterMandateDto,
   ): Promise<PaginatedResult<Mandate & { isJoined: boolean }>> {
+    await this.autoCloseExpiredMandates();
     const where = this.buildWhereClause(filter);
     where.status = 'ACTIVE';
     const page = filter.page ?? 1;

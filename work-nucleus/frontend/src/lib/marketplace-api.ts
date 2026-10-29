@@ -27,6 +27,7 @@ export interface Mandate {
   hiringManagerName?: string;
   hiringManagerTitle?: string;
   teamDescription?: string;
+  applicationDeadline?: string;
   status: "DRAFT" | "ACTIVE" | "PAUSED" | "FILLED" | "CLOSED";
   publishedAt?: string;
   createdAt: string;

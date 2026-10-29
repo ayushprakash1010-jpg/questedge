@@ -10,6 +10,7 @@ import {
   Users,
   IndianRupee,
   Clock,
+  Calendar,
   CheckCircle2,
   Building2,
   Sparkles,
@@ -32,6 +33,7 @@ interface MandateCardProps {
   recruiterCount?: number;
   referralCount?: number;
   publishedAt?: string;
+  applicationDeadline?: string;
   isJoined?: boolean;
   isSaved?: boolean;
   isApplied?: boolean;
@@ -52,7 +54,20 @@ const statusConfig: Record<MandateStatus, { label: string; className: string }> 
   CLOSED: { label: "Closed", className: "bg-red-50 text-red-600 border-red-200" },
 };
 
-export function MandateStatusBadge({ status }: { status: MandateStatus }) {
+export function MandateStatusBadge({
+  status,
+  isDeadlinePassed = false,
+}: {
+  status: MandateStatus;
+  isDeadlinePassed?: boolean;
+}) {
+  if (isDeadlinePassed && status === "ACTIVE") {
+    return (
+      <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-700">
+        Deadline Passed
+      </span>
+    );
+  }
   // Guard against undefined/unknown status values from AI recommendations
   const config = statusConfig[status] ?? statusConfig['ACTIVE'];
   return (
@@ -111,6 +126,7 @@ export function MandateCard({
   recruiterCount,
   referralCount,
   publishedAt,
+  applicationDeadline,
   isJoined = false,
   isSaved = false,
   isApplied = false,
@@ -125,9 +141,36 @@ export function MandateCard({
   const safeSkills = mandatorySkills || [];
   const visibleSkills = safeSkills.slice(0, 3);
   const overflowCount = safeSkills.length - visibleSkills.length;
-  const timeAgo = publishedAt
+  const publishedDateStr = publishedAt
     ? new Date(publishedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
     : null;
+
+  let isDeadlinePassed = false;
+  let deadlineText: string | null = null;
+  if (applicationDeadline) {
+    const deadlineDate = new Date(applicationDeadline);
+    const isMidnight = deadlineDate.getUTCHours() === 0 && deadlineDate.getUTCMinutes() === 0;
+    const effectiveDeadlineMs = isMidnight
+      ? new Date(deadlineDate.getFullYear(), deadlineDate.getMonth(), deadlineDate.getDate(), 23, 59, 59, 999).getTime()
+      : deadlineDate.getTime();
+
+    isDeadlinePassed = effectiveDeadlineMs < Date.now();
+    const formattedDeadline = deadlineDate.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+
+    if (isDeadlinePassed) {
+      deadlineText = `Deadline passed (${formattedDeadline})`;
+    } else {
+      const msLeft = effectiveDeadlineMs - Date.now();
+      const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+      if (daysLeft <= 1) {
+        deadlineText = "Closes today";
+      } else if (daysLeft <= 3) {
+        deadlineText = `Closes in ${daysLeft} days`;
+      } else {
+        deadlineText = `Closes ${formattedDeadline}`;
+      }
+    }
+  }
 
   return (
     <Card
@@ -174,7 +217,7 @@ export function MandateCard({
           </h3>
         </div>
         <div className="flex-shrink-0">
-          <MandateStatusBadge status={status} />
+          <MandateStatusBadge status={status} isDeadlinePassed={isDeadlinePassed} />
         </div>
       </div>
 
@@ -198,11 +241,26 @@ export function MandateCard({
             {numberOfOpenings} opening{numberOfOpenings > 1 ? "s" : ""}
           </span>
         )}
-        {timeAgo && (
-          <span className="flex items-center gap-1 ml-auto text-slate-400">
-            <Clock className="h-3 w-3" />
-            {timeAgo}
-          </span>
+        {(deadlineText || publishedDateStr) && (
+          <div className="flex items-center gap-2.5 ml-auto text-xs">
+            {deadlineText && (
+              <span
+                className={cn(
+                  "flex items-center gap-1 font-medium",
+                  isDeadlinePassed ? "text-red-600" : "text-amber-600"
+                )}
+              >
+                <Clock className="h-3 w-3" />
+                {deadlineText}
+              </span>
+            )}
+            {publishedDateStr && (
+              <span className="flex items-center gap-1 text-slate-400">
+                <Calendar className="h-3 w-3" />
+                Posted {publishedDateStr}
+              </span>
+            )}
+          </div>
         )}
       </div>
 
@@ -279,7 +337,7 @@ export function MandateCard({
               </Button>
               <Button
                 size="sm"
-                disabled={isApplied}
+                disabled={isApplied || isDeadlinePassed}
                 className={cn(
                   "h-7 px-3 text-xs font-semibold shadow-xs transition-all",
                   isApplied
@@ -288,7 +346,7 @@ export function MandateCard({
                 )}
                 onClick={() => onApply?.(id)}
               >
-                {isApplied ? "Applied ✓" : "Apply Now"}
+                {isApplied ? "Applied ✓" : isDeadlinePassed ? "Closed" : "Apply Now"}
               </Button>
             </div>
           )}
