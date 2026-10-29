@@ -80,12 +80,16 @@ export default function CandidateJobsPage() {
       } else if (viewMode === "ai") {
         // Fetch AI Recommended jobs with match scores
         const recommendations = await getCandidateRecommendations(accessToken, 15);
-        const mapped: EnhancedMandate[] = recommendations.map((item) => ({
-          ...item.mandate,
-          aiMatchScore: item.match.matchScore,
-          aiMatchVerdict: item.match.verdict,
-          matchResult: item.match,
-        }));
+        const mapped: EnhancedMandate[] = recommendations
+          .filter((item) => item?.mandate && item?.match)
+          .map((item) => ({
+            ...item.mandate,
+            status: ((item.mandate as any).status as any) || "ACTIVE",
+            organization: item.mandate.organization || { id: "", name: "Company" },
+            aiMatchScore: item.match.matchScore,
+            aiMatchVerdict: item.match.verdict,
+            matchResult: item.match,
+          }));
         setJobs(mapped);
         setTotal(mapped.length);
         setTotalPages(1);

@@ -51,7 +51,8 @@ const statusConfig: Record<MandateStatus, { label: string; className: string }> 
 };
 
 export function MandateStatusBadge({ status }: { status: MandateStatus }) {
-  const config = statusConfig[status];
+  // Guard against undefined/unknown status values from AI recommendations
+  const config = statusConfig[status] ?? statusConfig['ACTIVE'];
   return (
     <span
       className={cn(
@@ -140,7 +141,7 @@ export function MandateCard({
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
               <Building2 className="h-3 w-3" />
-              {organization.name}
+              {organization?.name || "Company"}
             </span>
             {department && (
               <>

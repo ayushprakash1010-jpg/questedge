@@ -158,6 +158,7 @@ export class AiMatchingService {
             department: mandate.department,
             location: mandate.location,
             workModel: mandate.workModel,
+            status: mandate.status,
             mandatorySkills: Array.isArray(mandate.mandatorySkills)
               ? (mandate.mandatorySkills as string[])
               : [],

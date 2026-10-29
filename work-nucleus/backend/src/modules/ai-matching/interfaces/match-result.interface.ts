@@ -31,6 +31,7 @@ export interface MandateMatchItem {
     preferredSkills: string[];
     referralRewardAmount: number | null;
     currency: string;
+    status?: string;
     organization: {
       id: string;
       name: string;
