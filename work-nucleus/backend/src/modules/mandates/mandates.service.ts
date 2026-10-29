@@ -771,6 +771,14 @@ export class MandatesService {
     const applications = await this.prisma.candidateApplication.findMany({
       where: { mandateId },
       include: {
+        candidate: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            resumeUrl: true,
+          },
+        },
         candidateProfile: {
           select: {
             id: true,
@@ -778,6 +786,7 @@ export class MandatesService {
             email: true,
             headline: true,
             experienceYears: true,
+            resumeUrl: true,
           },
         },
         currentStage: {
@@ -810,6 +819,8 @@ export class MandatesService {
 
     const appItems = applications.map((app) => ({
       ...app,
+      candidateId: app.candidateProfileId || app.candidateId,
+      resumeUrl: app.candidateProfile?.resumeUrl || app.candidate?.resumeUrl || null,
       isReferral: Boolean(app.referralId),
       referral:
         app.referralId && referralsMap[app.referralId]
@@ -846,6 +857,7 @@ export class MandatesService {
             email: true,
             headline: true,
             experienceYears: true,
+            resumeUrl: true,
           },
         },
         recruiter: {

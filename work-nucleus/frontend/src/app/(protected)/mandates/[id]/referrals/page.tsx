@@ -23,6 +23,7 @@ import {
   Timer,
   Lock,
   AlertTriangle,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CardGridSkeleton } from "@/components/ui/skeleton-states";
@@ -458,6 +459,33 @@ function ReferralCard({
   const [showActions, setShowActions] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [openingResume, setOpeningResume] = useState(false);
+
+  const handleOpenResume = async () => {
+    try {
+      setOpeningResume(true);
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+      const res = await fetch(`${API_URL}/api/v1/candidate/profile/${referral.candidateProfile.id}/resume`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.message || "Failed to load resume");
+        return;
+      }
+      const data = await res.json();
+      if (data.url) {
+        window.open(data.url, "_blank", "noopener,noreferrer");
+      }
+    } catch (err) {
+      console.error("Failed to view resume", err);
+      alert("Failed to open resume");
+    } finally {
+      setOpeningResume(false);
+    }
+  };
 
   const ownership = getOwnershipDetails(referral.claimScope);
   const consentSla = getConsentSla(referral.consent, referral.status);
@@ -486,7 +514,29 @@ function ReferralCard({
             </p>
           </div>
         </div>
-        <StatusBadge status={referral.status} />
+        <div className="flex items-center gap-2.5 shrink-0">
+          {referral.candidateProfile.resumeUrl ? (
+            <button
+              type="button"
+              onClick={handleOpenResume}
+              disabled={openingResume}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors shadow-2xs"
+              title="Open candidate resume in new tab"
+            >
+              {openingResume ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-600" />
+              ) : (
+                <FileText className="h-3.5 w-3.5 text-indigo-600" />
+              )}
+              View Resume
+            </button>
+          ) : (
+            <span className="text-[11px] text-slate-400 font-medium px-2 py-0.5 rounded bg-slate-50 border border-slate-100">
+              No Resume
+            </span>
+          )}
+          <StatusBadge status={referral.status} />
+        </div>
       </div>
 
       {/* SLA & Ownership Badges */}

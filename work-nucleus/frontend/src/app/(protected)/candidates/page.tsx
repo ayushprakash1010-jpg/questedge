@@ -17,6 +17,7 @@ import {
   GripVertical,
   Clock,
   ArrowRight,
+  Loader2,
 } from "lucide-react";
 import { Badge, CandidateStatusBadge, type CandidateStatus } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ interface Application {
 
 interface Candidate {
   id: string;
+  candidateProfileId?: string;
   name: string;
   email: string;
   phone: string | null;
@@ -173,6 +175,33 @@ const KANBAN_COLUMNS: {
 
 export default function CandidatesPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [openingResumeId, setOpeningResumeId] = useState<string | null>(null);
+
+  const handleViewResume = async (candidateId: string) => {
+    try {
+      setOpeningResumeId(candidateId);
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetch(`${apiUrl}/api/v1/candidate/profile/${candidateId}/resume`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.message || "Failed to load resume");
+        return;
+      }
+      const data = await res.json();
+      if (data.url) {
+        window.open(data.url, "_blank", "noopener,noreferrer");
+      }
+    } catch (err) {
+      console.error("Failed to view resume", err);
+      alert("Failed to open resume");
+    } finally {
+      setOpeningResumeId(null);
+    }
+  };
   const [meta, setMeta] = useState<Meta | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -684,7 +713,20 @@ export default function CandidatesPage() {
                     <DataTableCell>{c.applications.length}</DataTableCell>
                     <DataTableCell>
                       {c.resumeUrl ? (
-                        <FileText className="h-4 w-4 text-indigo-500" />
+                        <button
+                          type="button"
+                          onClick={() => handleViewResume(c.candidateProfileId || c.id)}
+                          disabled={openingResumeId === (c.candidateProfileId || c.id)}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors shadow-2xs"
+                          title="Open candidate resume in new tab"
+                        >
+                          {openingResumeId === (c.candidateProfileId || c.id) ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-600" />
+                          ) : (
+                            <FileText className="h-3.5 w-3.5 text-indigo-600" />
+                          )}
+                          View
+                        </button>
                       ) : (
                         <span className="text-xs text-slate-400">—</span>
                       )}

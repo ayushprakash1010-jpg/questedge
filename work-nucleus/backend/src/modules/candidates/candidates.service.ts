@@ -186,6 +186,12 @@ export class CandidatesService {
         if (rc.source === 'REFERRAL') {
           existing.source = 'REFERRAL';
         }
+        if (!existing.resumeUrl && rc.resumeUrl) {
+          existing.resumeUrl = rc.resumeUrl;
+        }
+        if (!existing.candidateProfileId && rc.id) {
+          existing.candidateProfileId = rc.id;
+        }
       } else {
         candidateMap.set(key, rc);
       }

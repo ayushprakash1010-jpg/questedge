@@ -328,59 +328,81 @@ export class CandidatePortalService {
     user: any,
     candidateId: string,
   ): Promise<string> {
-    const candidate = await this.prisma.candidateProfile.findUnique({
+    // 1. Check CandidateProfile first (referrals & candidate portal users)
+    const profile = await this.prisma.candidateProfile.findUnique({
       where: { id: candidateId },
     });
-    if (!candidate) {
-      throw new NotFoundException('Candidate profile not found.');
-    }
-    if (!candidate.resumeUrl) {
-      throw new NotFoundException('No resume uploaded for this candidate.');
-    }
 
-    // 1. Candidate themselves
-    if (user.auth0Sub && candidate.auth0Sub === user.auth0Sub) {
-      return candidate.resumeUrl;
-    }
+    if (profile && profile.resumeUrl) {
+      // Candidate themselves
+      if (user.auth0Sub && profile.auth0Sub === user.auth0Sub) {
+        return profile.resumeUrl;
+      }
 
-    // 2. Company user: Candidate has an application or referral with their organization
-    if (user.orgId) {
-      const hasApplication = await this.prisma.candidateApplication.findFirst({
-        where: {
-          candidateId,
-          hiringPlan: { orgId: user.orgId },
-        },
-      });
-      if (hasApplication) return candidate.resumeUrl;
+      // Company user: Candidate has an application or referral with their organization
+      if (user.orgId) {
+        const hasApplication = await this.prisma.candidateApplication.findFirst({
+          where: {
+            OR: [
+              { candidateProfileId: candidateId, hiringPlan: { orgId: user.orgId } },
+              { candidateProfileId: candidateId, mandate: { orgId: user.orgId } },
+              { candidateId, hiringPlan: { orgId: user.orgId } },
+              { candidateId, mandate: { orgId: user.orgId } },
+            ],
+          },
+        });
+        if (hasApplication) return profile.resumeUrl;
 
-      const hasReferral = await this.prisma.referral.findFirst({
-        where: {
-          candidateProfileId: candidateId,
-          mandate: { orgId: user.orgId },
-        },
-      });
-      if (hasReferral) return candidate.resumeUrl;
-    }
-
-    // 3. Recruiter: Recruiter referred this candidate
-    if (user.auth0Sub) {
-      const recruiterProfile = await this.prisma.recruiterProfile.findUnique({
-        where: { auth0Sub: user.auth0Sub },
-      });
-      if (recruiterProfile) {
         const hasReferral = await this.prisma.referral.findFirst({
           where: {
             candidateProfileId: candidateId,
-            recruiterId: recruiterProfile.id,
+            mandate: { orgId: user.orgId },
           },
         });
-        if (hasReferral) return candidate.resumeUrl;
+        if (hasReferral) return profile.resumeUrl;
+      }
+
+      // Recruiter: Recruiter referred this candidate
+      if (user.auth0Sub) {
+        const recruiterProfile = await this.prisma.recruiterProfile.findUnique({
+          where: { auth0Sub: user.auth0Sub },
+        });
+        if (recruiterProfile) {
+          const hasReferral = await this.prisma.referral.findFirst({
+            where: {
+              candidateProfileId: candidateId,
+              recruiterId: recruiterProfile.id,
+            },
+          });
+          if (hasReferral) return profile.resumeUrl;
+        }
+      }
+
+      // Platform / Support Admin
+      if (user.role === Role.SUPPORT_ADMIN || user.role === Role.SUPPORT_REP) {
+        return profile.resumeUrl;
       }
     }
 
-    // 4. Platform / Support Admin
-    if (user.role === Role.SUPPORT_ADMIN || user.role === Role.SUPPORT_REP) {
-      return candidate.resumeUrl;
+    // 2. Check Candidate table (direct ATS / job board applications)
+    const directCandidate = await this.prisma.candidate.findUnique({
+      where: { id: candidateId },
+    });
+
+    if (directCandidate && directCandidate.resumeUrl) {
+      if (user.orgId && directCandidate.orgId === user.orgId) {
+        return directCandidate.resumeUrl;
+      }
+      if (user.role === Role.SUPPORT_ADMIN || user.role === Role.SUPPORT_REP) {
+        return directCandidate.resumeUrl;
+      }
+      if (user.email && user.email.toLowerCase() === directCandidate.email.toLowerCase()) {
+        return directCandidate.resumeUrl;
+      }
+    }
+
+    if ((!profile || !profile.resumeUrl) && (!directCandidate || !directCandidate.resumeUrl)) {
+      throw new NotFoundException('No resume uploaded for this candidate.');
     }
 
     throw new ForbiddenException(

@@ -118,7 +118,12 @@ export class CandidatePortalController {
         user,
         candidateId,
       );
-    const downloadUrl = await this.fileUploadService.getPresignedUrl(resumeKey);
+    let downloadUrl: string;
+    if (resumeKey.startsWith('http://') || resumeKey.startsWith('https://')) {
+      downloadUrl = resumeKey;
+    } else {
+      downloadUrl = await this.fileUploadService.getPresignedUrl(resumeKey);
+    }
     return { url: downloadUrl, expiresInSeconds: 3600 };
   }
 

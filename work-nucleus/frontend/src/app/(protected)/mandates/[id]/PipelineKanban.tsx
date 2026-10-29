@@ -1,15 +1,24 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, Mail, Phone, ExternalLink, GraduationCap, Award, MoreVertical } from "lucide-react";
+import { Loader2, Mail, Phone, ExternalLink, GraduationCap, Award, MoreVertical, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CandidateApplication {
   id: string;
+  candidateId?: string;
   isReferral?: boolean;
   referralId?: string;
+  resumeUrl?: string;
   aiMatchScore?: number;
-  candidateProfile: { name: string; email: string; headline: string; experienceYears: string | number };
+  candidateProfile: {
+    id?: string;
+    name: string;
+    email: string;
+    headline: string;
+    experienceYears: string | number;
+    resumeUrl?: string;
+  };
   referral?: { recruiter: { name: string }; status?: string };
   currentStage: { id: string; name: string; stageOrder: number };
 }
@@ -30,6 +39,33 @@ export function PipelineKanban({ mandateId }: PipelineKanbanProps) {
   const [applications, setApplications] = useState<CandidateApplication[]>([]);
   const [stages, setStages] = useState<{id: string, name: string, stageOrder: number}[]>(DEFAULT_STAGES);
   const [loading, setLoading] = useState(true);
+  const [openingResumeId, setOpeningResumeId] = useState<string | null>(null);
+
+  const handleViewResume = async (candidateId: string) => {
+    try {
+      setOpeningResumeId(candidateId);
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetch(`${apiUrl}/api/v1/candidate/profile/${candidateId}/resume`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.message || "Failed to load resume");
+        return;
+      }
+      const data = await res.json();
+      if (data.url) {
+        window.open(data.url, "_blank", "noopener,noreferrer");
+      }
+    } catch (err) {
+      console.error("Failed to view resume", err);
+      alert("Failed to open resume");
+    } finally {
+      setOpeningResumeId(null);
+    }
+  };
 
   // For native HTML5 DnD
   const [draggedAppId, setDraggedAppId] = useState<string | null>(null);
@@ -201,16 +237,35 @@ export function PipelineKanban({ mandateId }: PipelineKanbanProps) {
                         )}
                       </div>
 
-                      {/* Referral Badge vs Direct App */}
-                      <div className="pt-2 border-t border-slate-100">
+                      {/* Referral Badge vs Direct App + Resume link */}
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
                         {app.referral ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md w-full border border-emerald-100">
-                            ✨ Referred by {app.referral.recruiter.name}
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md truncate border border-emerald-100 flex-1">
+                            ✨ {app.referral.recruiter.name}
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md w-full border border-slate-100">
-                            Direct Application
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md truncate border border-slate-100 flex-1">
+                            Direct App
                           </span>
+                        )}
+                        {(app.resumeUrl || app.candidateProfile?.resumeUrl) && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewResume(app.candidateId || app.candidateProfile?.id || app.id);
+                            }}
+                            disabled={openingResumeId === (app.candidateId || app.candidateProfile?.id || app.id)}
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2 py-0.5 rounded-md transition-colors shrink-0 shadow-2xs"
+                            title="Open Resume in new tab"
+                          >
+                            {openingResumeId === (app.candidateId || app.candidateProfile?.id || app.id) ? (
+                              <Loader2 className="h-3 w-3 animate-spin text-indigo-600" />
+                            ) : (
+                              <FileText className="h-3 w-3 text-indigo-600" />
+                            )}
+                            Resume
+                          </button>
                         )}
                       </div>
                     </div>
