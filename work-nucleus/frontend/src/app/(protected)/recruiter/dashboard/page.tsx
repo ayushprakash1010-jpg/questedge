@@ -86,12 +86,14 @@ export default function RecruiterDashboardPage() {
   const [dashboard, setDashboard] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [needsProfile, setNeedsProfile] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
         const tokenRes = await fetch("/api/auth/token");
         const { accessToken } = await tokenRes.json();
+        if (accessToken) setToken(accessToken);
         const data = await getRecruiterDashboard(accessToken);
         setDashboard(data);
       } catch (err: any) {
@@ -151,7 +153,7 @@ export default function RecruiterDashboardPage() {
 
       <div className="space-y-8 pb-8">
         {/* P4-01: Trust Profile & Verification Tier */}
-        <TrustProfileCard />
+        <TrustProfileCard token={token || undefined} />
 
         {/* KPI row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

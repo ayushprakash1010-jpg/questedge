@@ -67,8 +67,10 @@ const TIER_CONFIG: Record<
 
 export function TrustProfileCard({
   onRefresh,
+  token: tokenProp,
 }: {
   onRefresh?: () => void;
+  token?: string;
 }) {
   const [profile, setProfile] = useState<TrustProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -86,24 +88,33 @@ export function TrustProfileCard({
     onClose: () => setModalOpen(false),
   });
 
-
-  const fetchProfile = async () => {
+  const fetchProfile = async (explicitToken?: string) => {
     try {
       setLoading(true);
-      const tokenRes = await fetch("/api/auth/token");
-      const { accessToken } = await tokenRes.json();
-      const res = await getMyTrustProfile(accessToken);
+      let authToken = explicitToken || tokenProp;
+      if (!authToken) {
+        const tokenRes = await fetch("/api/auth/token");
+        if (tokenRes.ok) {
+          const data = await tokenRes.json();
+          authToken = data.accessToken;
+        }
+      }
+      if (!authToken) {
+        setLoading(false);
+        return;
+      }
+      const res = await getMyTrustProfile(authToken);
       setProfile(res);
     } catch (err: any) {
-      console.error("Failed to load trust profile:", err);
+      console.warn("Could not load trust profile:", err?.message || err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchProfile();
-  }, []);
+    fetchProfile(tokenProp);
+  }, [tokenProp]);
 
   const handleApply = async (e: React.FormEvent) => {
     e.preventDefault();
