@@ -228,7 +228,7 @@ export default function RecruiterMandateDetail() {
                 <MandateStatusBadge status={mandate.status} isDeadlinePassed={isDeadlinePassed} />
                 {mandate.applicationDeadline && (
                   <span className={isDeadlinePassed ? "text-red-600 font-medium" : "text-amber-700 font-medium"}>
-                    · Deadline: {new Date(mandate.applicationDeadline).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                    · Deadline: {new Date(mandate.applicationDeadline).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric" })}
                     {isDeadlinePassed ? " (Expired)" : ""}
                   </span>
                 )}

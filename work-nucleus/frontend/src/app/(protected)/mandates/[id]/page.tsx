@@ -134,7 +134,7 @@ export default function MandateDetailPage() {
               {mandate.department} · {mandate.location} · {mandate.workModel}
               {mandate.applicationDeadline ? (
                 <span className={isDeadlinePassed ? "ml-2 text-red-600 font-medium" : "ml-2 text-amber-700 font-medium"}>
-                  · Deadline: {new Date(mandate.applicationDeadline).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                  · Deadline: {new Date(mandate.applicationDeadline).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric" })}
                   {isDeadlinePassed ? " (Expired)" : ""}
                 </span>
               ) : (
@@ -195,7 +195,7 @@ export default function MandateDetailPage() {
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 text-xs font-medium text-amber-800">
             <span className="flex items-center gap-2">
               <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
-              The application deadline ({new Date(mandate.applicationDeadline!).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}) has passed. Candidates can no longer submit direct applications.
+              The application deadline ({new Date(mandate.applicationDeadline!).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric" })}) has passed. Candidates can no longer submit direct applications.
             </span>
             <Button
               size="sm"
@@ -374,6 +374,7 @@ export default function MandateDetailPage() {
               <div>
                 <p className={isDeadlinePassed ? "text-sm font-semibold text-red-600" : "text-sm font-semibold text-slate-800"}>
                   {new Date(mandate.applicationDeadline).toLocaleDateString("en-IN", {
+                    timeZone: "Asia/Kolkata",
                     day: "numeric",
                     month: "long",
                     year: "numeric",

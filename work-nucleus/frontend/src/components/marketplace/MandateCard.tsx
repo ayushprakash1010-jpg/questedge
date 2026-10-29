@@ -142,7 +142,7 @@ export function MandateCard({
   const visibleSkills = safeSkills.slice(0, 3);
   const overflowCount = safeSkills.length - visibleSkills.length;
   const publishedDateStr = publishedAt
-    ? new Date(publishedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
+    ? new Date(publishedAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" })
     : null;
 
   let isDeadlinePassed = false;
@@ -155,7 +155,7 @@ export function MandateCard({
       : deadlineDate.getTime();
 
     isDeadlinePassed = effectiveDeadlineMs < Date.now();
-    const formattedDeadline = deadlineDate.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+    const formattedDeadline = deadlineDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" });
 
     if (isDeadlinePassed) {
       deadlineText = `Deadline passed (${formattedDeadline})`;
