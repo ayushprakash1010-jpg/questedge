@@ -20,7 +20,7 @@ export class AiScreeningService {
     const trimmedKey = rawKey ? rawKey.trim() : null;
     this.hasApiKey = !!trimmedKey;
     this.model =
-      this.configService.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
+      this.configService.get<string>('GEMINI_MODEL') || 'gemini-flash-lite-latest';
 
     this.logger.log(
       `AI Service initialized. Key present: ${this.hasApiKey}, Model: ${this.model}`,
@@ -63,14 +63,14 @@ export class AiScreeningService {
     }
   }
 
-  // ── P2-11: Execute Gemini model call with 30s timeout guard ─────
+  // ── P2-11: Execute Gemini model call with 12s timeout guard ─────
   private async generateWithTimeout(
     params: {
       model: string;
       contents: any;
       config?: any;
     },
-    timeoutMs = 30000,
+    timeoutMs = 12000,
   ): Promise<any> {
     let timer: NodeJS.Timeout;
     const generatePromise = this.ai.models.generateContent(params);
@@ -219,18 +219,41 @@ export class AiScreeningService {
         contents = promptText;
       }
 
-      const response = await this.generateWithTimeout({
-        model: this.model,
-        contents,
-        config: {
-          responseMimeType: 'application/json',
-          temperature: 0.1,
-        },
-      });
+      const modelsToTry = [
+        'gemini-flash-lite-latest',
+        'gemini-3.5-flash-lite',
+        'gemini-flash-latest',
+        this.model,
+      ].filter((m, i, arr) => m && arr.indexOf(m) === i);
 
-      const content = response.text;
-      if (content) {
-        const parsed = this.parseAiResponse(content);
+      let parsed: any = null;
+      for (const modelName of modelsToTry) {
+        try {
+          const response = await this.generateWithTimeout({
+            model: modelName,
+            contents,
+            config: {
+              responseMimeType: 'application/json',
+              temperature: 0.1,
+            },
+          });
+
+          const content = response.text;
+          if (content) {
+            parsed = this.parseAiResponse(content);
+            if (parsed) {
+              this.logger.log(`Successfully evaluated referral ${referralId} using model ${modelName}`);
+              break;
+            }
+          }
+        } catch (err: any) {
+          this.logger.warn(
+            `Model ${modelName} failed in evaluateReferralFit: ${this.extractErrorMessage(err)}`,
+          );
+        }
+      }
+
+      if (parsed) {
         await this.prisma.referral.update({
           where: { id: referralId },
           data: {
@@ -243,8 +266,10 @@ export class AiScreeningService {
           },
         });
         this.logger.log(
-          `Successfully evaluated referral ${referralId}. Score: ${parsed.matchScore}%`,
+          `Successfully saved referral ${referralId} evaluation. Score: ${parsed.matchScore}%`,
         );
+      } else {
+        throw new Error('All AI models failed to evaluate referral fit.');
       }
     } catch (error) {
       this.logger.error(
@@ -472,9 +497,10 @@ export class AiScreeningService {
     `;
 
     const modelsToTry = [
-      this.model,
+      'gemini-flash-lite-latest',
+      'gemini-3.5-flash-lite',
       'gemini-flash-latest',
-      'gemini-3.8-flash',
+      this.model,
     ].filter((m, i, arr) => m && arr.indexOf(m) === i);
 
     for (const modelName of modelsToTry) {
@@ -529,10 +555,11 @@ export class AiScreeningService {
         "name": "Candidate Full Name (or empty string if not found)",
         "email": "Candidate Email (or empty string if not found)",
         "phone": "Candidate Phone Number (or empty string if not found)",
-        "currentDesignation": "Their current or most recent job title (or empty string)",
-        "currentCompany": "Their current or most recent company name (or empty string)",
-        "experienceYears": integer representing total years of experience (estimate if necessary, use 0 for freshers),
-        "skills": ["list", "of", "top", "skills", "found"],
+        "headline": "A professional 1-line headline summarizing their role/background (e.g. 'CS Undergrad @ VIT | Full Stack & AI Developer' or 'Senior Frontend Engineer')",
+        "currentDesignation": "Their current or most recent job title (or 'Student' or 'Software Engineer')",
+        "currentCompany": "Their current or most recent company or institution",
+        "experienceYears": integer representing total years of experience (estimate if necessary, use 0 for freshers/students),
+        "skills": ["list", "of", "skills"],
         "education": ["Degree from Institution (Year)", "Another Degree..."],
         "currentLocation": "City, State or Country",
         "linkedin": "LinkedIn URL if present in text, else empty string",
@@ -542,9 +569,10 @@ export class AiScreeningService {
     `;
 
     const modelsToTry = [
-      this.model,
+      'gemini-flash-lite-latest',
+      'gemini-3.5-flash-lite',
       'gemini-flash-latest',
-      'gemini-3.8-flash',
+      this.model,
     ].filter((m, i, arr) => m && arr.indexOf(m) === i);
 
     if (this.hasApiKey) {
@@ -584,7 +612,7 @@ export class AiScreeningService {
       }
     }
 
-    // Resilient fallback: extract details directly from resume text using regex
+    // Resilient fallback: extract details directly from resume text using heuristics
     this.logger.warn(
       'AI parsing unavailable or failed; extracting details via text heuristics.',
     );
@@ -594,28 +622,81 @@ export class AiScreeningService {
     const phoneMatch = resumeText.match(
       /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/,
     );
+    const linkedinMatch = resumeText.match(
+      /https?:\/\/(?:www\.)?linkedin\.com\/in\/[a-zA-Z0-9_\-\/]+/i,
+    );
+    const githubMatch = resumeText.match(
+      /https?:\/\/(?:www\.)?github\.com\/[a-zA-Z0-9_\-\/]+/i,
+    );
+    const portfolioMatch = resumeText.match(
+      /https?:\/\/(?!www\.linkedin|linkedin|www\.github|github)[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?/i,
+    );
+
     const lines = resumeText
       .split(/\r?\n/)
       .map((l) => l.trim())
       .filter(Boolean);
-    const candidateName =
-      lines.length > 0 && lines[0].length < 40 && !lines[0].includes('@')
-        ? lines[0]
-        : '';
+
+    let candidateName = '';
+    for (const line of lines.slice(0, 5)) {
+      if (line.includes('@') || /https?:\/\//i.test(line) || /^\+?\d/.test(line)) {
+        continue;
+      }
+      if (line.length > 2 && line.length < 50 && !line.includes(':')) {
+        candidateName = line.replace(/[|•—–].*$/, '').trim();
+        break;
+      }
+    }
+
+    const commonSkills = [
+      'Java', 'Python', 'JavaScript', 'TypeScript', 'C++', 'C#', 'Go', 'Golang', 'Rust', 'Ruby', 'PHP', 'Swift', 'Kotlin',
+      'React', 'React.js', 'Next.js', 'Vue', 'Angular', 'Node.js', 'Express', 'NestJS', 'FastAPI', 'Django', 'Flask', 'Spring Boot',
+      'HTML', 'CSS', 'Tailwind', 'Sass', 'Bootstrap', 'REST APIs', 'GraphQL', 'gRPC',
+      'SQL', 'PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'Cassandra', 'DynamoDB',
+      'AWS', 'Azure', 'GCP', 'Docker', 'Kubernetes', 'CI/CD', 'Git', 'Linux', 'Kafka', 'Spark',
+      'Data Structures', 'Algorithms', 'DBMS', 'Machine Learning', 'Deep Learning', 'PyTorch', 'TensorFlow'
+    ];
+    const detectedSkills: string[] = [];
+    const textUpper = resumeText.toLowerCase();
+    for (const skill of commonSkills) {
+      const escaped = skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+      if (regex.test(textUpper)) {
+        detectedSkills.push(skill);
+      }
+    }
+
+    const educationLines: string[] = [];
+    for (const line of lines) {
+      if (
+        /(?:Bachelor|Master|B\.?Tech|M\.?Tech|B\.?S|M\.?S|Degree|University|Institute|College|School|CGPA|GPA)/i.test(line) &&
+        line.length > 10 &&
+        line.length < 120
+      ) {
+        if (!educationLines.includes(line)) educationLines.push(line);
+      }
+    }
+
+    let headline = '';
+    const summaryIdx = lines.findIndex((l) => /^(?:Professional )?Summary/i.test(l));
+    if (summaryIdx !== -1 && lines[summaryIdx + 1]) {
+      headline = lines[summaryIdx + 1];
+    }
 
     return {
       name: candidateName,
       email: emailMatch ? emailMatch[0] : '',
       phone: phoneMatch ? phoneMatch[0] : '',
+      headline,
       currentDesignation: '',
       currentCompany: '',
-      experienceYears: 1,
-      skills: [],
-      education: [],
+      experienceYears: 0,
+      skills: detectedSkills,
+      education: educationLines.slice(0, 3),
       currentLocation: '',
-      linkedin: '',
-      github: '',
-      portfolio: '',
+      linkedin: linkedinMatch ? linkedinMatch[0] : '',
+      github: githubMatch ? githubMatch[0] : '',
+      portfolio: portfolioMatch ? portfolioMatch[0] : '',
     };
   }
 }

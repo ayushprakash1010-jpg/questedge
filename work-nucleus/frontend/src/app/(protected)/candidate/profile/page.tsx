@@ -20,7 +20,22 @@ async function extractTextFromPDF(file: File): Promise<string> {
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    text += content.items.map((item: any) => item.str).join(" ") + " ";
+    let lastY: number | null = null;
+    let pageText = "";
+    for (const item of (content.items as any[])) {
+      if (!item.str && !item.hasEOL) continue;
+      if (lastY !== null && Math.abs(item.transform[5] - lastY) > 5) {
+        pageText += "\n";
+      } else if (pageText && !pageText.endsWith(" ") && !pageText.endsWith("\n") && item.str) {
+        pageText += " ";
+      }
+      pageText += item.str;
+      if (item.hasEOL) {
+        pageText += "\n";
+      }
+      lastY = item.transform[5];
+    }
+    text += pageText + "\n\n";
     
     // Extract hidden hyperlinks from the PDF (e.g., behind text like "GitHub")
     try {
@@ -30,7 +45,7 @@ async function extractTextFromPDF(file: File): Promise<string> {
         .map((anno: any) => anno.url)
         .join(" ");
       if (links) {
-        text += "\n[Hidden Links in PDF: " + links + "]\n";
+        text += "\n[Links / Social Profiles in PDF: " + links + "]\n";
       }
     } catch (e) {
       console.warn("Failed to parse annotations", e);
@@ -253,17 +268,20 @@ export default function CandidateProfilePage() {
           skills: parsedData.skills && parsedData.skills.length > 0 ? parsedData.skills : p.skills,
           education: parsedData.education && parsedData.education.length > 0 ? parsedData.education : p.education,
           currentLocation: parsedData.currentLocation || p.currentLocation,
-          headline: parsedData.currentDesignation
-            ? `${parsedData.currentDesignation} ${
-                parsedData.experienceYears ? `with ${parsedData.experienceYears} years experience` : ''
-              }`.trim()
-            : p.headline,
+          headline:
+            parsedData.headline ||
+            (parsedData.currentDesignation
+              ? `${parsedData.currentDesignation} ${
+                  parsedData.experienceYears ? `with ${parsedData.experienceYears} years experience` : ''
+                }`.trim()
+              : p.headline),
           profileLinks: {
-            linkedin: parsedData.linkedin || p.profileLinks.linkedin,
-            github: parsedData.github || p.profileLinks.github,
-            portfolio: parsedData.portfolio || p.profileLinks.portfolio,
+            linkedin: parsedData.linkedin || p.profileLinks?.linkedin || '',
+            github: parsedData.github || p.profileLinks?.github || '',
+            portfolio: parsedData.portfolio || p.profileLinks?.portfolio || '',
           },
         }));
+        toast.success("Resume parsed successfully! Profile auto-filled.");
       }
 
       setTimeout(() => setResumeUploadStatus('idle'), 4000);
