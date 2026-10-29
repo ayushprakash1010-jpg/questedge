@@ -223,7 +223,12 @@ export default function EarningsDashboard() {
                     {formatCurrency(Number(reward.rewardAmount))}
                   </td>
                   <td className="p-4 text-sm text-slate-500">
-                    {reward.eligibleAt ? formatDistanceToNow(new Date(reward.eligibleAt), { addSuffix: true }) : '-'}
+                    {(() => {
+                      const raw = reward.eligibleAt || reward.paidAt || reward.approvedAt || reward.createdAt;
+                      return raw && !isNaN(new Date(raw).getTime())
+                        ? formatDistanceToNow(new Date(raw), { addSuffix: true })
+                        : "-";
+                    })()}
                   </td>
                   <td className="p-4 text-right">
                     <div className="flex items-center justify-end gap-1.5 flex-wrap">
@@ -270,9 +275,9 @@ export default function EarningsDashboard() {
                           {withdrawingId === reward.id ? "Processing..." : "Withdraw (Demo)"}
                         </Button>
                       )}
-                      {reward.status === "PAID" && reward.paymentRef && (
+                      {reward.status === "PAID" && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 bg-emerald-50 px-2 py-1 rounded border border-emerald-200">
-                          ✓ {reward.paymentRef}
+                          ✓ {reward.paymentRef || "Paid"}
                         </span>
                       )}
                     </div>

@@ -145,7 +145,11 @@ export function PipelineKanban({ mandateId }: PipelineKanbanProps) {
       )}
       <div className="flex gap-4 overflow-x-auto pb-4 min-h-[500px]">
         {stages.map((stage) => {
-          const stageApps = applications.filter(a => a.currentStage?.id === stage.id);
+          const stageApps = applications.filter((a) => {
+            if (a.currentStage?.id === stage.id) return true;
+            if (stage.id === "sourced" && (!a.currentStage || !a.currentStage.id)) return true;
+            return false;
+          });
           
           return (
             <div 

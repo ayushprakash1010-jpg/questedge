@@ -82,6 +82,15 @@ export class MandatesService {
     }
   }
 
+  private parseApplicationDeadline(val?: string): Date | undefined {
+    if (!val) return undefined;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+      return new Date(`${val}T23:59:59.999Z`);
+    }
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? undefined : d;
+  }
+
   // ── Helpers ────────────────────────────────────────────────────
 
   private buildWhereClause(
@@ -255,9 +264,7 @@ export class MandatesService {
         compensationMin: dto.compensationMin ? dto.compensationMin : undefined,
         compensationMax: dto.compensationMax ? dto.compensationMax : undefined,
         currency: dto.currency ?? 'INR',
-        applicationDeadline: dto.applicationDeadline
-          ? new Date(dto.applicationDeadline)
-          : undefined,
+        applicationDeadline: this.parseApplicationDeadline(dto.applicationDeadline),
         acceptsDirectApply: dto.acceptsDirectApply ?? true,
         acceptsReferrals: dto.acceptsReferrals ?? true,
         participationType: dto.participationType ?? 'OPEN',
@@ -332,9 +339,7 @@ export class MandatesService {
         compensationMin: dto.compensationMin ?? undefined,
         compensationMax: dto.compensationMax ?? undefined,
         referralRewardAmount: dto.referralRewardAmount ?? undefined,
-        applicationDeadline: dto.applicationDeadline
-          ? new Date(dto.applicationDeadline)
-          : undefined,
+        applicationDeadline: this.parseApplicationDeadline(dto.applicationDeadline),
         interviewProcess: dto.interviewProcess ?? undefined,
       },
       include: { organization: { select: { id: true, name: true } } },
@@ -808,6 +813,11 @@ export class MandatesService {
         app.referralId && referralsMap[app.referralId]
           ? referralsMap[app.referralId]
           : null,
+      currentStage: app.currentStage || {
+        id: 'sourced',
+        name: 'Sourced',
+        stageOrder: 1,
+      },
     }));
 
     // Fetch active/accepted referrals for this mandate to populate the Kanban board

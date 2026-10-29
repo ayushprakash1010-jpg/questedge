@@ -290,7 +290,7 @@ export class RewardsService {
     }
     if (reward.status !== RewardStatus.APPROVED) {
       throw new BadRequestException(
-        `Reward is not available for withdrawal (current status: )`,
+        `Reward is not available for withdrawal (current status: ${reward.status})`,
       );
     }
 

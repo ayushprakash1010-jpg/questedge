@@ -142,7 +142,12 @@ export default function RecruiterFinancialsPage() {
                   {rewards.map((reward) => (
                     <tr key={reward.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 text-slate-500">
-                        {new Date(reward.eligibleAt).toLocaleDateString()}
+                        {(() => {
+                          const raw = reward.paidAt || reward.approvedAt || reward.eligibleAt || reward.createdAt;
+                          return raw && !isNaN(new Date(raw).getTime())
+                            ? new Date(raw).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" })
+                            : "—";
+                        })()}
                       </td>
                       <td className="px-6 py-4">
                         <p className="font-medium text-slate-900">{reward.referral?.candidateProfile?.name}</p>
