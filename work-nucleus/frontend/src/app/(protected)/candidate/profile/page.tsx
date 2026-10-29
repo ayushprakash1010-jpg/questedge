@@ -182,30 +182,9 @@ export default function CandidateProfilePage() {
   const [isErasing, setIsErasing] = useState(false);
   const [isOpeningResume, setIsOpeningResume] = useState(false);
 
-  const handleViewMyResume = async () => {
-    try {
-      setIsOpeningResume(true);
-      const tokenRes = await fetch("/api/auth/token");
-      const { accessToken } = await tokenRes.json();
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-      const res = await fetch(`${API_URL}/api/v1/candidate/profile/my/resume`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!res.ok) {
-        toast.error("Could not load your resume.");
-        return;
-      }
-      const data = await res.json();
-      if (data.url) {
-        window.open(data.url, "_blank", "noopener,noreferrer");
-      } else {
-        toast.error("Resume file not found.");
-      }
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to open resume.");
-    } finally {
-      setIsOpeningResume(false);
-    }
+  const handleViewMyResume = () => {
+    const nameParam = encodeURIComponent(profile.name || "My");
+    window.open(`/resume-viewer?myResume=true&name=${nameParam}`, "_blank");
   };
 
   const handleExportData = async () => {

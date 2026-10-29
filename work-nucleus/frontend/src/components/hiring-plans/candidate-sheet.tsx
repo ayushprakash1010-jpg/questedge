@@ -1324,37 +1324,11 @@ function DocumentsSection({ app }: { app: ApplicationDetail }) {
   const resumeUrl = app.candidate.resumeUrl ?? null;
   const [opening, setOpening] = useState(false);
 
-  const handleOpenResume = async (e: React.MouseEvent) => {
+  const handleOpenResume = (e: React.MouseEvent) => {
     e.preventDefault();
     if (!resumeUrl) return;
-    if (resumeUrl.startsWith("http://") || resumeUrl.startsWith("https://")) {
-      window.open(resumeUrl, "_blank", "noopener,noreferrer");
-      return;
-    }
-
-    try {
-      setOpening(true);
-      const tokenRes = await fetch("/api/auth/token");
-      const { accessToken } = await tokenRes.json();
-      const API_URL =
-        process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-      const res = await fetch(
-        `${API_URL}/api/v1/candidate/profile/${app.candidate.id}/resume`,
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        },
-      );
-      if (res.ok) {
-        const data = await res.json();
-        if (data.url) {
-          window.open(data.url, "_blank", "noopener,noreferrer");
-        }
-      }
-    } catch (err) {
-      console.error("Failed to get presigned resume URL:", err);
-    } finally {
-      setOpening(false);
-    }
+    const nameParam = encodeURIComponent(app.candidate.name || "Candidate");
+    window.open(`/resume-viewer?candidateId=${app.candidate.id}&name=${nameParam}`, "_blank");
   };
 
   return (

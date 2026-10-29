@@ -25,31 +25,9 @@ export default function MyReferralsPage() {
   const [error, setError] = useState<string | null>(null);
   const [openingResumeId, setOpeningResumeId] = useState<string | null>(null);
 
-  const handleViewResume = async (candidateId: string) => {
-    try {
-      setOpeningResumeId(candidateId);
-      const tokenRes = await fetch("/api/auth/token");
-      const { accessToken } = await tokenRes.json();
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-      const res = await fetch(`${apiUrl}/api/v1/candidate/profile/${candidateId}/resume`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!res.ok) {
-        alert("Failed to load candidate resume.");
-        return;
-      }
-      const data = await res.json();
-      if (data.url) {
-        window.open(data.url, "_blank", "noopener,noreferrer");
-      } else {
-        alert("Resume file not found.");
-      }
-    } catch (err) {
-      console.error("Failed to view resume", err);
-      alert("Failed to open resume.");
-    } finally {
-      setOpeningResumeId(null);
-    }
+  const handleViewResume = (candidateId: string, candidateName?: string) => {
+    const nameParam = encodeURIComponent(candidateName || "Candidate");
+    window.open(`/resume-viewer?candidateId=${candidateId}&name=${nameParam}`, "_blank");
   };
 
   const fetchReferrals = useCallback(async () => {
@@ -210,7 +188,7 @@ export default function MyReferralsPage() {
                         {ref.candidateProfile?.resumeUrl && (
                           <button
                             type="button"
-                            onClick={() => handleViewResume(ref.candidateProfile.id)}
+                            onClick={() => handleViewResume(ref.candidateProfile.id, ref.candidateProfile.name)}
                             disabled={openingResumeId === ref.candidateProfile.id}
                             className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-md transition-colors shadow-xs"
                             title="View Candidate Resume in new tab"

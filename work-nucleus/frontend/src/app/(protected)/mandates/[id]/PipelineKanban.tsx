@@ -41,30 +41,9 @@ export function PipelineKanban({ mandateId }: PipelineKanbanProps) {
   const [loading, setLoading] = useState(true);
   const [openingResumeId, setOpeningResumeId] = useState<string | null>(null);
 
-  const handleViewResume = async (candidateId: string) => {
-    try {
-      setOpeningResumeId(candidateId);
-      const tokenRes = await fetch("/api/auth/token");
-      const { accessToken } = await tokenRes.json();
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetch(`${apiUrl}/api/v1/candidate/profile/${candidateId}/resume`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        alert(err.message || "Failed to load resume");
-        return;
-      }
-      const data = await res.json();
-      if (data.url) {
-        window.open(data.url, "_blank", "noopener,noreferrer");
-      }
-    } catch (err) {
-      console.error("Failed to view resume", err);
-      alert("Failed to open resume");
-    } finally {
-      setOpeningResumeId(null);
-    }
+  const handleViewResume = (candidateId: string, candidateName?: string) => {
+    const nameParam = encodeURIComponent(candidateName || "Candidate");
+    window.open(`/resume-viewer?candidateId=${candidateId}&name=${nameParam}`, "_blank");
   };
 
   // For native HTML5 DnD
@@ -253,7 +232,7 @@ export function PipelineKanban({ mandateId }: PipelineKanbanProps) {
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleViewResume(app.candidateId || app.candidateProfile?.id || app.id);
+                              handleViewResume(app.candidateId || app.candidateProfile?.id || app.id, app.candidateProfile?.name);
                             }}
                             disabled={openingResumeId === (app.candidateId || app.candidateProfile?.id || app.id)}
                             className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2 py-0.5 rounded-md transition-colors shrink-0 shadow-2xs"

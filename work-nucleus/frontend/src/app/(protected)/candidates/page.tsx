@@ -177,30 +177,9 @@ export default function CandidatesPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [openingResumeId, setOpeningResumeId] = useState<string | null>(null);
 
-  const handleViewResume = async (candidateId: string) => {
-    try {
-      setOpeningResumeId(candidateId);
-      const tokenRes = await fetch("/api/auth/token");
-      const { accessToken } = await tokenRes.json();
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetch(`${apiUrl}/api/v1/candidate/profile/${candidateId}/resume`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        alert(err.message || "Failed to load resume");
-        return;
-      }
-      const data = await res.json();
-      if (data.url) {
-        window.open(data.url, "_blank", "noopener,noreferrer");
-      }
-    } catch (err) {
-      console.error("Failed to view resume", err);
-      alert("Failed to open resume");
-    } finally {
-      setOpeningResumeId(null);
-    }
+  const handleViewResume = (candidateId: string, candidateName?: string) => {
+    const nameParam = encodeURIComponent(candidateName || "Candidate");
+    window.open(`/resume-viewer?candidateId=${candidateId}&name=${nameParam}`, "_blank");
   };
   const [meta, setMeta] = useState<Meta | null>(null);
   const [loading, setLoading] = useState(true);
@@ -715,7 +694,7 @@ export default function CandidatesPage() {
                       {c.resumeUrl ? (
                         <button
                           type="button"
-                          onClick={() => handleViewResume(c.candidateProfileId || c.id)}
+                          onClick={() => handleViewResume(c.candidateProfileId || c.id, c.name)}
                           disabled={openingResumeId === (c.candidateProfileId || c.id)}
                           className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors shadow-2xs"
                           title="Open candidate resume in new tab"

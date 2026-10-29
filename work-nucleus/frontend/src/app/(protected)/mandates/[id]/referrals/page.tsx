@@ -461,30 +461,9 @@ function ReferralCard({
   const [isRetrying, setIsRetrying] = useState(false);
   const [openingResume, setOpeningResume] = useState(false);
 
-  const handleOpenResume = async () => {
-    try {
-      setOpeningResume(true);
-      const tokenRes = await fetch("/api/auth/token");
-      const { accessToken } = await tokenRes.json();
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-      const res = await fetch(`${API_URL}/api/v1/candidate/profile/${referral.candidateProfile.id}/resume`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        alert(err.message || "Failed to load resume");
-        return;
-      }
-      const data = await res.json();
-      if (data.url) {
-        window.open(data.url, "_blank", "noopener,noreferrer");
-      }
-    } catch (err) {
-      console.error("Failed to view resume", err);
-      alert("Failed to open resume");
-    } finally {
-      setOpeningResume(false);
-    }
+  const handleOpenResume = () => {
+    const nameParam = encodeURIComponent(referral.candidateProfile?.name || "Candidate");
+    window.open(`/resume-viewer?candidateId=${referral.candidateProfile.id}&name=${nameParam}`, "_blank");
   };
 
   const ownership = getOwnershipDetails(referral.claimScope);
