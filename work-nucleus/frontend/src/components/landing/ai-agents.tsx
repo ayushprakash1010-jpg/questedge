@@ -145,7 +145,11 @@ export function AIAgents() {
         {/* Interactive Split Playground Layout */}
         <div className="mt-16 grid gap-8 lg:grid-cols-12 items-start">
           {/* Left Column: 4 Selectable Agent Cards */}
-          <div className="lg:col-span-5 space-y-3.5">
+          <div
+            role="tablist"
+            aria-label="AI talent engines"
+            className="lg:col-span-5 space-y-3.5"
+          >
             {agents.map((agent) => {
               const AgentIcon = agent.icon;
               const isSelected = agent.id === selectedAgentId;
@@ -153,6 +157,10 @@ export function AIAgents() {
               return (
                 <button
                   key={agent.id}
+                  role="tab"
+                  id={`agent-tab-${agent.id}`}
+                  aria-selected={isSelected}
+                  aria-controls={`agent-panel-${agent.id}`}
                   onClick={() => setSelectedAgentId(agent.id)}
                   className={`w-full text-left rounded-2xl p-4.5 border transition-all flex items-start gap-3.5 ${
                     isSelected
@@ -192,6 +200,10 @@ export function AIAgents() {
             <AnimatePresence mode="wait">
               <motion.div
                 key={selectedAgent.id}
+                role="tabpanel"
+                id={`agent-panel-${selectedAgent.id}`}
+                aria-labelledby={`agent-tab-${selectedAgent.id}`}
+                aria-live="polite"
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.98 }}

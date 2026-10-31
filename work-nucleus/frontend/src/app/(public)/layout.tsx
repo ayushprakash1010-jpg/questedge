@@ -65,6 +65,42 @@ const jsonLd = {
               "When a recruiter refers a candidate, the candidate receives an encrypted email invitation. The candidate reviews full details — company name, job description, compensation range, and the referring recruiter's note — before accepting. The candidate's contact info and resume are only revealed to the hiring team after explicit acceptance.",
           },
         },
+        {
+          "@type": "Question",
+          "name": "How does the Gemini AI screening engine assist hiring teams?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text":
+              "QuestEdge leverages Google Gemini AI to analyze candidate resumes against mandate rubrics. It produces fit percentage scores, highlights technical strengths, and flags missing requirements so hiring teams can prioritize the highest-probability candidates first.",
+          },
+        },
+        {
+          "@type": "Question",
+          "name": "How does QuestEdge protect candidate privacy and comply with data laws?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text":
+              "QuestEdge is built for full compliance with the Digital Personal Data Protection (DPDP) Act 2023 and GDPR Article 20. Phone numbers and emails are SHA-256 hashed for collision detection without exposing raw PII. Candidates have full self-service access to export their data package or invoke instant Right-to-be-Forgotten data scrubbing.",
+          },
+        },
+        {
+          "@type": "Question",
+          "name": "What happens if a hired candidate leaves before completing tenure?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text":
+              "Each mandate specifies a tenure duration (typically 60 to 90 days). If a candidate resigns or is terminated before completing this period, the reward is cancelled, and the company is never billed for that hire.",
+          },
+        },
+        {
+          "@type": "Question",
+          "name": "Who can register as a recruiter on QuestEdge?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text":
+              "Independent recruiters, specialized headhunters, and industry professionals with vetted domain networks can register for free. Verified recruiter profiles build trust with companies, gain access to higher bounty tiers, and unlock automated AI candidate matching.",
+          },
+        },
       ],
     },
   ],

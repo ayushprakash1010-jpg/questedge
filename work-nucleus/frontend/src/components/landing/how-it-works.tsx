@@ -271,10 +271,18 @@ export function HowItWorks() {
         </div>
 
         {/* Role Tabs */}
-        <div className="mt-12 flex justify-center gap-3 flex-wrap">
+        <div
+          role="tablist"
+          aria-label="Process flows by audience"
+          className="mt-12 flex justify-center gap-3 flex-wrap"
+        >
           {flows.map((f, i) => (
             <button
               key={f.role}
+              role="tab"
+              id={`flow-tab-${f.role.toLowerCase()}`}
+              aria-selected={active === i}
+              aria-controls={`flow-panel-${f.role.toLowerCase()}`}
               onClick={() => setActive(i)}
               className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all ${
                 active === i
@@ -292,6 +300,9 @@ export function HowItWorks() {
         <AnimatePresence mode="wait">
           <motion.div
             key={active}
+            role="tabpanel"
+            id={`flow-panel-${flow.role.toLowerCase()}`}
+            aria-labelledby={`flow-tab-${flow.role.toLowerCase()}`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}

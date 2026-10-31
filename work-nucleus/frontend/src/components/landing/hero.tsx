@@ -14,7 +14,7 @@ const trustItems = [
 
 export function Hero() {
   return (
-    <section className="dot-grid relative overflow-hidden bg-gradient-to-b from-indigo-50/80 via-white to-white">
+    <section aria-labelledby="hero-heading" className="dot-grid relative overflow-hidden bg-gradient-to-b from-indigo-50/80 via-white to-white">
       {/* Ambient gradient glow orbs */}
       <div className="absolute -top-32 right-0 h-96 w-96 rounded-full bg-indigo-200/40 blur-3xl pointer-events-none" />
       <div className="absolute bottom-10 left-0 h-80 w-80 rounded-full bg-violet-200/40 blur-3xl pointer-events-none" />
@@ -39,7 +39,8 @@ export function Hero() {
 
             {/* Main Headline */}
             <motion.h1
-              className="mt-6 text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-5.5xl leading-[1.12]"
+              id="hero-heading"
+              className="mt-6 text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-[3.25rem] xl:text-6xl leading-[1.12]"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}

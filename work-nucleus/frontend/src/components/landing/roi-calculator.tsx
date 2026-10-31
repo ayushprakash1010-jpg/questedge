@@ -113,8 +113,16 @@ export function RoiCalculator() {
 
         {/* Mode Switcher */}
         <div className="mt-12 flex justify-center">
-          <div className="inline-flex rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
+          <div
+            role="tablist"
+            aria-label="Calculator perspective"
+            className="inline-flex rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm"
+          >
             <button
+              role="tab"
+              id="calc-tab-company"
+              aria-selected={calculatorMode === "company"}
+              aria-controls="calc-panel-company"
               onClick={() => setCalculatorMode("company")}
               className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all ${
                 calculatorMode === "company"
@@ -126,6 +134,10 @@ export function RoiCalculator() {
               For Companies (Cost Savings)
             </button>
             <button
+              role="tab"
+              id="calc-tab-recruiter"
+              aria-selected={calculatorMode === "recruiter"}
+              aria-controls="calc-panel-recruiter"
               onClick={() => setCalculatorMode("recruiter")}
               className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all ${
                 calculatorMode === "recruiter"
@@ -145,6 +157,9 @@ export function RoiCalculator() {
             {calculatorMode === "company" ? (
               <motion.div
                 key="company-calc"
+                role="tabpanel"
+                id="calc-panel-company"
+                aria-labelledby="calc-tab-company"
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.98 }}
@@ -164,7 +179,7 @@ export function RoiCalculator() {
 
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <label className="text-sm font-bold text-slate-900">
+                      <label htmlFor="calc-company-ctc" className="text-sm font-bold text-slate-900">
                         Average Candidate Annual CTC
                       </label>
                       <span className="font-mono text-sm font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
@@ -172,11 +187,16 @@ export function RoiCalculator() {
                       </span>
                     </div>
                     <input
+                      id="calc-company-ctc"
                       type="range"
                       min={1200000}
                       max={7000000}
                       step={100000}
                       value={candidateCtc}
+                      aria-valuemin={1200000}
+                      aria-valuemax={7000000}
+                      aria-valuenow={candidateCtc}
+                      aria-valuetext={`₹${(candidateCtc / 100000).toFixed(0)} Lakhs`}
                       onChange={(e) => setCandidateCtc(Number(e.target.value))}
                       className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                     />
@@ -189,7 +209,7 @@ export function RoiCalculator() {
 
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <label className="text-sm font-bold text-slate-900">
+                      <label htmlFor="calc-company-hires" className="text-sm font-bold text-slate-900">
                         Planned Hires Per Year
                       </label>
                       <span className="font-mono text-sm font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
@@ -197,11 +217,16 @@ export function RoiCalculator() {
                       </span>
                     </div>
                     <input
+                      id="calc-company-hires"
                       type="range"
                       min={1}
                       max={15}
                       step={1}
                       value={annualHires}
+                      aria-valuemin={1}
+                      aria-valuemax={15}
+                      aria-valuenow={annualHires}
+                      aria-valuetext={`${annualHires} ${annualHires === 1 ? "Hire" : "Hires"}`}
                       onChange={(e) => setAnnualHires(Number(e.target.value))}
                       className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                     />
@@ -292,6 +317,9 @@ export function RoiCalculator() {
             ) : (
               <motion.div
                 key="recruiter-calc"
+                role="tabpanel"
+                id="calc-panel-recruiter"
+                aria-labelledby="calc-tab-recruiter"
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.98 }}
@@ -311,7 +339,7 @@ export function RoiCalculator() {
 
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <label className="text-sm font-bold text-slate-900">
+                      <label htmlFor="calc-recruiter-placements" className="text-sm font-bold text-slate-900">
                         Successful Placements Per Month
                       </label>
                       <span className="font-mono text-sm font-bold text-violet-600 bg-violet-50 px-2.5 py-1 rounded-lg border border-violet-100">
@@ -319,11 +347,16 @@ export function RoiCalculator() {
                       </span>
                     </div>
                     <input
+                      id="calc-recruiter-placements"
                       type="range"
                       min={1}
                       max={6}
                       step={1}
                       value={monthlyPlacements}
+                      aria-valuemin={1}
+                      aria-valuemax={6}
+                      aria-valuenow={monthlyPlacements}
+                      aria-valuetext={`${monthlyPlacements} ${monthlyPlacements === 1 ? "Placement" : "Placements"}`}
                       onChange={(e) => setMonthlyPlacements(Number(e.target.value))}
                       className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-violet-600"
                     />
@@ -336,7 +369,7 @@ export function RoiCalculator() {
 
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <label className="text-sm font-bold text-slate-900">
+                      <label htmlFor="calc-recruiter-bounty" className="text-sm font-bold text-slate-900">
                         Average Bounty Per Mandate
                       </label>
                       <span className="font-mono text-sm font-bold text-violet-600 bg-violet-50 px-2.5 py-1 rounded-lg border border-violet-100">
@@ -344,11 +377,16 @@ export function RoiCalculator() {
                       </span>
                     </div>
                     <input
+                      id="calc-recruiter-bounty"
                       type="range"
                       min={40000}
                       max={150000}
                       step={5000}
                       value={avgBounty}
+                      aria-valuemin={40000}
+                      aria-valuemax={150000}
+                      aria-valuenow={avgBounty}
+                      aria-valuetext={`₹${avgBounty.toLocaleString("en-IN")}`}
                       onChange={(e) => setAvgBounty(Number(e.target.value))}
                       className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-violet-600"
                     />

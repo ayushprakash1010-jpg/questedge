@@ -55,7 +55,7 @@ export function LandingFooter() {
             {/* Social Links */}
             <div className="mt-6 flex gap-3">
               <a
-                href="https://twitter.com"
+                href="https://x.com/questedge"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800 text-slate-400 transition-colors hover:bg-indigo-600 hover:text-white"
@@ -66,7 +66,7 @@ export function LandingFooter() {
                 </svg>
               </a>
               <a
-                href="https://linkedin.com"
+                href="https://linkedin.com/company/questedge"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800 text-slate-400 transition-colors hover:bg-indigo-600 hover:text-white"
@@ -77,7 +77,7 @@ export function LandingFooter() {
                 </svg>
               </a>
               <a
-                href="https://github.com"
+                href="https://github.com/questedge"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800 text-slate-400 transition-colors hover:bg-indigo-600 hover:text-white"

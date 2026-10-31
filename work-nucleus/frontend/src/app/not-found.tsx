@@ -11,12 +11,20 @@ export default function NotFound() {
       <p className="mb-8 max-w-md text-sm text-slate-500">
         Sorry, we couldn't find the page you were looking for. It may have been moved or deleted.
       </p>
-      <Link
-        href="/dashboard"
-        className="rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow"
-      >
-        Go to Dashboard
-      </Link>
+      <div className="flex flex-col sm:flex-row items-center gap-3">
+        <Link
+          href="/"
+          className="rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow"
+        >
+          Return Home
+        </Link>
+        <Link
+          href="/dashboard"
+          className="rounded-xl border border-slate-300 bg-white px-6 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-400"
+        >
+          Go to Dashboard
+        </Link>
+      </div>
     </div>
   );
 }
