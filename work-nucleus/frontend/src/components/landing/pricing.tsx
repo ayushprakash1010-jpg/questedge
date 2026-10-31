@@ -219,8 +219,16 @@ export function Pricing() {
 
         {/* Interactive Segmented Role Switcher */}
         <div className="mt-12 flex justify-center">
-          <div className="inline-flex rounded-2xl border border-slate-200/90 bg-white p-1.5 shadow-sm">
+          <div
+            role="tablist"
+            aria-label="Pricing audience plans"
+            className="inline-flex rounded-2xl border border-slate-200/90 bg-white p-1.5 shadow-sm"
+          >
             <button
+              role="tab"
+              id="pricing-tab-companies"
+              aria-selected={activeTab === "companies"}
+              aria-controls="pricing-panel-companies"
               onClick={() => setActiveTab("companies")}
               className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all ${
                 activeTab === "companies"
@@ -232,6 +240,10 @@ export function Pricing() {
               <span>For Companies (Workspace Plans)</span>
             </button>
             <button
+              role="tab"
+              id="pricing-tab-recruiters"
+              aria-selected={activeTab === "recruiters"}
+              aria-controls="pricing-panel-recruiters"
               onClick={() => setActiveTab("recruiters")}
               className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all ${
                 activeTab === "recruiters"
@@ -251,6 +263,9 @@ export function Pricing() {
             {activeTab === "companies" ? (
               <motion.div
                 key="company-plans"
+                role="tabpanel"
+                id="pricing-panel-companies"
+                aria-labelledby="pricing-tab-companies"
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -264,6 +279,9 @@ export function Pricing() {
             ) : (
               <motion.div
                 key="recruiter-plans"
+                role="tabpanel"
+                id="pricing-panel-recruiters"
+                aria-labelledby="pricing-tab-recruiters"
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}

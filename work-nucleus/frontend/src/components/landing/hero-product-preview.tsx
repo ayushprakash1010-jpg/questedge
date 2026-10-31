@@ -18,8 +18,16 @@ export function HeroProductPreview() {
 
       {/* Segmented Persona Switcher Toggle */}
       <div className="relative mb-3.5 flex justify-center">
-        <div className="inline-flex rounded-2xl border border-slate-200/90 bg-white/90 p-1 shadow-sm backdrop-blur-md">
+        <div
+          role="tablist"
+          aria-label="Product preview role views"
+          className="inline-flex rounded-2xl border border-slate-200/90 bg-white/90 p-1 shadow-sm backdrop-blur-md"
+        >
           <button
+            role="tab"
+            id="preview-tab-company"
+            aria-selected={activePersona === "company"}
+            aria-controls="preview-panel-company"
             onClick={() => setActivePersona("company")}
             className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all ${
               activePersona === "company"
@@ -31,6 +39,10 @@ export function HeroProductPreview() {
             <span>Company</span>
           </button>
           <button
+            role="tab"
+            id="preview-tab-recruiter"
+            aria-selected={activePersona === "recruiter"}
+            aria-controls="preview-panel-recruiter"
             onClick={() => setActivePersona("recruiter")}
             className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all ${
               activePersona === "recruiter"
@@ -42,6 +54,10 @@ export function HeroProductPreview() {
             <span>Recruiter</span>
           </button>
           <button
+            role="tab"
+            id="preview-tab-candidate"
+            aria-selected={activePersona === "candidate"}
+            aria-controls="preview-panel-candidate"
             onClick={() => setActivePersona("candidate")}
             className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all ${
               activePersona === "candidate"
@@ -60,13 +76,16 @@ export function HeroProductPreview() {
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.2 }}
-        className="relative rounded-3xl border border-slate-200/90 bg-white/95 p-6 shadow-2xl backdrop-blur-md"
+        className="relative rounded-3xl border border-slate-200/90 bg-white/95 p-4 sm:p-6 shadow-2xl backdrop-blur-md"
       >
         <AnimatePresence mode="wait">
           {/* ==================== 1. COMPANY VIEW (Dr. Shiv Kumar) ==================== */}
           {activePersona === "company" && (
             <motion.div
               key="company-view"
+              role="tabpanel"
+              id="preview-panel-company"
+              aria-labelledby="preview-tab-company"
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
@@ -157,11 +176,11 @@ export function HeroProductPreview() {
                   <span>Candidate Funnel</span>
                   <span className="font-bold text-indigo-600">Round 2: System Design</span>
                 </div>
-                <div className="grid grid-cols-4 gap-1.5 text-[10px] text-center font-semibold">
-                  <div className="rounded bg-emerald-100 text-emerald-800 py-1">Referred ✓</div>
-                  <div className="rounded bg-emerald-100 text-emerald-800 py-1">Consented ✓</div>
-                  <div className="rounded bg-indigo-600 text-white py-1">Interviewing</div>
-                  <div className="rounded bg-slate-200 text-slate-500 py-1">Tenure (Day 90)</div>
+                <div className="grid grid-cols-4 gap-1 sm:gap-1.5 text-[9px] sm:text-[10px] text-center font-semibold">
+                  <div className="rounded bg-emerald-100 text-emerald-800 py-1 px-0.5 truncate">Referred ✓</div>
+                  <div className="rounded bg-emerald-100 text-emerald-800 py-1 px-0.5 truncate">Consented ✓</div>
+                  <div className="rounded bg-indigo-600 text-white py-1 px-0.5 truncate">Interviewing</div>
+                  <div className="rounded bg-slate-200 text-slate-500 py-1 px-0.5 truncate">Tenure (Day 90)</div>
                 </div>
               </div>
 
@@ -180,6 +199,9 @@ export function HeroProductPreview() {
           {activePersona === "recruiter" && (
             <motion.div
               key="recruiter-view"
+              role="tabpanel"
+              id="preview-panel-recruiter"
+              aria-labelledby="preview-tab-recruiter"
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
@@ -283,6 +305,9 @@ export function HeroProductPreview() {
           {activePersona === "candidate" && (
             <motion.div
               key="candidate-view"
+              role="tabpanel"
+              id="preview-panel-candidate"
+              aria-labelledby="preview-tab-candidate"
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}

@@ -1,6 +1,3 @@
-"use client";
-
-import { motion } from "framer-motion";
 import { Star, Building2, Target, UserCircle, CheckCircle2, Shield, Lock, Award } from "lucide-react";
 
 interface Testimonial {
@@ -66,7 +63,7 @@ const platformGuarantees = [
 
 export function Testimonials() {
   return (
-    <section className="relative overflow-hidden bg-[#0B132B] py-24 sm:py-32 text-white">
+    <section aria-labelledby="testimonials-heading" className="relative overflow-hidden bg-[#0B132B] py-24 sm:py-32 text-white">
       {/* Subtle background ambient glows */}
       <div className="absolute -top-32 left-1/4 h-96 w-96 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 right-1/4 h-96 w-96 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
@@ -77,7 +74,7 @@ export function Testimonials() {
           <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 bg-cyan-950/60 px-3.5 py-1 rounded-full border border-cyan-800/60">
             Real Voices Across the Marketplace
           </span>
-          <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+          <h2 id="testimonials-heading" className="mt-4 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
             Trusted by hiring leaders, top recruiters, and premier engineers
           </h2>
           <p className="mt-4 text-base text-slate-300">
@@ -87,13 +84,9 @@ export function Testimonials() {
 
         {/* 3 Dark Testimonial Cards */}
         <div className="mt-16 grid gap-8 lg:grid-cols-3">
-          {testimonials.map((t, i) => (
-            <motion.div
+          {testimonials.map((t) => (
+            <div
               key={t.name}
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.45, delay: i * 0.12 }}
               className="relative flex flex-col justify-between rounded-3xl border border-slate-800 bg-[#141C2E]/90 p-8 shadow-xl backdrop-blur-sm hover:border-slate-700 transition-all group"
             >
               {/* Header: Giant Quote Mark & Stars */}
@@ -105,9 +98,9 @@ export function Testimonials() {
                   </span>
 
                   {/* 5 Amber Stars */}
-                  <div className="flex items-center gap-1 text-amber-400">
+                  <div className="flex items-center gap-1 text-amber-400" aria-label="5 out of 5 stars">
                     {[...Array(5)].map((_, starIndex) => (
-                      <Star key={starIndex} className="h-4 w-4 fill-amber-400" />
+                      <Star key={starIndex} className="h-4 w-4 fill-amber-400" aria-hidden="true" />
                     ))}
                   </div>
                 </div>
@@ -135,7 +128,7 @@ export function Testimonials() {
                   <p className="text-xs text-slate-400 truncate">{t.role}</p>
                 </div>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
 

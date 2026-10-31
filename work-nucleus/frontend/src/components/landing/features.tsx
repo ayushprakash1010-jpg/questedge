@@ -32,8 +32,16 @@ export function Features() {
 
         {/* Role Tabs */}
         <div className="mt-12 flex justify-center">
-          <div className="inline-flex rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
+          <div
+            role="tablist"
+            aria-label="Features by audience"
+            className="inline-flex rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm"
+          >
             <button
+              role="tab"
+              id="features-tab-companies"
+              aria-selected={activeTab === "companies"}
+              aria-controls="features-panel-companies"
               onClick={() => setActiveTab("companies")}
               className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all ${
                 activeTab === "companies"
@@ -45,6 +53,10 @@ export function Features() {
               For Companies
             </button>
             <button
+              role="tab"
+              id="features-tab-recruiters"
+              aria-selected={activeTab === "recruiters"}
+              aria-controls="features-panel-recruiters"
               onClick={() => setActiveTab("recruiters")}
               className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all ${
                 activeTab === "recruiters"
@@ -56,6 +68,10 @@ export function Features() {
               For Recruiters
             </button>
             <button
+              role="tab"
+              id="features-tab-candidates"
+              aria-selected={activeTab === "candidates"}
+              aria-controls="features-panel-candidates"
               onClick={() => setActiveTab("candidates")}
               className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all ${
                 activeTab === "candidates"
@@ -75,6 +91,9 @@ export function Features() {
             {activeTab === "companies" && (
               <motion.div
                 key="companies"
+                role="tabpanel"
+                id="features-panel-companies"
+                aria-labelledby="features-tab-companies"
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -187,6 +206,9 @@ export function Features() {
             {activeTab === "recruiters" && (
               <motion.div
                 key="recruiters"
+                role="tabpanel"
+                id="features-panel-recruiters"
+                aria-labelledby="features-tab-recruiters"
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -288,6 +310,9 @@ export function Features() {
             {activeTab === "candidates" && (
               <motion.div
                 key="candidates"
+                role="tabpanel"
+                id="features-panel-candidates"
+                aria-labelledby="features-tab-candidates"
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}

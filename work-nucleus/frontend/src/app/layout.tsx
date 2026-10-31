@@ -41,10 +41,10 @@ export const metadata: Metadata = {
     siteName: "QuestEdge",
     images: [
       {
-        url: "/icon-512.png",
-        width: 512,
-        height: 512,
-        alt: "QuestEdge Referral Hiring Marketplace",
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "QuestEdge — AI-Powered Referral Hiring Marketplace",
       },
     ],
   },
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
     title: "QuestEdge — AI-Powered Referral Hiring Marketplace",
     description:
       "Zero retainers. Trusted referrals. Pay bounties only on verified candidate tenure completion.",
-    images: ["/icon-512.png"],
+    images: ["/opengraph-image"],
     creator: "@questedge",
   },
   icons: {

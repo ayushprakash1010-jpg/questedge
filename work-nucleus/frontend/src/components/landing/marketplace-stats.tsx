@@ -1,6 +1,3 @@
-"use client";
-
-import { motion } from "framer-motion";
 import { ShieldCheck, Clock, CheckCircle2, Award } from "lucide-react";
 
 const valuePillars = [
@@ -32,24 +29,21 @@ const valuePillars = [
 
 export function MarketplaceStats() {
   return (
-    <section className="bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-700 py-12">
+    <section aria-labelledby="stats-heading" className="bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-700 py-12">
+      <h2 id="stats-heading" className="sr-only">Key Marketplace Guarantees and Statistics</h2>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
-          {valuePillars.map((pillar, i) => (
-            <motion.div
+          {valuePillars.map((pillar) => (
+            <div
               key={pillar.label}
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: i * 0.1 }}
-              className="text-center"
+              className="text-center group transition-transform hover:-translate-y-0.5 duration-200"
             >
               <div className="text-2xl font-extrabold text-white sm:text-3xl">
                 {pillar.value}
               </div>
               <div className="mt-1 text-sm font-semibold text-indigo-100">{pillar.label}</div>
               <div className="mt-0.5 text-xs text-indigo-200/90">{pillar.sub}</div>
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>
