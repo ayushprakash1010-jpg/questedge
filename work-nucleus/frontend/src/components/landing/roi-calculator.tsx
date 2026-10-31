@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Building2, Target, ArrowRight, CheckCircle2, TrendingUp, Sparkles, DollarSign } from "lucide-react";
+import {
+  Building2, Target, ArrowRight, CheckCircle2,
+  Sparkles, Award, Zap, TrendingUp
+} from "lucide-react";
 
 export function RoiCalculator() {
   const [calculatorMode, setCalculatorMode] = useState<"company" | "recruiter">("company");
@@ -26,6 +29,71 @@ export function RoiCalculator() {
   // Calculations for Recruiter
   const monthlyEarnings = monthlyPlacements * avgBounty;
   const annualEarnings = monthlyEarnings * 12;
+
+  // Milestone tier for Company
+  const getCompanyTier = (ctc: number) => {
+    if (ctc < 2500000) {
+      return {
+        label: "Mid-Market Tech Role",
+        sub: "Direct agency replacement with zero upfront retainers",
+        icon: "🌱",
+        color: "text-indigo-600 bg-indigo-50 border-indigo-200",
+      };
+    }
+    if (ctc < 4500000) {
+      return {
+        label: "Senior Engineering Tier",
+        sub: "₹5L+ typical fee eliminated per hire",
+        icon: "🚀",
+        color: "text-emerald-700 bg-emerald-50 border-emerald-200",
+      };
+    }
+    if (ctc < 6000000) {
+      return {
+        label: "Staff & Principal Specialist",
+        sub: "Massive ₹8L+ saved per hire with milestone security",
+        icon: "💎",
+        color: "text-cyan-700 bg-cyan-50 border-cyan-200",
+      };
+    }
+    return {
+      label: "Executive Leadership Tier",
+      sub: "Maximum capital efficiency with 80% cost reduction",
+      icon: "👑",
+      color: "text-amber-700 bg-amber-50 border-amber-200",
+    };
+  };
+
+  // Milestone tier for Recruiter
+  const getRecruiterTier = (placements: number) => {
+    if (placements <= 1) {
+      return {
+        label: "Part-Time Talent Scout",
+        sub: "Monetize trusted relationships on your own schedule",
+        icon: "🌱",
+        color: "text-violet-700 bg-violet-50 border-violet-200",
+      };
+    }
+    if (placements <= 3) {
+      return {
+        label: "Active Talent Partner",
+        sub: "Top 20% marketplace earner with 48h protected scopes",
+        icon: "🚀",
+        color: "text-emerald-700 bg-emerald-50 border-emerald-200",
+      };
+    }
+    return {
+      label: "Elite Executive Recruiter",
+      sub: "Top 2% marketplace performer with six-figure monthly wallet payouts",
+      icon: "👑",
+      color: "text-amber-700 bg-amber-50 border-amber-200",
+    };
+  };
+
+  const companyTier = getCompanyTier(candidateCtc);
+  const recruiterTier = getRecruiterTier(monthlyPlacements);
+  const isHighCompanySavings = totalAnnualSavings >= 500000;
+  const isHighRecruiterEarnings = annualEarnings >= 1000000;
 
   return (
     <section id="roi-calculator" className="bg-slate-50/70 border-t border-slate-200/80 py-24 sm:py-32">
@@ -85,6 +153,15 @@ export function RoiCalculator() {
               >
                 {/* Inputs Column */}
                 <div className="md:col-span-6 space-y-6">
+                  {/* Dynamic Tier Badge */}
+                  <div className={`flex items-center justify-between rounded-xl border px-3.5 py-2 text-xs font-semibold ${companyTier.color}`}>
+                    <span className="flex items-center gap-1.5">
+                      <span>{companyTier.icon}</span>
+                      <span>{companyTier.label}</span>
+                    </span>
+                    <span className="text-[11px] font-normal opacity-90">{companyTier.sub}</span>
+                  </div>
+
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <label className="text-sm font-bold text-slate-900">
@@ -152,20 +229,34 @@ export function RoiCalculator() {
                   </div>
                 </div>
 
-                {/* Results Column */}
-                <div className="md:col-span-6 flex flex-col justify-between rounded-2xl bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 p-7 text-white shadow-inner">
+                {/* Results Column with Glowing Milestone Pulse */}
+                <div
+                  className={`md:col-span-6 flex flex-col justify-between rounded-2xl bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 p-7 text-white shadow-xl relative overflow-hidden transition-all duration-300 ${
+                    isHighCompanySavings ? "ring-2 ring-emerald-400/50 shadow-emerald-500/20" : ""
+                  }`}
+                >
+                  {isHighCompanySavings && (
+                    <div className="absolute -top-12 -right-12 h-36 w-36 rounded-full bg-emerald-500/20 blur-2xl pointer-events-none animate-pulse" />
+                  )}
+
                   <div>
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold uppercase tracking-wider text-indigo-300">
                         Projected Annual Savings
                       </span>
-                      <span className="rounded-full bg-emerald-400/20 px-2.5 py-1 text-xs font-extrabold text-emerald-300 border border-emerald-400/30">
+                      <span className="rounded-full bg-emerald-400/20 px-2.5 py-1 text-xs font-extrabold text-emerald-300 border border-emerald-400/30 flex items-center gap-1">
+                        <Sparkles className="h-3 w-3" />
                         {percentageSaved}% Saved
                       </span>
                     </div>
 
-                    <div className="mt-4 font-extrabold text-4xl sm:text-5xl text-white tracking-tight">
-                      ₹{(totalAnnualSavings / 100000).toFixed(1)} Lakhs
+                    <div className="mt-4 font-extrabold text-4xl sm:text-5xl text-white tracking-tight flex items-baseline gap-2">
+                      <span>₹{(totalAnnualSavings / 100000).toFixed(1)} Lakhs</span>
+                      {isHighCompanySavings && (
+                        <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-800">
+                          High Impact
+                        </span>
+                      )}
                     </div>
                     <p className="mt-1 text-xs text-indigo-200/80">
                       Saved across {annualHires} {annualHires === 1 ? "hire" : "hires"} compared to standard agency headhunter fees.
@@ -209,6 +300,15 @@ export function RoiCalculator() {
               >
                 {/* Recruiter Inputs Column */}
                 <div className="md:col-span-6 space-y-6">
+                  {/* Dynamic Tier Badge */}
+                  <div className={`flex items-center justify-between rounded-xl border px-3.5 py-2 text-xs font-semibold ${recruiterTier.color}`}>
+                    <span className="flex items-center gap-1.5">
+                      <span>{recruiterTier.icon}</span>
+                      <span>{recruiterTier.label}</span>
+                    </span>
+                    <span className="text-[11px] font-normal opacity-90">{recruiterTier.sub}</span>
+                  </div>
+
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <label className="text-sm font-bold text-slate-900">
@@ -276,20 +376,34 @@ export function RoiCalculator() {
                   </div>
                 </div>
 
-                {/* Recruiter Results Column */}
-                <div className="md:col-span-6 flex flex-col justify-between rounded-2xl bg-gradient-to-br from-violet-950 via-slate-900 to-violet-900 p-7 text-white shadow-inner">
+                {/* Recruiter Results Column with Glowing Violet Aura */}
+                <div
+                  className={`md:col-span-6 flex flex-col justify-between rounded-2xl bg-gradient-to-br from-violet-950 via-slate-900 to-violet-900 p-7 text-white shadow-xl relative overflow-hidden transition-all duration-300 ${
+                    isHighRecruiterEarnings ? "ring-2 ring-violet-400/50 shadow-violet-500/20" : ""
+                  }`}
+                >
+                  {isHighRecruiterEarnings && (
+                    <div className="absolute -top-12 -right-12 h-36 w-36 rounded-full bg-violet-500/20 blur-2xl pointer-events-none animate-pulse" />
+                  )}
+
                   <div>
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold uppercase tracking-wider text-violet-300">
                         Projected Annual Earnings
                       </span>
-                      <span className="rounded-full bg-violet-400/20 px-2.5 py-1 text-xs font-extrabold text-violet-300 border border-violet-400/30">
+                      <span className="rounded-full bg-violet-400/20 px-2.5 py-1 text-xs font-extrabold text-violet-300 border border-violet-400/30 flex items-center gap-1">
+                        <Zap className="h-3 w-3" />
                         Wallet Direct
                       </span>
                     </div>
 
-                    <div className="mt-4 font-extrabold text-4xl sm:text-5xl text-white tracking-tight">
-                      ₹{(annualEarnings / 100000).toFixed(2)} Lakhs
+                    <div className="mt-4 font-extrabold text-4xl sm:text-5xl text-white tracking-tight flex items-baseline gap-2">
+                      <span>₹{(annualEarnings / 100000).toFixed(2)} Lakhs</span>
+                      {isHighRecruiterEarnings && (
+                        <span className="text-xs font-semibold text-violet-300 uppercase tracking-wider bg-violet-950/60 px-2 py-0.5 rounded-full border border-violet-800">
+                          Top Tier
+                        </span>
+                      )}
                     </div>
                     <p className="mt-1 text-xs text-violet-200/80">
                       Based on {monthlyPlacements} placement{monthlyPlacements > 1 ? "s" : ""}/month at ₹{avgBounty.toLocaleString("en-IN")} average bounty.
@@ -329,4 +443,3 @@ export function RoiCalculator() {
     </section>
   );
 }
-
