@@ -42,7 +42,7 @@ const companyPlans = [
     name: "Enterprise",
     price: "Custom",
     period: "",
-    description: "For large organizations needing custom escrow, DPDP compliance, and dedicated support.",
+    description: "For large organizations needing custom bounty terms, DPDP compliance, and dedicated support.",
     features: [
       "Everything in Growth",
       "Dedicated talent partner manager",
@@ -170,7 +170,7 @@ export function Pricing() {
 
         {/* No hire no fee banner */}
         <div className="mt-10 mx-auto max-w-3xl rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 px-8 py-5 text-center text-white shadow-lg">
-          <span className="text-lg font-bold">💡 Performance-Backed Escrow</span>
+          <span className="text-lg font-bold">💡 Milestone-Backed Bounty Lifecycle</span>
           <p className="mt-1 text-sm text-indigo-100">
             Rewards are tracked across Potential → Eligible → Pending Approval → Approved stages and paid out securely upon successful tenure completion.
           </p>

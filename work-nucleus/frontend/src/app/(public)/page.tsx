@@ -1,11 +1,13 @@
 import { Hero } from "@/components/landing/hero";
 import { MarketplaceStats } from "@/components/landing/marketplace-stats";
 import { TrustStrip } from "@/components/landing/trust-strip";
-import { AIAgents } from "@/components/landing/ai-agents";
+import { LiveMarketplacePreview } from "@/components/landing/live-marketplace-preview";
 import { Features } from "@/components/landing/features";
+import { AIAgents } from "@/components/landing/ai-agents";
 import { HowItWorks } from "@/components/landing/how-it-works";
-import { Pricing } from "@/components/landing/pricing";
+import { RoiCalculator } from "@/components/landing/roi-calculator";
 import { Testimonials } from "@/components/landing/testimonials";
+import { Pricing } from "@/components/landing/pricing";
 import { FAQ } from "@/components/landing/faq";
 import { CTABanner } from "@/components/landing/cta-banner";
 
@@ -15,9 +17,11 @@ export default function LandingPage() {
       <Hero />
       <MarketplaceStats />
       <TrustStrip />
-      <AIAgents />
+      <LiveMarketplacePreview />
       <Features />
+      <AIAgents />
       <HowItWorks />
+      <RoiCalculator />
       <Testimonials />
       <Pricing />
       <FAQ />
@@ -25,4 +29,3 @@ export default function LandingPage() {
     </>
   );
 }
-
