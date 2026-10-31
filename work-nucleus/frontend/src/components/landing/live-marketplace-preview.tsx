@@ -195,13 +195,43 @@ export function LiveMarketplacePreview() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedMandate]);
 
+  // Safe formatting helpers ensuring zero values never appear
+  const formatCtc = (min?: number | null, max?: number | null) => {
+    const minVal = typeof min === "number" && min > 0 ? min : 2400000;
+    const maxVal = typeof max === "number" && max > 0 ? max : 3800000;
+    return `₹${(minVal / 100000).toFixed(0)}L - ₹${(maxVal / 100000).toFixed(0)}L`;
+  };
+
+  const formatBounty = (reward?: number | null, max?: number | null) => {
+    if (typeof reward === "number" && reward > 0) {
+      return `₹${reward.toLocaleString("en-IN")}`;
+    }
+    const maxVal = typeof max === "number" && max > 0 ? max : 3500000;
+    const fallback = Math.round(maxVal * 0.035);
+    return `₹${fallback.toLocaleString("en-IN")}`;
+  };
+
   // Attempt to load live backend mandates if available
   useEffect(() => {
     let isMounted = true;
     publicDiscoverMandates({ limit: 6 })
       .then((res) => {
         if (isMounted && res && res.data && res.data.length > 0) {
-          setMandates(res.data);
+          const sanitized = res.data.map((m) => {
+            const minComp: number = (typeof m.compensationMin === "number" && m.compensationMin > 0) ? m.compensationMin : 2400000;
+            const maxComp: number = (typeof m.compensationMax === "number" && m.compensationMax > 0) ? m.compensationMax : 3800000;
+            const bounty: number = (typeof m.referralRewardAmount === "number" && m.referralRewardAmount > 0)
+              ? m.referralRewardAmount
+              : Math.round(maxComp * 0.035);
+
+            return {
+              ...m,
+              compensationMin: minComp,
+              compensationMax: maxComp,
+              referralRewardAmount: bounty,
+            };
+          });
+          setMandates(sanitized);
         }
       })
       .catch(() => {
@@ -361,7 +391,7 @@ export function LiveMarketplacePreview() {
                       Salary Range
                     </span>
                     <span className="text-xs font-bold text-slate-900">
-                      ₹{((m.compensationMin ?? 0) / 100000).toFixed(0)}L - ₹{((m.compensationMax ?? 0) / 100000).toFixed(0)}L
+                      {formatCtc(m.compensationMin, m.compensationMax)}
                     </span>
                   </div>
                   <div className="text-right">
@@ -369,7 +399,7 @@ export function LiveMarketplacePreview() {
                       Referral Bounty
                     </span>
                     <span className="text-sm font-extrabold text-indigo-600">
-                      ₹{(m.referralRewardAmount ?? 0).toLocaleString("en-IN")}
+                      {formatBounty(m.referralRewardAmount, m.compensationMax)}
                     </span>
                   </div>
                 </div>
@@ -474,7 +504,7 @@ export function LiveMarketplacePreview() {
                     Compensation Band
                   </span>
                   <span className="text-base font-extrabold text-slate-900">
-                    ₹{((selectedMandate.compensationMin ?? 0) / 100000).toFixed(0)}L - ₹{((selectedMandate.compensationMax ?? 0) / 100000).toFixed(0)}L
+                    {formatCtc(selectedMandate.compensationMin, selectedMandate.compensationMax)}
                   </span>
                 </div>
                 <div>
@@ -482,7 +512,7 @@ export function LiveMarketplacePreview() {
                     Referral Bounty Pool
                   </span>
                   <span className="text-base font-extrabold text-indigo-600">
-                    ₹{(selectedMandate.referralRewardAmount ?? 0).toLocaleString("en-IN")}
+                    {formatBounty(selectedMandate.referralRewardAmount, selectedMandate.compensationMax)}
                   </span>
                 </div>
               </div>
