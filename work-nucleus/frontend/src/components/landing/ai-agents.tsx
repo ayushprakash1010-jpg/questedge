@@ -19,9 +19,9 @@ const agents = [
     icon: Bot,
   },
   {
-    name: "Automated BGV Risk Evaluator",
+    name: "AI-Assisted BGV Risk Evaluator",
     description:
-      "Performs automated background verification screening on identity, employment records, and court registries with risk scoring and discrepancy flags.",
+      "Synthesizes multi-vendor background check reports with automated discrepancy detection, compliance flags, and advisory risk summaries.",
     tag: "Compliance",
     icon: ShieldCheck,
   },
@@ -48,7 +48,7 @@ export function AIAgents() {
         <div className="mx-auto max-w-2xl text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1.5 text-sm font-medium text-indigo-300">
             <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
-            Powered by Google Gemini 2.5 AI
+            Powered by Google Gemini AI Engine
           </span>
           <h2 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
             AI talent engines built for precision hiring

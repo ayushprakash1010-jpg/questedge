@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { Auth0Provider } from "@auth0/nextjs-auth0/client";
 import { Toaster } from "@/components/ui/toaster";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 const inter = Inter({
@@ -11,8 +12,50 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "QuestEdge",
-  description: "The Referral-Based Hiring Marketplace",
+  title: {
+    default: "QuestEdge — AI-Powered Referral Hiring Marketplace",
+    template: "%s | QuestEdge",
+  },
+  description:
+    "QuestEdge connects high-growth companies with independent recruiters. Publish mandates with performance bounties, screen talent with Gemini AI, and secure candidate consent. Zero retainers.",
+  keywords: [
+    "referral hiring",
+    "recruitment marketplace",
+    "AI candidate screening",
+    "talent bounty",
+    "independent recruiters",
+    "headhunter marketplace",
+    "DPDP compliance hiring",
+    "Gemini AI recruiting",
+  ],
+  authors: [{ name: "QuestEdge Technologies" }],
+  creator: "QuestEdge",
+  metadataBase: new URL(process.env.APP_BASE_URL || "https://questedge.vercel.app"),
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://questedge.vercel.app",
+    title: "QuestEdge — AI-Powered Referral Hiring Marketplace",
+    description:
+      "Zero retainers. Trusted referrals. Pay bounties only on verified candidate tenure completion.",
+    siteName: "QuestEdge",
+    images: [
+      {
+        url: "/icon-512.png",
+        width: 512,
+        height: 512,
+        alt: "QuestEdge Referral Hiring Marketplace",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "QuestEdge — AI-Powered Referral Hiring Marketplace",
+    description:
+      "Zero retainers. Trusted referrals. Pay bounties only on verified candidate tenure completion.",
+    images: ["/icon-512.png"],
+    creator: "@questedge",
+  },
   icons: {
     icon: "/favicon.ico",
     apple: "/icon-192.png",
@@ -31,8 +74,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: "#4f46e5",
 };
-
-import { ThemeProvider } from "@/components/theme-provider";
 
 export default function RootLayout({
   children,

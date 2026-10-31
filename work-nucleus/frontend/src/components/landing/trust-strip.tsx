@@ -3,8 +3,8 @@ import { CheckCircle, Shield, DollarSign, ClipboardCheck } from "lucide-react";
 const trustItems = [
   {
     icon: CheckCircle,
-    title: "Verified Recruiters",
-    desc: "Every recruiter is identity-verified before accessing the marketplace.",
+    title: "Vetted Recruiter Profiles",
+    desc: "Recruiters build verified trust scores through placement track records and domain expertise.",
     color: "text-indigo-600",
     bg: "bg-indigo-50",
   },
@@ -17,8 +17,8 @@ const trustItems = [
   },
   {
     icon: DollarSign,
-    title: "Escrow-Protected Rewards",
-    desc: "Rewards are locked in until tenure is confirmed. Zero risk of non-payment.",
+    title: "Milestone-Protected Rewards",
+    desc: "Bounties are tracked across 5 lifecycle stages and released upon confirmed tenure completion.",
     color: "text-emerald-600",
     bg: "bg-emerald-50",
   },
