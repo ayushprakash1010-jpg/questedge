@@ -28,7 +28,7 @@ export function HeroProductPreview() {
             }`}
           >
             <Building2 className="h-3.5 w-3.5" />
-            <span>Company (Dr. Shiv)</span>
+            <span>Company</span>
           </button>
           <button
             onClick={() => setActivePersona("recruiter")}
@@ -39,7 +39,7 @@ export function HeroProductPreview() {
             }`}
           >
             <Target className="h-3.5 w-3.5" />
-            <span>Recruiter (Pooja)</span>
+            <span>Recruiter</span>
           </button>
           <button
             onClick={() => setActivePersona("candidate")}
@@ -50,7 +50,7 @@ export function HeroProductPreview() {
             }`}
           >
             <User className="h-3.5 w-3.5" />
-            <span>Candidate (Ayush)</span>
+            <span>Candidate</span>
           </button>
         </div>
       </div>
