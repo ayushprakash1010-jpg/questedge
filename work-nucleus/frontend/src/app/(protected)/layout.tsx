@@ -71,24 +71,30 @@ export default function ProtectedLayout({
       return;
     }
 
+    // Check if demo user
+    const isDemo =
+      Boolean((profile as any)?.isDemoAccount) ||
+      user?.email?.toLowerCase() === "growytvercel@gmail.com" ||
+      user?.name?.toLowerCase() === "growytvercel@gmail.com";
+
     // Logged in but explicitly verified as NOT provisioned in database
     const isRecruiterOrCandidate =
       (profile as any)?.userType === "RECRUITER" ||
       (profile as any)?.userType === "CANDIDATE";
 
-    if (profile && profile.isProvisioned === false && !isRecruiterOrCandidate) {
+    if (profile && profile.isProvisioned === false && !isRecruiterOrCandidate && !isDemo) {
       if (!pathname.includes("/profile") && !pathname.includes("/onboarding")) {
         router.push("/onboarding");
         return;
       }
     }
 
-    // Role-based routing enforcement
-    if (profile && profile.isProvisioned) {
+    // Role-based routing enforcement (bypassed for demo account to allow cross-portal browsing)
+    if (profile && profile.isProvisioned && !isDemo) {
       const uType = (profile as any).userType;
 
       // Allow shared routes accessible by all authenticated roles
-      const isSharedRoute =
+      const isShared =
         pathname === "/notifications" ||
         pathname.startsWith("/notifications/") ||
         pathname === "/support" ||
@@ -96,7 +102,7 @@ export default function ProtectedLayout({
         pathname === "/profile" ||
         pathname.startsWith("/profile/");
 
-      if (isSharedRoute) {
+      if (isShared) {
         return;
       }
       if (uType === "RECRUITER" && !pathname.startsWith("/recruiter")) {
@@ -163,12 +169,17 @@ export default function ProtectedLayout({
 
   if (!user) return null;
 
+  const isDemo =
+    Boolean((profile as any)?.isDemoAccount) ||
+    user?.email?.toLowerCase() === "growytvercel@gmail.com" ||
+    user?.name?.toLowerCase() === "growytvercel@gmail.com";
+
   const isRecruiterOrCandidate =
     (profile as any)?.userType === "RECRUITER" ||
     (profile as any)?.userType === "CANDIDATE";
 
   // If the useEffect is about to redirect to onboarding, show a spinner to prevent flashing
-  if (profile && !profile.isProvisioned && !isRecruiterOrCandidate) {
+  if (profile && !profile.isProvisioned && !isRecruiterOrCandidate && !isDemo) {
     if (!pathname.includes("/profile") && !pathname.includes("/onboarding")) {
       return (
         <div className="flex h-screen items-center justify-center">
@@ -178,8 +189,8 @@ export default function ProtectedLayout({
     }
   }
 
-  // If the useEffect is about to redirect to a specific role dashboard, show a spinner
-  if (profile && profile.isProvisioned && !isSharedRoute(pathname)) {
+  // If the useEffect is about to redirect to a specific role dashboard, show a spinner (skip for demo user)
+  if (profile && profile.isProvisioned && !isSharedRoute(pathname) && !isDemo) {
     const uType = (profile as any).userType;
     if (uType === "RECRUITER" && !pathname.startsWith("/recruiter")) {
       return (

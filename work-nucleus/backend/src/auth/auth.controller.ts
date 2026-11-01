@@ -60,6 +60,49 @@ export class AuthController {
       throw new BadRequestException('Auth0 identity not found in token');
     }
 
+    const isDemo =
+      user.isDemoAccount === true ||
+      user.email?.toLowerCase() === 'growytvercel@gmail.com' ||
+      (process.env.DEMO_EMAIL &&
+        user.email?.toLowerCase() === process.env.DEMO_EMAIL.trim().toLowerCase());
+
+    // If demo account with role context specified by DemoRoleInterceptor
+    if (isDemo && user.userType) {
+      if (user.userType === 'RECRUITER') {
+        const recruiterProfile = await this.authService.getRecruiterMe(
+          user.auth0Sub,
+        );
+        if (recruiterProfile) {
+          return {
+            isProvisioned: true,
+            userType: 'RECRUITER',
+            ...recruiterProfile,
+          };
+        }
+      } else if (user.userType === 'CANDIDATE') {
+        const candidateProfile = await this.authService.getCandidateMe(
+          user.auth0Sub,
+        );
+        if (candidateProfile) {
+          return {
+            isProvisioned: true,
+            userType: 'CANDIDATE',
+            ...candidateProfile,
+          };
+        }
+      } else if (user.userType === 'COMPANY_USER') {
+        const profile = await this.authService.getMe(user.auth0Sub);
+        if (profile) {
+          return {
+            isProvisioned: true,
+            userType: 'COMPANY_USER',
+            ...profile,
+          };
+        }
+      }
+    }
+
+    // Default flow:
     // First check company users table
     const profile = await this.authService.getMe(user.auth0Sub);
     if (profile) {

@@ -12,14 +12,9 @@ import { PrismaService } from '../../prisma/prisma.service';
  * DemoRoleInterceptor
  *
  * When a request carries the `X-Demo-Role` header (COMPANY | RECRUITER | CANDIDATE)
- * AND the authenticated user is flagged `isDemoAccount = true`, this interceptor
- * swaps `req.user` for the matching profile record so that all downstream guards
- * and handlers see the correct userType context — without any JWT/Auth0 changes.
- *
- * Safety contract:
- *  - The header is silently ignored unless `req.user.isDemoAccount === true`.
- *  - The resolved profile MUST also have `isDemoAccount === true` (double-check).
- *  - A missing/unrecognised header value is also silently ignored.
+ * AND the authenticated user is flagged `isDemoAccount = true` (or matches DEMO_EMAIL),
+ * this interceptor swaps `req.user` for the matching profile record so that all downstream
+ * guards and handlers see the correct userType context — without any JWT/Auth0 changes.
  */
 @Injectable()
 export class DemoRoleInterceptor implements NestInterceptor {
@@ -34,14 +29,30 @@ export class DemoRoleInterceptor implements NestInterceptor {
     const req = context.switchToHttp().getRequest();
     const user = req.user;
 
+    const isDemo =
+      user?.isDemoAccount === true ||
+      user?.email?.toLowerCase() === 'growytvercel@gmail.com' ||
+      (process.env.DEMO_EMAIL &&
+        user?.email?.toLowerCase() === process.env.DEMO_EMAIL.trim().toLowerCase());
+
     // Only act when the caller is a provisioned demo account
-    if (!user?.isDemoAccount || !user?.auth0Sub) {
+    if (!isDemo || !user?.auth0Sub) {
       return next.handle();
     }
 
-    const demoRole = (req.headers['x-demo-role'] as string | undefined)
+    let demoRole = (req.headers['x-demo-role'] as string | undefined)
       ?.toUpperCase()
       ?.trim();
+
+    // In case header was not sent, infer demo role from the API path
+    if (!demoRole) {
+      const path = req.path || req.url || '';
+      if (path.includes('/recruiter')) {
+        demoRole = 'RECRUITER';
+      } else if (path.includes('/candidate')) {
+        demoRole = 'CANDIDATE';
+      }
+    }
 
     if (!demoRole || !['COMPANY', 'RECRUITER', 'CANDIDATE'].includes(demoRole)) {
       return next.handle();
@@ -55,11 +66,12 @@ export class DemoRoleInterceptor implements NestInterceptor {
         where: { auth0Sub },
         include: { organization: true },
       });
-      if (overrideProfile?.isDemoAccount) {
+      if (overrideProfile) {
         req.user = {
           ...overrideProfile,
           userType: 'COMPANY_USER',
           isProvisioned: true,
+          isDemoAccount: true,
         };
         this.logger.debug(`Demo role override → COMPANY_USER for ${auth0Sub}`);
       }
@@ -67,11 +79,12 @@ export class DemoRoleInterceptor implements NestInterceptor {
       overrideProfile = await this.prisma.recruiterProfile.findUnique({
         where: { auth0Sub },
       });
-      if (overrideProfile?.isDemoAccount) {
+      if (overrideProfile) {
         req.user = {
           ...overrideProfile,
           userType: 'RECRUITER',
           isProvisioned: true,
+          isDemoAccount: true,
         };
         this.logger.debug(`Demo role override → RECRUITER for ${auth0Sub}`);
       }
@@ -79,11 +92,12 @@ export class DemoRoleInterceptor implements NestInterceptor {
       overrideProfile = await this.prisma.candidateProfile.findUnique({
         where: { auth0Sub },
       });
-      if (overrideProfile?.isDemoAccount) {
+      if (overrideProfile) {
         req.user = {
           ...overrideProfile,
           userType: 'CANDIDATE',
           isProvisioned: true,
+          isDemoAccount: true,
         };
         this.logger.debug(`Demo role override → CANDIDATE for ${auth0Sub}`);
       }
@@ -92,4 +106,3 @@ export class DemoRoleInterceptor implements NestInterceptor {
     return next.handle();
   }
 }
-

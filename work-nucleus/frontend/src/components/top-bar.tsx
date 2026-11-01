@@ -3,7 +3,20 @@
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { useTheme } from "next-themes";
 import { usePathname } from "next/navigation";
-import { LogOut, User, Settings, ChevronDown, Moon, Sun, RefreshCw, Shield, ExternalLink } from "lucide-react";
+import {
+  LogOut,
+  User,
+  Settings,
+  ChevronDown,
+  Moon,
+  Sun,
+  RefreshCw,
+  Shield,
+  ExternalLink,
+  Briefcase,
+  Building2,
+  UserCircle,
+} from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -28,9 +41,10 @@ export function TopBar() {
   const displayPicture = IS_MOCK ? undefined : user?.picture || undefined;
   const { theme, setTheme } = useTheme();
   const pathname = usePathname();
-  const isCompany = pathname?.startsWith("/dashboard") || pathname?.startsWith("/company") || pathname?.startsWith("/candidates") || pathname?.startsWith("/hiring-plans") || pathname?.startsWith("/mandates");
   const isRecruiter = pathname?.startsWith("/recruiter");
   const isCandidate = pathname === "/candidate" || pathname?.startsWith("/candidate");
+  const isCompany = !isRecruiter && !isCandidate;
+
   const isDemo =
     Boolean((profile as any)?.isDemoAccount) ||
     user?.email?.toLowerCase() === "growytvercel@gmail.com" ||
@@ -46,9 +60,9 @@ export function TopBar() {
     (profile as any)?.userType === "COMPANY_ADMIN";
 
   const profileHref =
-    (profile as any)?.userType === "RECRUITER"
+    isRecruiter || (profile as any)?.userType === "RECRUITER"
       ? "/recruiter/profile"
-      : (profile as any)?.userType === "CANDIDATE"
+      : isCandidate || (profile as any)?.userType === "CANDIDATE"
       ? "/candidate/profile"
       : "/profile";
 
@@ -61,6 +75,17 @@ export function TopBar() {
         .slice(0, 2)
     : "?";
 
+  const handleRoleSwitch = (targetRole: "COMPANY" | "RECRUITER" | "CANDIDATE") => {
+    document.cookie = `demo_role=${targetRole}; path=/; max-age=86400; SameSite=Lax`;
+    if (targetRole === "COMPANY") {
+      window.location.href = "/dashboard";
+    } else if (targetRole === "RECRUITER") {
+      window.location.href = "/recruiter/dashboard";
+    } else if (targetRole === "CANDIDATE") {
+      window.location.href = "/candidate/dashboard";
+    }
+  };
+
   return (
     <header
       className="flex items-center justify-between border-b border-slate-200/60 bg-white px-6"
@@ -69,6 +94,51 @@ export function TopBar() {
       <GlobalSearch />
 
       <div className="flex items-center gap-3">
+        {/* Demo Account Role Switcher segmented pill buttons */}
+        {isDemo && (
+          <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
+            <button
+              type="button"
+              onClick={() => handleRoleSwitch("COMPANY")}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+                isCompany
+                  ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs font-bold"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+              }`}
+              title="Switch to Company View"
+            >
+              <Building2 className="h-3.5 w-3.5" />
+              <span>Company</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleRoleSwitch("RECRUITER")}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+                isRecruiter
+                  ? "bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-xs font-bold"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+              }`}
+              title="Switch to Recruiter View"
+            >
+              <Briefcase className="h-3.5 w-3.5" />
+              <span>Recruiter</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleRoleSwitch("CANDIDATE")}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+                isCandidate
+                  ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs font-bold"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+              }`}
+              title="Switch to Candidate View"
+            >
+              <UserCircle className="h-3.5 w-3.5" />
+              <span>Candidate</span>
+            </button>
+          </div>
+        )}
+
         {/* Support Admin Cross-Portal Switcher */}
         {isSuperAdmin && (
           <a
@@ -121,6 +191,25 @@ export function TopBar() {
                 <Shield className="h-4 w-4 text-indigo-600" /> Support Admin Portal
               </DropdownMenuItem>
             )}
+
+            {isDemo && (
+              <>
+                <DropdownMenuSeparator />
+                <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Switch Demo Role
+                </div>
+                <DropdownMenuItem onClick={() => handleRoleSwitch("COMPANY")}>
+                  <Building2 className="h-4 w-4 text-indigo-500" /> Switch to Company
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleRoleSwitch("RECRUITER")}>
+                  <Briefcase className="h-4 w-4 text-purple-500" /> Switch to Recruiter
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleRoleSwitch("CANDIDATE")}>
+                  <UserCircle className="h-4 w-4 text-emerald-500" /> Switch to Candidate
+                </DropdownMenuItem>
+              </>
+            )}
+
             <DropdownMenuSeparator />
             <DropdownMenuItem 
               onClick={async () => {
