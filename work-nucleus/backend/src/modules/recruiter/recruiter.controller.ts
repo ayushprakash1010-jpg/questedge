@@ -57,7 +57,7 @@ export class RecruiterController {
   @Get('profile')
   @ApiOperation({ summary: 'Recruiter: Get own profile with stats' })
   async getMyProfile(@CurrentUser() user: any) {
-    return this.recruiterService.getMyProfile(user.id);
+    return this.recruiterService.getMyProfile(user.id || user.auth0Sub);
   }
 
   @Patch('profile')
@@ -67,7 +67,7 @@ export class RecruiterController {
     @CurrentUser() user: any,
     @Body() dto: UpdateRecruiterProfileDto,
   ) {
-    return this.recruiterService.updateProfile(user.id, dto);
+    return this.recruiterService.updateProfile(user.id || user.auth0Sub, dto);
   }
 
   @Get('dashboard')
@@ -77,7 +77,7 @@ export class RecruiterController {
       'Recruiter: Get full dashboard (earnings, referrals, active mandates)',
   })
   async getDashboard(@CurrentUser() user: any) {
-    return this.recruiterService.getDashboard(user.id);
+    return this.recruiterService.getDashboard(user.id || user.auth0Sub);
   }
 
   @Get('leaderboard')
@@ -99,7 +99,7 @@ export class RecruiterController {
     @CurrentUser() user: any,
     @Body() dto: CreateVerificationRequestDto,
   ) {
-    return this.recruiterService.submitVerificationRequest(user.id, dto);
+    return this.recruiterService.submitVerificationRequest(user.id || user.auth0Sub, dto);
   }
 
   @Get('trust-profile')
@@ -108,7 +108,7 @@ export class RecruiterController {
     summary: 'Recruiter: Get own trust profile with score & tier breakdown',
   })
   async getMyTrustProfile(@CurrentUser() user: any) {
-    return this.recruiterService.getTrustProfile(user.id);
+    return this.recruiterService.getTrustProfile(user.id || user.auth0Sub);
   }
 
   @Get('verification/queue')
@@ -159,4 +159,3 @@ export class RecruiterController {
     return this.recruiterService.getPublicProfile(id);
   }
 }
-
