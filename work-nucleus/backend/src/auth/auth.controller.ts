@@ -7,18 +7,23 @@ import {
   HttpCode,
   HttpStatus,
   BadRequestException,
+  UnauthorizedException,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiBearerAuth,
   ApiResponse,
+  ApiHeader,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
 import { ProvisionDto } from './dto/provision.dto';
 import { SyncDto } from './dto/sync.dto';
+import { DemoProvisionDto } from './dto/demo-provision.dto';
+import { DemoSwitchRoleDto } from './dto/demo-switch-role.dto';
 
 @ApiTags('Auth')
 @Controller('api/v1/auth')
@@ -122,5 +127,73 @@ export class AuthController {
     @Headers('x-auth0-webhook-secret') webhookSecret: string,
   ) {
     return this.authService.syncFromAuth0(dto, webhookSecret);
+  }
+
+  // -------------------------------------------------------------------------
+  // DEMO ACCOUNT ENDPOINTS
+  // -------------------------------------------------------------------------
+
+  @Post('demo/provision')
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Provision all 3 demo profiles (Company, Recruiter, Candidate) for one Auth0 account',
+    description:
+      'Creates a Company user, RecruiterProfile and CandidateProfile all linked to the same ' +
+      'Auth0 sub, flagged isDemoAccount=true. Safe to call on a fresh account only.',
+  })
+  @ApiResponse({ status: 201, description: 'Demo account provisioned' })
+  @ApiResponse({ status: 409, description: 'Account already provisioned or is a real account' })
+  async provisionDemo(
+    @CurrentUser() user: any,
+    @Body() dto: DemoProvisionDto,
+  ) {
+    if (!user?.auth0Sub) {
+      throw new BadRequestException('Auth0 identity not found in token');
+    }
+    const email = user.email || dto.email;
+    if (!email) {
+      throw new BadRequestException('Email not found in token or payload');
+    }
+    return this.authService.provisionDemo(user.auth0Sub, email, dto);
+  }
+
+  @Post('demo/switch-role')
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Return profile data for a specific demo role context',
+    description:
+      'Returns the profile for the requested role (COMPANY | RECRUITER | CANDIDATE). ' +
+      'The frontend should store this and pass X-Demo-Role header on subsequent API calls.',
+  })
+  @ApiHeader({
+    name: 'X-Demo-Role',
+    description: 'Pass this header on all subsequent requests to operate as that role: COMPANY | RECRUITER | CANDIDATE',
+    required: false,
+  })
+  @ApiResponse({ status: 200, description: 'Demo role profile returned' })
+  @ApiResponse({ status: 401, description: 'Not a demo account' })
+  @ApiResponse({ status: 404, description: 'Target role profile not found' })
+  async switchDemoRole(
+    @CurrentUser() user: any,
+    @Body() dto: DemoSwitchRoleDto,
+  ) {
+    if (!user?.auth0Sub) {
+      throw new BadRequestException('Auth0 identity not found in token');
+    }
+
+    const result = await this.authService.getDemoRoleProfile(
+      user.auth0Sub,
+      dto.targetRole,
+    );
+
+    if (!result) {
+      throw new UnauthorizedException(
+        'Not a demo account or the requested role profile has not been provisioned.',
+      );
+    }
+
+    return result;
   }
 }

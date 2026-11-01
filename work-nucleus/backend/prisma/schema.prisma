@@ -549,9 +549,10 @@ model User {
   role      Role     @default(VIEWER)
   userType  UserType @default(COMPANY_USER) @map("user_type")
   avatarUrl String?  @map("avatar_url")
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive      Boolean  @default(true) @map("is_active")
+  isDemoAccount Boolean  @default(false) @map("is_demo_account")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   organization Organization @relation(fields: [orgId], references: [id])
 
@@ -1727,6 +1728,7 @@ model CandidateProfile {
   profileLinks        Json     @default("{}") @map("profile_links")
   isProfileComplete   Boolean  @default(false) @map("is_profile_complete")
   isActive            Boolean  @default(true) @map("is_active")
+  isDemoAccount       Boolean  @default(false) @map("is_demo_account")
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -1757,6 +1759,7 @@ model RecruiterProfile {
   isVerified      Boolean   @default(false) @map("is_verified")
   verifiedAt      DateTime? @map("verified_at")
   isActive        Boolean   @default(true) @map("is_active")
+  isDemoAccount   Boolean   @default(false) @map("is_demo_account")
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
