@@ -3,6 +3,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as express from 'express';
 import { AppModule } from './app.module';
+import { AuthService } from './auth/auth.service';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { validateEnvironment } from './config/env.validation';
@@ -90,6 +91,27 @@ async function bootstrap() {
     logger.log('Swagger documentation enabled at /api/docs');
   } else {
     logger.log('Swagger documentation disabled in production (set ENABLE_SWAGGER=true to override)');
+  }
+
+  // Auto-provision demo account on boot if DEMO_AUTH0_SUB is provided
+  const demoSub = process.env.DEMO_AUTH0_SUB;
+  const demoEmail = process.env.DEMO_EMAIL;
+  if (demoSub && demoEmail) {
+    try {
+      const authService = app.get(AuthService);
+      await authService.provisionDemo(demoSub, demoEmail, {
+        orgName: process.env.DEMO_ORG_NAME ?? 'QuestEdge Demo Corp',
+        industry: 'Technology',
+        name: process.env.DEMO_NAME ?? 'Demo Admin',
+      });
+      logger.log(`Demo account auto-provisioned for ${demoEmail}`);
+    } catch (err: any) {
+      if (err.status === 409) {
+        logger.log(`Demo account already provisioned (${demoEmail})`);
+      } else {
+        logger.warn(`Demo account auto-provision notice: ${err.message}`);
+      }
+    }
   }
 
   const port = process.env.PORT ?? 3000;
