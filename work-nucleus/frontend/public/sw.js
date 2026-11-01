@@ -10,3 +10,4 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   // Let the browser handle standard requests
 });
+
