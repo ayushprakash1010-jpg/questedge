@@ -8,7 +8,9 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProvisionDto } from './dto/provision.dto';
 import { SyncDto } from './dto/sync.dto';
-import { Role } from '@prisma/client';
+import { Role, UserType } from '@prisma/client';
+import { DemoProvisionDto } from './dto/demo-provision.dto';
+import { DemoRoleTarget } from './dto/demo-switch-role.dto';
 
 @Injectable()
 export class AuthService {
@@ -204,5 +206,209 @@ export class AuthService {
     this.logger.log(`Synced Auth0 profile for user "${user.email}"`);
 
     return { updated: true, userId: user.id };
+  }
+
+  // -------------------------------------------------------------------------
+  // DEMO ACCOUNT — provision all 3 profiles for a single Auth0 sub
+  // -------------------------------------------------------------------------
+
+  async provisionDemo(auth0Sub: string, email: string, dto: DemoProvisionDto) {
+    const [existingUser, existingRecruiter, existingCandidate] =
+      await Promise.all([
+        this.prisma.user.findUnique({ where: { auth0Sub } }),
+        this.prisma.recruiterProfile.findUnique({ where: { auth0Sub } }),
+        this.prisma.candidateProfile.findUnique({ where: { auth0Sub } }),
+      ]);
+
+    const hasNonDemo =
+      (existingUser && !existingUser.isDemoAccount) ||
+      (existingRecruiter && !existingRecruiter.isDemoAccount) ||
+      (existingCandidate && !existingCandidate.isDemoAccount);
+
+    if (hasNonDemo) {
+      throw new ConflictException(
+        'This Auth0 account already has a real (non-demo) profile. Cannot provision demo on a real account.',
+      );
+    }
+
+    if (
+      existingUser?.isDemoAccount &&
+      existingRecruiter?.isDemoAccount &&
+      existingCandidate?.isDemoAccount
+    ) {
+      throw new ConflictException('Demo account is already fully provisioned.');
+    }
+
+    const domain = email.split('@')[1] ?? 'demo.questedge.com';
+    const localPart = email.split('@')[0];
+    const recruiterEmail = `${localPart}+recruiter@${domain}`;
+    const candidateEmail = `${localPart}+candidate@${domain}`;
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      let companyUser = existingUser;
+      let organization: any = null;
+
+      if (!companyUser) {
+        organization = await tx.organization.create({
+          data: { name: dto.orgName, industry: dto.industry ?? 'Technology' },
+        });
+        companyUser = await tx.user.create({
+          data: {
+            orgId: organization.id,
+            email,
+            auth0Sub,
+            name: dto.name,
+            role: Role.ADMIN,
+            userType: UserType.COMPANY_ADMIN,
+            isDemoAccount: true,
+          },
+        });
+      } else {
+        organization = await tx.organization.findUnique({
+          where: { id: companyUser.orgId },
+        });
+      }
+
+      let recruiterProfile = existingRecruiter;
+      if (!recruiterProfile) {
+        recruiterProfile = await tx.recruiterProfile.create({
+          data: {
+            auth0Sub,
+            email: recruiterEmail,
+            name: `${dto.name} (Recruiter)`,
+            headline: 'Demo Recruiter — Technical Talent Acquisition',
+            experienceYears: 5,
+            isVerified: true,
+            verifiedAt: new Date(),
+            isDemoAccount: true,
+          },
+        });
+      }
+
+      let candidateProfile = existingCandidate;
+      if (!candidateProfile) {
+        const emailHash = Buffer.from(candidateEmail).toString('base64');
+        candidateProfile = await tx.candidateProfile.create({
+          data: {
+            auth0Sub,
+            email: candidateEmail,
+            emailHash,
+            name: `${dto.name} (Candidate)`,
+            headline: 'Demo Candidate — Full-Stack Engineer',
+            experienceYears: 4,
+            currentCompany: 'Previous Corp',
+            currentDesignation: 'Software Engineer',
+            skills: ['TypeScript', 'React', 'Node.js', 'PostgreSQL'],
+            isProfileComplete: true,
+            isDemoAccount: true,
+          },
+        });
+      }
+
+      return { companyUser, organization, recruiterProfile, candidateProfile };
+    });
+
+    this.logger.log(
+      `Demo account provisioned for auth0Sub: ${auth0Sub} | email: ${email}`,
+    );
+
+    return {
+      message: 'Demo account fully provisioned with all 3 role profiles.',
+      companyUser: {
+        id: result.companyUser.id,
+        email: result.companyUser.email,
+        role: result.companyUser.role,
+        userType: result.companyUser.userType,
+        isDemoAccount: true,
+      },
+      organization: {
+        id: result.organization.id,
+        name: result.organization.name,
+      },
+      recruiterProfile: {
+        id: result.recruiterProfile.id,
+        email: result.recruiterProfile.email,
+        isDemoAccount: true,
+      },
+      candidateProfile: {
+        id: result.candidateProfile.id,
+        email: result.candidateProfile.email,
+        isDemoAccount: true,
+      },
+    };
+  }
+
+  async getDemoRoleProfile(auth0Sub: string, targetRole: DemoRoleTarget) {
+    switch (targetRole) {
+      case DemoRoleTarget.COMPANY: {
+        const user = await this.prisma.user.findUnique({
+          where: { auth0Sub },
+          include: { organization: true },
+        });
+        if (!user?.isDemoAccount) return null;
+        return {
+          userType: 'COMPANY_USER',
+          activeRole: 'COMPANY',
+          isProvisioned: true,
+          profile: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            avatarUrl: user.avatarUrl,
+            isActive: user.isActive,
+            isDemoAccount: true,
+            organization: {
+              id: user.organization.id,
+              name: user.organization.name,
+              industry: user.organization.industry,
+            },
+          },
+        };
+      }
+      case DemoRoleTarget.RECRUITER: {
+        const recruiter = await this.prisma.recruiterProfile.findUnique({
+          where: { auth0Sub },
+        });
+        if (!recruiter?.isDemoAccount) return null;
+        return {
+          userType: 'RECRUITER',
+          activeRole: 'RECRUITER',
+          isProvisioned: true,
+          profile: {
+            id: recruiter.id,
+            email: recruiter.email,
+            name: recruiter.name,
+            phone: recruiter.phone,
+            headline: recruiter.headline,
+            specializations: recruiter.specializations,
+            experienceYears: recruiter.experienceYears,
+            linkedinUrl: recruiter.linkedinUrl,
+            isVerified: recruiter.isVerified,
+            isActive: recruiter.isActive,
+            isDemoAccount: true,
+          },
+        };
+      }
+      case DemoRoleTarget.CANDIDATE: {
+        const candidate = await this.prisma.candidateProfile.findUnique({
+          where: { auth0Sub },
+        });
+        if (!candidate?.isDemoAccount) return null;
+        return {
+          userType: 'CANDIDATE',
+          activeRole: 'CANDIDATE',
+          isProvisioned: true,
+          profile: {
+            id: candidate.id,
+            email: candidate.email,
+            name: candidate.name,
+            headline: candidate.headline,
+            isActive: candidate.isActive,
+            isDemoAccount: true,
+          },
+        };
+      }
+    }
   }
 }
