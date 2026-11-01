@@ -46,7 +46,7 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   private authCache = new Map<string, { profile: any; expiry: number }>();
 
   async validate(payload: Auth0JwtPayload) {
-    const auth0Sub = payload.sub;
+    const auth0Sub = payload.sub?.trim();
     const userType =
       payload['https://api.questedge.com/user_type'] || 'COMPANY_USER';
 

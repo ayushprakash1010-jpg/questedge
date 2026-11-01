@@ -4,6 +4,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as express from 'express';
 import { AppModule } from './app.module';
 import { AuthService } from './auth/auth.service';
+import { PrismaService } from './prisma/prisma.service';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { validateEnvironment } from './config/env.validation';
@@ -93,18 +94,33 @@ async function bootstrap() {
     logger.log('Swagger documentation disabled in production (set ENABLE_SWAGGER=true to override)');
   }
 
-  // Auto-provision demo account on boot if DEMO_AUTH0_SUB is provided
-  const demoSub = process.env.DEMO_AUTH0_SUB;
-  const demoEmail = process.env.DEMO_EMAIL;
+  // Auto-provision & trim demo account on boot if DEMO_AUTH0_SUB is provided
+  const demoSub = process.env.DEMO_AUTH0_SUB?.trim();
+  const demoEmail = process.env.DEMO_EMAIL?.trim().toLowerCase();
   if (demoSub && demoEmail) {
     try {
+      const prisma = app.get(PrismaService);
+      // Ensure existing records with trailing newlines are trimmed
+      await prisma.user.updateMany({
+        where: { email: demoEmail, isDemoAccount: true },
+        data: { auth0Sub: demoSub },
+      });
+      await prisma.recruiterProfile.updateMany({
+        where: { isDemoAccount: true },
+        data: { auth0Sub: demoSub },
+      });
+      await prisma.candidateProfile.updateMany({
+        where: { isDemoAccount: true },
+        data: { auth0Sub: demoSub },
+      });
+
       const authService = app.get(AuthService);
       await authService.provisionDemo(demoSub, demoEmail, {
         orgName: process.env.DEMO_ORG_NAME ?? 'QuestEdge Demo Corp',
         industry: 'Technology',
         name: process.env.DEMO_NAME ?? 'Demo Admin',
       });
-      logger.log(`Demo account auto-provisioned for ${demoEmail}`);
+      logger.log(`Demo account auto-provisioned for ${demoEmail} (sub: ${demoSub})`);
     } catch (err: any) {
       if (err.status === 409) {
         logger.log(`Demo account already provisioned (${demoEmail})`);

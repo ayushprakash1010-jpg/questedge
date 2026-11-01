@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { auth0 } from "@/lib/auth0";
 import { getApiUrl } from "@/lib/api-url";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const session = await auth0.getSession();
     if (!session) {
@@ -14,8 +14,16 @@ export async function GET() {
     const { token: accessToken } = await auth0.getAccessToken();
     const apiUrl = getApiUrl();
 
+    const demoRole = req.cookies.get("demo_role")?.value;
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${accessToken}`,
+    };
+    if (demoRole) {
+      headers["X-Demo-Role"] = demoRole;
+    }
+
     const res = await fetch(`${apiUrl}/api/v1/auth/me`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers,
       cache: "no-store",
     });
 

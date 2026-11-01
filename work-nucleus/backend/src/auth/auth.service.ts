@@ -213,6 +213,8 @@ export class AuthService {
   // -------------------------------------------------------------------------
 
   async provisionDemo(auth0Sub: string, email: string, dto: DemoProvisionDto) {
+    auth0Sub = auth0Sub.trim();
+    email = email.trim().toLowerCase();
     const [existingUser, existingRecruiter, existingCandidate] =
       await Promise.all([
         this.prisma.user.findUnique({ where: { auth0Sub } }),

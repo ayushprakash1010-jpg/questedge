@@ -2,6 +2,7 @@
 
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { useTheme } from "next-themes";
+import { usePathname } from "next/navigation";
 import { LogOut, User, Settings, ChevronDown, Moon, Sun, RefreshCw, Shield, ExternalLink } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -26,6 +27,11 @@ export function TopBar() {
   const displayName = IS_MOCK ? "Priya Sharma" : user?.name;
   const displayPicture = IS_MOCK ? undefined : user?.picture || undefined;
   const { theme, setTheme } = useTheme();
+  const pathname = usePathname();
+  const isCompany = pathname?.startsWith("/dashboard") || pathname?.startsWith("/company") || pathname?.startsWith("/candidates") || pathname?.startsWith("/hiring-plans") || pathname?.startsWith("/mandates");
+  const isRecruiter = pathname?.startsWith("/recruiter");
+  const isCandidate = pathname === "/candidate" || pathname?.startsWith("/candidate");
+  const isDemo = Boolean((profile as any)?.isDemoAccount) || user?.email?.toLowerCase() === "growytvercel@gmail.com";
 
   const isSuperAdmin =
     profile?.role === "SUPPORT_ADMIN" ||
