@@ -136,6 +136,7 @@ export class AuthService {
       role: user.role,
       avatarUrl: user.avatarUrl,
       isActive: user.isActive,
+isDemoAccount: user.isDemoAccount,
       organization: {
         id: user.organization.id,
         name: user.organization.name,
@@ -164,6 +165,7 @@ export class AuthService {
       linkedinUrl: recruiter.linkedinUrl,
       isVerified: recruiter.isVerified,
       isActive: recruiter.isActive,
+isDemoAccount: recruiter.isDemoAccount,
     };
   }
 
@@ -181,6 +183,7 @@ export class AuthService {
       email: candidate.email,
       name: candidate.name,
       isActive: candidate.isActive,
+isDemoAccount: candidate.isDemoAccount,
     };
   }
 
@@ -209,7 +212,7 @@ export class AuthService {
   }
 
   // -------------------------------------------------------------------------
-  // DEMO ACCOUNT � provision all 3 profiles for a single Auth0 sub
+  // DEMO ACCOUNT Ã¢â‚¬â€ provision all 3 profiles for a single Auth0 sub
   // -------------------------------------------------------------------------
 
   async provisionDemo(auth0Sub: string, email: string, dto: DemoProvisionDto) {
@@ -278,7 +281,7 @@ export class AuthService {
             auth0Sub,
             email: recruiterEmail,
             name: `${dto.name} (Recruiter)`,
-            headline: 'Demo Recruiter � Technical Talent Acquisition',
+            headline: 'Demo Recruiter Ã¢â‚¬â€ Technical Talent Acquisition',
             experienceYears: 5,
             isVerified: true,
             verifiedAt: new Date(),
@@ -296,7 +299,7 @@ export class AuthService {
             email: candidateEmail,
             emailHash,
             name: `${dto.name} (Candidate)`,
-            headline: 'Demo Candidate � Full-Stack Engineer',
+            headline: 'Demo Candidate Ã¢â‚¬â€ Full-Stack Engineer',
             experienceYears: 4,
             currentCompany: 'Previous Corp',
             currentDesignation: 'Software Engineer',
@@ -359,7 +362,7 @@ export class AuthService {
             role: user.role,
             avatarUrl: user.avatarUrl,
             isActive: user.isActive,
-            isDemoAccount: true,
+isDemoAccount: true,
             organization: {
               id: user.organization.id,
               name: user.organization.name,
@@ -388,7 +391,7 @@ export class AuthService {
             linkedinUrl: recruiter.linkedinUrl,
             isVerified: recruiter.isVerified,
             isActive: recruiter.isActive,
-            isDemoAccount: true,
+isDemoAccount: true,
           },
         };
       }
@@ -407,7 +410,7 @@ export class AuthService {
             name: candidate.name,
             headline: candidate.headline,
             isActive: candidate.isActive,
-            isDemoAccount: true,
+isDemoAccount: true,
           },
         };
       }

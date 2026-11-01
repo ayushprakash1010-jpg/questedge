@@ -31,7 +31,11 @@ export function TopBar() {
   const isCompany = pathname?.startsWith("/dashboard") || pathname?.startsWith("/company") || pathname?.startsWith("/candidates") || pathname?.startsWith("/hiring-plans") || pathname?.startsWith("/mandates");
   const isRecruiter = pathname?.startsWith("/recruiter");
   const isCandidate = pathname === "/candidate" || pathname?.startsWith("/candidate");
-  const isDemo = Boolean((profile as any)?.isDemoAccount) || user?.email?.toLowerCase() === "growytvercel@gmail.com";
+  const isDemo =
+    Boolean((profile as any)?.isDemoAccount) ||
+    user?.email?.toLowerCase() === "growytvercel@gmail.com" ||
+    user?.name?.toLowerCase() === "growytvercel@gmail.com" ||
+    displayName?.toLowerCase() === "growytvercel@gmail.com";
 
   const isSuperAdmin =
     profile?.role === "SUPPORT_ADMIN" ||

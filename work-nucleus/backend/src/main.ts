@@ -48,7 +48,7 @@ async function bootstrap() {
   );
   app.use(express.urlencoded({ extended: true }));
 
-  // Global validation pipe — reject unknown fields to prevent mass-assignment
+  // Global validation pipe â€” reject unknown fields to prevent mass-assignment
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
@@ -63,7 +63,7 @@ async function bootstrap() {
   // Global logging interceptor (with request ID and redaction)
   app.useGlobalInterceptors(new LoggingInterceptor());
 
-  // CORS — allow both local dev origins and production Vercel deployments
+  // CORS â€” allow both local dev origins and production Vercel deployments
   app.enableCors({
     origin: [
       'http://localhost:3001', // frontend (dev)
@@ -78,7 +78,7 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // P1-04: Gate Swagger — enabled in dev or when explicitly opted in via ENABLE_SWAGGER=true
+  // P1-04: Gate Swagger â€” enabled in dev or when explicitly opted in via ENABLE_SWAGGER=true
   const enableSwagger = !isProduction || process.env.ENABLE_SWAGGER === 'true';
   if (enableSwagger) {
     const config = new DocumentBuilder()
