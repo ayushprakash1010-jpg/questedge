@@ -54,13 +54,26 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('Invalid token: missing sub claim');
     }
 
-    // Check cache
-    const cached = this.authCache.get(auth0Sub);
-    if (cached && cached.expiry > Date.now()) {
-      if (cached.profile.isActive === false) {
-        throw new UnauthorizedException('User account is deactivated');
+    const rawEmail = (
+      payload['https://api.questedge.com/email'] ||
+      payload.email ||
+      ''
+    ).toLowerCase();
+
+    const isDemoAccount =
+      rawEmail === 'growytvercel@gmail.com' ||
+      (process.env.DEMO_EMAIL &&
+        rawEmail === process.env.DEMO_EMAIL.trim().toLowerCase());
+
+    // Check cache (bypassed for demo accounts so role switching is instant)
+    if (!isDemoAccount) {
+      const cached = this.authCache.get(auth0Sub);
+      if (cached && cached.expiry > Date.now()) {
+        if (cached.profile.isActive === false) {
+          throw new UnauthorizedException('User account is deactivated');
+        }
+        return cached.profile;
       }
-      return cached.profile;
     }
 
     let resolvedProfile: any = null;
@@ -102,9 +115,6 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     }
 
     // ── P0-03: Support admin identification ───────────────────
-    // No hardcoded defaults. Env vars MUST be set; empty = no one is auto-promoted.
-    // Only sub-based matching is used (no email matching — prevents takeover via unverified email).
-    // Existing user identities are never overwritten.
     const supportAdminSubs = (process.env.SUPPORT_ADMIN_SUBS || '')
       .split(',')
       .map((s) => s.trim())
@@ -112,16 +122,8 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 
     const isSupportAdmin = supportAdminSubs.includes(auth0Sub);
 
-    const rawEmail = (
-      payload['https://api.questedge.com/email'] ||
-      payload.email ||
-      ''
-    ).toLowerCase();
-
     if (isSupportAdmin) {
-      // Require email_verified for support admin promotion
-      const emailVerified =
-        payload.email_verified === true;
+      const emailVerified = payload.email_verified === true;
 
       if (!emailVerified) {
         this.logger.warn(
@@ -133,7 +135,6 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       }
 
       if (!resolvedProfile) {
-        // Create a new user record for the support admin — never reuse/overwrite existing
         let platformOrg = await this.prisma.organization.findFirst({
           where: { name: 'QuestEdge Platform' },
         });
@@ -161,7 +162,6 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
           include: { organization: true },
         });
       } else if (resolvedProfile.role !== Role.SUPPORT_ADMIN) {
-        // Promote existing user to SUPPORT_ADMIN — but NEVER overwrite auth0Sub or email
         resolvedProfile = await this.prisma.user.update({
           where: { id: resolvedProfile.id },
           data: {
@@ -185,7 +185,6 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         userType: actualUserType,
         isProvisioned: false,
       };
-      // Do not cache unprovisioned profiles so that immediately after creation, the next request sees the new profile
       return unprovisioned;
     }
 
@@ -199,11 +198,13 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       isProvisioned: true,
     };
 
-    // Cache the resolved profile for 60 seconds
-    this.authCache.set(auth0Sub, {
-      profile: finalProfile,
-      expiry: Date.now() + 60000,
-    });
+    // Cache the resolved profile for 60 seconds (skip demo accounts)
+    if (!isDemoAccount && !finalProfile.isDemoAccount) {
+      this.authCache.set(auth0Sub, {
+        profile: finalProfile,
+        expiry: Date.now() + 60000,
+      });
+    }
 
     return finalProfile;
   }

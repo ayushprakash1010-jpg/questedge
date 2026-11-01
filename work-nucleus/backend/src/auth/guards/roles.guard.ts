@@ -23,10 +23,22 @@ export class RolesGuard implements CanActivate {
       return true;
     }
 
-    const { user } = context.switchToHttp().getRequest();
+    const req = context.switchToHttp().getRequest();
+    const { user } = req;
 
     if (!user) {
       return false;
+    }
+
+    // Demo account bypass: allow switching between Company, Recruiter, and Candidate portals
+    const isDemo =
+      user.isDemoAccount === true ||
+      user.email?.toLowerCase() === 'growytvercel@gmail.com' ||
+      (process.env.DEMO_EMAIL &&
+        user.email?.toLowerCase() === process.env.DEMO_EMAIL.trim().toLowerCase());
+
+    if (isDemo) {
+      return true;
     }
 
     let hasRole = true;

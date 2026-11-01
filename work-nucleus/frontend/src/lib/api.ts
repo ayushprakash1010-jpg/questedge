@@ -37,7 +37,9 @@ export async function apiClient<T = unknown>(
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: res.statusText || `Request failed with HTTP ${res.status}` }));
     const msg = Array.isArray(error.message) ? error.message.join(", ") : error.message;
-    throw new Error(msg || `API error: ${res.status}`);
+    const err = new Error(msg || `API error: ${res.status}`);
+    (err as any).status = res.status;
+    throw err;
   }
 
   return res.json();
