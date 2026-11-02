@@ -1,5 +1,7 @@
 "use client";
 
+import { apiClient } from "@/lib/api";
+
 import { useEffect, useState } from "react";
 import { Trophy, Star, TrendingUp, Medal, ShieldCheck } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,14 +29,8 @@ export default function LeaderboardPage() {
         const { accessToken } = await tokenRes.json();
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
-        const res = await fetch(`${API_URL}/api/v1/recruiter/leaderboard`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          setLeaders(data);
-        }
+        const data = await apiClient<LeaderboardEntry[]>("/api/v1/recruiter/leaderboard", { token: accessToken });
+        setLeaders(data);
       } catch (err) {
         console.error("Failed to load leaderboard", err);
       } finally {

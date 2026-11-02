@@ -556,3 +556,22 @@ export async function syncReferralMatch(
   });
 }
 
+
+export interface CreateReferralPayload {
+  mandateId: string;
+  candidateName: string;
+  candidateEmail: string;
+  candidatePhone?: string;
+  recruiterNote?: string;
+}
+
+export async function submitReferral(
+  token: string,
+  payload: CreateReferralPayload,
+): Promise<{ success: boolean; referralId: string; message: string }> {
+  return apiClient('/api/v1/referrals', {
+    method: 'POST',
+    token,
+    body: JSON.stringify(payload),
+  });
+}

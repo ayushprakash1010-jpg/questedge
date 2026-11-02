@@ -35,7 +35,10 @@ export class ReferralsController {
   })
   @ApiResponse({ status: 409, description: 'Candidate already locked.' })
   create(@Req() req: any, @Body() createReferralDto: CreateReferralDto) {
-    return this.referralsService.createReferral(req.user.id, createReferralDto);
+    return this.referralsService.createReferral(
+      req.user.id || req.user.auth0Sub,
+      createReferralDto,
+    );
   }
 
   @Get('my')
@@ -50,7 +53,7 @@ export class ReferralsController {
     @Query('offset') offset?: string,
   ) {
     return this.referralsService.getMyReferrals(
-      req.user.id,
+      req.user.id || req.user.auth0Sub,
       limit ? parseInt(limit, 10) : 50,
       offset ? parseInt(offset, 10) : 0,
     );

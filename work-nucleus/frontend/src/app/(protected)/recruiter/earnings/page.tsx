@@ -1,5 +1,7 @@
 "use client";
 
+import { apiClient } from "@/lib/api";
+
 import { useEffect, useState } from "react";
 import {
   DollarSign,
@@ -38,13 +40,7 @@ export default function EarningsDashboard() {
       const { accessToken } = await tokenRes.json();
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
-      const res = await fetch(`${API_URL}/api/v1/rewards/recruiter`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!res.ok) {
-        throw new Error("Failed to load recruiter earnings data from server.");
-      }
-      const json = await res.json();
+      const json = await apiClient<any>("/api/v1/rewards/recruiter", { token: accessToken });
       setData(json);
     } catch (err: any) {
       console.error(err);

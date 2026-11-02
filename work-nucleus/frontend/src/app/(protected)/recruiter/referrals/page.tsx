@@ -18,6 +18,7 @@ import { RewardBadge } from "@/components/marketplace/MandateCard";
 import { TableSkeleton } from "@/components/ui/skeleton-states";
 import { MarketplaceEmptyState } from "@/components/ui/marketplace-empty-state";
 import { ErrorBanner } from "@/components/ui/error-state";
+import { apiClient } from "@/lib/api";
 
 export default function MyReferralsPage() {
   const [referrals, setReferrals] = useState<any[]>([]);
@@ -36,16 +37,7 @@ export default function MyReferralsPage() {
       setError(null);
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"}/api/v1/referrals/my`,
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        },
-      );
-      if (!response.ok) {
-        throw new Error("Failed to load referrals list from server.");
-      }
-      const data = await response.json();
+      const data = await apiClient<any[]>("/api/v1/referrals/my", { token: accessToken });
       setReferrals(Array.isArray(data) ? data : []);
     } catch (err: any) {
       console.error(err);

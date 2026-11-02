@@ -8,6 +8,7 @@ import {
   leaveMandate,
   getRecruiterTalentPoolMatches,
   runPreflightMatchCheck,
+  submitReferral,
   Mandate,
   CandidateMatchItem,
   MatchEvaluationResult,
@@ -138,29 +139,10 @@ export default function RecruiterMandateDetail() {
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
 
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-      const response = await fetch(`${API_URL}/api/v1/referrals`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          mandateId: id,
-          ...formData,
-        }),
+      await submitReferral(accessToken, {
+        mandateId: id,
+        ...formData,
       });
-
-      if (!response.ok) {
-        let errorData;
-        try {
-          errorData = await response.json();
-        } catch {
-          throw new Error("Failed to submit referral. Server returned an invalid response.");
-        }
-        const message = errorData?.error?.message || errorData?.message || "Failed to submit referral";
-        throw new Error(message);
-      }
 
       setSubmitSuccess(true);
       toast.success("Consent request sent successfully!");

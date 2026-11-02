@@ -14,9 +14,13 @@ describe('ReferralsService', () => {
         {
           provide: PrismaService,
           useValue: {
-            recruiterProfile: { findUnique: jest.fn() },
+            recruiterProfile: {
+              findUnique: jest.fn(),
+              findFirst: jest.fn(),
+              update: jest.fn(),
+            },
             mandate: { findUnique: jest.fn() },
-            candidateProfile: { findFirst: jest.fn(), create: jest.fn() },
+            candidateProfile: { findFirst: jest.fn(), findUnique: jest.fn(), create: jest.fn() },
             referral: { create: jest.fn(), findMany: jest.fn() },
           },
         },
