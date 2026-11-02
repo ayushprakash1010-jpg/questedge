@@ -301,8 +301,132 @@ export class CandidatePortalService {
       throw new NotFoundException(
         'Candidate profile not found. Please create one first.',
       );
+
+    await this.consolidateCandidateProfiles(profile.id).catch((err) =>
+      this.logger.warn(`Failed to consolidate candidate profiles: ${err.message}`),
+    );
+
     return profile;
   }
+
+  async consolidateCandidateProfiles(canonicalId: string): Promise<string[]> {
+    const canonical = await this.prisma.candidateProfile.findUnique({
+      where: { id: canonicalId },
+    });
+    if (!canonical) return [canonicalId];
+
+    const isDemo =
+      canonical.isDemoAccount ||
+      canonical.email?.toLowerCase().includes('growytvercel') ||
+      canonical.auth0Sub === process.env.DEMO_AUTH0_SUB?.trim();
+
+    const duplicates = await this.prisma.candidateProfile.findMany({
+      where: {
+        id: { not: canonical.id },
+        OR: [
+          ...(canonical.auth0Sub ? [{ auth0Sub: canonical.auth0Sub }] : []),
+          { emailHash: canonical.emailHash },
+          { email: { equals: canonical.email, mode: 'insensitive' } },
+          ...(isDemo
+            ? [
+                { email: 'growytvercel@gmail.com' },
+                { email: 'growytvercel+candidate@gmail.com' },
+                { isDemoAccount: true },
+              ]
+            : []),
+        ],
+      },
+    });
+
+    if (duplicates.length === 0) return [canonical.id];
+
+    for (const dup of duplicates) {
+      await this.prisma.referral
+        .updateMany({
+          where: { candidateProfileId: dup.id },
+          data: { candidateProfileId: canonical.id },
+        })
+        .catch((e) => this.logger.warn(`Referral reassign error: ${e.message}`));
+
+      await this.prisma.candidateConsent
+        .updateMany({
+          where: { candidateProfileId: dup.id },
+          data: { candidateProfileId: canonical.id },
+        })
+        .catch((e) => this.logger.warn(`Consent reassign error: ${e.message}`));
+
+      await this.prisma.candidateApplication
+        .updateMany({
+          where: { candidateProfileId: dup.id },
+          data: { candidateProfileId: canonical.id },
+        })
+        .catch((e) => this.logger.warn(`Application reassign error: ${e.message}`));
+
+      const dupJobs = await this.prisma.savedJob
+        .findMany({ where: { candidateProfileId: dup.id } })
+        .catch(() => []);
+      for (const job of dupJobs) {
+        const exists = await this.prisma.savedJob.findUnique({
+          where: {
+            candidateProfileId_mandateId: {
+              candidateProfileId: canonical.id,
+              mandateId: job.mandateId,
+            },
+          },
+        });
+        if (exists) {
+          await this.prisma.savedJob.delete({ where: { id: job.id } }).catch(() => {});
+        } else {
+          await this.prisma.savedJob
+            .update({
+              where: { id: job.id },
+              data: { candidateProfileId: canonical.id },
+            })
+            .catch(() => {});
+        }
+      }
+
+      const dupClaims = await this.prisma.claimScope
+        .findMany({ where: { candidateProfileId: dup.id } })
+        .catch(() => []);
+      for (const claim of dupClaims) {
+        const exists = await this.prisma.claimScope.findUnique({
+          where: {
+            candidateProfileId_mandateId: {
+              candidateProfileId: canonical.id,
+              mandateId: claim.mandateId,
+            },
+          },
+        });
+        if (exists) {
+          await this.prisma.claimScope.delete({ where: { id: claim.id } }).catch(() => {});
+        } else {
+          await this.prisma.claimScope
+            .update({
+              where: { id: claim.id },
+              data: { candidateProfileId: canonical.id },
+            })
+            .catch(() => {});
+        }
+      }
+
+      if (dup.resumeUrl && !canonical.resumeUrl) {
+        await this.prisma.candidateProfile
+          .update({
+            where: { id: canonical.id },
+            data: { resumeUrl: dup.resumeUrl },
+          })
+          .catch(() => {});
+      }
+
+      await this.prisma.candidateProfile
+        .delete({ where: { id: dup.id } })
+        .catch((e) => this.logger.warn(`CandidateProfile delete dup error: ${e.message}`));
+    }
+
+    return [canonical.id];
+  }
+
 
   async parseResumeText(text: string): Promise<any> {
     return this.aiScreening.parseResumeToProfile(text);
@@ -501,8 +625,9 @@ export class CandidatePortalService {
   }
 
   async getSavedJobs(candidateId: string) {
+    const candidateIds = await this.consolidateCandidateProfiles(candidateId).catch(() => [candidateId]);
     return this.prisma.savedJob.findMany({
-      where: { candidateProfileId: candidateId },
+      where: { candidateProfileId: { in: candidateIds } },
       orderBy: { savedAt: 'desc' },
       include: {
         mandate: {
@@ -633,9 +758,10 @@ export class CandidatePortalService {
   }
 
   async getMyApplications(candidateId: string) {
+    const candidateIds = await this.consolidateCandidateProfiles(candidateId).catch(() => [candidateId]);
     const [applications, referrals] = await Promise.all([
       this.prisma.candidateApplication.findMany({
-        where: { candidateProfileId: candidateId },
+        where: { candidateProfileId: { in: candidateIds } },
         include: {
           mandate: {
             select: {
@@ -650,7 +776,7 @@ export class CandidatePortalService {
         orderBy: { appliedAt: 'desc' },
       }),
       this.prisma.referral.findMany({
-        where: { candidateProfileId: candidateId },
+        where: { candidateProfileId: { in: candidateIds } },
         include: {
           mandate: {
             select: {
@@ -674,9 +800,10 @@ export class CandidatePortalService {
   // ── Consent ──────────────────────────────────────────────────────
 
   async getPendingConsents(candidateId: string) {
+    const candidateIds = await this.consolidateCandidateProfiles(candidateId).catch(() => [candidateId]);
     return this.prisma.candidateConsent.findMany({
       where: {
-        candidateProfileId: candidateId,
+        candidateProfileId: { in: candidateIds },
         status: 'PENDING',
         expiresAt: { gt: new Date() },
       },

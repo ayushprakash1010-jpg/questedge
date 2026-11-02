@@ -311,8 +311,29 @@ export class NotificationsService {
       const candidateProfileId = user.id;
       const items: NotificationItem[] = [];
 
+      const isDemo =
+        user.isDemoAccount ||
+        user.email?.toLowerCase().includes('growytvercel');
+
+      let candidateIds = [candidateProfileId];
+      if (isDemo) {
+        const otherProfiles = await this.prisma.candidateProfile.findMany({
+          where: {
+            OR: [
+              { email: 'growytvercel@gmail.com' },
+              { email: 'growytvercel+candidate@gmail.com' },
+              { isDemoAccount: true },
+            ],
+          },
+          select: { id: true },
+        });
+        candidateIds = Array.from(
+          new Set([...candidateIds, ...otherProfiles.map((p) => p.id)]),
+        );
+      }
+
       const consents = await this.prisma.candidateConsent.findMany({
-        where: { candidateProfileId },
+        where: { candidateProfileId: { in: candidateIds } },
         include: {
           referral: {
             include: {

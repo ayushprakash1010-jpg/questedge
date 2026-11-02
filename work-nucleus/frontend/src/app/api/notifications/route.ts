@@ -4,11 +4,22 @@ import { getApiUrl } from "@/lib/api-url";
 
 const API_URL = getApiUrl();
 
+function getDemoRole(req: NextRequest): string | undefined {
+  const referer = req.headers.get("referer") || "";
+  let inferred: string | undefined;
+  if (referer.includes("/candidate")) inferred = "CANDIDATE";
+  else if (referer.includes("/recruiter")) inferred = "RECRUITER";
+  else if (referer.includes("/dashboard") || referer.includes("/mandates") || referer.includes("/admin")) inferred = "COMPANY";
+
+  return req.headers.get("x-demo-role") || req.cookies.get("demo_role")?.value || inferred;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await auth0.getSession();
     if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     const { token: accessToken } = await auth0.getAccessToken();
+    const demoRole = getDemoRole(req);
 
     const type = req.nextUrl.searchParams.get("type");
     let endpoint = `${API_URL}/api/v1/notifications`;
@@ -30,7 +41,10 @@ export async function GET(req: NextRequest) {
     }
 
     const res = await fetch(endpoint, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        ...(demoRole ? { "x-demo-role": demoRole } : {}),
+      },
       cache: "no-store",
     });
     const data = await res.json();
@@ -45,6 +59,7 @@ export async function POST(req: NextRequest) {
     const session = await auth0.getSession();
     if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     const { token: accessToken } = await auth0.getAccessToken();
+    const demoRole = getDemoRole(req);
 
     const action = req.nextUrl.searchParams.get("action");
     let endpoint = `${API_URL}/api/v1/notifications`;
@@ -59,7 +74,11 @@ export async function POST(req: NextRequest) {
 
     const res = await fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+        ...(demoRole ? { "x-demo-role": demoRole } : {}),
+      },
       ...(body ? { body } : {}),
     });
     const data = await res.json();

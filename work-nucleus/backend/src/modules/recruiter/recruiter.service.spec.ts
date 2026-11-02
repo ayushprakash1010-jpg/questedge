@@ -12,6 +12,7 @@ describe('RecruiterService', () => {
     prisma = {
       recruiterProfile: {
         findUnique: jest.fn(),
+        findFirst: jest.fn((args) => prisma.recruiterProfile.findUnique(args)),
         create: jest.fn(),
         update: jest.fn(),
         findMany: jest.fn(),

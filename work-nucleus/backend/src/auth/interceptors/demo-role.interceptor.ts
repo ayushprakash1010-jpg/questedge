@@ -219,6 +219,54 @@ export class DemoRoleInterceptor implements NestInterceptor {
         }
       }
       if (overrideProfile) {
+        // Merge any unlinked demo candidate profiles (e.g. from recruiter referral submissions)
+        const duplicateCandidates = await this.prisma.candidateProfile.findMany({
+          where: {
+            id: { not: overrideProfile.id },
+            OR: [
+              { email: 'growytvercel@gmail.com' },
+              { email: 'growytvercel+candidate@gmail.com' },
+              { isDemoAccount: true },
+            ],
+          },
+        });
+        for (const dup of duplicateCandidates) {
+          await this.prisma.referral.updateMany({
+            where: { candidateProfileId: dup.id },
+            data: { candidateProfileId: overrideProfile.id },
+          }).catch(() => {});
+          await this.prisma.candidateConsent.updateMany({
+            where: { candidateProfileId: dup.id },
+            data: { candidateProfileId: overrideProfile.id },
+          }).catch(() => {});
+          await this.prisma.candidateApplication.updateMany({
+            where: { candidateProfileId: dup.id },
+            data: { candidateProfileId: overrideProfile.id },
+          }).catch(() => {});
+          const dupClaims = await this.prisma.claimScope.findMany({
+            where: { candidateProfileId: dup.id },
+          }).catch(() => []);
+          for (const claim of dupClaims) {
+            const exists = await this.prisma.claimScope.findUnique({
+              where: {
+                candidateProfileId_mandateId: {
+                  candidateProfileId: overrideProfile.id,
+                  mandateId: claim.mandateId,
+                },
+              },
+            });
+            if (exists) {
+              await this.prisma.claimScope.delete({ where: { id: claim.id } }).catch(() => {});
+            } else {
+              await this.prisma.claimScope.update({
+                where: { id: claim.id },
+                data: { candidateProfileId: overrideProfile.id },
+              }).catch(() => {});
+            }
+          }
+          await this.prisma.candidateProfile.delete({ where: { id: dup.id } }).catch(() => {});
+        }
+
         req.user = {
           ...overrideProfile,
           userType: 'CANDIDATE',

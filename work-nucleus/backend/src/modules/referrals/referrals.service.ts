@@ -78,23 +78,51 @@ export class ReferralsService {
     }
 
     // 3. Resolve candidate profile (Unified Identity by SHA-256)
+    const cleanEmail = dto.candidateEmail.toLowerCase().trim();
     const emailHash = createHash('sha256')
-      .update(dto.candidateEmail.toLowerCase().trim())
+      .update(cleanEmail)
       .digest('hex');
 
-    let candidate = await this.prisma.candidateProfile.findUnique({
-      where: { emailHash },
+    const isDemoEmail =
+      cleanEmail === 'growytvercel@gmail.com' ||
+      cleanEmail === 'growytvercel+candidate@gmail.com' ||
+      (process.env.DEMO_EMAIL &&
+        cleanEmail === process.env.DEMO_EMAIL.trim().toLowerCase());
+
+    let candidate = await this.prisma.candidateProfile.findFirst({
+      where: {
+        OR: [
+          { emailHash },
+          { email: { equals: cleanEmail, mode: 'insensitive' } },
+          ...(isDemoEmail
+            ? [
+                { email: 'growytvercel+candidate@gmail.com' },
+                { email: 'growytvercel@gmail.com' },
+                { isDemoAccount: true },
+              ]
+            : []),
+        ],
+      },
+      orderBy: { auth0Sub: 'desc' },
     });
 
     if (!candidate) {
       candidate = await this.prisma.candidateProfile.create({
         data: {
-          email: dto.candidateEmail.toLowerCase().trim(),
+          email: cleanEmail,
           emailHash,
           name: dto.candidateName,
           phone: dto.candidatePhone,
+          ...(isDemoEmail ? { isDemoAccount: true } : {}),
         },
       });
+    } else {
+      if (!candidate.name && dto.candidateName) {
+        candidate = await this.prisma.candidateProfile.update({
+          where: { id: candidate.id },
+          data: { name: dto.candidateName },
+        });
+      }
     }
 
     // 4. Check ClaimScope (Ownership Lock)
@@ -178,8 +206,8 @@ export class ReferralsService {
     // 7. Dispatch Email (Fire and forget, don't await so the frontend doesn't hang)
     this.emailService
       .sendConsentRequest({
-        toEmail: candidate.email,
-        candidateName: candidate.name,
+        toEmail: dto.candidateEmail || candidate.email,
+        candidateName: dto.candidateName || candidate.name,
         recruiterName: recruiter.name,
         companyName: mandate.organization.name,
         mandateTitle: mandate.title,
@@ -187,8 +215,8 @@ export class ReferralsService {
       })
       .catch((e) => console.error('Email sending failed:', e));
 
-    // 8. Create Notification for Candidate (if registered)
-    if (candidate.auth0Sub) {
+    // 8. Create Notification for Candidate (if registered or demo)
+    if (candidate.auth0Sub || candidate.isDemoAccount || isDemoEmail) {
       this.notificationsService.create({
         userId: candidate.id,
         orgId: mandate.orgId,
@@ -198,7 +226,7 @@ export class ReferralsService {
         entityType: 'REFERRAL',
         entityId: result.id,
         actionUrl: `/candidate/referrals`,
-        toEmail: candidate.email,
+        toEmail: dto.candidateEmail || candidate.email,
       });
     }
 

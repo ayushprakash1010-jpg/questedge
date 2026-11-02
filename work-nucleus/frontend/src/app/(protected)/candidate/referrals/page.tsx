@@ -111,11 +111,15 @@ export default function CandidateReferralsPage() {
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+      const demoRole = typeof document !== "undefined"
+        ? (document.cookie.match(/(?:^|;\s*)demo_role=([^;]+)/)?.[1] || "CANDIDATE")
+        : "CANDIDATE";
       await fetch(`${apiUrl}/api/v1/candidate/consents/${consentToken}/respond`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
+          "X-Demo-Role": demoRole,
         },
         body: JSON.stringify({ accepted }),
       });

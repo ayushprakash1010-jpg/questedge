@@ -114,6 +114,60 @@ async function bootstrap() {
         data: { auth0Sub: demoSub },
       });
 
+      // Find the primary demo candidate profile with auth0Sub
+      const primaryCandidate = await prisma.candidateProfile.findUnique({
+        where: { auth0Sub: demoSub },
+      });
+      if (primaryCandidate) {
+        const dupCandidates = await prisma.candidateProfile.findMany({
+          where: {
+            id: { not: primaryCandidate.id },
+            OR: [
+              { email: 'growytvercel@gmail.com' },
+              { email: 'growytvercel+candidate@gmail.com' },
+              { isDemoAccount: true },
+            ],
+          },
+        });
+        for (const dup of dupCandidates) {
+          await prisma.referral.updateMany({
+            where: { candidateProfileId: dup.id },
+            data: { candidateProfileId: primaryCandidate.id },
+          }).catch(() => {});
+          await prisma.candidateConsent.updateMany({
+            where: { candidateProfileId: dup.id },
+            data: { candidateProfileId: primaryCandidate.id },
+          }).catch(() => {});
+          await prisma.candidateApplication.updateMany({
+            where: { candidateProfileId: dup.id },
+            data: { candidateProfileId: primaryCandidate.id },
+          }).catch(() => {});
+          const dupClaims = await prisma.claimScope.findMany({
+            where: { candidateProfileId: dup.id },
+          }).catch(() => []);
+          for (const claim of dupClaims) {
+            const exists = await prisma.claimScope.findUnique({
+              where: {
+                candidateProfileId_mandateId: {
+                  candidateProfileId: primaryCandidate.id,
+                  mandateId: claim.mandateId,
+                },
+              },
+            });
+            if (exists) {
+              await prisma.claimScope.delete({ where: { id: claim.id } }).catch(() => {});
+            } else {
+              await prisma.claimScope.update({
+                where: { id: claim.id },
+                data: { candidateProfileId: primaryCandidate.id },
+              }).catch(() => {});
+            }
+          }
+          await prisma.candidateProfile.delete({ where: { id: dup.id } }).catch(() => {});
+        }
+        logger.log(`Demo candidate data consolidated onto ${primaryCandidate.id}`);
+      }
+
       const authService = app.get(AuthService);
       await authService.provisionDemo(demoSub, demoEmail, {
         orgName: process.env.DEMO_ORG_NAME ?? 'QuestEdge Demo Corp',

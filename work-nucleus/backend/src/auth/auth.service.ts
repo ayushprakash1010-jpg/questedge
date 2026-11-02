@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ProvisionDto } from './dto/provision.dto';
 import { SyncDto } from './dto/sync.dto';
 import { Role, UserType } from '@prisma/client';
+import { createHash } from 'crypto';
 import { DemoProvisionDto } from './dto/demo-provision.dto';
 import { DemoRoleTarget } from './dto/demo-switch-role.dto';
 
@@ -328,7 +329,9 @@ isDemoAccount: candidate.isDemoAccount,
 
       let candidateProfile = existingCandidate;
       if (!candidateProfile) {
-        const emailHash = Buffer.from(candidateEmail).toString('base64');
+        const emailHash = createHash('sha256')
+          .update(candidateEmail.toLowerCase().trim())
+          .digest('hex');
         candidateProfile = await tx.candidateProfile.create({
           data: {
             auth0Sub,
