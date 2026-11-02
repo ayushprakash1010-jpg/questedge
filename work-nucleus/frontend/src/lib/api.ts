@@ -7,7 +7,8 @@ function getDemoRole(): string | null {
   }
   if (typeof window !== "undefined") {
     if (window.location.pathname.startsWith("/recruiter")) return "RECRUITER";
-    if (window.location.pathname.startsWith("/candidate")) return "CANDIDATE";
+    if (window.location.pathname === "/candidate" || window.location.pathname.startsWith("/candidate/")) return "CANDIDATE";
+    if (window.location.pathname.startsWith("/candidates")) return "COMPANY";
     if (window.location.pathname.startsWith("/dashboard") || window.location.pathname.startsWith("/mandates")) return "COMPANY";
   }
   return null;

@@ -65,7 +65,9 @@ export class DemoRoleInterceptor implements NestInterceptor {
       const referer = (req.headers['referer'] || req.headers['referrer'] || '') as string;
       if (referer.includes('/recruiter')) {
         demoRole = 'RECRUITER';
-      } else if (referer.includes('/candidate')) {
+      } else if (referer.includes('/candidates')) {
+        demoRole = 'COMPANY';
+      } else if (referer.includes('/candidate/') || referer.endsWith('/candidate')) {
         demoRole = 'CANDIDATE';
       } else if (
         referer.includes('/dashboard') ||
@@ -86,6 +88,8 @@ export class DemoRoleInterceptor implements NestInterceptor {
         path.includes('/rewards/recruiter')
       ) {
         demoRole = 'RECRUITER';
+      } else if (path.startsWith('/api/v1/candidates') || path.startsWith('/api/v1/mandates')) {
+        demoRole = 'COMPANY';
       } else if (path.includes('/candidate')) {
         demoRole = 'CANDIDATE';
       }

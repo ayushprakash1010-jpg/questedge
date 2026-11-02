@@ -42,7 +42,7 @@ export function TopBar() {
   const { theme, setTheme } = useTheme();
   const pathname = usePathname();
   const isRecruiter = pathname?.startsWith("/recruiter");
-  const isCandidate = pathname === "/candidate" || pathname?.startsWith("/candidate");
+  const isCandidate = pathname === "/candidate" || pathname?.startsWith("/candidate/");
   const isCompany = !isRecruiter && !isCandidate;
 
   const isDemo =

@@ -12,7 +12,10 @@ export async function GET(req: NextRequest) {
 
     const url = new URL(req.url);
     const res = await fetch(`${API_URL}/api/v1/candidates?${url.searchParams.toString()}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "X-Demo-Role": "COMPANY",
+      },
     });
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
