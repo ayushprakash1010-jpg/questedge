@@ -9,6 +9,7 @@ import {
   getRecruiterTalentPoolMatches,
   runPreflightMatchCheck,
   submitReferral,
+  parseResumeText,
   Mandate,
   CandidateMatchItem,
   MatchEvaluationResult,
@@ -21,6 +22,7 @@ import {
   MapPin,
   Briefcase,
   CheckCircle2,
+  Upload,
   UserPlus,
   X,
   Sparkles,
@@ -31,6 +33,35 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toaster";
+
+async function extractTextFromPDF(file: File): Promise<string> {
+  const pdfjsLib = await import("pdfjs-dist");
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let text = "";
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const textContent = await page.getTextContent();
+    let lastY: number | null = null;
+    let pageText = "";
+    for (const item of (textContent.items as any[])) {
+      if (!item.str && !item.hasEOL) continue;
+      if (lastY !== null && Math.abs(item.transform[5] - lastY) > 5) {
+        pageText += "\n";
+      } else if (pageText && !pageText.endsWith(" ") && !pageText.endsWith("\n") && item.str) {
+        pageText += " ";
+      }
+      pageText += item.str;
+      if (item.hasEOL) {
+        pageText += "\n";
+      }
+      lastY = item.transform[5];
+    }
+    text += pageText + "\n\n";
+  }
+  return text.trim();
+}
 
 export default function RecruiterMandateDetail() {
   const { id } = useParams<{ id: string }>();
@@ -57,6 +88,11 @@ export default function RecruiterMandateDetail() {
   // Preflight AI check state
   const [preflightLoading, setPreflightLoading] = useState(false);
   const [preflightResult, setPreflightResult] = useState<MatchEvaluationResult | null>(null);
+  const [candidateSkills, setCandidateSkills] = useState<string[]>([]);
+  const [candidateExperience, setCandidateExperience] = useState<number | undefined>(undefined);
+  const [candidateHeadline, setCandidateHeadline] = useState<string>("");
+  const [isParsingResume, setIsParsingResume] = useState(false);
+  const [resumeFileName, setResumeFileName] = useState<string>("");
 
   useEffect(() => {
     let isMounted = true;
@@ -106,6 +142,55 @@ export default function RecruiterMandateDetail() {
     setIsModalOpen(true);
   };
 
+  const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsParsingResume(true);
+    setResumeFileName(file.name);
+
+    try {
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+
+      const text = await extractTextFromPDF(file);
+      const parsedData = await parseResumeText(accessToken, text);
+
+      if (parsedData) {
+        setFormData((prev) => ({
+          ...prev,
+          candidateName: parsedData.name || prev.candidateName,
+          candidateEmail: parsedData.email || prev.candidateEmail,
+          candidatePhone: parsedData.phone || prev.candidatePhone,
+        }));
+        const skills = parsedData.skills || [];
+        const exp = parsedData.experienceYears !== undefined && parsedData.experienceYears !== null
+          ? Number(parsedData.experienceYears)
+          : undefined;
+        setCandidateSkills(skills);
+        setCandidateExperience(exp);
+        setCandidateHeadline(parsedData.headline || parsedData.currentDesignation || "");
+
+        toast.success(`Resume parsed! Found ${skills.length} skills.`);
+
+        // Auto-evaluate match against this mandate
+        const res = await runPreflightMatchCheck(accessToken, {
+          mandateId: id,
+          candidateName: parsedData.name || formData.candidateName || "Candidate",
+          candidateEmail: parsedData.email || formData.candidateEmail,
+          skills,
+          experienceYears: exp,
+          headline: parsedData.headline || parsedData.currentDesignation,
+        });
+        setPreflightResult(res);
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to parse resume PDF. You can still enter details manually.");
+    } finally {
+      setIsParsingResume(false);
+    }
+  };
+
   const handleRunPreflightCheck = async () => {
     if (!formData.candidateName.trim()) {
       toast.error("Please enter a candidate name to check match");
@@ -119,6 +204,9 @@ export default function RecruiterMandateDetail() {
         mandateId: id,
         candidateName: formData.candidateName.trim(),
         candidateEmail: formData.candidateEmail.trim() || undefined,
+        skills: candidateSkills.length > 0 ? candidateSkills : undefined,
+        experienceYears: candidateExperience,
+        headline: candidateHeadline || undefined,
       });
       setPreflightResult(res);
       toast.success(`AI Match calculated: ${res.matchScore}%`);
@@ -440,6 +528,51 @@ export default function RecruiterMandateDetail() {
                 </div>
               ) : (
                 <form onSubmit={handleReferralSubmit} className="space-y-4">
+                  {/* Quick Resume Upload */}
+                  <div className="p-3.5 bg-slate-50 border border-dashed border-slate-300 rounded-xl">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                        <Upload className="h-3.5 w-3.5 text-sky-600" />
+                        Attach Candidate Resume (PDF)
+                      </label>
+                      {resumeFileName && (
+                        <span className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3" /> Auto-filled
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      onChange={handleResumeUpload}
+                      disabled={isParsingResume}
+                      className="block w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 cursor-pointer disabled:opacity-50"
+                    />
+                    {isParsingResume && (
+                      <div className="flex items-center gap-1.5 mt-2 text-xs text-sky-600 font-medium">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Extracting resume skills & running AI match...
+                      </div>
+                    )}
+                    {candidateSkills.length > 0 && !isParsingResume && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {candidateSkills.slice(0, 5).map((s, idx) => (
+                          <span
+                            key={idx}
+                            className="text-[10px] bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded font-medium"
+                          >
+                            {s}
+                          </span>
+                        ))}
+                        {candidateSkills.length > 5 && (
+                          <span className="text-[10px] text-slate-400">
+                            +{candidateSkills.length - 5} more
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                       Candidate Full Name
