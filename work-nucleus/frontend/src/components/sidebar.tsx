@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   Wallet,
   Bell,
+  Code2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +43,7 @@ const companyNavSections: NavSection[] = [
       { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { label: "Mandates", href: "/mandates", icon: Briefcase },
       { label: "Candidates", href: "/candidates", icon: Users },
+      { label: "Assessments", href: "/assessments", icon: Code2 },
     ],
   },
   {
