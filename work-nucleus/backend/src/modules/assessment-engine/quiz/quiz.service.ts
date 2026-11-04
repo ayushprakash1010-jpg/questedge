@@ -26,7 +26,7 @@ export class QuizService {
         text: dto.text,
         options: dto.options,
         type: dto.type,
-        category: dto.category,
+        category: dto.category ?? 'General',
         difficulty: dto.difficulty ?? 'MEDIUM',
         explanation: dto.explanation,
         points: dto.points ?? 1,

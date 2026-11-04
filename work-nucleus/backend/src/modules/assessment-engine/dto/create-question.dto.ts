@@ -35,7 +35,8 @@ export class CreateQuestionDto {
 
   @ApiProperty({ example: 'JavaScript Basics' })
   @IsString()
-  category: string;
+  @IsOptional()
+  category?: string;
 
   @ApiPropertyOptional({ enum: Difficulty, default: 'MEDIUM' })
   @IsEnum(Difficulty)

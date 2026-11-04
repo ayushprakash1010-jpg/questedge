@@ -90,6 +90,7 @@ export default function AssessmentDetailPage() {
         options,
         explanation: explanation.trim() || undefined,
         points: Number(points),
+        category: "General",
         difficulty: "MEDIUM",
         tags: [],
         orderIndex: assessment?.questions?.length || 0,

@@ -73,6 +73,106 @@ export class AssessmentEngineController {
     return this.service.findAll(orgId, { type, mandateId });
   }
 
+  // ── Static Sub-Routes (Must be defined before parameterized :id) ──
+
+  @Get('attempts/:attemptId/results')
+  @ApiOperation({ summary: 'Get detailed results for a specific attempt' })
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER, Role.INTERVIEWER)
+  getAttemptResults(
+    @Param('attemptId', ParseUUIDPipe) attemptId: string,
+    @CurrentUser('orgId') orgId: string,
+  ) {
+    return this.service.getAttemptResults(attemptId, orgId);
+  }
+
+  // ── Video Interviews ──────────────────────────────────────────
+
+  @Post('video-interviews')
+  @ApiOperation({ summary: 'Schedule a video interview' })
+  scheduleVideoInterview(
+    @Body() data: {
+      candidateId?: string;
+      applicationId?: string;
+      interviewerId: string;
+      pipelineStageId?: string;
+      mandateId?: string;
+      scheduledAt: string;
+    },
+    @CurrentUser('orgId') orgId: string,
+  ) {
+    return this.videoService.schedule(orgId, data);
+  }
+
+  @Get('video-interviews')
+  @ApiOperation({ summary: 'List video interviews' })
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER, Role.INTERVIEWER)
+  listVideoInterviews(
+    @CurrentUser('orgId') orgId: string,
+    @Query('mandateId') mandateId?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.videoService.findAll(orgId, { mandateId, status });
+  }
+
+  @Get('video-interviews/:id')
+  @ApiOperation({ summary: 'Get video interview details' })
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER, Role.INTERVIEWER)
+  getVideoInterview(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('orgId') orgId: string,
+  ) {
+    return this.videoService.findOne(id, orgId);
+  }
+
+  @Patch('video-interviews/:id/start')
+  @ApiOperation({ summary: 'Start a video interview' })
+  startVideoInterview(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('orgId') orgId: string,
+  ) {
+    return this.videoService.start(id, orgId);
+  }
+
+  @Patch('video-interviews/:id/end')
+  @ApiOperation({ summary: 'End a video interview' })
+  endVideoInterview(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('orgId') orgId: string,
+  ) {
+    return this.videoService.end(id, orgId);
+  }
+
+  @Patch('video-interviews/:id/feedback')
+  @ApiOperation({ summary: 'Submit feedback for a video interview' })
+  submitVideoFeedback(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() feedback: {
+      technicalScore?: number;
+      communicationScore?: number;
+      cultureFitScore?: number;
+      leadershipScore?: number;
+      overallRating?: number;
+      recommendation?: string;
+      notes?: string;
+      strengths?: string;
+      weaknesses?: string;
+    },
+    @CurrentUser('orgId') orgId: string,
+  ) {
+    return this.videoService.submitFeedback(id, orgId, feedback);
+  }
+
+  @Patch('video-interviews/:id/cancel')
+  @ApiOperation({ summary: 'Cancel a video interview' })
+  cancelVideoInterview(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('orgId') orgId: string,
+  ) {
+    return this.videoService.cancel(id, orgId);
+  }
+
+  // ── Parameterized Assessment Routes (:id) ─────────────────────
+
   @Get(':id')
   @ApiOperation({ summary: 'Get assessment details with questions/challenges' })
   @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER, Role.INTERVIEWER)
@@ -193,102 +293,6 @@ export class AssessmentEngineController {
   ) {
     return this.service.getAssessmentAnalytics(assessmentId, orgId);
   }
-
-  @Get('attempts/:attemptId/results')
-  @ApiOperation({ summary: 'Get detailed results for a specific attempt' })
-  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER, Role.INTERVIEWER)
-  getAttemptResults(
-    @Param('attemptId', ParseUUIDPipe) attemptId: string,
-    @CurrentUser('orgId') orgId: string,
-  ) {
-    return this.service.getAttemptResults(attemptId, orgId);
-  }
-
-  // ── Video Interviews ──────────────────────────────────────────
-
-  @Post('video-interviews')
-  @ApiOperation({ summary: 'Schedule a video interview' })
-  scheduleVideoInterview(
-    @Body() data: {
-      candidateId?: string;
-      applicationId?: string;
-      interviewerId: string;
-      pipelineStageId?: string;
-      mandateId?: string;
-      scheduledAt: string;
-    },
-    @CurrentUser('orgId') orgId: string,
-  ) {
-    return this.videoService.schedule(orgId, data);
-  }
-
-  @Get('video-interviews')
-  @ApiOperation({ summary: 'List video interviews' })
-  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER, Role.INTERVIEWER)
-  listVideoInterviews(
-    @CurrentUser('orgId') orgId: string,
-    @Query('mandateId') mandateId?: string,
-    @Query('status') status?: string,
-  ) {
-    return this.videoService.findAll(orgId, { mandateId, status });
-  }
-
-  @Get('video-interviews/:id')
-  @ApiOperation({ summary: 'Get video interview details' })
-  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER, Role.INTERVIEWER)
-  getVideoInterview(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser('orgId') orgId: string,
-  ) {
-    return this.videoService.findOne(id, orgId);
-  }
-
-  @Patch('video-interviews/:id/start')
-  @ApiOperation({ summary: 'Start a video interview' })
-  startVideoInterview(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser('orgId') orgId: string,
-  ) {
-    return this.videoService.start(id, orgId);
-  }
-
-  @Patch('video-interviews/:id/end')
-  @ApiOperation({ summary: 'End a video interview' })
-  endVideoInterview(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser('orgId') orgId: string,
-  ) {
-    return this.videoService.end(id, orgId);
-  }
-
-  @Patch('video-interviews/:id/feedback')
-  @ApiOperation({ summary: 'Submit feedback for a video interview' })
-  submitVideoFeedback(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() feedback: {
-      technicalScore?: number;
-      communicationScore?: number;
-      cultureFitScore?: number;
-      leadershipScore?: number;
-      overallRating?: number;
-      recommendation?: string;
-      notes?: string;
-      strengths?: string;
-      weaknesses?: string;
-    },
-    @CurrentUser('orgId') orgId: string,
-  ) {
-    return this.videoService.submitFeedback(id, orgId, feedback);
-  }
-
-  @Patch('video-interviews/:id/cancel')
-  @ApiOperation({ summary: 'Cancel a video interview' })
-  cancelVideoInterview(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser('orgId') orgId: string,
-  ) {
-    return this.videoService.cancel(id, orgId);
-  }
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -370,4 +374,3 @@ export class AssessmentTakeController {
     return this.videoService.getByToken(token);
   }
 }
-
