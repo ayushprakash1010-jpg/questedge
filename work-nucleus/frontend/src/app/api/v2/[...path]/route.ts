@@ -10,7 +10,7 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
   const search = req.nextUrl.search;
   const url = `${target}${search || ""}`;
 
-  const isPublic = path[0] === "public" || path[0] === "webhooks";
+  const isPublic = path[0] === "public" || path[0] === "webhooks" || path[0] === "assessment-take";
   const headers: Record<string, string> = {};
   const ct = req.headers.get("content-type");
   if (ct) headers["content-type"] = ct;

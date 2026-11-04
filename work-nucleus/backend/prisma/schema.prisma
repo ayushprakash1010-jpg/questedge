@@ -537,6 +537,11 @@ model Organization {
   mandates   Mandate[]
   trustScore CompanyTrustScore?
 
+  // -- Assessment Engine Relations --
+  hiringAssessments   HiringAssessment[]
+  assessmentQuestions AssessmentQuestion[]
+  videoInterviews     VideoInterview[]
+
   @@map("organizations")
 }
 
@@ -592,6 +597,9 @@ model User {
   notificationPrefs       UserNotificationPref[]
   reportDefinitions       ReportDefinition[]         @relation("ReportCreator")
   notificationLogs        NotificationLog[]
+
+  // -- Assessment Engine Relations --
+  conductedVideoInterviews VideoInterview[] @relation("VideoInterviewer")
 
   @@index([orgId])
   @@index([auth0Sub])
@@ -716,6 +724,10 @@ model PipelineStage {
   mandateId String?  @map("mandate_id") @db.Uuid
   mandate   Mandate? @relation("MandatePipeline", fields: [mandateId], references: [id])
 
+  // -- Assessment Engine Relations --
+  hiringAssessments HiringAssessment[] @relation("StageAssessments")
+  videoInterviews   VideoInterview[]   @relation("StageVideoInterviews")
+
   @@index([hiringPlanId])
   @@index([mandateId])
   @@map("pipeline_stages")
@@ -792,6 +804,10 @@ model CandidateApplication {
   feedbacks        InterviewFeedback[]
   decision         SelectionDecision?
   offer            Offer?
+
+  // -- Assessment Engine Relations --
+  assessmentAttempts AssessmentAttempt[]
+  videoInterviews    VideoInterview[]
 
   @@unique([candidateId, hiringPlanId])
   @@index([hiringPlanId])
@@ -1738,6 +1754,10 @@ model CandidateProfile {
   savedJobs    SavedJob[]
   statusChecks CandidateStatusCheck[]
 
+  // -- Assessment Engine Relations --
+  assessmentAttempts AssessmentAttempt[]
+  videoInterviews    VideoInterview[]
+
   @@map("candidate_profiles")
 }
 
@@ -1816,6 +1836,10 @@ model Mandate {
   applications     CandidateApplication[]
   savedByCandidate SavedJob[]
   pipelineStages   PipelineStage[]        @relation("MandatePipeline")
+
+  // -- Assessment Engine Relations --
+  hiringAssessments HiringAssessment[] @relation("MandateAssessments")
+  videoInterviews   VideoInterview[]   @relation("MandateVideoInterviews")
 
   @@index([orgId, status])
   @@index([status])
@@ -2033,4 +2057,284 @@ model HireBypassFlag {
   @@index([mandateId])
   @@index([riskLevel, isResolved])
   @@map("hire_bypass_flags")
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// ── In-Platform Assessment Engine ────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+
+enum HiringAssessmentType {
+  QUIZ
+  CODING
+  VIDEO_INTERVIEW
+}
+
+enum QuestionType {
+  MCQ
+  MULTI_SELECT
+  TRUE_FALSE
+  SUBJECTIVE
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum AttemptStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  TIMED_OUT
+  ABANDONED
+}
+
+enum CodeSubmissionStatus {
+  QUEUED
+  RUNNING
+  PASSED
+  PARTIAL
+  FAILED
+  ERROR
+  TIMEOUT
+}
+
+enum VideoInterviewStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+// ── Assessment Template ─────────────────────────────────────────
+
+model HiringAssessment {
+  id                String              @id @default(uuid()) @db.Uuid
+  orgId             String              @db.Uuid
+  title             String
+  description       String?             @db.Text
+  type              HiringAssessmentType
+  durationMinutes   Int                 @map("duration_minutes")
+  totalPoints       Int                 @default(100) @map("total_points")
+  passingPercentage Int                 @default(60) @map("passing_percentage")
+  shuffleQuestions  Boolean             @default(false) @map("shuffle_questions")
+  shuffleOptions    Boolean             @default(false) @map("shuffle_options")
+  showResults       Boolean             @default(true) @map("show_results")
+  isActive          Boolean             @default(true) @map("is_active")
+  instructions      String?             @db.Text
+
+  mandateId       String?  @map("mandate_id") @db.Uuid
+  pipelineStageId String?  @map("pipeline_stage_id") @db.Uuid
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization  Organization    @relation(fields: [orgId], references: [id])
+  mandate       Mandate?        @relation("MandateAssessments", fields: [mandateId], references: [id])
+  pipelineStage PipelineStage?  @relation("StageAssessments", fields: [pipelineStageId], references: [id])
+
+  questions        AssessmentQuestion[]
+  codingChallenges CodingChallenge[]
+  attempts         AssessmentAttempt[]
+
+  @@index([orgId])
+  @@index([mandateId])
+  @@index([orgId, type])
+  @@map("hiring_assessments")
+}
+
+// ── Question Bank ───────────────────────────────────────────────
+
+model AssessmentQuestion {
+  id           String       @id @default(uuid()) @db.Uuid
+  assessmentId String       @map("assessment_id") @db.Uuid
+  orgId        String       @db.Uuid
+  text         String       @db.Text
+  options      Json         @default("[]") // [{ id, text, isCorrect }]
+  type         QuestionType
+  category     String       // e.g., "Data Structures", "HR Analytics"
+  difficulty   Difficulty   @default(MEDIUM)
+  explanation  String?      @db.Text
+  points       Int          @default(1)
+  tags         Json         @default("[]") // string array for filtering
+  orderIndex   Int          @default(0) @map("order_index")
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  assessment   HiringAssessment   @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  organization Organization       @relation(fields: [orgId], references: [id])
+  responses    AssessmentResponse[]
+
+  @@index([assessmentId])
+  @@index([orgId, category])
+  @@map("assessment_questions")
+}
+
+// ── Coding Challenge ────────────────────────────────────────────
+
+model CodingChallenge {
+  id                 String     @id @default(uuid()) @db.Uuid
+  assessmentId       String     @map("assessment_id") @db.Uuid
+  title              String
+  description        String     @db.Text
+  constraints        String?    @db.Text
+  sampleTestCases    Json       @default("[]") @map("sample_test_cases")
+  hiddenTestCases    Json       @default("[]") @map("hidden_test_cases")
+  supportedLanguages Json       @default("[\"python\",\"javascript\",\"java\",\"cpp\"]") @map("supported_languages")
+  starterCode        Json       @default("{}") @map("starter_code")
+  difficulty         Difficulty @default(MEDIUM)
+  maxScore           Int        @default(100) @map("max_score")
+  timeLimitSeconds   Int        @default(5) @map("time_limit_seconds")
+  memoryLimitKb      Int        @default(262144) @map("memory_limit_kb")
+  orderIndex         Int        @default(0) @map("order_index")
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  assessment  HiringAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  submissions CodeSubmission[]
+
+  @@index([assessmentId])
+  @@map("coding_challenges")
+}
+
+// ── Assessment Attempt ──────────────────────────────────────────
+
+model AssessmentAttempt {
+  id              String        @id @default(uuid()) @db.Uuid
+  assessmentId    String        @map("assessment_id") @db.Uuid
+  candidateId     String?       @map("candidate_id") @db.Uuid
+  applicationId   String?       @map("application_id") @db.Uuid
+  accessToken     String        @unique @map("access_token")
+  expiresAt       DateTime      @map("expires_at")
+
+  startedAt       DateTime?     @map("started_at")
+  completedAt     DateTime?     @map("completed_at")
+  status          AttemptStatus @default(NOT_STARTED)
+  score           Int           @default(0)
+  percentage      Decimal       @default(0) @db.Decimal(5, 2)
+  passed          Boolean       @default(false)
+
+  // Anti-cheat tracking
+  tabSwitchCount  Int           @default(0) @map("tab_switch_count")
+  fullscreenExits Int           @default(0) @map("fullscreen_exits")
+  ipAddress       String?       @map("ip_address")
+  userAgent       String?       @map("user_agent")
+  metadata        Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assessment       HiringAssessment      @relation(fields: [assessmentId], references: [id])
+  candidateProfile CandidateProfile?     @relation(fields: [candidateId], references: [id])
+  application      CandidateApplication? @relation(fields: [applicationId], references: [id])
+
+  responses       AssessmentResponse[]
+  codeSubmissions CodeSubmission[]
+
+  @@unique([assessmentId, candidateId])
+  @@index([accessToken])
+  @@index([candidateId])
+  @@index([applicationId])
+  @@map("assessment_attempts")
+}
+
+// ── Quiz Responses ──────────────────────────────────────────────
+
+model AssessmentResponse {
+  id              String   @id @default(uuid()) @db.Uuid
+  attemptId       String   @map("attempt_id") @db.Uuid
+  questionId      String   @map("question_id") @db.Uuid
+  selectedOptions Json?    @map("selected_options") // selected option IDs
+  textAnswer      String?  @map("text_answer") @db.Text
+  isCorrect       Boolean  @default(false) @map("is_correct")
+  pointsEarned    Int      @default(0) @map("points_earned")
+  timeTakenMs     Int?     @map("time_taken_ms")
+  createdAt       DateTime @default(now())
+
+  attempt  AssessmentAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question AssessmentQuestion @relation(fields: [questionId], references: [id])
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId])
+  @@map("assessment_responses")
+}
+
+// ── Code Submissions ────────────────────────────────────────────
+
+model CodeSubmission {
+  id              String               @id @default(uuid()) @db.Uuid
+  attemptId       String               @map("attempt_id") @db.Uuid
+  challengeId     String               @map("challenge_id") @db.Uuid
+  sourceCode      String               @map("source_code") @db.Text
+  language        String
+  languageId      Int                  @map("language_id")
+  status          CodeSubmissionStatus @default(QUEUED)
+  testCasesPassed Int                  @default(0) @map("test_cases_passed")
+  totalTestCases  Int                  @default(0) @map("total_test_cases")
+  score           Int                  @default(0)
+  executionTimeMs Decimal?             @map("execution_time_ms") @db.Decimal(10, 2)
+  memoryUsedKb    Int?                 @map("memory_used_kb")
+  stdout          String?              @db.Text
+  stderr          String?              @db.Text
+  compileOutput   String?              @map("compile_output") @db.Text
+  testCaseResults Json?                @map("test_case_results")
+  isFinalSubmit   Boolean              @default(false) @map("is_final_submit")
+  submittedAt     DateTime             @default(now()) @map("submitted_at")
+
+  attempt   AssessmentAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  challenge CodingChallenge   @relation(fields: [challengeId], references: [id])
+
+  @@index([attemptId])
+  @@index([challengeId])
+  @@map("code_submissions")
+}
+
+// ── Video Interview ─────────────────────────────────────────────
+
+model VideoInterview {
+  id                   String               @id @default(uuid()) @db.Uuid
+  orgId                String               @db.Uuid
+  roomName             String               @unique @map("room_name")
+  candidateId          String?              @map("candidate_id") @db.Uuid
+  applicationId        String?              @map("application_id") @db.Uuid
+  interviewerId        String               @map("interviewer_id") @db.Uuid
+  pipelineStageId      String?              @map("pipeline_stage_id") @db.Uuid
+  mandateId            String?              @map("mandate_id") @db.Uuid
+
+  scheduledAt          DateTime             @map("scheduled_at")
+  startedAt            DateTime?            @map("started_at")
+  endedAt              DateTime?            @map("ended_at")
+  durationSeconds      Int?                 @map("duration_seconds")
+  status               VideoInterviewStatus @default(SCHEDULED)
+
+  // Feedback scores (1-5)
+  technicalScore       Int?                 @map("technical_score")
+  communicationScore   Int?                 @map("communication_score")
+  cultureFitScore      Int?                 @map("culture_fit_score")
+  leadershipScore      Int?                 @map("leadership_score")
+  overallRating        Int?                 @map("overall_rating")
+  recommendation       String?              // STRONG_YES, YES, NEUTRAL, NO, STRONG_NO
+  notes                String?              @db.Text
+  strengths            String?              @db.Text
+  weaknesses           String?              @db.Text
+
+  candidateAccessToken String               @unique @map("candidate_access_token")
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  organization     Organization          @relation(fields: [orgId], references: [id])
+  candidateProfile CandidateProfile?     @relation(fields: [candidateId], references: [id])
+  application      CandidateApplication? @relation(fields: [applicationId], references: [id])
+  interviewer      User                  @relation("VideoInterviewer", fields: [interviewerId], references: [id])
+  pipelineStage    PipelineStage?        @relation("StageVideoInterviews", fields: [pipelineStageId], references: [id])
+  mandate          Mandate?              @relation("MandateVideoInterviews", fields: [mandateId], references: [id])
+
+  @@index([orgId])
+  @@index([candidateId])
+  @@index([scheduledAt])
+  @@index([mandateId])
+  @@map("video_interviews")
 }
