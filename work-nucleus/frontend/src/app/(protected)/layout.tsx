@@ -78,11 +78,7 @@ export default function ProtectedLayout({
       user?.name?.toLowerCase() === "growytvercel@gmail.com";
 
     // Logged in but explicitly verified as NOT provisioned in database
-    const isRecruiterOrCandidate =
-      (profile as any)?.userType === "RECRUITER" ||
-      (profile as any)?.userType === "CANDIDATE";
-
-    if (profile && profile.isProvisioned === false && !isRecruiterOrCandidate && !isDemo) {
+    if (profile && profile.isProvisioned === false) {
       if (!pathname.includes("/profile") && !pathname.includes("/onboarding")) {
         router.push("/onboarding");
         return;

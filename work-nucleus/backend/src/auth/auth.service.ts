@@ -78,44 +78,117 @@ export class AuthService {
     return result;
   }
 
-  async resetRole(auth0Sub: string) {
+    async resetRole(auth0Sub: string) {
     try {
-      // Attempt to delete Company user
-      const user = await this.prisma.user.findUnique({ where: { auth0Sub } });
+      // 1. Attempt to cleanup / delete Company user
+      const user = await this.prisma.user.findUnique({
+        where: { auth0Sub },
+        include: { organization: true },
+      });
       if (user) {
-        await this.prisma.user.delete({ where: { auth0Sub } });
+        // Clean up unconstrained user-owned logs first to prevent FK blocks
+        await this.prisma.userNotificationPref.deleteMany({
+          where: { userId: user.id },
+        }).catch(() => null);
+        await this.prisma.notificationLog.deleteMany({
+          where: { userId: user.id },
+        }).catch(() => null);
+        await this.prisma.auditLog.deleteMany({
+          where: { userId: user.id },
+        }).catch(() => null);
+
+        // Delete user record or unlink if FK prevents delete
+        await this.prisma.user.delete({ where: { id: user.id } }).catch(async (e) => {
+          this.logger.warn(`Could not hard-delete user ${user.id}, unlinking auth0Sub: ${e.message}`);
+          await this.prisma.user.update({
+            where: { id: user.id },
+            data: { auth0Sub: `unlinked_${Date.now()}_${Math.random().toString(36).substring(7)}`, isActive: false },
+          });
+        });
+
+        // If organization has no more users and no mandates/assessments, clean it up
         const orgUsers = await this.prisma.user.count({
           where: { orgId: user.orgId },
         });
         if (orgUsers === 0) {
-          await this.prisma.organization
-            .delete({ where: { id: user.orgId } })
-            .catch(() => null);
+          const mandateCount = await this.prisma.mandate.count({
+            where: { orgId: user.orgId },
+          });
+          const assessmentCount = await this.prisma.hiringAssessment.count({
+            where: { orgId: user.orgId },
+          });
+          if (mandateCount === 0 && assessmentCount === 0) {
+            await this.prisma.organization
+              .delete({ where: { id: user.orgId } })
+              .catch(() => null);
+          }
         }
       }
 
-      // Attempt to delete Recruiter
+      // 2. Attempt to cleanup Recruiter profile
       const recruiter = await this.prisma.recruiterProfile.findUnique({
         where: { auth0Sub },
       });
       if (recruiter) {
-        await this.prisma.recruiterProfile.delete({ where: { auth0Sub } });
+        const referralCount = await this.prisma.referral.count({
+          where: { recruiterId: recruiter.id },
+        });
+        // If has referrals or is demo account, unlink instead of hard deleting (to prevent FK constraint violation)
+        if (referralCount > 0 || recruiter.isDemoAccount) {
+          await this.prisma.recruiterProfile.update({
+            where: { id: recruiter.id },
+            data: {
+              auth0Sub: `unlinked_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+            },
+          });
+        } else {
+          await this.prisma.recruiterProfile.delete({ where: { id: recruiter.id } }).catch(async () => {
+            await this.prisma.recruiterProfile.update({
+              where: { id: recruiter.id },
+              data: {
+                auth0Sub: `unlinked_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+              },
+            });
+          });
+        }
       }
 
-      // Attempt to delete Candidate
+      // 3. Attempt to cleanup Candidate profile
       const candidate = await this.prisma.candidateProfile.findUnique({
         where: { auth0Sub },
       });
       if (candidate) {
-        await this.prisma.candidateProfile.delete({ where: { auth0Sub } });
+        const appCount = await this.prisma.candidateApplication.count({
+          where: { candidateProfileId: candidate.id },
+        });
+        const refCount = await this.prisma.referral.count({
+          where: { candidateProfileId: candidate.id },
+        });
+        if (appCount > 0 || refCount > 0 || candidate.isDemoAccount) {
+          await this.prisma.candidateProfile.update({
+            where: { id: candidate.id },
+            data: {
+              auth0Sub: `unlinked_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+            },
+          });
+        } else {
+          await this.prisma.candidateProfile.delete({ where: { id: candidate.id } }).catch(async () => {
+            await this.prisma.candidateProfile.update({
+              where: { id: candidate.id },
+              data: {
+                auth0Sub: `unlinked_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+              },
+            });
+          });
+        }
       }
 
       this.logger.log(`Reset role for auth0Sub: ${auth0Sub}`);
       return { success: true };
-    } catch (err: any) {
+    } catch (err) {
       this.logger.error(`Failed to reset role for ${auth0Sub}: ${err.message}`);
       throw new ConflictException(
-        'Cannot reset role. You have active associations (e.g. referrals or mandates).',
+        'Cannot reset role. Please contact support if the issue persists.',
       );
     }
   }
@@ -146,28 +219,10 @@ isDemoAccount: user.isDemoAccount,
     };
   }
 
-    async getRecruiterMe(auth0Sub: string) {
-    let recruiter = await this.prisma.recruiterProfile.findUnique({
+      async getRecruiterMe(auth0Sub: string) {
+    const recruiter = await this.prisma.recruiterProfile.findUnique({
       where: { auth0Sub },
     });
-
-    if (!recruiter) {
-      recruiter = await this.prisma.recruiterProfile.findFirst({
-        where: {
-          OR: [
-            { isDemoAccount: true },
-            { email: { contains: 'growytvercel' } },
-            { email: { contains: 'recruiter' } },
-          ],
-        },
-      });
-      if (recruiter && auth0Sub) {
-        recruiter = await this.prisma.recruiterProfile.update({
-          where: { id: recruiter.id },
-          data: { auth0Sub, isDemoAccount: true },
-        });
-      }
-    }
 
     if (!recruiter) {
       return null;
@@ -184,32 +239,14 @@ isDemoAccount: user.isDemoAccount,
       linkedinUrl: recruiter.linkedinUrl,
       isVerified: recruiter.isVerified,
       isActive: recruiter.isActive,
-isDemoAccount: recruiter.isDemoAccount,
+      isDemoAccount: recruiter.isDemoAccount,
     };
   }
 
-    async getCandidateMe(auth0Sub: string) {
-    let candidate = await this.prisma.candidateProfile.findUnique({
+      async getCandidateMe(auth0Sub: string) {
+    const candidate = await this.prisma.candidateProfile.findUnique({
       where: { auth0Sub },
     });
-
-    if (!candidate) {
-      candidate = await this.prisma.candidateProfile.findFirst({
-        where: {
-          OR: [
-            { isDemoAccount: true },
-            { email: { contains: 'growytvercel' } },
-            { email: { contains: 'candidate' } },
-          ],
-        },
-      });
-      if (candidate && auth0Sub) {
-        candidate = await this.prisma.candidateProfile.update({
-          where: { id: candidate.id },
-          data: { auth0Sub, isDemoAccount: true },
-        });
-      }
-    }
 
     if (!candidate) {
       return null;
@@ -219,8 +256,14 @@ isDemoAccount: recruiter.isDemoAccount,
       id: candidate.id,
       email: candidate.email,
       name: candidate.name,
+      headline: candidate.headline,
+      currentDesignation: candidate.currentDesignation,
+      experienceYears: candidate.experienceYears,
+      skills: candidate.skills,
+      workModel: candidate.workModel,
+      isProfileComplete: candidate.isProfileComplete,
       isActive: candidate.isActive,
-isDemoAccount: candidate.isDemoAccount,
+      isDemoAccount: candidate.isDemoAccount,
     };
   }
 

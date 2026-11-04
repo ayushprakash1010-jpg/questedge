@@ -224,7 +224,8 @@ export function TopBar() {
                     alert(data.error || "Cannot change role right now. You might have active associations.");
                     return;
                   }
-                  window.location.href = "/onboarding"; // Hard reload to clear session claims cache
+                  document.cookie = "demo_role=; path=/; max-age=0";
+                  window.location.href = "/onboarding";
                 } catch (err) {
                   alert("Failed to reset role.");
                 }
@@ -235,9 +236,10 @@ export function TopBar() {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               variant="danger"
-              onClick={() =>
-                (window.location.href = IS_MOCK ? "/dashboard" : "/auth/logout")
-              }
+              onClick={() => {
+                document.cookie = "demo_role=; path=/; max-age=0";
+                window.location.href = IS_MOCK ? "/dashboard" : "/auth/logout";
+              }}
             >
               <LogOut className="h-4 w-4" /> {IS_MOCK ? "Mock Mode" : "Logout"}
             </DropdownMenuItem>

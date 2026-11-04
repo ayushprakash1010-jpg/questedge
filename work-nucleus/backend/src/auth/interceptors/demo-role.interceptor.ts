@@ -140,37 +140,6 @@ export class DemoRoleInterceptor implements NestInterceptor {
       overrideProfile = await this.prisma.recruiterProfile.findUnique({
         where: { auth0Sub },
       });
-      if (!overrideProfile) {
-        // Find existing demo recruiter profile or create one
-        overrideProfile = await this.prisma.recruiterProfile.findFirst({
-          where: {
-            OR: [
-              { email: 'growytvercel+recruiter@gmail.com' },
-              { email: user.email },
-              { isDemoAccount: true },
-            ],
-          },
-        });
-        if (overrideProfile) {
-          overrideProfile = await this.prisma.recruiterProfile.update({
-            where: { id: overrideProfile.id },
-            data: { auth0Sub, isDemoAccount: true },
-          });
-        } else {
-          overrideProfile = await this.prisma.recruiterProfile.create({
-            data: {
-              auth0Sub,
-              email: 'growytvercel+recruiter@gmail.com',
-              name: 'Demo Recruiter',
-              headline: 'Technical Talent Acquisition Specialist',
-              experienceYears: 5,
-              isVerified: true,
-              verifiedAt: new Date(),
-              isDemoAccount: true,
-            },
-          });
-        }
-      }
       if (overrideProfile) {
         req.user = {
           ...overrideProfile,
@@ -184,93 +153,7 @@ export class DemoRoleInterceptor implements NestInterceptor {
       overrideProfile = await this.prisma.candidateProfile.findUnique({
         where: { auth0Sub },
       });
-      if (!overrideProfile) {
-        // Find existing demo candidate profile or create one
-        overrideProfile = await this.prisma.candidateProfile.findFirst({
-          where: {
-            OR: [
-              { email: 'growytvercel+candidate@gmail.com' },
-              { email: user.email },
-              { isDemoAccount: true },
-            ],
-          },
-        });
-        if (overrideProfile) {
-          overrideProfile = await this.prisma.candidateProfile.update({
-            where: { id: overrideProfile.id },
-            data: { auth0Sub, isDemoAccount: true },
-          });
-        } else {
-          const candidateEmail = 'growytvercel+candidate@gmail.com';
-          const emailHash = createHash('sha256')
-            .update(candidateEmail.toLowerCase().trim())
-            .digest('hex');
-          overrideProfile = await this.prisma.candidateProfile.create({
-            data: {
-              auth0Sub,
-              email: candidateEmail,
-              emailHash,
-              name: 'Demo Candidate',
-              headline: 'Full-Stack Software Engineer',
-              experienceYears: 4,
-              currentCompany: 'QuestEdge Labs',
-              currentDesignation: 'Senior Developer',
-              skills: ['TypeScript', 'React', 'Node.js', 'PostgreSQL'],
-              isProfileComplete: true,
-              isDemoAccount: true,
-            },
-          });
-        }
-      }
       if (overrideProfile) {
-        // Merge any unlinked demo candidate profiles (e.g. from recruiter referral submissions)
-        const duplicateCandidates = await this.prisma.candidateProfile.findMany({
-          where: {
-            id: { not: overrideProfile.id },
-            OR: [
-              { email: 'growytvercel@gmail.com' },
-              { email: 'growytvercel+candidate@gmail.com' },
-              { isDemoAccount: true },
-            ],
-          },
-        });
-        for (const dup of duplicateCandidates) {
-          await this.prisma.referral.updateMany({
-            where: { candidateProfileId: dup.id },
-            data: { candidateProfileId: overrideProfile.id },
-          }).catch(() => {});
-          await this.prisma.candidateConsent.updateMany({
-            where: { candidateProfileId: dup.id },
-            data: { candidateProfileId: overrideProfile.id },
-          }).catch(() => {});
-          await this.prisma.candidateApplication.updateMany({
-            where: { candidateProfileId: dup.id },
-            data: { candidateProfileId: overrideProfile.id },
-          }).catch(() => {});
-          const dupClaims = await this.prisma.claimScope.findMany({
-            where: { candidateProfileId: dup.id },
-          }).catch(() => []);
-          for (const claim of dupClaims) {
-            const exists = await this.prisma.claimScope.findUnique({
-              where: {
-                candidateProfileId_mandateId: {
-                  candidateProfileId: overrideProfile.id,
-                  mandateId: claim.mandateId,
-                },
-              },
-            });
-            if (exists) {
-              await this.prisma.claimScope.delete({ where: { id: claim.id } }).catch(() => {});
-            } else {
-              await this.prisma.claimScope.update({
-                where: { id: claim.id },
-                data: { candidateProfileId: overrideProfile.id },
-              }).catch(() => {});
-            }
-          }
-          await this.prisma.candidateProfile.delete({ where: { id: dup.id } }).catch(() => {});
-        }
-
         req.user = {
           ...overrideProfile,
           userType: 'CANDIDATE',

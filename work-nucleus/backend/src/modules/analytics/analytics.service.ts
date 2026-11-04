@@ -24,6 +24,33 @@ export class AnalyticsService {
   }
 
   async getOverview(orgId: string) {
+    if (!orgId) {
+      return {
+        activePlans: 0,
+        totalRoles: 0,
+        openRoles: 0,
+        filledRoles: 0,
+        fillRate: 0,
+        pipelineCandidates: 0,
+        selectedCount: 0,
+        rejectedCount: 0,
+        avgTimeToHire: 0,
+        trend: [],
+        activeMandates: 0,
+        pendingReferrals: 0,
+        rewardCommitments: 0,
+        rewardBreakdown: {
+          POTENTIAL: { count: 0, total: 0 },
+          ELIGIBLE: { count: 0, total: 0 },
+          PENDING_APPROVAL: { count: 0, total: 0 },
+          APPROVED: { count: 0, total: 0 },
+          PAID: { count: 0, total: 0 },
+        },
+        avgRewardPerHire: 0,
+        recentPendingReferrals: [],
+        recentActivity: [],
+      };
+    }
     return this.cached(`overview:${orgId}`, async () => {
       const [
         activePlans,
@@ -263,6 +290,7 @@ export class AnalyticsService {
   }
 
   async getPipelineFunnel(orgId: string, hiringPlanId?: string) {
+    if (!orgId) return [];
     const cacheKey = hiringPlanId
       ? `funnel:${orgId}:${hiringPlanId}`
       : `funnel:${orgId}`;
@@ -619,6 +647,7 @@ export class AnalyticsService {
   }
 
   async getCostTracking(orgId: string) {
+    if (!orgId) return [];
     return this.cached(`cost:${orgId}`, async () => {
       const plans = await this.prisma.hiringPlan.findMany({
         where: {
@@ -673,6 +702,7 @@ export class AnalyticsService {
   }
 
   async getInterviewerStats(orgId: string) {
+    if (!orgId) return [];
     return this.cached(`interviewers:${orgId}`, async () => {
       const feedbacks = await this.prisma.interviewFeedback.findMany({
         where: { application: { hiringPlan: { orgId } }, isSubmitted: true },
@@ -742,6 +772,7 @@ export class AnalyticsService {
   }
 
   async getHiringProgress(orgId: string) {
+    if (!orgId) return [];
     return this.cached(`progress:${orgId}`, async () => {
       const plans = await this.prisma.hiringPlan.findMany({
         where: {
@@ -783,6 +814,7 @@ export class AnalyticsService {
   }
 
   async getSourceEffectiveness(orgId: string) {
+    if (!orgId) return [];
     return this.cached(`sources:${orgId}`, async () => {
       const apps = await this.prisma.candidateApplication.findMany({
         where: { hiringPlan: { orgId } },
@@ -856,6 +888,7 @@ export class AnalyticsService {
   }
 
   async getLatestInsights(orgId: string) {
+    if (!orgId) return { insights: [], generatedAt: null, generatedBy: null };
     const record = await this.prisma.dashboardInsight.findFirst({
       where: { orgId },
       orderBy: { generatedAt: 'desc' },
