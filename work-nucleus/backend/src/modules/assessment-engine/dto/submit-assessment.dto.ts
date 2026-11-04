@@ -66,13 +66,23 @@ export class UpdateAntiCheatDto {
 }
 
 export class SendAssessmentInviteDto {
-  @ApiProperty({ description: 'Candidate profile ID' })
+  @ApiPropertyOptional({ description: 'Candidate profile ID' })
   @IsUUID()
-  candidateId: string;
+  @IsOptional()
+  candidateId?: string;
+
+  @ApiPropertyOptional({ description: 'Candidate email address' })
+  @IsString()
+  @IsOptional()
+  candidateEmail?: string;
+
+  @ApiPropertyOptional({ description: 'Candidate name' })
+  @IsString()
+  @IsOptional()
+  candidateName?: string;
 
   @ApiPropertyOptional({ description: 'Application ID to link' })
   @IsUUID()
   @IsOptional()
   applicationId?: string;
 }
-

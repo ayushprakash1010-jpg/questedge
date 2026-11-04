@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateAssessmentDto, UpdateAssessmentDto, SendAssessmentInviteDto } from './dto';
-import { randomUUID } from 'crypto';
+import { randomUUID, createHash } from 'crypto';
 
 @Injectable()
 export class AssessmentEngineService {
@@ -124,9 +124,48 @@ export class AssessmentEngineService {
   async sendInvite(assessmentId: string, dto: SendAssessmentInviteDto, orgId: string) {
     await this.verifyAssessmentOwnership(assessmentId, orgId);
 
+    let candidateId = dto.candidateId;
+
+    if (!candidateId && dto.candidateEmail) {
+      const email = dto.candidateEmail.trim().toLowerCase();
+      let candidate = await this.prisma.candidateProfile.findFirst({
+        where: { email },
+      });
+      if (!candidate) {
+        candidate = await this.prisma.candidateProfile.create({
+          data: {
+            auth0Sub: `guest_${randomUUID()}`,
+            email,
+            emailHash: createHash('sha256').update(email).digest('hex'),
+            name: dto.candidateName || email.split('@')[0],
+            headline: 'Candidate',
+          },
+        });
+      }
+      candidateId = candidate.id;
+    }
+
+    if (!candidateId) {
+      let candidate = await this.prisma.candidateProfile.findFirst({
+        orderBy: { createdAt: 'desc' },
+      });
+      if (!candidate) {
+        candidate = await this.prisma.candidateProfile.create({
+          data: {
+            auth0Sub: `guest_${randomUUID()}`,
+            email: `candidate_${Date.now()}@questedge.com`,
+            emailHash: createHash('sha256').update(`candidate_${Date.now()}@questedge.com`).digest('hex'),
+            name: dto.candidateName || 'Candidate',
+            headline: 'Candidate',
+          },
+        });
+      }
+      candidateId = candidate.id;
+    }
+
     // Check if attempt already exists
     const existing = await this.prisma.assessmentAttempt.findFirst({
-      where: { assessmentId, candidateId: dto.candidateId },
+      where: { assessmentId, candidateId },
     });
     if (existing) {
       return existing;
@@ -139,7 +178,7 @@ export class AssessmentEngineService {
     return this.prisma.assessmentAttempt.create({
       data: {
         assessmentId,
-        candidateId: dto.candidateId,
+        candidateId,
         applicationId: dto.applicationId,
         accessToken,
         expiresAt,

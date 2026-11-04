@@ -21,14 +21,22 @@ export function InviteModal({ assessment, isOpen, onClose }: InviteModalProps) {
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!candidateId.trim()) return;
 
     setIsGenerating(true);
     setError(null);
     try {
-      const attempt = await sendAssessmentInvite(assessment.id, {
-        candidateId: candidateId.trim(),
-      });
+      const payload: any = {};
+      const trimmed = candidateId.trim();
+      if (trimmed) {
+        if (trimmed.includes("@")) {
+          payload.candidateEmail = trimmed;
+        } else if (trimmed.includes("-") && trimmed.length >= 32) {
+          payload.candidateId = trimmed;
+        } else {
+          payload.candidateEmail = trimmed;
+        }
+      }
+      const attempt = await sendAssessmentInvite(assessment.id, payload);
       const origin = typeof window !== "undefined" ? window.location.origin : "";
       const path =
         assessment.type === "QUIZ"
