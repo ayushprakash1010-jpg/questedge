@@ -32,20 +32,23 @@ export function JitsiMeetRoom({
     let isCancelled = false;
 
     const loadScript = () => {
-      if (window.JitsiMeetExternalAPI) {
-        initJitsi();
+      const existingScript = document.getElementById("jitsi-external-api-script") as HTMLScriptElement | null;
+      if (existingScript && existingScript.src.includes("meet.ffmuc.net")) {
+        if (window.JitsiMeetExternalAPI) {
+          initJitsi();
+        } else {
+          existingScript.addEventListener("load", initJitsi);
+        }
         return;
       }
-
-      const existingScript = document.getElementById("jitsi-external-api-script");
       if (existingScript) {
-        existingScript.addEventListener("load", initJitsi);
-        return;
+        existingScript.remove();
+        delete (window as any).JitsiMeetExternalAPI;
       }
 
       const script = document.createElement("script");
       script.id = "jitsi-external-api-script";
-      script.src = "https://meet.jit.si/external_api.js";
+      script.src = "https://meet.ffmuc.net/external_api.js";
       script.async = true;
       script.onload = () => {
         if (!isCancelled) initJitsi();
@@ -63,7 +66,7 @@ export function JitsiMeetRoom({
       if (!containerRef.current || apiRef.current || isCancelled) return;
 
       try {
-        const domain = "meet.jit.si";
+        const domain = "meet.ffmuc.net";
         const options = {
           roomName: `QuestEdge_${roomName}`,
           width: "100%",
