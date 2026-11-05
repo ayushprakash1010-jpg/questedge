@@ -192,6 +192,36 @@ export class AssessmentEngineService {
             },
           });
         }
+
+        // Recruiter granted retake: reset existing attempt & clear old answers to satisfy @@unique([assessmentId, candidateId])
+        await this.prisma.$transaction(async (tx) => {
+          await tx.assessmentResponse.deleteMany({ where: { attemptId: existing.id } });
+          await tx.codeSubmission.deleteMany({ where: { attemptId: existing.id } });
+        });
+
+        const accessToken = randomUUID();
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 7);
+
+        return this.prisma.assessmentAttempt.update({
+          where: { id: existing.id },
+          data: {
+            accessToken,
+            expiresAt,
+            status: 'NOT_STARTED',
+            startedAt: null,
+            completedAt: null,
+            score: 0,
+            percentage: 0,
+            passed: false,
+            tabSwitchCount: 0,
+            fullscreenExits: 0,
+          },
+          include: {
+            assessment: { select: { id: true, title: true, type: true, durationMinutes: true } },
+            candidateProfile: { select: { id: true, name: true, email: true } },
+          },
+        });
       } else {
         // Pending attempt (NOT_STARTED or IN_PROGRESS)
         return existing;
