@@ -83,24 +83,45 @@ export default function CandidateAssessmentLandingPage() {
 
   if (attempt.status === "COMPLETED" || attempt.status === "TIMED_OUT") {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl max-w-md w-full p-8 shadow-xl border border-slate-200 text-center space-y-5">
-          <div className="h-14 w-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-sm">
-            <CheckCircle2 className="h-7 w-7" />
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        {/* Top Header */}
+        <header className="border-b border-slate-200/80 bg-white/90 backdrop-blur py-3 px-6 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-xl bg-indigo-600 text-white font-extrabold flex items-center justify-center text-sm shadow-sm">
+              QE
+            </div>
+            <span className="font-extrabold text-slate-900 tracking-tight text-sm">QuestEdge</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2 border-l border-slate-200">
+              Evaluation Portal
+            </span>
           </div>
-          <div>
-            <h2 className="text-xl font-bold text-slate-900">Assessment Completed</h2>
-            <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">
-              You have already finished and submitted your responses for <strong>{attempt.assessment.title}</strong>.
-            </p>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-[11px] font-semibold border border-slate-200">
+              <ShieldCheck className="h-3.5 w-3.5 text-indigo-600" />
+              {attempt.candidateProfile?.name || attempt.candidateProfile?.email || "Candidate"}
+            </span>
           </div>
-          <div className="pt-2">
-            <button
-              onClick={() => router.push(`/assessment/${token}/complete`)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-sm"
-            >
-              View Submission & Score <ArrowRight className="h-3.5 w-3.5" />
-            </button>
+        </header>
+
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-8 shadow-xl border border-slate-200 text-center space-y-5">
+            <div className="h-14 w-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-sm">
+              <CheckCircle2 className="h-7 w-7" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Assessment Completed</h2>
+              <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">
+                You have already finished and submitted your responses for <strong>{attempt.assessment.title}</strong>.
+              </p>
+            </div>
+            <div className="pt-2">
+              <button
+                onClick={() => router.push(`/assessment/${token}/complete`)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-sm"
+              >
+                View Submission & Score <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -110,8 +131,28 @@ export default function CandidateAssessmentLandingPage() {
   const { assessment } = attempt;
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 flex items-center justify-center">
-      <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-10 shadow-xl border border-slate-200 space-y-8">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      {/* Top Header */}
+      <header className="border-b border-slate-200/80 bg-white/90 backdrop-blur py-3 px-6 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="h-8 w-8 rounded-xl bg-indigo-600 text-white font-extrabold flex items-center justify-center text-sm shadow-sm">
+            QE
+          </div>
+          <span className="font-extrabold text-slate-900 tracking-tight text-sm">QuestEdge</span>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2 border-l border-slate-200">
+            Evaluation Portal
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-semibold border border-emerald-200">
+            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+            {attempt.candidateProfile?.name || attempt.candidateProfile?.email ? `Candidate: ${attempt.candidateProfile?.name || attempt.candidateProfile?.email}` : "Proctored Candidate Session"}
+          </span>
+        </div>
+      </header>
+
+      <div className="flex-1 py-12 px-4 sm:px-6 flex items-center justify-center">
+        <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-10 shadow-xl border border-slate-200 space-y-8">
         {/* Header */}
         <div>
           <div className="flex items-center gap-2 mb-3">
@@ -221,6 +262,7 @@ export default function CandidateAssessmentLandingPage() {
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }
 
