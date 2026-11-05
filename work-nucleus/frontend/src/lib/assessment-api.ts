@@ -238,15 +238,30 @@ export async function sendAssessmentInvite(
     body: JSON.stringify(data),
   });
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({ message: res.statusText }));
-    const err: any = new Error(errorData.message || `Request failed (${res.status})`);
-    if (errorData.alreadyCompleted) {
+    const data = await res.json().catch(() => ({}));
+    const errorObj = data.error || {};
+    const message =
+      (typeof errorObj === 'object' && errorObj.message ? errorObj.message : undefined) ||
+      data.message ||
+      `Request failed (${res.status})`;
+
+    const err: any = new Error(message);
+    const details = errorObj.details || data.details || {};
+
+    const isAlreadyCompleted =
+      res.status === 409 ||
+      details.alreadyCompleted ||
+      data.alreadyCompleted ||
+      errorObj.alreadyCompleted ||
+      message.toLowerCase().includes('already completed');
+
+    if (isAlreadyCompleted) {
       err.alreadyCompleted = true;
-      err.score = errorData.score;
-      err.percentage = errorData.percentage;
-      err.passed = errorData.passed;
-      err.completedAt = errorData.completedAt;
-      err.candidateName = errorData.candidateName;
+      err.score = details.score ?? data.score ?? 0;
+      err.percentage = details.percentage ?? data.percentage ?? '0.0';
+      err.passed = details.passed ?? data.passed;
+      err.completedAt = details.completedAt ?? data.completedAt;
+      err.candidateName = details.candidateName ?? data.candidateName ?? 'Candidate';
     }
     throw err;
   }

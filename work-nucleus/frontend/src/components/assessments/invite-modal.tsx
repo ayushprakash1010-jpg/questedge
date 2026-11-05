@@ -49,16 +49,17 @@ export function InviteModal({ assessment, isOpen, onClose }: InviteModalProps) {
       const path = `/assessment/${attempt.accessToken}`;
       setGeneratedLink(`${origin}${path}`);
     } catch (err: any) {
-      if (err.alreadyCompleted) {
+      const msg = err.message || "";
+      if (err.alreadyCompleted || msg.toLowerCase().includes("already completed")) {
         setRetakeWarning({
-          score: err.score,
-          percentage: err.percentage,
+          score: err.score ?? 0,
+          percentage: err.percentage ?? "0.0",
           passed: err.passed,
           completedAt: err.completedAt,
           candidateName: err.candidateName,
         });
       } else {
-        setError(err.message || "Failed to generate assessment link");
+        setError(msg || "Failed to generate assessment link");
       }
     } finally {
       setIsGenerating(false);

@@ -181,13 +181,15 @@ export class AssessmentEngineService {
         if (!dto.allowRetake) {
           throw new ConflictException({
             message: `Candidate has already completed this assessment (Score: ${existing.score} pts / ${Number(existing.percentage).toFixed(1)}%).`,
-            alreadyCompleted: true,
-            attemptId: existing.id,
-            score: existing.score,
-            percentage: Number(existing.percentage).toFixed(1),
-            passed: existing.passed,
-            completedAt: existing.completedAt,
-            candidateName: existing.candidateProfile?.name || 'Candidate',
+            details: {
+              alreadyCompleted: true,
+              attemptId: existing.id,
+              score: existing.score,
+              percentage: Number(existing.percentage).toFixed(1),
+              passed: existing.passed,
+              completedAt: existing.completedAt,
+              candidateName: existing.candidateProfile?.name || 'Candidate',
+            },
           });
         }
       } else {

@@ -33,7 +33,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         message = res;
       } else if (typeof res === 'object') {
         message = (res as any).message || message;
-        details = (res as any).details;
+        details = (res as any).details || res;
       }
       code = this.getCodeFromStatus(status);
     } else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
