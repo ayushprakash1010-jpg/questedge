@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateAssessmentDto, UpdateAssessmentDto, SendAssessmentInviteDto } from './dto';
@@ -164,21 +165,35 @@ export class AssessmentEngineService {
       candidateId = candidate.id;
     }
 
-    // Check if an active (uncompleted) attempt already exists
+    // Check if an existing attempt exists for this candidate
     const existing = await this.prisma.assessmentAttempt.findFirst({
-      where: {
-        assessmentId,
-        candidateId,
-        status: { in: ['NOT_STARTED', 'IN_PROGRESS'] },
-      },
+      where: { assessmentId, candidateId },
       orderBy: { createdAt: 'desc' },
       include: {
-        assessment: { select: { id: true, title: true, type: true, durationMinutes: true } },
+        assessment: { select: { id: true, title: true, type: true, durationMinutes: true, totalPoints: true } },
         candidateProfile: { select: { id: true, name: true, email: true } },
       },
     });
+
     if (existing) {
-      return existing;
+      // If completed or timed out, require explicit allowRetake override
+      if (existing.status === 'COMPLETED' || existing.status === 'TIMED_OUT') {
+        if (!dto.allowRetake) {
+          throw new ConflictException({
+            message: `Candidate has already completed this assessment (Score: ${existing.score} pts / ${Number(existing.percentage).toFixed(1)}%).`,
+            alreadyCompleted: true,
+            attemptId: existing.id,
+            score: existing.score,
+            percentage: Number(existing.percentage).toFixed(1),
+            passed: existing.passed,
+            completedAt: existing.completedAt,
+            candidateName: existing.candidateProfile?.name || 'Candidate',
+          });
+        }
+      } else {
+        // Pending attempt (NOT_STARTED or IN_PROGRESS)
+        return existing;
+      }
     }
 
     const accessToken = randomUUID();

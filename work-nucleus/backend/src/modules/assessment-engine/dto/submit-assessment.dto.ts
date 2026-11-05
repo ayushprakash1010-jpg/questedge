@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsInt, IsUUID, IsArray, IsObject } from 'class-validator';
+import { IsString, IsOptional, IsInt, IsUUID, IsArray, IsObject, IsBoolean } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SubmitQuizResponseDto {
@@ -85,4 +85,9 @@ export class SendAssessmentInviteDto {
   @IsUUID()
   @IsOptional()
   applicationId?: string;
+
+  @ApiPropertyOptional({ description: 'Allow candidate to retake even if already completed' })
+  @IsBoolean()
+  @IsOptional()
+  allowRetake?: boolean;
 }

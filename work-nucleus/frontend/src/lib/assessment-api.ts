@@ -224,14 +224,33 @@ export async function deleteCodingChallenge(assessmentId: string, challengeId: s
 
 export async function sendAssessmentInvite(
   assessmentId: string,
-  data: { candidateId: string; applicationId?: string }
+  data: {
+    candidateId?: string;
+    candidateEmail?: string;
+    candidateName?: string;
+    applicationId?: string;
+    allowRetake?: boolean;
+  }
 ): Promise<AssessmentAttempt> {
   const res = await fetch(`/api/v2/assessments/${assessmentId}/invite`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  return handleResponse<AssessmentAttempt>(res);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ message: res.statusText }));
+    const err: any = new Error(errorData.message || `Request failed (${res.status})`);
+    if (errorData.alreadyCompleted) {
+      err.alreadyCompleted = true;
+      err.score = errorData.score;
+      err.percentage = errorData.percentage;
+      err.passed = errorData.passed;
+      err.completedAt = errorData.completedAt;
+      err.candidateName = errorData.candidateName;
+    }
+    throw err;
+  }
+  return res.json();
 }
 
 export async function fetchAssessmentAnalytics(assessmentId: string): Promise<{

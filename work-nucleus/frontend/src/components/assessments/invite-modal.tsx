@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Copy, Check, Send, X, ExternalLink, Link2, Sparkles } from "lucide-react";
+import { Copy, Check, Send, X, ExternalLink, Link2, Sparkles, AlertTriangle, RotateCcw } from "lucide-react";
 import { sendAssessmentInvite, HiringAssessment } from "@/lib/assessment-api";
 
 interface InviteModalProps {
@@ -16,16 +16,24 @@ export function InviteModal({ assessment, isOpen, onClose }: InviteModalProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retakeWarning, setRetakeWarning] = useState<{
+    score: number;
+    percentage: string;
+    passed?: boolean;
+    completedAt?: string;
+    candidateName?: string;
+  } | null>(null);
 
   if (!isOpen) return null;
 
-  const handleGenerate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleGenerate = async (e?: React.FormEvent, allowRetake = false) => {
+    if (e) e.preventDefault();
 
     setIsGenerating(true);
     setError(null);
+    setRetakeWarning(null);
     try {
-      const payload: any = {};
+      const payload: any = { allowRetake };
       const trimmed = candidateId.trim();
       if (trimmed) {
         if (trimmed.includes("@")) {
@@ -41,7 +49,17 @@ export function InviteModal({ assessment, isOpen, onClose }: InviteModalProps) {
       const path = `/assessment/${attempt.accessToken}`;
       setGeneratedLink(`${origin}${path}`);
     } catch (err: any) {
-      setError(err.message || "Failed to generate assessment link");
+      if (err.alreadyCompleted) {
+        setRetakeWarning({
+          score: err.score,
+          percentage: err.percentage,
+          passed: err.passed,
+          completedAt: err.completedAt,
+          candidateName: err.candidateName,
+        });
+      } else {
+        setError(err.message || "Failed to generate assessment link");
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -92,6 +110,50 @@ export function InviteModal({ assessment, isOpen, onClose }: InviteModalProps) {
                 Enter a candidate&apos;s email to send an invite, or leave blank to generate an open test link.
               </p>
             </div>
+
+            {retakeWarning && (
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="h-8 w-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <AlertTriangle className="h-4 w-4" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-xs font-bold text-amber-900">
+                      Candidate Already Completed Assessment
+                    </h4>
+                    <p className="text-xs text-amber-800 leading-relaxed">
+                      This candidate previously submitted this assessment with a score of{" "}
+                      <strong>{retakeWarning.score} pts ({retakeWarning.percentage}%)</strong>
+                      {retakeWarning.completedAt && (
+                        <> on {new Date(retakeWarning.completedAt).toLocaleDateString()}</>
+                      )}.
+                    </p>
+                    <p className="text-[11px] text-amber-700/80">
+                      Retakes should only be granted for legitimate issues (e.g. tech failure or power loss).
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-amber-200/60">
+                  <button
+                    type="button"
+                    onClick={() => setRetakeWarning(null)}
+                    className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-amber-100/60 rounded-xl transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isGenerating}
+                    onClick={() => handleGenerate(undefined, true)}
+                    className="px-4 py-1.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-sm transition-colors flex items-center gap-1.5"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    {isGenerating ? "Generating..." : "Allow Retake"}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {error && (
               <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700">
