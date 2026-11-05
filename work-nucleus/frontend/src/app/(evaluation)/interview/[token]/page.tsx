@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Video, User, AlertTriangle, Loader2 } from "lucide-react";
+import { Video, User, AlertTriangle, Loader2, CheckCircle2 } from "lucide-react";
 import { fetchCandidateVideoRoom, VideoInterviewStatus } from "@/lib/assessment-api";
 import { JitsiMeetRoom } from "@/components/assessments/jitsi-meet-room";
 
@@ -43,12 +43,12 @@ export default function CandidateInterviewJoinPage() {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
         <div className="bg-slate-900 rounded-3xl max-w-md w-full p-8 shadow-2xl border border-slate-800 text-center space-y-4 text-white">
-          <div className="h-12 w-12 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto">
-            <AlertTriangle className="h-6 w-6" />
+          <div className="h-12 w-12 rounded-full bg-slate-800 text-emerald-400 flex items-center justify-center mx-auto border border-slate-700">
+            <CheckCircle2 className="h-6 w-6" />
           </div>
-          <h2 className="text-xl font-bold">Interview Link Inactive</h2>
+          <h2 className="text-xl font-bold">Interview Concluded</h2>
           <p className="text-sm text-slate-400 leading-relaxed">
-            {error || "This interview link is no longer valid, has been completed, or has expired."}
+            This interview session has already ended. Your evaluation has been submitted by the hiring team.
           </p>
           <Link
             href="/"
