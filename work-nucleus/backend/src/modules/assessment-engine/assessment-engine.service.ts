@@ -160,20 +160,16 @@ export class AssessmentEngineService {
     }
 
     if (!candidateId) {
-      let candidate = await this.prisma.candidateProfile.findFirst({
-        orderBy: { createdAt: 'desc' },
+      const guestEmail = `guest_${Date.now()}_${Math.floor(Math.random() * 10000)}@questedge.internal`;
+      const candidate = await this.prisma.candidateProfile.create({
+        data: {
+          auth0Sub: `guest_${randomUUID()}`,
+          email: guestEmail,
+          emailHash: createHash('sha256').update(guestEmail).digest('hex'),
+          name: dto.candidateName || 'Guest Candidate',
+          headline: 'Self-Registered Candidate',
+        },
       });
-      if (!candidate) {
-        candidate = await this.prisma.candidateProfile.create({
-          data: {
-            auth0Sub: `guest_${randomUUID()}`,
-            email: `candidate_${Date.now()}@questedge.com`,
-            emailHash: createHash('sha256').update(`candidate_${Date.now()}@questedge.com`).digest('hex'),
-            name: dto.candidateName || 'Candidate',
-            headline: 'Candidate',
-          },
-        });
-      }
       candidateId = candidate.id;
     }
 
