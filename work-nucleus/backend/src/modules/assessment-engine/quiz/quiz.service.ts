@@ -19,7 +19,7 @@ export class QuizService {
     });
     if (!assessment) throw new NotFoundException('Quiz assessment not found');
 
-    return this.prisma.assessmentQuestion.create({
+    const created = await this.prisma.assessmentQuestion.create({
       data: {
         assessmentId,
         orgId,
@@ -34,6 +34,9 @@ export class QuizService {
         orderIndex: dto.orderIndex ?? 0,
       },
     });
+
+    await this.syncAssessmentTotalPoints(assessmentId);
+    return created;
   }
 
   async updateQuestion(
@@ -47,7 +50,7 @@ export class QuizService {
     });
     if (!question) throw new NotFoundException('Question not found');
 
-    return this.prisma.assessmentQuestion.update({
+    const updated = await this.prisma.assessmentQuestion.update({
       where: { id: questionId },
       data: {
         ...(dto.text !== undefined && { text: dto.text }),
@@ -61,6 +64,9 @@ export class QuizService {
         ...(dto.orderIndex !== undefined && { orderIndex: dto.orderIndex }),
       },
     });
+
+    await this.syncAssessmentTotalPoints(assessmentId);
+    return updated;
   }
 
   async removeQuestion(assessmentId: string, questionId: string, orgId: string) {
@@ -70,6 +76,21 @@ export class QuizService {
     if (!question) throw new NotFoundException('Question not found');
 
     await this.prisma.assessmentQuestion.delete({ where: { id: questionId } });
+    await this.syncAssessmentTotalPoints(assessmentId);
+  }
+
+  private async syncAssessmentTotalPoints(assessmentId: string) {
+    const sum = await this.prisma.assessmentQuestion.aggregate({
+      where: { assessmentId },
+      _sum: { points: true },
+    });
+    const totalPoints = sum._sum.points || 0;
+    if (totalPoints > 0) {
+      await this.prisma.hiringAssessment.update({
+        where: { id: assessmentId },
+        data: { totalPoints },
+      });
+    }
   }
 
   // ── Quiz Submission & Scoring ─────────────────────────────────
@@ -109,9 +130,12 @@ export class QuizService {
 
     const questions = attempt.assessment.questions;
     const questionMap = new Map(questions.map((q) => [q.id, q]));
+    const totalPossiblePoints =
+      questions.reduce((sum, q) => sum + (q.points || 0), 0) ||
+      attempt.assessment.totalPoints ||
+      100;
 
     let totalScore = 0;
-    let totalPoints = 0;
 
     interface ValidatedResponse {
       attemptId: string;
@@ -129,7 +153,6 @@ export class QuizService {
       const question = questionMap.get(resp.questionId);
       if (!question) continue;
 
-      totalPoints += question.points;
       const options = (question.options as Array<{ id: string; text: string; isCorrect: boolean }>) || [];
       let isCorrect = false;
       let pointsEarned = 0;
@@ -169,10 +192,18 @@ export class QuizService {
     }
 
     // Save all responses and update attempt in a transaction
-    const percentage = totalPoints > 0 ? (totalScore / totalPoints) * 100 : 0;
+    const percentage = totalPossiblePoints > 0 ? (totalScore / totalPossiblePoints) * 100 : 0;
     const passed = percentage >= attempt.assessment.passingPercentage;
 
     await this.prisma.$transaction(async (tx) => {
+      // Sync assessment totalPoints if needed
+      if (attempt.assessment.totalPoints !== totalPossiblePoints && totalPossiblePoints > 0) {
+        await tx.hiringAssessment.update({
+          where: { id: attempt.assessmentId },
+          data: { totalPoints: totalPossiblePoints },
+        });
+      }
+
       // Upsert responses (handles re-submission)
       for (const resp of responseData) {
         await tx.assessmentResponse.upsert({
@@ -210,7 +241,7 @@ export class QuizService {
     return {
       attemptId: attempt.id,
       score: totalScore,
-      totalPoints,
+      totalPoints: totalPossiblePoints,
       percentage: percentage.toFixed(1),
       passed,
       totalQuestions: questions.length,

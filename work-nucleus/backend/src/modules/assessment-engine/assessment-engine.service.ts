@@ -77,6 +77,18 @@ export class AssessmentEngineService {
       },
     });
     if (!assessment) throw new NotFoundException('Assessment not found');
+
+    const questionSum = assessment.questions?.reduce((sum, q) => sum + (q.points || 0), 0) || 0;
+    const challengeSum = assessment.codingChallenges?.reduce((sum, c) => sum + (c.maxScore || 0), 0) || 0;
+    const dynamicTotal = questionSum + challengeSum;
+    if (dynamicTotal > 0 && assessment.totalPoints !== dynamicTotal) {
+      await this.prisma.hiringAssessment.update({
+        where: { id },
+        data: { totalPoints: dynamicTotal },
+      });
+      assessment.totalPoints = dynamicTotal;
+    }
+
     return assessment;
   }
 
@@ -298,8 +310,13 @@ export class AssessmentEngineService {
     // Note: completed attempts are returned so candidate can view completion/scorecard
 
     // Strip isCorrect from options for candidate view
+    const questionSum = attempt.assessment.questions?.reduce((sum, q) => sum + (q.points || 0), 0) || 0;
+    const challengeSum = attempt.assessment.codingChallenges?.reduce((sum, c) => sum + (c.maxScore || 0), 0) || 0;
+    const dynamicTotal = questionSum + challengeSum;
+
     const sanitizedAssessment = {
       ...attempt.assessment,
+      ...(dynamicTotal > 0 && { totalPoints: dynamicTotal }),
       questions: attempt.assessment.questions.map((q) => ({
         ...q,
         options: (q.options as any[]).map(({ isCorrect, ...rest }) => rest),
@@ -362,11 +379,32 @@ export class AssessmentEngineService {
       },
     });
     if (!attempt) throw new NotFoundException('Attempt not found');
+
+    const questionSum = attempt.responses?.reduce((sum, r) => sum + (r.question?.points || 0), 0) || 0;
+    const challengeSum = attempt.codeSubmissions?.reduce((sum, s) => sum + (s.challenge?.maxScore || 0), 0) || 0;
+    const dynamicTotal = questionSum + challengeSum;
+    if (dynamicTotal > 0 && attempt.assessment) {
+      attempt.assessment.totalPoints = dynamicTotal;
+    }
+
     return attempt;
   }
 
   async getAssessmentAnalytics(assessmentId: string, orgId: string) {
-    await this.verifyAssessmentOwnership(assessmentId, orgId);
+    const assessment = await this.verifyAssessmentOwnership(assessmentId, orgId);
+
+    const [qSum, cSum] = await Promise.all([
+      this.prisma.assessmentQuestion.aggregate({ where: { assessmentId }, _sum: { points: true } }),
+      this.prisma.codingChallenge.aggregate({ where: { assessmentId }, _sum: { maxScore: true } }),
+    ]);
+    const dynamicTotal = (qSum._sum.points || 0) + (cSum._sum.maxScore || 0);
+    if (dynamicTotal > 0 && assessment.totalPoints !== dynamicTotal) {
+      await this.prisma.hiringAssessment.update({
+        where: { id: assessmentId },
+        data: { totalPoints: dynamicTotal },
+      });
+      assessment.totalPoints = dynamicTotal;
+    }
 
     const attempts = await this.prisma.assessmentAttempt.findMany({
       where: { assessmentId, status: { in: ['COMPLETED', 'TIMED_OUT'] } },
@@ -392,6 +430,7 @@ export class AssessmentEngineService {
       passRate: totalAttempts > 0 ? ((passed / totalAttempts) * 100).toFixed(1) : '0',
       averageScore: Math.round(avgScore),
       averagePercentage: avgPercentage.toFixed(1),
+      totalPoints: assessment.totalPoints,
       attempts,
     };
   }

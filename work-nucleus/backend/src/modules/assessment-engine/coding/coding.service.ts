@@ -55,7 +55,7 @@ export class CodingService {
     });
     if (!assessment) throw new NotFoundException('Coding assessment not found');
 
-    return this.prisma.codingChallenge.create({
+    const created = await this.prisma.codingChallenge.create({
       data: {
         assessmentId,
         title: dto.title,
@@ -71,6 +71,9 @@ export class CodingService {
         orderIndex: dto.orderIndex ?? 0,
       },
     });
+
+    await this.syncAssessmentTotalPoints(assessmentId);
+    return created;
   }
 
   async updateChallenge(
@@ -88,7 +91,7 @@ export class CodingService {
     });
     if (!challenge) throw new NotFoundException('Coding challenge not found');
 
-    return this.prisma.codingChallenge.update({
+    const updated = await this.prisma.codingChallenge.update({
       where: { id: challengeId },
       data: {
         ...(dto.title !== undefined && { title: dto.title }),
@@ -104,6 +107,9 @@ export class CodingService {
         ...(dto.orderIndex !== undefined && { orderIndex: dto.orderIndex }),
       },
     });
+
+    await this.syncAssessmentTotalPoints(assessmentId);
+    return updated;
   }
 
   async removeChallenge(assessmentId: string, challengeId: string, orgId: string) {
@@ -113,6 +119,21 @@ export class CodingService {
     if (!challenge) throw new NotFoundException('Coding challenge not found');
 
     await this.prisma.codingChallenge.delete({ where: { id: challengeId } });
+    await this.syncAssessmentTotalPoints(assessmentId);
+  }
+
+  private async syncAssessmentTotalPoints(assessmentId: string) {
+    const sum = await this.prisma.codingChallenge.aggregate({
+      where: { assessmentId },
+      _sum: { maxScore: true },
+    });
+    const totalPoints = sum._sum.maxScore || 0;
+    if (totalPoints > 0) {
+      await this.prisma.hiringAssessment.update({
+        where: { id: assessmentId },
+        data: { totalPoints },
+      });
+    }
   }
 
   // ── Code Execution (Judge0) ───────────────────────────────────

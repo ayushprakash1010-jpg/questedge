@@ -195,7 +195,7 @@ export default function AssessmentAnalyticsPage() {
                       </div>
                     </td>
                     <td className="py-3.5 px-4 font-bold text-slate-800">
-                      {att.score} pts ({Number(att.percentage).toFixed(1)}%)
+                      {att.score} / {analytics?.totalPoints || assessment?.totalPoints || 100} pts ({Number(att.percentage).toFixed(1)}%)
                     </td>
                     <td className="py-3.5 px-4">
                       <span
