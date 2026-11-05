@@ -24,6 +24,10 @@ export default function CandidateCodePage() {
   useEffect(() => {
     fetchCandidateAttempt(token)
       .then((data) => {
+        if (data.status === "COMPLETED" || data.status === "TIMED_OUT") {
+          router.push(`/assessment/${token}/complete`);
+          return;
+        }
         setAttempt(data);
         if (data.status === "NOT_STARTED") {
           startCandidateAttempt(token).catch(console.error);

@@ -77,20 +77,19 @@ export function InviteModal({ assessment, isOpen, onClose }: InviteModalProps) {
 
         {!generatedLink ? (
           <form onSubmit={handleGenerate} className="space-y-4">
-            <div>
+                        <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Candidate Profile ID
+                Candidate Email or Profile ID
               </label>
               <input
                 type="text"
-                required
                 value={candidateId}
                 onChange={(e) => setCandidateId(e.target.value)}
-                placeholder="e.g. 7637e1a3-2c70-42ec-a05e-85512030fef6"
+                placeholder="e.g. candidate@example.com or leave blank for instant link"
                 className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
               <p className="text-[11px] text-slate-400 mt-1">
-                Enter the candidate&apos;s internal ID from your Candidates table.
+                Enter a candidate&apos;s email to send an invite, or leave blank to generate an open test link.
               </p>
             </div>
 

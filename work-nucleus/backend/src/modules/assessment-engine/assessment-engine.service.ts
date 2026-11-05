@@ -164,9 +164,18 @@ export class AssessmentEngineService {
       candidateId = candidate.id;
     }
 
-    // Check if attempt already exists
+    // Check if an active (uncompleted) attempt already exists
     const existing = await this.prisma.assessmentAttempt.findFirst({
-      where: { assessmentId, candidateId },
+      where: {
+        assessmentId,
+        candidateId,
+        status: { in: ['NOT_STARTED', 'IN_PROGRESS'] },
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        assessment: { select: { id: true, title: true, type: true, durationMinutes: true } },
+        candidateProfile: { select: { id: true, name: true, email: true } },
+      },
     });
     if (existing) {
       return existing;
@@ -239,9 +248,7 @@ export class AssessmentEngineService {
     if (new Date() > attempt.expiresAt) {
       throw new BadRequestException('Assessment link has expired');
     }
-    if (attempt.status === 'COMPLETED' || attempt.status === 'TIMED_OUT') {
-      throw new BadRequestException('Assessment has already been completed');
-    }
+    // Note: completed attempts are returned so candidate can view completion/scorecard
 
     // Strip isCorrect from options for candidate view
     const sanitizedAssessment = {

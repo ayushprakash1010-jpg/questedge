@@ -81,6 +81,32 @@ export default function CandidateAssessmentLandingPage() {
     );
   }
 
+  if (attempt.status === "COMPLETED" || attempt.status === "TIMED_OUT") {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl max-w-md w-full p-8 shadow-xl border border-slate-200 text-center space-y-5">
+          <div className="h-14 w-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-sm">
+            <CheckCircle2 className="h-7 w-7" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-slate-900">Assessment Completed</h2>
+            <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">
+              You have already finished and submitted your responses for <strong>{attempt.assessment.title}</strong>.
+            </p>
+          </div>
+          <div className="pt-2">
+            <button
+              onClick={() => router.push(`/assessment/${token}/complete`)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-sm"
+            >
+              View Submission & Score <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const { assessment } = attempt;
 
   return (
