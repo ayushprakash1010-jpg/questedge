@@ -32,6 +32,7 @@ import {
   SubmitCodeDto,
   UpdateAntiCheatDto,
   SendAssessmentInviteDto,
+  PublicSelfRegisterDto,
 } from './dto';
 import { Request } from 'express';
 
@@ -316,6 +317,24 @@ export class AssessmentTakeController {
     private readonly codingService: CodingService,
     private readonly videoService: VideoInterviewService,
   ) {}
+
+  // ── Public Shareable Assessment Link ──────────────────────────
+  @Get('public/:assessmentId')
+  @Public()
+  @ApiOperation({ summary: 'Get public assessment info for self-registration landing page' })
+  getPublicAssessmentInfo(@Param('assessmentId') assessmentId: string) {
+    return this.service.getPublicAssessmentInfo(assessmentId);
+  }
+
+  @Post('public/:assessmentId/register')
+  @Public()
+  @ApiOperation({ summary: 'Self-register for a public assessment (candidate enters name + email)' })
+  publicSelfRegister(
+    @Param('assessmentId') assessmentId: string,
+    @Body() dto: PublicSelfRegisterDto,
+  ) {
+    return this.service.publicSelfRegister(assessmentId, dto);
+  }
 
   // ── Video Interview (Candidate Join) ──────────────────────────
   @Get('video/:token')

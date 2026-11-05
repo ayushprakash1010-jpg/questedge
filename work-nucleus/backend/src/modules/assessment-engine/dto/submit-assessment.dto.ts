@@ -91,3 +91,13 @@ export class SendAssessmentInviteDto {
   @IsOptional()
   allowRetake?: boolean;
 }
+
+export class PublicSelfRegisterDto {
+  @ApiProperty({ description: 'Candidate full name' })
+  @IsString()
+  name: string;
+
+  @ApiProperty({ description: 'Candidate email address' })
+  @IsString()
+  email: string;
+}

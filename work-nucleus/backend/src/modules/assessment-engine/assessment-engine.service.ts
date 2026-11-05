@@ -256,6 +256,87 @@ export class AssessmentEngineService {
     });
   }
 
+  // ── Public Self-Registration for Shareable Links ──────────────
+
+  async getPublicAssessmentInfo(assessmentId: string) {
+    const assessment = await this.prisma.hiringAssessment.findFirst({
+      where: { id: assessmentId },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        type: true,
+        durationMinutes: true,
+        totalPoints: true,
+        passingPercentage: true,
+        instructions: true,
+        _count: { select: { questions: true, codingChallenges: true } },
+      },
+    });
+    if (!assessment) throw new NotFoundException('Assessment not found');
+    return assessment;
+  }
+
+  async publicSelfRegister(assessmentId: string, dto: { name: string; email: string }) {
+    const assessment = await this.prisma.hiringAssessment.findFirst({
+      where: { id: assessmentId },
+    });
+    if (!assessment) throw new NotFoundException('Assessment not found');
+
+    const email = dto.email.trim().toLowerCase();
+    const name = dto.name.trim();
+
+    // Find or create candidate profile
+    let candidate = await this.prisma.candidateProfile.findFirst({
+      where: { email },
+    });
+    if (!candidate) {
+      candidate = await this.prisma.candidateProfile.create({
+        data: {
+          auth0Sub: `guest_${randomUUID()}`,
+          email,
+          emailHash: createHash('sha256').update(email).digest('hex'),
+          name: name || email.split('@')[0],
+          headline: 'Self-Registered Candidate',
+        },
+      });
+    }
+
+    // Check if candidate already has an attempt for this assessment
+    const existing = await this.prisma.assessmentAttempt.findFirst({
+      where: { assessmentId, candidateId: candidate.id },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        assessment: { select: { id: true, title: true, type: true, durationMinutes: true } },
+      },
+    });
+
+    if (existing) {
+      if (existing.status === 'COMPLETED' || existing.status === 'TIMED_OUT') {
+        throw new ConflictException('You have already completed this assessment.');
+      }
+      // Return existing pending attempt
+      return { accessToken: existing.accessToken };
+    }
+
+    // Create new attempt
+    const accessToken = randomUUID();
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    await this.prisma.assessmentAttempt.create({
+      data: {
+        assessmentId,
+        candidateId: candidate.id,
+        accessToken,
+        expiresAt,
+        status: 'NOT_STARTED',
+      },
+    });
+
+    return { accessToken };
+  }
+
   // ── Candidate-Facing (Public / Token-Based) ───────────────────
 
   async getAttemptByToken(token: string) {

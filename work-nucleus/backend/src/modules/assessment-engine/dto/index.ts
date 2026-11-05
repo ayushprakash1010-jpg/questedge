@@ -9,5 +9,6 @@ export {
   SubmitCodeDto,
   UpdateAntiCheatDto,
   SendAssessmentInviteDto,
+  PublicSelfRegisterDto,
 } from './submit-assessment.dto';
 
