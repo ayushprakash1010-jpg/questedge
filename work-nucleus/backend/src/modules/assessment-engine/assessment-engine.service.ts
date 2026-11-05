@@ -380,9 +380,11 @@ export class AssessmentEngineService {
     });
     if (!attempt) throw new NotFoundException('Attempt not found');
 
-    const questionSum = attempt.responses?.reduce((sum, r) => sum + (r.question?.points || 0), 0) || 0;
-    const challengeSum = attempt.codeSubmissions?.reduce((sum, s) => sum + (s.challenge?.maxScore || 0), 0) || 0;
-    const dynamicTotal = questionSum + challengeSum;
+    const [qSum, cSum] = await Promise.all([
+      this.prisma.assessmentQuestion.aggregate({ where: { assessmentId: attempt.assessmentId }, _sum: { points: true } }),
+      this.prisma.codingChallenge.aggregate({ where: { assessmentId: attempt.assessmentId }, _sum: { maxScore: true } }),
+    ]);
+    const dynamicTotal = (qSum._sum.points || 0) + (cSum._sum.maxScore || 0);
     if (dynamicTotal > 0 && attempt.assessment) {
       attempt.assessment.totalPoints = dynamicTotal;
     }
