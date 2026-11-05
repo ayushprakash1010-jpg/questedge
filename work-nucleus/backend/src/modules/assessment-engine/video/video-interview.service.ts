@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { randomUUID } from 'crypto';
+import { randomUUID, createHash } from 'crypto';
 
 @Injectable()
 export class VideoInterviewService {
@@ -14,6 +14,8 @@ export class VideoInterviewService {
     orgId: string,
     data: {
       candidateId?: string;
+      candidateEmail?: string;
+      candidateName?: string;
       applicationId?: string;
       interviewerId: string;
       pipelineStageId?: string;
@@ -21,6 +23,23 @@ export class VideoInterviewService {
       scheduledAt: string;
     },
   ) {
+    let candidateId = data.candidateId;
+    if (!candidateId && data.candidateEmail) {
+      const email = data.candidateEmail.trim().toLowerCase();
+      let candidate = await this.prisma.candidateProfile.findFirst({ where: { email } });
+      if (!candidate) {
+        candidate = await this.prisma.candidateProfile.create({
+          data: {
+            auth0Sub: `guest_${randomUUID()}`,
+            email,
+            emailHash: createHash('sha256').update(email).digest('hex'),
+            name: data.candidateName || email.split('@')[0],
+          },
+        });
+      }
+      candidateId = candidate.id;
+    }
+
     const roomName = `QE_${randomUUID().slice(0, 8)}_${Date.now()}`;
     const candidateAccessToken = randomUUID();
 
@@ -28,7 +47,7 @@ export class VideoInterviewService {
       data: {
         orgId,
         roomName,
-        candidateId: data.candidateId,
+        candidateId,
         applicationId: data.applicationId,
         interviewerId: data.interviewerId,
         pipelineStageId: data.pipelineStageId,
@@ -40,6 +59,7 @@ export class VideoInterviewService {
         candidateProfile: { select: { id: true, name: true, email: true } },
         interviewer: { select: { id: true, name: true, email: true } },
         pipelineStage: { select: { id: true, name: true } },
+        mandate: { select: { id: true, title: true } },
       },
     });
   }
@@ -109,9 +129,9 @@ export class VideoInterviewService {
 
   async end(id: string, orgId: string) {
     const interview = await this.prisma.videoInterview.findFirst({
-      where: { id, orgId, status: 'IN_PROGRESS' },
+      where: { id, orgId, status: { in: ['IN_PROGRESS', 'SCHEDULED'] } },
     });
-    if (!interview) throw new BadRequestException('No active interview found');
+    if (!interview) throw new BadRequestException('No active or scheduled interview found');
 
     const durationSeconds = interview.startedAt
       ? Math.round((Date.now() - interview.startedAt.getTime()) / 1000)

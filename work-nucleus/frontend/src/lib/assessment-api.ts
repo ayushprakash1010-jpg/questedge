@@ -290,11 +290,13 @@ export async function fetchAttemptResults(attemptId: string): Promise<any> {
 
 export async function scheduleVideoInterview(data: {
   candidateId?: string;
+  candidateEmail?: string;
+  candidateName?: string;
   applicationId?: string;
-  interviewerId: string;
+  interviewerId?: string;
   pipelineStageId?: string;
   mandateId?: string;
-  scheduledAt: string;
+  scheduledAt?: string;
 }): Promise<VideoInterview> {
   const res = await fetch('/api/v2/assessments/video-interviews', {
     method: 'POST',

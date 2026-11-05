@@ -50,6 +50,15 @@ export default function InterviewerVideoRoomPage() {
     try {
       const data = await fetchVideoInterview(id);
       setInterview(data);
+      if (data.technicalScore !== null && data.technicalScore !== undefined) setTechnicalScore(data.technicalScore);
+      if (data.communicationScore !== null && data.communicationScore !== undefined) setCommunicationScore(data.communicationScore);
+      if (data.cultureFitScore !== null && data.cultureFitScore !== undefined) setCultureFitScore(data.cultureFitScore);
+      if (data.leadershipScore !== null && data.leadershipScore !== undefined) setLeadershipScore(data.leadershipScore);
+      if (data.recommendation) setRecommendation(data.recommendation);
+      if (data.notes) setNotes(data.notes);
+      if (data.strengths) setStrengths(data.strengths);
+      if (data.weaknesses) setWeaknesses(data.weaknesses);
+
       if (data.status === "SCHEDULED") {
         await startVideoInterview(id);
       }
@@ -93,7 +102,9 @@ export default function InterviewerVideoRoomPage() {
         weaknesses,
       });
 
-      await endVideoInterview(id);
+      if (interview?.status !== "COMPLETED") {
+        await endVideoInterview(id);
+      }
       alert("Interview feedback saved successfully!");
       router.push("/assessments");
     } catch (err: any) {
@@ -335,7 +346,7 @@ export default function InterviewerVideoRoomPage() {
               ) : (
                 <CheckCircle2 className="h-4 w-4" />
               )}
-              Submit Evaluation & Complete Round
+              {interview?.status === "COMPLETED" ? "Update Evaluation Feedback" : "Submit Evaluation & Complete Round"}
             </button>
           </form>
         </div>

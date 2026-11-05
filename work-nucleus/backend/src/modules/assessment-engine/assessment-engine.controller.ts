@@ -92,15 +92,23 @@ export class AssessmentEngineController {
   scheduleVideoInterview(
     @Body() data: {
       candidateId?: string;
+      candidateEmail?: string;
+      candidateName?: string;
       applicationId?: string;
-      interviewerId: string;
+      interviewerId?: string;
       pipelineStageId?: string;
       mandateId?: string;
-      scheduledAt: string;
+      scheduledAt?: string;
     },
     @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') userId: string,
   ) {
-    return this.videoService.schedule(orgId, data);
+    const interviewerId = data.interviewerId || userId;
+    return this.videoService.schedule(orgId, {
+      ...data,
+      interviewerId,
+      scheduledAt: data.scheduledAt || new Date().toISOString(),
+    });
   }
 
   @Get('video-interviews')
@@ -309,6 +317,14 @@ export class AssessmentTakeController {
     private readonly videoService: VideoInterviewService,
   ) {}
 
+  // ── Video Interview (Candidate Join) ──────────────────────────
+  @Get('video/:token')
+  @Public()
+  @ApiOperation({ summary: 'Get video interview room info by candidate token' })
+  getVideoRoom(@Param('token') token: string) {
+    return this.videoService.getByToken(token);
+  }
+
   @Get(':token')
   @Public()
   @ApiOperation({ summary: 'Get assessment details by access token (candidate view)' })
@@ -363,14 +379,5 @@ export class AssessmentTakeController {
     @Body() dto: UpdateAntiCheatDto,
   ) {
     return this.service.updateAntiCheat(token, dto);
-  }
-
-  // ── Video Interview (Candidate Join) ──────────────────────────
-
-  @Get('video/:token')
-  @Public()
-  @ApiOperation({ summary: 'Get video interview room info by candidate token' })
-  getVideoRoom(@Param('token') token: string) {
-    return this.videoService.getByToken(token);
   }
 }

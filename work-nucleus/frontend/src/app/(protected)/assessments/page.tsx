@@ -20,6 +20,8 @@ import {
   Clock,
   Sparkles,
   Award,
+  Copy,
+  Check,
 } from "lucide-react";
 import {
   fetchAssessments,
@@ -30,6 +32,7 @@ import {
   AssessmentType,
 } from "@/lib/assessment-api";
 import { InviteModal } from "@/components/assessments/invite-modal";
+import { ScheduleVideoModal } from "@/components/assessments/schedule-video-modal";
 
 export default function AssessmentsPage() {
   const router = useRouter();
@@ -39,6 +42,16 @@ export default function AssessmentsPage() {
   const [activeTab, setActiveTab] = useState<"ALL" | "QUIZ" | "CODING" | "VIDEO">("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedForInvite, setSelectedForInvite] = useState<HiringAssessment | null>(null);
+  const [isScheduleVideoOpen, setIsScheduleVideoOpen] = useState(false);
+  const [copiedVideoToken, setCopiedVideoToken] = useState<string | null>(null);
+
+  const copyCandidateLink = (token: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    navigator.clipboard.writeText(`${origin}/interview/${token}`);
+    setCopiedVideoToken(token);
+    setTimeout(() => setCopiedVideoToken(null), 2000);
+  };
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -102,6 +115,13 @@ export default function AssessmentsPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsScheduleVideoOpen(true)}
+            className="flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm shadow-sm transition-colors"
+          >
+            <Video className="h-4 w-4" />
+            Schedule Video Room
+          </button>
           <Link
             href="/assessments/create"
             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm shadow-sm transition-colors"
@@ -350,51 +370,129 @@ export default function AssessmentsPage() {
       )}
 
       {/* Video Interviews Section */}
-      {interviews.length > 0 && (
+      {(activeTab === "ALL" || activeTab === "VIDEO") && (
         <div className="space-y-4 pt-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Video className="h-5 w-5 text-sky-600" />
-              Scheduled Video Interview Rooms
-            </h2>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <Video className="h-5 w-5 text-sky-600" />
+                Live Video Interview Rooms
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Zero-setup WebRTC interview rooms with real-time scoring dossier.
+              </p>
+            </div>
+            <button
+              onClick={() => setIsScheduleVideoOpen(true)}
+              className="px-3.5 py-1.5 rounded-xl bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 text-xs font-bold transition-colors flex items-center gap-1.5"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Schedule Room
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {interviews.map((iv) => (
-              <div
-                key={iv.id}
-                className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded">
-                    {iv.status}
-                  </span>
-                  <span className="text-xs text-slate-400 font-mono">
-                    {new Date(iv.scheduledAt).toLocaleDateString()}
-                  </span>
-                </div>
-
-                <div>
-                  <h4 className="font-bold text-slate-900 text-sm">
-                    {iv.candidateProfile?.name || "Candidate"}
-                  </h4>
-                  <p className="text-xs text-slate-500">
-                    Interviewer: {iv.interviewer?.name || iv.interviewer?.email}
-                  </p>
-                </div>
-
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                  <Link
-                    href={`/assessments/video/${iv.id}`}
-                    className="w-full bg-sky-600 hover:bg-sky-700 text-white font-semibold py-2 px-3 rounded-xl text-xs text-center transition-colors flex items-center justify-center gap-1.5"
-                  >
-                    <Video className="h-3.5 w-3.5" />
-                    Enter Interview Room
-                  </Link>
-                </div>
+          {interviews.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center">
+              <div className="h-12 w-12 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center mx-auto mb-3">
+                <Video className="h-6 w-6" />
               </div>
-            ))}
-          </div>
+              <h4 className="font-bold text-slate-800 text-sm">No video interviews scheduled yet</h4>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-4">
+                Schedule a real-time WebRTC video interview room for candidates with an embedded evaluation scorecard.
+              </p>
+              <button
+                onClick={() => setIsScheduleVideoOpen(true)}
+                className="inline-flex items-center gap-1.5 bg-sky-600 hover:bg-sky-700 text-white font-semibold px-3.5 py-2 rounded-xl text-xs transition-colors"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Schedule First Video Room
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {interviews.map((iv) => (
+                <div
+                  key={iv.id}
+                  className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3 hover:border-slate-300 transition-all flex flex-col justify-between"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span
+                        className={`text-[11px] font-bold px-2 py-0.5 rounded ${
+                          iv.status === "COMPLETED"
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : iv.status === "IN_PROGRESS"
+                            ? "bg-amber-50 text-amber-700 border border-amber-200"
+                            : iv.status === "CANCELLED"
+                            ? "bg-rose-50 text-rose-700 border border-rose-200"
+                            : "bg-sky-50 text-sky-700 border border-sky-200"
+                        }`}
+                      >
+                        {iv.status}
+                      </span>
+                      <span className="text-xs text-slate-400 font-mono">
+                        {new Date(iv.scheduledAt).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-sm">
+                        {iv.candidateProfile?.name || "Candidate"}
+                      </h4>
+                      <p className="text-xs text-slate-400">
+                        {iv.candidateProfile?.email || "No email specified"}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Interviewer: {iv.interviewer?.name || iv.interviewer?.email || "Assigned Team Member"}
+                      </p>
+                    </div>
+
+                    {iv.status === "COMPLETED" && (
+                      <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs flex items-center justify-between">
+                        <span className="text-slate-600 font-medium">Evaluation:</span>
+                        <div className="flex items-center gap-1.5 font-bold">
+                          {iv.overallRating && (
+                            <span className="text-indigo-600">{iv.overallRating}/10</span>
+                          )}
+                          {iv.recommendation && (
+                            <span className="text-slate-800 text-[11px]">({iv.recommendation})</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
+                    <button
+                      onClick={(e) => copyCandidateLink(iv.candidateAccessToken, e)}
+                      className="px-2.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors flex items-center gap-1"
+                      title="Copy candidate join link"
+                    >
+                      {copiedVideoToken === iv.candidateAccessToken ? (
+                        <>
+                          <Check className="h-3.5 w-3.5 text-emerald-600" />
+                          <span className="text-emerald-700 text-[11px]">Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3.5 w-3.5 text-slate-500" />
+                          <span className="text-[11px]">Copy Link</span>
+                        </>
+                      )}
+                    </button>
+
+                    <Link
+                      href={`/assessments/video/${iv.id}`}
+                      className="flex-1 bg-sky-600 hover:bg-sky-700 text-white font-semibold py-2 px-3 rounded-xl text-xs text-center transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+                    >
+                      <Video className="h-3.5 w-3.5" />
+                      {iv.status === "COMPLETED" ? "View Room & Notes" : "Enter Room"}
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -406,6 +504,13 @@ export default function AssessmentsPage() {
           onClose={() => setSelectedForInvite(null)}
         />
       )}
+
+      {/* Schedule Video Interview Modal */}
+      <ScheduleVideoModal
+        isOpen={isScheduleVideoOpen}
+        onClose={() => setIsScheduleVideoOpen(false)}
+        onCreated={(newIv) => setInterviews((prev) => [newIv, ...prev])}
+      />
     </div>
   );
 }
