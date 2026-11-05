@@ -149,7 +149,7 @@ export function JitsiMeetRoom({
   }, [displayName, isAdmin, onLeave, roomName]);
 
   return (
-    <div className="relative w-full h-full min-h-[500px] bg-slate-950 rounded-2xl overflow-hidden shadow-inner">
+    <div className="relative w-full h-full flex-1 min-h-[450px] bg-slate-950 rounded-2xl overflow-hidden shadow-inner flex flex-col">
       {loading && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 pointer-events-none z-10 text-white space-y-3 transition-opacity">
           <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
@@ -165,7 +165,10 @@ export function JitsiMeetRoom({
         </div>
       )}
 
-      <div ref={containerRef} className="w-full h-full min-h-[500px]" />
+      <div
+        ref={containerRef}
+        className="w-full h-full flex-1 min-h-0 [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0 [&>iframe]:block"
+      />
     </div>
   );
 }

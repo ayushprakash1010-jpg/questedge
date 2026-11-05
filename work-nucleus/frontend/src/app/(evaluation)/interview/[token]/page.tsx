@@ -64,9 +64,9 @@ export default function CandidateInterviewJoinPage() {
   const candidateName = roomInfo.candidateProfile?.name || "Candidate";
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col text-white">
+    <div className="h-screen max-h-screen bg-slate-950 flex flex-col text-white overflow-hidden">
       {/* Top Bar */}
-      <header className="bg-slate-900 border-b border-slate-800 px-6 py-3 flex items-center justify-between">
+      <header className="h-14 shrink-0 bg-slate-900 border-b border-slate-800 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-sm">
             QE
@@ -84,7 +84,7 @@ export default function CandidateInterviewJoinPage() {
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 p-4 sm:p-6 flex flex-col">
+      <main className="flex-1 p-3 sm:p-4 flex flex-col overflow-hidden min-h-0">
         {!joined ? (
           <div className="max-w-md w-full mx-auto my-auto bg-slate-900 rounded-3xl border border-slate-800 p-8 shadow-2xl text-center space-y-6">
             <div className="h-14 w-14 rounded-2xl bg-sky-500/20 text-sky-400 flex items-center justify-center mx-auto">
@@ -114,7 +114,7 @@ export default function CandidateInterviewJoinPage() {
             </button>
           </div>
         ) : (
-          <div className="flex-1 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl">
+          <div className="flex-1 w-full h-full rounded-2xl overflow-hidden border border-slate-800 shadow-2xl min-h-0 flex flex-col">
             <JitsiMeetRoom
               roomName={roomInfo.roomName}
               displayName={candidateName}
