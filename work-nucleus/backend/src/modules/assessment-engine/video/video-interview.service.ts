@@ -45,6 +45,7 @@ export class VideoInterviewService {
   }
 
   async findAll(orgId: string, filters?: { mandateId?: string; status?: string }) {
+    if (!orgId) return [];
     return this.prisma.videoInterview.findMany({
       where: {
         orgId,

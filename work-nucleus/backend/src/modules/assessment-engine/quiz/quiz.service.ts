@@ -76,7 +76,10 @@ export class QuizService {
 
   async submitQuiz(token: string, dto: SubmitQuizDto) {
     const attempt = await this.prisma.assessmentAttempt.findFirst({
-      where: { accessToken: token, status: 'IN_PROGRESS' },
+      where: {
+        accessToken: token,
+        status: { in: ['NOT_STARTED', 'IN_PROGRESS'] },
+      },
       include: {
         assessment: {
           include: {
@@ -85,7 +88,24 @@ export class QuizService {
         },
       },
     });
-    if (!attempt) throw new BadRequestException('No active attempt found');
+    if (!attempt) {
+      const completed = await this.prisma.assessmentAttempt.findFirst({
+        where: { accessToken: token, status: 'COMPLETED' },
+        include: { assessment: { include: { questions: true } } },
+      });
+      if (completed) {
+        return {
+          attemptId: completed.id,
+          score: completed.score,
+          totalPoints: completed.assessment?.totalPoints ?? 100,
+          percentage: Number(completed.percentage).toFixed(1),
+          passed: completed.passed ?? false,
+          totalQuestions: completed.assessment?.questions?.length ?? 0,
+          correctAnswers: 0,
+        };
+      }
+      throw new BadRequestException('No active attempt found');
+    }
 
     const questions = attempt.assessment.questions;
     const questionMap = new Map(questions.map((q) => [q.id, q]));
@@ -178,6 +198,7 @@ export class QuizService {
         where: { id: attempt.id },
         data: {
           status: 'COMPLETED',
+          startedAt: attempt.startedAt || new Date(),
           completedAt: new Date(),
           score: totalScore,
           percentage,

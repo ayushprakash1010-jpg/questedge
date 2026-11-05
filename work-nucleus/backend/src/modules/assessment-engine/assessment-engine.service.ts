@@ -48,6 +48,7 @@ export class AssessmentEngineService {
   }
 
   async findAll(orgId: string, filters?: { type?: string; mandateId?: string }) {
+    if (!orgId) return [];
     return this.prisma.hiringAssessment.findMany({
       where: {
         orgId,
@@ -345,13 +346,21 @@ export class AssessmentEngineService {
 
   async updateAntiCheat(token: string, data: { tabSwitchCount?: number; fullscreenExits?: number }) {
     const attempt = await this.prisma.assessmentAttempt.findFirst({
-      where: { accessToken: token, status: 'IN_PROGRESS' },
+      where: { accessToken: token },
     });
-    if (!attempt) throw new NotFoundException('Active attempt not found');
+    if (!attempt) throw new NotFoundException('Assessment attempt not found');
+
+    if (attempt.status === 'COMPLETED' || attempt.status === 'TIMED_OUT') {
+      return { id: attempt.id, tabSwitchCount: attempt.tabSwitchCount, fullscreenExits: attempt.fullscreenExits };
+    }
 
     return this.prisma.assessmentAttempt.update({
       where: { id: attempt.id },
       data: {
+        ...(attempt.status === 'NOT_STARTED' && {
+          status: 'IN_PROGRESS',
+          startedAt: attempt.startedAt || new Date(),
+        }),
         ...(data.tabSwitchCount !== undefined && { tabSwitchCount: data.tabSwitchCount }),
         ...(data.fullscreenExits !== undefined && { fullscreenExits: data.fullscreenExits }),
       },

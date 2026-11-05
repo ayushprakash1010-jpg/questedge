@@ -119,9 +119,15 @@ export class CodingService {
 
   async runCode(token: string, dto: RunCodeDto) {
     const attempt = await this.prisma.assessmentAttempt.findFirst({
-      where: { accessToken: token, status: 'IN_PROGRESS' },
+      where: { accessToken: token, status: { in: ['NOT_STARTED', 'IN_PROGRESS'] } },
     });
     if (!attempt) throw new BadRequestException('No active attempt found');
+    if (attempt.status === 'NOT_STARTED') {
+      await this.prisma.assessmentAttempt.update({
+        where: { id: attempt.id },
+        data: { status: 'IN_PROGRESS', startedAt: new Date() },
+      });
+    }
 
     const challenge = await this.prisma.codingChallenge.findFirst({
       where: { id: dto.challengeId },
@@ -168,9 +174,15 @@ export class CodingService {
 
   async submitCode(token: string, dto: SubmitCodeDto) {
     const attempt = await this.prisma.assessmentAttempt.findFirst({
-      where: { accessToken: token, status: 'IN_PROGRESS' },
+      where: { accessToken: token, status: { in: ['NOT_STARTED', 'IN_PROGRESS'] } },
     });
     if (!attempt) throw new BadRequestException('No active attempt found');
+    if (attempt.status === 'NOT_STARTED') {
+      await this.prisma.assessmentAttempt.update({
+        where: { id: attempt.id },
+        data: { status: 'IN_PROGRESS', startedAt: new Date() },
+      });
+    }
 
     const challenge = await this.prisma.codingChallenge.findFirst({
       where: { id: dto.challengeId },
@@ -257,7 +269,7 @@ export class CodingService {
 
   async completeCodeAssessment(token: string) {
     const attempt = await this.prisma.assessmentAttempt.findFirst({
-      where: { accessToken: token, status: 'IN_PROGRESS' },
+      where: { accessToken: token, status: { in: ['NOT_STARTED', 'IN_PROGRESS'] } },
       include: { assessment: true },
     });
     if (!attempt) throw new BadRequestException('No active attempt found');
@@ -269,6 +281,7 @@ export class CodingService {
       where: { id: attempt.id },
       data: {
         status: 'COMPLETED',
+        startedAt: attempt.startedAt || new Date(),
         completedAt: new Date(),
         passed,
       },

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import {
   fetchCandidateAttempt,
+  startCandidateAttempt,
   submitCandidateQuiz,
   AssessmentAttempt,
 } from "@/lib/assessment-api";
@@ -23,7 +24,12 @@ export default function CandidateQuizPage() {
 
   useEffect(() => {
     fetchCandidateAttempt(token)
-      .then((data) => setAttempt(data))
+      .then((data) => {
+        setAttempt(data);
+        if (data.status === "NOT_STARTED") {
+          startCandidateAttempt(token).catch(console.error);
+        }
+      })
       .catch((err) => {
         alert(err.message || "Failed to load attempt");
         router.push(`/assessment/${token}`);

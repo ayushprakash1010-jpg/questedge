@@ -38,12 +38,7 @@ export function InviteModal({ assessment, isOpen, onClose }: InviteModalProps) {
       }
       const attempt = await sendAssessmentInvite(assessment.id, payload);
       const origin = typeof window !== "undefined" ? window.location.origin : "";
-      const path =
-        assessment.type === "QUIZ"
-          ? `/assessment/${attempt.accessToken}/quiz`
-          : assessment.type === "CODING"
-          ? `/assessment/${attempt.accessToken}/code`
-          : `/assessment/${attempt.accessToken}`;
+      const path = `/assessment/${attempt.accessToken}`;
       setGeneratedLink(`${origin}${path}`);
     } catch (err: any) {
       setError(err.message || "Failed to generate assessment link");

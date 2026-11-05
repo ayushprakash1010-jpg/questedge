@@ -37,9 +37,15 @@ export function AntiCheatWrapper({
     [token]
   );
 
-  // Tab switch detection
+  // Tab switch detection with 2-second grace period
   useEffect(() => {
+    let isReady = false;
+    const readyTimer = setTimeout(() => {
+      isReady = true;
+    }, 2000);
+
     const handleVisibilityChange = () => {
+      if (!isReady) return;
       if (document.hidden) {
         setTabSwitches((prev) => {
           const updated = prev + 1;
@@ -58,6 +64,7 @@ export function AntiCheatWrapper({
     };
 
     const handleWindowBlur = () => {
+      if (!isReady) return;
       // Also catch window focus loss
       if (!document.hidden) {
         setTabSwitches((prev) => {
@@ -76,6 +83,7 @@ export function AntiCheatWrapper({
     window.addEventListener("blur", handleWindowBlur);
 
     return () => {
+      clearTimeout(readyTimer);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("blur", handleWindowBlur);
     };
