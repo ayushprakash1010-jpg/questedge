@@ -77,7 +77,12 @@ export function JitsiMeetRoom({
             startWithVideoMuted: false,
             disableDeepLinking: true,
             prejoinPageEnabled: false,
+            prejoinConfig: {
+              enabled: false,
+            },
             enableWelcomePage: false,
+            enableClosePage: false,
+            disableInviteFunctions: true,
           },
           interfaceConfigOverwrite: {
             SHOW_JITSI_WATERMARK: false,
@@ -103,9 +108,21 @@ export function JitsiMeetRoom({
         const api = new window.JitsiMeetExternalAPI(domain, options);
         apiRef.current = api;
 
-        api.addEventListener("videoConferenceJoined", () => {
-          setLoading(false);
-        });
+        // Dismiss loading overlay as soon as the iframe is ready or user joins
+        const dismissLoader = () => {
+          if (!isCancelled) setLoading(false);
+        };
+
+        const iframe = containerRef.current.querySelector("iframe");
+        if (iframe) {
+          iframe.addEventListener("load", dismissLoader);
+        }
+
+        api.addEventListener("videoConferenceJoined", dismissLoader);
+        api.addEventListener("participantJoined", dismissLoader);
+
+        // Fallback safety timeout so the spinner never blocks the video feed
+        setTimeout(dismissLoader, 1500);
 
         api.addEventListener("readyToClose", () => {
           if (onLeave) onLeave();
@@ -131,7 +148,7 @@ export function JitsiMeetRoom({
   return (
     <div className="relative w-full h-full min-h-[500px] bg-slate-950 rounded-2xl overflow-hidden shadow-inner">
       {loading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 z-10 text-white space-y-3">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 pointer-events-none z-10 text-white space-y-3 transition-opacity">
           <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
           <p className="text-sm font-medium text-slate-300">Connecting to secure video session...</p>
         </div>
