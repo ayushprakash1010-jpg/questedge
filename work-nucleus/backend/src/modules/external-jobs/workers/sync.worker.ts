@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JobQueueService } from '../../job-queue/job-queue.service';
 import { AggregationService } from '../services/aggregation.service';
+import { MatchPrecomputeService } from '../services/match-precompute.service';
 
 @Injectable()
 export class ExternalJobsSyncWorker implements OnModuleInit {
@@ -11,6 +12,7 @@ export class ExternalJobsSyncWorker implements OnModuleInit {
   constructor(
     private readonly queue: JobQueueService,
     private readonly aggregation: AggregationService,
+    private readonly matchPrecompute: MatchPrecomputeService,
     private readonly config: ConfigService,
   ) {
     this.isEnabled =
@@ -46,7 +48,14 @@ export class ExternalJobsSyncWorker implements OnModuleInit {
       await this.handleExpiryCheck();
     });
 
-    this.logger.log('External jobs sync workers registered');
+    // Match pre-computation every 6 hours (offset by 30 min from ATS sync)
+    await this.queue.ensureQueue('external-jobs-match-compute');
+    await this.queue.scheduleCron('external-jobs-match-compute', '30 */6 * * *');
+    await this.queue.registerWorker('external-jobs-match-compute', async () => {
+      await this.handleMatchCompute();
+    });
+
+    this.logger.log('External jobs sync workers registered (including match pre-compute)');
   }
 
   private async handleAtsSync() {
@@ -87,4 +96,17 @@ export class ExternalJobsSyncWorker implements OnModuleInit {
       this.logger.error(`Expiry check failed: ${err.message}`, err.stack);
     }
   }
+
+  private async handleMatchCompute() {
+    this.logger.log('Starting match pre-computation...');
+    try {
+      const result = await this.matchPrecompute.computeAllMatches();
+      this.logger.log(
+        `Match computation complete: ${result.candidatesProcessed} candidates, ${result.matchesWritten} matches`,
+      );
+    } catch (err: any) {
+      this.logger.error(`Match computation failed: ${err.message}`, err.stack);
+    }
+  }
 }
+

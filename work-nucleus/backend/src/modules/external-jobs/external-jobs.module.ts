@@ -13,6 +13,7 @@ import { RemoteOKConnector } from './connectors/remoteok.connector';
 // Services
 import { NormalizerService } from './services/normalizer.service';
 import { AggregationService } from './services/aggregation.service';
+import { MatchPrecomputeService } from './services/match-precompute.service';
 import { ExternalJobsService } from './external-jobs.service';
 
 // Controllers
@@ -36,6 +37,7 @@ import { ExternalJobsSyncWorker } from './workers/sync.worker';
     // Services
     NormalizerService,
     AggregationService,
+    MatchPrecomputeService,
     ExternalJobsService,
     // Workers
     ExternalJobsSyncWorker,
@@ -43,3 +45,4 @@ import { ExternalJobsSyncWorker } from './workers/sync.worker';
   exports: [ExternalJobsService, AggregationService],
 })
 export class ExternalJobsModule {}
+
