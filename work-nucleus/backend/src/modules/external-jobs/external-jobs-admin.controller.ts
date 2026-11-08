@@ -111,4 +111,10 @@ export class ExternalJobsAdminController {
     const result = await this.matchPrecompute.computeAllMatches();
     return { result };
   }
+
+  @Get('health')
+  async getHealth() {
+    const circuitBreakers = this.aggregation.getCircuitBreakerStatus();
+    return { circuitBreakers };
+  }
 }

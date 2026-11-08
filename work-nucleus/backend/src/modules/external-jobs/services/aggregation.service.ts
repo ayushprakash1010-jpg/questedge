@@ -10,6 +10,7 @@ import { CareerjetConnector } from '../connectors/careerjet.connector';
 import { JSearchConnector } from '../connectors/jsearch.connector';
 import { NormalizerService, NormalizedJob } from './normalizer.service';
 import { IJobSourceConnector } from '../connectors/connector.interface';
+import { CircuitBreaker } from './circuit-breaker';
 
 export interface SyncResult {
   source: string;
@@ -24,6 +25,7 @@ export interface SyncResult {
 @Injectable()
 export class AggregationService {
   private readonly logger = new Logger(AggregationService.name);
+  private readonly circuitBreaker = new CircuitBreaker(3, 30);
 
   constructor(
     private readonly prisma: PrismaService,
@@ -66,8 +68,33 @@ export class AggregationService {
       const connector = connectorMap[sourceName];
       if (!connector) continue;
 
+      if (this.circuitBreaker.isOpen(sourceName)) {
+        this.logger.warn(
+          `Skipping ${sourceName} — circuit breaker is open`,
+        );
+        results.push({
+          source: sourceName,
+          fetched: 0, created: 0, updated: 0, skipped: 0,
+          errors: ['Circuit breaker open — skipped'],
+          durationMs: 0,
+        });
+        continue;
+      }
+
       const start = Date.now();
-      const result = await connector.fetchJobs(slugs);
+      let result;
+      try {
+        result = await connector.fetchJobs(slugs);
+      } catch (err: any) {
+        this.circuitBreaker.recordFailure(sourceName);
+        results.push({
+          source: sourceName,
+          fetched: 0, created: 0, updated: 0, skipped: 0,
+          errors: [`Fatal: ${err.message}`],
+          durationMs: Date.now() - start,
+        });
+        continue;
+      }
 
       const syncResult: SyncResult = {
         source: sourceName,
@@ -96,6 +123,12 @@ export class AggregationService {
 
       syncResult.durationMs = Date.now() - start;
       results.push(syncResult);
+
+      if (syncResult.errors.length === 0 || syncResult.created > 0) {
+        this.circuitBreaker.recordSuccess(sourceName);
+      } else if (syncResult.fetched === 0 && syncResult.errors.length > 0) {
+        this.circuitBreaker.recordFailure(sourceName);
+      }
 
       // Update source config sync status
       for (const slug of slugs) {
@@ -135,8 +168,39 @@ export class AggregationService {
     ];
 
     for (const connector of remoteConnectors) {
+      if (this.circuitBreaker.isOpen(connector.sourceName)) {
+        this.logger.warn(
+          `Skipping ${connector.sourceName} — circuit breaker is open`,
+        );
+        results.push({
+          source: connector.sourceName,
+          fetched: 0,
+          created: 0,
+          updated: 0,
+          skipped: 0,
+          errors: ['Circuit breaker open — skipped'],
+          durationMs: 0,
+        });
+        continue;
+      }
+
       const start = Date.now();
-      const result = await connector.fetchJobs();
+      let result;
+      try {
+        result = await connector.fetchJobs();
+      } catch (err: any) {
+        this.circuitBreaker.recordFailure(connector.sourceName);
+        results.push({
+          source: connector.sourceName,
+          fetched: 0,
+          created: 0,
+          updated: 0,
+          skipped: 0,
+          errors: [`Fatal: ${err.message}`],
+          durationMs: Date.now() - start,
+        });
+        continue;
+      }
 
       const syncResult: SyncResult = {
         source: connector.sourceName,
@@ -168,6 +232,12 @@ export class AggregationService {
 
       syncResult.durationMs = Date.now() - start;
       results.push(syncResult);
+
+      if (syncResult.errors.length === 0 || syncResult.created > 0) {
+        this.circuitBreaker.recordSuccess(connector.sourceName);
+      } else if (syncResult.fetched === 0 && syncResult.errors.length > 0) {
+        this.circuitBreaker.recordFailure(connector.sourceName);
+      }
 
       this.logger.log(
         `Synced ${connector.sourceName}: ${syncResult.fetched} fetched, ${syncResult.created} created, ${syncResult.updated} updated in ${syncResult.durationMs}ms`,
@@ -190,8 +260,33 @@ export class AggregationService {
     ];
 
     for (const connector of aggregators) {
+      if (this.circuitBreaker.isOpen(connector.sourceName)) {
+        this.logger.warn(
+          `Skipping ${connector.sourceName} — circuit breaker is open`,
+        );
+        results.push({
+          source: connector.sourceName,
+          fetched: 0, created: 0, updated: 0, skipped: 0,
+          errors: ['Circuit breaker open — skipped'],
+          durationMs: 0,
+        });
+        continue;
+      }
+
       const start = Date.now();
-      const result = await connector.fetchJobs();
+      let result;
+      try {
+        result = await connector.fetchJobs();
+      } catch (err: any) {
+        this.circuitBreaker.recordFailure(connector.sourceName);
+        results.push({
+          source: connector.sourceName,
+          fetched: 0, created: 0, updated: 0, skipped: 0,
+          errors: [`Fatal: ${err.message}`],
+          durationMs: Date.now() - start,
+        });
+        continue;
+      }
 
       const syncResult: SyncResult = {
         source: connector.sourceName,
@@ -223,6 +318,12 @@ export class AggregationService {
 
       syncResult.durationMs = Date.now() - start;
       results.push(syncResult);
+
+      if (syncResult.errors.length === 0 || syncResult.created > 0) {
+        this.circuitBreaker.recordSuccess(connector.sourceName);
+      } else if (syncResult.fetched === 0 && syncResult.errors.length > 0) {
+        this.circuitBreaker.recordFailure(connector.sourceName);
+      }
 
       this.logger.log(
         `Synced ${connector.sourceName}: ${syncResult.fetched} fetched, ${syncResult.created} created, ${syncResult.updated} updated in ${syncResult.durationMs}ms`,
@@ -307,6 +408,13 @@ export class AggregationService {
       },
     });
     return 'created';
+  }
+
+  /**
+   * Get circuit breaker status for monitoring.
+   */
+  getCircuitBreakerStatus() {
+    return this.circuitBreaker.getStatus();
   }
 
   /**

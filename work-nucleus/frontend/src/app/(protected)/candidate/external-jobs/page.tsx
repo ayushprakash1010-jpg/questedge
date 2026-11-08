@@ -15,6 +15,8 @@ import {
 import { ExternalJobCard } from "@/components/external-jobs/ExternalJobCard";
 import { ExternalJobDetail } from "@/components/external-jobs/ExternalJobDetail";
 import { ExternalJobFilters } from "@/components/external-jobs/ExternalJobFilters";
+import { ExternalJobSkeletonGrid } from "@/components/external-jobs/ExternalJobSkeleton";
+import { ExternalJobHistory } from "@/components/external-jobs/ExternalJobHistory";
 import {
   Loader2,
   Globe,
@@ -30,7 +32,7 @@ import {
 import { useSearchParams, useRouter } from "next/navigation";
 import { toast } from "@/components/ui/toaster";
 
-type ViewMode = "browse" | "recommended" | "saved";
+type ViewMode = "browse" | "recommended" | "saved" | "history";
 
 export default function ExternalJobsPage() {
   const searchParams = useSearchParams();
@@ -42,6 +44,8 @@ export default function ExternalJobsPage() {
       ? "recommended"
       : tabParam === "saved"
       ? "saved"
+      : tabParam === "history"
+      ? "history"
       : "browse";
 
   const [viewMode, setViewMode] = useState<ViewMode>(initialTab);
@@ -74,6 +78,7 @@ export default function ExternalJobsPage() {
   };
 
   const fetchJobs = useCallback(async () => {
+    if (viewMode === "history") return; // History component handles its own fetching
     try {
       setLoading(true);
       const token = await getToken();
@@ -254,6 +259,18 @@ export default function ExternalJobsPage() {
                   <Bookmark className="h-4 w-4" />
                   Saved
                 </button>
+
+                <button
+                  onClick={() => handleTabChange("history")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    viewMode === "history"
+                      ? "bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30 font-semibold"
+                      : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+                  }`}
+                >
+                  <History className="h-4 w-4" />
+                  Activity
+                </button>
               </div>
 
               <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-2">
@@ -272,6 +289,13 @@ export default function ExternalJobsPage() {
                     </span>{" "}
                     Jobs
                   </>
+                ) : viewMode === "history" ? (
+                  <>
+                    Application{" "}
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400">
+                      Activity
+                    </span>
+                  </>
                 ) : (
                   <>
                     Explore the{" "}
@@ -286,6 +310,8 @@ export default function ExternalJobsPage() {
                   ? "AI-ranked roles based on your skills, experience, and preferences."
                   : viewMode === "saved"
                   ? "Jobs you've bookmarked across the market."
+                  : viewMode === "history"
+                  ? "Track the external jobs you've visited and applied to."
                   : "Discover jobs from Greenhouse, Lever, Ashby, Jobicy, Remotive, Careerjet & more — aggregated in one place."}
               </p>
             </div>
@@ -320,17 +346,12 @@ export default function ExternalJobsPage() {
           </div>
         )}
 
-        {/* Loading */}
-        {loading && jobs.length === 0 ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="text-center">
-              <Loader2 className="h-8 w-8 animate-spin text-emerald-500 mx-auto mb-3" />
-              <p className="text-sm text-slate-500">
-                {viewMode === "recommended"
-                  ? "Computing your best matches..."
-                  : "Fetching jobs from across the market..."}
-              </p>
-            </div>
+        {/* History Tab */}
+        {viewMode === "history" ? (
+          <ExternalJobHistory getToken={getToken} />
+        ) : loading && jobs.length === 0 ? (
+          <div className="py-4">
+            <ExternalJobSkeletonGrid count={6} />
           </div>
         ) : jobs.length === 0 ? (
           /* Empty State */
@@ -428,3 +449,4 @@ export default function ExternalJobsPage() {
     </div>
   );
 }
+
