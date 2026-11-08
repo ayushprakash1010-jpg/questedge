@@ -6,6 +6,8 @@ import { AshbyConnector } from '../connectors/ashby.connector';
 import { JobicyConnector } from '../connectors/jobicy.connector';
 import { RemotiveConnector } from '../connectors/remotive.connector';
 import { RemoteOKConnector } from '../connectors/remoteok.connector';
+import { CareerjetConnector } from '../connectors/careerjet.connector';
+import { JSearchConnector } from '../connectors/jsearch.connector';
 import { NormalizerService, NormalizedJob } from './normalizer.service';
 import { IJobSourceConnector } from '../connectors/connector.interface';
 
@@ -32,6 +34,8 @@ export class AggregationService {
     private readonly jobicy: JobicyConnector,
     private readonly remotive: RemotiveConnector,
     private readonly remoteok: RemoteOKConnector,
+    private readonly careerjet: CareerjetConnector,
+    private readonly jsearch: JSearchConnector,
   ) {}
 
   /**
@@ -174,6 +178,61 @@ export class AggregationService {
   }
 
   /**
+   * Sync aggregator sources (Careerjet, JSearch) — Indian market focus.
+   * These connectors require API keys and have rate limits.
+   */
+  async syncAggregatorSources(): Promise<SyncResult[]> {
+    const results: SyncResult[] = [];
+
+    const aggregators: IJobSourceConnector[] = [
+      this.careerjet,
+      this.jsearch,
+    ];
+
+    for (const connector of aggregators) {
+      const start = Date.now();
+      const result = await connector.fetchJobs();
+
+      const syncResult: SyncResult = {
+        source: connector.sourceName,
+        fetched: result.totalFetched,
+        created: 0,
+        updated: 0,
+        skipped: 0,
+        errors: result.errors,
+        durationMs: 0,
+      };
+
+      for (const rawJob of result.jobs) {
+        try {
+          const normalized = this.normalizer.normalize(
+            rawJob,
+            connector.sourceName,
+          );
+          const upsertResult = await this.upsertJob(normalized);
+          if (upsertResult === 'created') syncResult.created++;
+          else if (upsertResult === 'updated') syncResult.updated++;
+          else syncResult.skipped++;
+        } catch (err: any) {
+          syncResult.errors.push(
+            `Failed to upsert job ${rawJob.sourceId}: ${err.message}`,
+          );
+          syncResult.skipped++;
+        }
+      }
+
+      syncResult.durationMs = Date.now() - start;
+      results.push(syncResult);
+
+      this.logger.log(
+        `Synced ${connector.sourceName}: ${syncResult.fetched} fetched, ${syncResult.created} created, ${syncResult.updated} updated in ${syncResult.durationMs}ms`,
+      );
+    }
+
+    return results;
+  }
+
+  /**
    * Upsert a normalized job into the database.
    */
   private async upsertJob(
@@ -271,4 +330,3 @@ export class AggregationService {
     return result.count;
   }
 }
-

@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AggregationService } from './services/aggregation.service';
+import { MatchPrecomputeService } from './services/match-precompute.service';
 import { UserTypes } from '../../auth/decorators/user-types.decorator';
 import { IsString, IsOptional } from 'class-validator';
 
@@ -33,6 +34,7 @@ export class ExternalJobsAdminController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly aggregation: AggregationService,
+    private readonly matchPrecompute: MatchPrecomputeService,
   ) {}
 
   @Get('sources')
@@ -87,5 +89,26 @@ export class ExternalJobsAdminController {
     const results = await this.aggregation.syncRemoteSources();
     return { results };
   }
-}
 
+  @Post('sync/aggregators')
+  async triggerAggregatorSync() {
+    const results = await this.aggregation.syncAggregatorSources();
+    return { results };
+  }
+
+  @Post('sync/all')
+  async triggerFullSync() {
+    const [ats, remote, aggregators] = await Promise.all([
+      this.aggregation.syncAtsSources(),
+      this.aggregation.syncRemoteSources(),
+      this.aggregation.syncAggregatorSources(),
+    ]);
+    return { ats, remote, aggregators };
+  }
+
+  @Post('match-compute')
+  async triggerMatchCompute() {
+    const result = await this.matchPrecompute.computeAllMatches();
+    return { result };
+  }
+}

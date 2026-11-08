@@ -41,6 +41,13 @@ export class ExternalJobsSyncWorker implements OnModuleInit {
       await this.handleRemoteSync();
     });
 
+    // Aggregator sources sync once daily at 6 AM (Careerjet, JSearch)
+    await this.queue.ensureQueue('external-jobs-aggregator-sync');
+    await this.queue.scheduleCron('external-jobs-aggregator-sync', '0 6 * * *');
+    await this.queue.registerWorker('external-jobs-aggregator-sync', async () => {
+      await this.handleAggregatorSync();
+    });
+
     // Expiry check daily at 3 AM
     await this.queue.ensureQueue('external-jobs-expiry');
     await this.queue.scheduleCron('external-jobs-expiry', '0 3 * * *');
@@ -55,7 +62,7 @@ export class ExternalJobsSyncWorker implements OnModuleInit {
       await this.handleMatchCompute();
     });
 
-    this.logger.log('External jobs sync workers registered (including match pre-compute)');
+    this.logger.log('External jobs sync workers registered (all sources + match pre-compute)');
   }
 
   private async handleAtsSync() {
@@ -87,6 +94,19 @@ export class ExternalJobsSyncWorker implements OnModuleInit {
     }
   }
 
+  private async handleAggregatorSync() {
+    this.logger.log('Starting aggregator sources sync (Careerjet, JSearch)...');
+    try {
+      const results = await this.aggregation.syncAggregatorSources();
+      const summary = results
+        .map((r) => `${r.source}: +${r.created}/${r.updated}u/${r.errors.length}e`)
+        .join(', ');
+      this.logger.log(`Aggregator sync complete: ${summary}`);
+    } catch (err: any) {
+      this.logger.error(`Aggregator sync failed: ${err.message}`, err.stack);
+    }
+  }
+
   private async handleExpiryCheck() {
     this.logger.log('Starting expiry check...');
     try {
@@ -109,4 +129,3 @@ export class ExternalJobsSyncWorker implements OnModuleInit {
     }
   }
 }
-

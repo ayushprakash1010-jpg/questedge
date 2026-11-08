@@ -9,6 +9,8 @@ import { AshbyConnector } from './connectors/ashby.connector';
 import { JobicyConnector } from './connectors/jobicy.connector';
 import { RemotiveConnector } from './connectors/remotive.connector';
 import { RemoteOKConnector } from './connectors/remoteok.connector';
+import { CareerjetConnector } from './connectors/careerjet.connector';
+import { JSearchConnector } from './connectors/jsearch.connector';
 
 // Services
 import { NormalizerService } from './services/normalizer.service';
@@ -34,6 +36,8 @@ import { ExternalJobsSyncWorker } from './workers/sync.worker';
     JobicyConnector,
     RemotiveConnector,
     RemoteOKConnector,
+    CareerjetConnector,
+    JSearchConnector,
     // Services
     NormalizerService,
     AggregationService,
@@ -45,4 +49,3 @@ import { ExternalJobsSyncWorker } from './workers/sync.worker';
   exports: [ExternalJobsService, AggregationService],
 })
 export class ExternalJobsModule {}
-
