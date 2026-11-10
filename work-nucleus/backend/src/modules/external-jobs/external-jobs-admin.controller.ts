@@ -45,6 +45,12 @@ export class ExternalJobsAdminController {
     return { sources };
   }
 
+  @Post('sources/seed')
+  async seedSources() {
+    const count = await this.aggregation.seedDefaultSources();
+    return { seeded: count };
+  }
+
   @Post('sources')
   async addSource(@Body() dto: AddSourceDto) {
     const source = await this.prisma.jobSourceConfig.upsert({

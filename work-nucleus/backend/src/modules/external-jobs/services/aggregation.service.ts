@@ -46,9 +46,17 @@ export class AggregationService {
   async syncAtsSources(): Promise<SyncResult[]> {
     const results: SyncResult[] = [];
 
-    const configs = await this.prisma.jobSourceConfig.findMany({
+    let configs = await this.prisma.jobSourceConfig.findMany({
       where: { isActive: true },
     });
+
+    if (configs.length === 0) {
+      this.logger.log('No active job source configs found. Auto-seeding from seed-companies.json...');
+      await this.seedDefaultSources();
+      configs = await this.prisma.jobSourceConfig.findMany({
+        where: { isActive: true },
+      });
+    }
 
     const grouped: Record<string, string[]> = {};
     for (const config of configs) {
@@ -436,5 +444,41 @@ export class AggregationService {
       `Marked ${result.count} jobs as expired (not synced in 45+ days)`,
     );
     return result.count;
+  }
+
+  /**
+   * Seed default companies from config/seed-companies.json into JobSourceConfig.
+   */
+  async seedDefaultSources(): Promise<number> {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const seedData = require('../config/seed-companies.json');
+    let count = 0;
+    for (const [sourceName, companies] of Object.entries(seedData)) {
+      for (const comp of companies as Array<{ slug: string; name: string }>) {
+        await this.prisma.jobSourceConfig.upsert({
+          where: {
+            sourceName_companySlug: {
+              sourceName,
+              companySlug: comp.slug,
+            },
+          },
+          create: {
+            sourceName,
+            companySlug: comp.slug,
+            companyName: comp.name,
+            isActive: true,
+          },
+          update: {
+            companyName: comp.name,
+            isActive: true,
+          },
+        });
+        count++;
+      }
+    }
+    this.logger.log(
+      `Seeded ${count} default job sources from seed-companies.json`,
+    );
+    return count;
   }
 }
