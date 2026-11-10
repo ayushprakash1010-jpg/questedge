@@ -68,6 +68,11 @@ export function ExternalJobDetail({ job, isOpen, onClose, onSave, onApply, isSav
   const salary = formatSalary(job);
   const match = job.matchData;
 
+  const rawLocation = job.city || job.location;
+  const isLocationRemote = rawLocation?.toLowerCase().includes("remote");
+  const isWorkplaceRemote = job.workplaceType?.toLowerCase().includes("remote") || job.isRemote;
+  const displayLocation = isLocationRemote && isWorkplaceRemote ? "Remote" : rawLocation || (isWorkplaceRemote ? "Remote" : null);
+
   return (
     <div
       className="fixed inset-0 z-50 flex justify-end bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200"
@@ -180,13 +185,13 @@ export function ExternalJobDetail({ job, isOpen, onClose, onSave, onApply, isSav
 
           {/* Job Meta */}
           <div className="grid grid-cols-2 gap-3">
-            {(job.city || job.location) && (
+            {displayLocation && (
               <div className="flex items-center gap-2 text-sm text-slate-600">
                 <MapPin className="h-4 w-4 text-slate-400" />
-                {job.city || job.location}
+                {displayLocation === "IN" ? "India" : displayLocation === "US" ? "United States" : displayLocation}
               </div>
             )}
-            {job.workplaceType && (
+            {job.workplaceType && (!displayLocation || job.workplaceType.toLowerCase() !== displayLocation.toLowerCase()) && (
               <div className="flex items-center gap-2 text-sm text-slate-600">
                 <Building2 className="h-4 w-4 text-slate-400" />
                 {job.workplaceType}

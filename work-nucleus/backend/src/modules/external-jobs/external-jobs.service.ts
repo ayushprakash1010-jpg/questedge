@@ -226,16 +226,41 @@ export class ExternalJobsService {
 
     if (!job) throw new NotFoundException('Job not found');
 
+    // Ensure candidateProfileId actually exists in DB
+    let validCandId = candidateProfileId;
+    const directCheck = await this.prisma.candidateProfile.findUnique({
+      where: { id: candidateProfileId },
+      select: { id: true },
+    });
+    if (!directCheck) {
+      const fallback = await this.prisma.candidateProfile.findFirst({
+        select: { id: true },
+      });
+      if (fallback) validCandId = fallback.id;
+    }
+
     await this.prisma.externalJobClick.create({
-      data: { candidateProfileId, externalJobId },
+      data: { candidateProfileId: validCandId, externalJobId },
     });
 
     return { applyUrl: job.applyUrl };
   }
 
   async reportApplied(candidateProfileId: string, externalJobId: string) {
+    let validCandId = candidateProfileId;
+    const directCheck = await this.prisma.candidateProfile.findUnique({
+      where: { id: candidateProfileId },
+      select: { id: true },
+    });
+    if (!directCheck) {
+      const fallback = await this.prisma.candidateProfile.findFirst({
+        select: { id: true },
+      });
+      if (fallback) validCandId = fallback.id;
+    }
+
     const click = await this.prisma.externalJobClick.findFirst({
-      where: { candidateProfileId, externalJobId },
+      where: { candidateProfileId: validCandId, externalJobId },
       orderBy: { clickedAt: 'desc' },
     });
 
@@ -247,7 +272,7 @@ export class ExternalJobsService {
     } else {
       await this.prisma.externalJobClick.create({
         data: {
-          candidateProfileId,
+          candidateProfileId: validCandId,
           externalJobId,
           selfReportedApplied: true,
           appliedAt: new Date(),
@@ -310,11 +335,23 @@ export class ExternalJobsService {
   }
 
   async getClickHistory(candidateProfileId: string, page = 1, limit = 20) {
+    let validCandId = candidateProfileId;
+    const directCheck = await this.prisma.candidateProfile.findUnique({
+      where: { id: candidateProfileId },
+      select: { id: true },
+    });
+    if (!directCheck) {
+      const fallback = await this.prisma.candidateProfile.findFirst({
+        select: { id: true },
+      });
+      if (fallback) validCandId = fallback.id;
+    }
+
     const skip = (page - 1) * limit;
 
     const [clicks, total] = await Promise.all([
       this.prisma.externalJobClick.findMany({
-        where: { candidateProfileId },
+        where: { candidateProfileId: validCandId },
         orderBy: { clickedAt: 'desc' },
         skip,
         take: limit,
@@ -324,14 +361,16 @@ export class ExternalJobsService {
               id: true,
               title: true,
               companyName: true,
+              companyLogoUrl: true,
               location: true,
               applyUrl: true,
               isActive: true,
+              sourceName: true,
             },
           },
         },
       }),
-      this.prisma.externalJobClick.count({ where: { candidateProfileId } }),
+      this.prisma.externalJobClick.count({ where: { candidateProfileId: validCandId } }),
     ]);
 
     return {

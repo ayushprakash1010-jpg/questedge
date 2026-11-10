@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getExternalJobClickHistory } from "@/lib/external-jobs-api";
+import { getExternalJobClickHistory, reportExternalJobApplied } from "@/lib/external-jobs-api";
 import { CompanyLogo } from "./CompanyLogo";
+import { toast } from "sonner";
 import {
   Loader2,
   ExternalLink,
@@ -11,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   History,
+  Send,
 } from "lucide-react";
 
 interface ClickEntry {
@@ -22,9 +24,11 @@ interface ClickEntry {
     id: string;
     title: string;
     companyName: string;
+    companyLogoUrl?: string | null;
     location?: string | null;
     applyUrl: string;
     isActive: boolean;
+    sourceName?: string;
   };
 }
 
@@ -48,6 +52,7 @@ export function ExternalJobHistory({ getToken }: ExternalJobHistoryProps) {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -64,6 +69,26 @@ export function ExternalJobHistory({ getToken }: ExternalJobHistoryProps) {
       }
     })();
   }, [page, getToken]);
+
+  const handleMarkApplied = async (externalJobId: string, clickId: string) => {
+    try {
+      setUpdatingId(clickId);
+      const token = await getToken();
+      await reportExternalJobApplied(token, externalJobId);
+      setHistory((prev) =>
+        prev.map((item) =>
+          item.id === clickId
+            ? { ...item, selfReportedApplied: true, appliedAt: new Date().toISOString() }
+            : item
+        )
+      );
+      toast.success("Marked as applied! Good luck with your application.");
+    } catch (err) {
+      toast.error("Failed to mark as applied.");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -92,11 +117,12 @@ export function ExternalJobHistory({ getToken }: ExternalJobHistoryProps) {
       {history.map((entry) => (
         <div
           key={entry.id}
-          className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3 hover:border-slate-300 transition-colors"
+          className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3 hover:border-slate-300 transition-colors shadow-2xs"
         >
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <CompanyLogo
               companyName={entry.externalJob.companyName}
+              logoUrl={entry.externalJob.companyLogoUrl}
               size="sm"
             />
             <div className="min-w-0 flex-1">
@@ -113,23 +139,33 @@ export function ExternalJobHistory({ getToken }: ExternalJobHistoryProps) {
               <p className="text-xs text-slate-500 truncate">
                 {entry.externalJob.companyName}
                 {entry.externalJob.location && ` · ${entry.externalJob.location}`}
+                {entry.externalJob.sourceName && ` · via ${entry.externalJob.sourceName}`}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
             {entry.selfReportedApplied ? (
-              <span className="flex items-center gap-1 text-xs font-medium text-emerald-600">
-                <CheckCircle2 className="h-3.5 w-3.5" />
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
                 Applied
               </span>
             ) : (
-              <span className="flex items-center gap-1 text-xs text-slate-400">
-                <Clock className="h-3.5 w-3.5" />
-                Visited
-              </span>
+              <button
+                onClick={() => handleMarkApplied(entry.externalJob.id, entry.id)}
+                disabled={updatingId === entry.id}
+                className="group inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium text-slate-700 hover:text-emerald-700 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 transition-all cursor-pointer disabled:opacity-50"
+                title="Did you finish applying? Mark it here"
+              >
+                {updatingId === entry.id ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600" />
+                ) : (
+                  <CheckCircle2 className="h-3.5 w-3.5 text-slate-400 group-hover:text-emerald-600" />
+                )}
+                Mark Applied
+              </button>
             )}
-            <span className="text-[10px] text-slate-400 w-16 text-right">
+            <span className="text-[11px] text-slate-400 w-16 text-right font-medium">
               {timeAgo(entry.clickedAt)}
             </span>
             {entry.externalJob.isActive && (
@@ -138,7 +174,7 @@ export function ExternalJobHistory({ getToken }: ExternalJobHistoryProps) {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-emerald-600 transition-colors"
-                title="Open job"
+                title="Open job career page"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
               </a>
@@ -152,7 +188,7 @@ export function ExternalJobHistory({ getToken }: ExternalJobHistoryProps) {
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 disabled:opacity-40"
+            className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 disabled:opacity-40 hover:bg-slate-50 transition-colors"
           >
             <ChevronLeft className="h-3 w-3" /> Prev
           </button>
@@ -162,7 +198,7 @@ export function ExternalJobHistory({ getToken }: ExternalJobHistoryProps) {
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 disabled:opacity-40"
+            className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 disabled:opacity-40 hover:bg-slate-50 transition-colors"
           >
             Next <ChevronRight className="h-3 w-3" />
           </button>

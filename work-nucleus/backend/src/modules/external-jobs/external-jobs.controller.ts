@@ -19,12 +19,10 @@ export class ExternalJobsController {
 
   private async getCandidateId(user: any): Promise<string | null> {
     if (!user) return null;
-    if (user.candidateProfileId) return user.candidateProfileId;
-    if (user.userType === 'CANDIDATE' && user.id) return user.id;
     if (this.service.resolveCandidateId) {
       return this.service.resolveCandidateId(user);
     }
-    return user.id || null;
+    return user.candidateProfileId || user.id || null;
   }
 
   @Get()

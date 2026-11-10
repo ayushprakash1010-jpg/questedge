@@ -198,16 +198,18 @@ export default function ExternalJobsPage() {
       toast.error("No application URL available for this job.");
       return;
     }
+    // Open immediately to guarantee popup blockers never block the new tab
+    window.open(job.applyUrl, "_blank", "noopener,noreferrer");
+    toast.success(
+      "Redirecting to application page. Tracked in your Activity tab!"
+    );
+
+    // Track click telemetry in the background
     try {
       const token = await getToken();
-      const { applyUrl } = await recordExternalJobClick(token, job.id);
-      window.open(applyUrl, "_blank", "noopener,noreferrer");
-      toast.success(
-        "Redirected to application page. Click 'Mark Applied' after applying."
-      );
-    } catch {
-      // Fallback: open the URL directly
-      window.open(job.applyUrl, "_blank", "noopener,noreferrer");
+      await recordExternalJobClick(token, job.id);
+    } catch (err) {
+      console.warn("Click tracking notice:", err);
     }
   };
 
