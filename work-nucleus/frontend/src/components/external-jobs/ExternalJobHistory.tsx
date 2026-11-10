@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getExternalJobClickHistory } from "@/lib/external-jobs-api";
+import { CompanyLogo } from "./CompanyLogo";
 import {
   Loader2,
   ExternalLink,
@@ -93,21 +94,27 @@ export function ExternalJobHistory({ getToken }: ExternalJobHistoryProps) {
           key={entry.id}
           className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3 hover:border-slate-300 transition-colors"
         >
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <h4 className="text-sm font-semibold text-slate-900 truncate">
-                {entry.externalJob.title}
-              </h4>
-              {!entry.externalJob.isActive && (
-                <span className="px-1.5 py-0.5 text-[10px] bg-red-50 text-red-600 rounded font-medium">
-                  Expired
-                </span>
-              )}
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <CompanyLogo
+              companyName={entry.externalJob.companyName}
+              size="sm"
+            />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-semibold text-slate-900 truncate">
+                  {entry.externalJob.title}
+                </h4>
+                {!entry.externalJob.isActive && (
+                  <span className="px-1.5 py-0.5 text-[10px] bg-red-50 text-red-600 rounded font-medium">
+                    Expired
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 truncate">
+                {entry.externalJob.companyName}
+                {entry.externalJob.location && ` · ${entry.externalJob.location}`}
+              </p>
             </div>
-            <p className="text-xs text-slate-500 truncate">
-              {entry.externalJob.companyName}
-              {entry.externalJob.location && ` · ${entry.externalJob.location}`}
-            </p>
           </div>
 
           <div className="flex items-center gap-3 shrink-0">

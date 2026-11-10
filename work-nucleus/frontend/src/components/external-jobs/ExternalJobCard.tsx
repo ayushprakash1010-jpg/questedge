@@ -1,6 +1,7 @@
 "use client";
 
 import { ExternalJob } from "@/lib/external-jobs-api";
+import { CompanyLogo } from "./CompanyLogo";
 import {
   MapPin,
   Building2,
@@ -96,18 +97,11 @@ export function ExternalJobCard({ job, onSave, onClick, isSaved }: ExternalJobCa
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-3 min-w-0">
-          {job.companyLogoUrl ? (
-            <img
-              src={job.companyLogoUrl}
-              alt={job.companyName}
-              className="h-10 w-10 rounded-xl object-contain border border-slate-100 bg-white shrink-0"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-            />
-          ) : (
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center shrink-0">
-              <Building2 className="h-5 w-5 text-slate-400" />
-            </div>
-          )}
+          <CompanyLogo
+            companyName={job.companyName}
+            logoUrl={job.companyLogoUrl}
+            size="md"
+          />
           <div className="min-w-0">
             <h3 className="font-semibold text-slate-900 text-sm leading-tight truncate group-hover:text-emerald-700 transition-colors">
               {job.title}

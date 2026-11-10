@@ -1,6 +1,7 @@
 "use client";
 
 import { ExternalJob, ExternalJobMatchData } from "@/lib/external-jobs-api";
+import { CompanyLogo } from "./CompanyLogo";
 import {
   X,
   MapPin,
@@ -80,18 +81,11 @@ export function ExternalJobDetail({ job, isOpen, onClose, onSave, onApply, isSav
         <div className="sticky top-0 z-10 bg-white border-b border-slate-100 px-6 py-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              {job.companyLogoUrl ? (
-                <img
-                  src={job.companyLogoUrl}
-                  alt={job.companyName}
-                  className="h-12 w-12 rounded-xl object-contain border border-slate-100 bg-white shrink-0"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                />
-              ) : (
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center shrink-0">
-                  <Building2 className="h-6 w-6 text-slate-400" />
-                </div>
-              )}
+              <CompanyLogo
+                companyName={job.companyName}
+                logoUrl={job.companyLogoUrl}
+                size="lg"
+              />
               <div className="min-w-0">
                 <h2 className="font-bold text-slate-900 text-lg leading-tight">
                   {job.title}
