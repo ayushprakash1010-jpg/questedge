@@ -20,6 +20,7 @@ import {
   Wallet,
   Bell,
   Code2,
+  Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -93,6 +94,9 @@ const candidateNavSections: NavSection[] = [
     items: [
       { label: "Dashboard", href: "/candidate/dashboard", icon: LayoutDashboard },
       { label: "Browse Jobs", href: "/candidate/jobs", icon: Compass },
+      ...(process.env.NEXT_PUBLIC_FEATURE_EXTERNAL_JOBS === "true"
+        ? [{ label: "Explore Market", href: "/candidate/external-jobs", icon: Globe }]
+        : []),
       { label: "Saved Jobs", href: "/candidate/jobs?saved=true", icon: Heart },
       { label: "My Applications", href: "/candidate/applications", icon: Briefcase },
       { label: "Referral Requests", href: "/candidate/referrals", icon: Users },

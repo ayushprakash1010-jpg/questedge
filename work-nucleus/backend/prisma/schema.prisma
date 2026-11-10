@@ -1758,6 +1758,11 @@ model CandidateProfile {
   assessmentAttempts AssessmentAttempt[]
   videoInterviews    VideoInterview[]
 
+  // -- External Job Aggregation Relations --
+  externalSavedJobs  ExternalSavedJob[]
+  externalJobClicks  ExternalJobClick[]
+  externalJobMatches ExternalJobMatch[]
+
   @@map("candidate_profiles")
 }
 
@@ -2338,3 +2343,130 @@ model VideoInterview {
   @@index([mandateId])
   @@map("video_interviews")
 }
+
+// ── External Job Aggregation ────────────────────────────────────────
+
+model ExternalJob {
+  id                  String    @id @default(uuid()) @db.Uuid
+  sourceName          String    @map("source_name")
+  sourceId            String    @map("source_id")
+  sourceCompanySlug   String?   @map("source_company_slug")
+  sourceUrl           String?   @map("source_url")
+  title               String
+  companyName         String    @map("company_name")
+  companyLogoUrl      String?   @map("company_logo_url")
+  location            String?
+  city                String?
+  state               String?
+  country             String    @default("IN")
+  isRemote            Boolean   @default(false) @map("is_remote")
+  workplaceType       String?   @map("workplace_type")
+  salaryMin           Decimal?  @map("salary_min") @db.Decimal(12, 2)
+  salaryMax           Decimal?  @map("salary_max") @db.Decimal(12, 2)
+  salaryCurrency      String?   @default("INR") @map("salary_currency")
+  salaryPeriod        String?   @map("salary_period")
+  salaryRaw           String?   @map("salary_raw")
+  descriptionHtml     String?   @map("description_html") @db.Text
+  descriptionPlain    String?   @map("description_plain") @db.Text
+  descriptionSnippet  String?   @map("description_snippet")
+  employmentType      String?   @map("employment_type")
+  department          String?
+  team                String?
+  extractedSkills     Json?     @default("[]") @map("extracted_skills")
+  tags                Json?     @default("[]")
+  experienceLevel     String?   @map("experience_level")
+  applyUrl            String    @map("apply_url")
+  applyType           String    @default("redirect") @map("apply_type")
+  contentHash         String?   @map("content_hash")
+  urlHash             String?   @map("url_hash")
+  isActive            Boolean   @default(true) @map("is_active")
+  postedAt            DateTime? @map("posted_at")
+  expiresAt           DateTime? @map("expires_at")
+  lastSyncedAt        DateTime  @default(now()) @map("last_synced_at")
+  lastVerifiedAt      DateTime? @map("last_verified_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  savedBy             ExternalSavedJob[]
+  clicks              ExternalJobClick[]
+  matches             ExternalJobMatch[]
+
+  @@unique([sourceName, sourceId], map: "external_jobs_source_unique")
+  @@index([isActive, postedAt(sort: Desc)])
+  @@index([contentHash])
+  @@index([urlHash])
+  @@index([companyName])
+  @@index([country, city])
+  @@index([workplaceType])
+  @@index([isActive, sourceName])
+  @@map("external_jobs")
+}
+
+model ExternalSavedJob {
+  id                  String   @id @default(uuid()) @db.Uuid
+  candidateProfileId  String   @map("candidate_profile_id") @db.Uuid
+  externalJobId       String   @map("external_job_id") @db.Uuid
+  savedAt             DateTime @default(now()) @map("saved_at")
+
+  candidateProfile    CandidateProfile @relation(fields: [candidateProfileId], references: [id], onDelete: Cascade)
+  externalJob         ExternalJob      @relation(fields: [externalJobId], references: [id], onDelete: Cascade)
+
+  @@unique([candidateProfileId, externalJobId])
+  @@map("external_saved_jobs")
+}
+
+model ExternalJobClick {
+  id                  String    @id @default(uuid()) @db.Uuid
+  candidateProfileId  String    @map("candidate_profile_id") @db.Uuid
+  externalJobId       String    @map("external_job_id") @db.Uuid
+  clickedAt           DateTime  @default(now()) @map("clicked_at")
+  selfReportedApplied Boolean   @default(false) @map("self_reported_applied")
+  appliedAt           DateTime? @map("applied_at")
+
+  candidateProfile    CandidateProfile @relation(fields: [candidateProfileId], references: [id], onDelete: Cascade)
+  externalJob         ExternalJob      @relation(fields: [externalJobId], references: [id], onDelete: Cascade)
+
+  @@index([candidateProfileId])
+  @@index([externalJobId])
+  @@map("external_job_clicks")
+}
+
+model ExternalJobMatch {
+  id                  String   @id @default(uuid()) @db.Uuid
+  candidateProfileId  String   @map("candidate_profile_id") @db.Uuid
+  externalJobId       String   @map("external_job_id") @db.Uuid
+  totalScore          Int      @default(0) @map("total_score")
+  skillsScore         Int      @default(0) @map("skills_score")
+  experienceScore     Int      @default(0) @map("experience_score")
+  roleFitScore        Int      @default(0) @map("role_fit_score")
+  preferencesScore    Int      @default(0) @map("preferences_score")
+  matchedSkills       Json?    @default("[]") @map("matched_skills")
+  missingSkills       Json?    @default("[]") @map("missing_skills")
+  computedAt          DateTime @default(now()) @map("computed_at")
+
+  candidateProfile    CandidateProfile @relation(fields: [candidateProfileId], references: [id], onDelete: Cascade)
+  externalJob         ExternalJob      @relation(fields: [externalJobId], references: [id], onDelete: Cascade)
+
+  @@unique([candidateProfileId, externalJobId])
+  @@index([candidateProfileId, totalScore(sort: Desc)])
+  @@map("external_job_matches")
+}
+
+model JobSourceConfig {
+  id              String    @id @default(uuid()) @db.Uuid
+  sourceName      String    @map("source_name")
+  companySlug     String    @map("company_slug")
+  companyName     String    @map("company_name")
+  companyLogoUrl  String?   @map("company_logo_url")
+  isActive        Boolean   @default(true) @map("is_active")
+  lastSyncAt      DateTime? @map("last_sync_at")
+  lastSyncStatus  String?   @map("last_sync_status")
+  lastSyncCount   Int?      @map("last_sync_count")
+  errorMessage    String?   @map("error_message")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@unique([sourceName, companySlug], map: "job_source_config_unique")
+  @@map("job_source_configs")
+}
+
