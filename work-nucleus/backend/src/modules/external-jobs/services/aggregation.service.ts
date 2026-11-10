@@ -11,6 +11,7 @@ import { JSearchConnector } from '../connectors/jsearch.connector';
 import { NormalizerService, NormalizedJob } from './normalizer.service';
 import { IJobSourceConnector } from '../connectors/connector.interface';
 import { CircuitBreaker } from './circuit-breaker';
+import { SEED_COMPANIES } from '../config/seed-companies';
 
 export interface SyncResult {
   source: string;
@@ -447,14 +448,12 @@ export class AggregationService {
   }
 
   /**
-   * Seed default companies from config/seed-companies.json into JobSourceConfig.
+   * Seed default companies into JobSourceConfig.
    */
   async seedDefaultSources(): Promise<number> {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const seedData = require('../config/seed-companies.json');
     let count = 0;
-    for (const [sourceName, companies] of Object.entries(seedData)) {
-      for (const comp of companies as Array<{ slug: string; name: string }>) {
+    for (const [sourceName, companies] of Object.entries(SEED_COMPANIES)) {
+      for (const comp of companies) {
         await this.prisma.jobSourceConfig.upsert({
           where: {
             sourceName_companySlug: {
@@ -477,7 +476,7 @@ export class AggregationService {
       }
     }
     this.logger.log(
-      `Seeded ${count} default job sources from seed-companies.json`,
+      `Seeded ${count} default job sources into JobSourceConfig`,
     );
     return count;
   }
