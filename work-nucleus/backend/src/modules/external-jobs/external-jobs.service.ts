@@ -184,6 +184,18 @@ export class ExternalJobsService {
   }
 
   async toggleSave(candidateProfileId: string, externalJobId: string) {
+    if (!candidateProfileId) {
+      throw new NotFoundException('Candidate profile not found');
+    }
+
+    const job = await this.prisma.externalJob.findUnique({
+      where: { id: externalJobId },
+      select: { id: true },
+    });
+    if (!job) {
+      throw new NotFoundException('Job not found');
+    }
+
     const existing = await this.prisma.externalSavedJob.findUnique({
       where: {
         candidateProfileId_externalJobId: {
@@ -335,9 +347,17 @@ export class ExternalJobsService {
 
   async resolveCandidateId(user: any): Promise<string | null> {
     if (!user) return null;
-    if (user.candidateProfileId) return user.candidateProfileId;
-    if (user.userType === 'CANDIDATE' && user.id) return user.id;
 
+    // 1. Direct candidateProfileId check
+    if (user.candidateProfileId) {
+      const exists = await this.prisma.candidateProfile.findUnique({
+        where: { id: user.candidateProfileId },
+        select: { id: true },
+      });
+      if (exists) return exists.id;
+    }
+
+    // 2. By auth0Sub
     if (user.auth0Sub) {
       const cand = await this.prisma.candidateProfile.findUnique({
         where: { auth0Sub: user.auth0Sub },
@@ -346,24 +366,46 @@ export class ExternalJobsService {
       if (cand) return cand.id;
     }
 
+    // 3. By email
     if (user.email) {
-      const cand = await this.prisma.candidateProfile.findUnique({
-        where: { email: user.email.toLowerCase() },
+      const cleanEmail = user.email.toLowerCase().trim();
+      const cand = await this.prisma.candidateProfile.findFirst({
+        where: {
+          email: { equals: cleanEmail, mode: 'insensitive' },
+        },
         select: { id: true },
       });
       if (cand) return cand.id;
     }
 
-    // Demo account fallback: get first active candidate profile
+    // 4. By user.id in candidateProfile table
+    if (user.id) {
+      const byId = await this.prisma.candidateProfile.findUnique({
+        where: { id: user.id },
+        select: { id: true },
+      });
+      if (byId) return byId.id;
+    }
+
+    // 5. Demo account fallback
     const isDemo =
       user.isDemoAccount ||
-      user.email?.toLowerCase() === 'growytvercel@gmail.com';
+      user.email?.toLowerCase() === 'growytvercel@gmail.com' ||
+      (process.env.DEMO_EMAIL &&
+        user.email?.toLowerCase() === process.env.DEMO_EMAIL.trim().toLowerCase());
+
     if (isDemo) {
       const demoCand = await this.prisma.candidateProfile.findFirst({
-        where: { isActive: true },
+        where: { isDemoAccount: true },
         select: { id: true },
       });
       if (demoCand) return demoCand.id;
+
+      const anyCand = await this.prisma.candidateProfile.findFirst({
+        where: { isActive: true },
+        select: { id: true },
+      });
+      if (anyCand) return anyCand.id;
     }
 
     return user.id || null;
