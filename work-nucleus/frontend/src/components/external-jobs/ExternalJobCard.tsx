@@ -68,6 +68,15 @@ function timeAgo(dateStr?: string | null): string {
   return `${Math.floor(days / 30)}mo ago`;
 }
 
+function cleanSnippetText(text?: string | null): string {
+  if (!text) return "";
+  return text
+    .replace(/<[^>]*>|<[^>]*$/g, "")
+    .replace(/&[a-z0-9#]+;?/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function ExternalJobCard({ job, onSave, onClick, isSaved }: ExternalJobCardProps) {
   const salary = formatSalary(job);
 
@@ -185,13 +194,9 @@ export function ExternalJobCard({ job, onSave, onClick, isSaved }: ExternalJobCa
       )}
 
       {/* Description Snippet */}
-      {job.descriptionSnippet && (
+      {cleanSnippetText(job.descriptionSnippet) && (
         <p className="text-xs text-slate-500 leading-relaxed line-clamp-2 mb-3">
-          {job.descriptionSnippet
-            .replace(/<[^>]+>/g, '')
-            .replace(/&[a-z0-9#]+;/gi, ' ')
-            .replace(/\s+/g, ' ')
-            .trim()}
+          {cleanSnippetText(job.descriptionSnippet)}
         </p>
       )}
 

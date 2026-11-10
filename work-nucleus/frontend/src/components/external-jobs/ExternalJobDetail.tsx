@@ -263,7 +263,11 @@ export function ExternalJobDetail({ job, isOpen, onClose, onSave, onApply, isSav
                 />
               ) : (
                 <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
-                  {job.descriptionPlain || job.descriptionSnippet}
+                  {(job.descriptionPlain || job.descriptionSnippet || '')
+                    .replace(/<[^>]*>|<[^>]*$/g, '')
+                    .replace(/&[a-z0-9#]+;?/gi, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim()}
                 </p>
               )}
             </div>
