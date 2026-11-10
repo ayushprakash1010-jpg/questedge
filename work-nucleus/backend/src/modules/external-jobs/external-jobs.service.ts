@@ -1,6 +1,8 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { HotCacheService } from '../cache/cache.service';
+import { AggregationService } from './services/aggregation.service';
+import { MatchPrecomputeService } from './services/match-precompute.service';
 import { SearchExternalJobsDto } from './dto/search-external-jobs.dto';
 import { Prisma } from '@prisma/client';
 
@@ -11,6 +13,8 @@ export class ExternalJobsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cache: HotCacheService,
+    private readonly aggregation: AggregationService,
+    private readonly matchPrecompute: MatchPrecomputeService,
   ) {}
 
   async searchJobs(dto: SearchExternalJobsDto, candidateProfileId?: string) {
@@ -397,6 +401,26 @@ export class ExternalJobsService {
       })),
       totalClicks,
       totalSaves,
+    };
+  }
+
+  async triggerManualSync() {
+    this.logger.log('Manual sync triggered across all 8 sources...');
+    setImmediate(async () => {
+      try {
+        await this.aggregation.seedDefaultSources();
+        await this.aggregation.syncAtsSources();
+        await this.aggregation.syncRemoteSources();
+        await this.aggregation.syncAggregatorSources();
+        await this.matchPrecompute.computeAllMatches();
+        this.logger.log('Manual sync completed successfully!');
+      } catch (err: any) {
+        this.logger.error(`Manual sync failed: ${err.message}`, err.stack);
+      }
+    });
+    return {
+      status: 'Sync initiated in background',
+      message: 'Syncing jobs from all 8 sources now. It will take 15-30 seconds to populate.',
     };
   }
 }

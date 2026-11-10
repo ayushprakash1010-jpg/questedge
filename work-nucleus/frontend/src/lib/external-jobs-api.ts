@@ -177,3 +177,12 @@ export async function getExternalJobClickHistory(
   );
 }
 
+export async function triggerExternalJobsSync(
+  token: string,
+): Promise<{ status: string; message: string }> {
+  return apiClient<{ status: string; message: string }>(
+    `/api/v1/external-jobs/sync`,
+    { token, method: 'POST' },
+  );
+}
+

@@ -9,6 +9,7 @@ import {
   recordExternalJobClick,
   reportExternalJobApplied,
   getExternalJobById,
+  triggerExternalJobsSync,
   ExternalJob,
   ExternalJobSearchParams,
 } from "@/lib/external-jobs-api";
@@ -28,6 +29,7 @@ import {
   ChevronRight,
   Briefcase,
   Search,
+  RefreshCw,
 } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { toast } from "@/components/ui/toaster";
@@ -70,6 +72,7 @@ export default function ExternalJobsPage() {
   // Detail slide-over
   const [selectedJob, setSelectedJob] = useState<ExternalJob | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const getToken = async (): Promise<string> => {
     const res = await fetch("/api/auth/token");
@@ -208,6 +211,50 @@ export default function ExternalJobsPage() {
     }
   };
 
+  const handleTriggerSync = async () => {
+    try {
+      setSyncing(true);
+      toast.info(
+        "Connecting to Greenhouse, Lever, Ashby, Remotive, RemoteOK, Careerjet, JSearch... Ingesting live jobs."
+      );
+      const token = await getToken();
+      await triggerExternalJobsSync(token);
+
+      // Poll until jobs appear
+      let attempts = 0;
+      const interval = setInterval(async () => {
+        attempts++;
+        try {
+          const freshToken = await getToken();
+          const res = await searchExternalJobs(freshToken, {
+            page: 1,
+            limit: 15,
+          });
+          if ((res.jobs && res.jobs.length > 0) || attempts >= 8) {
+            clearInterval(interval);
+            setSyncing(false);
+            if (res.jobs && res.jobs.length > 0) {
+              setJobs(res.jobs);
+              setTotal(res.pagination?.total || res.jobs.length);
+              setTotalPages(res.pagination?.totalPages || 1);
+              toast.success(
+                `Successfully loaded ${res.pagination?.total || res.jobs.length} live market jobs!`
+              );
+            }
+          }
+        } catch {
+          if (attempts >= 8) {
+            clearInterval(interval);
+            setSyncing(false);
+          }
+        }
+      }, 3000);
+    } catch (err: any) {
+      setSyncing(false);
+      toast.error("Failed to initiate sync. Please try again.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* ── Hero Banner ────────────────────────────────────────── */}
@@ -316,12 +363,24 @@ export default function ExternalJobsPage() {
               </p>
             </div>
 
-            {/* Stats */}
-            {viewMode === "browse" && !loading && (
-              <div className="flex items-center gap-1 text-sm text-slate-400">
-                <TrendingUp className="h-4 w-4 text-emerald-400" />
-                <span className="font-semibold text-white">{total}</span> jobs
-                found
+            {/* Stats & Sync */}
+            {viewMode === "browse" && (
+              <div className="flex items-center gap-3">
+                {!loading && (
+                  <div className="flex items-center gap-1 text-sm text-slate-400">
+                    <TrendingUp className="h-4 w-4 text-emerald-400" />
+                    <span className="font-semibold text-white">{total}</span> jobs found
+                  </div>
+                )}
+                <button
+                  onClick={handleTriggerSync}
+                  disabled={syncing}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 ring-1 ring-emerald-500/40 transition-all disabled:opacity-50 cursor-pointer"
+                  title="Fetch fresh jobs from live ATS boards and aggregators"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />
+                  {syncing ? 'Syncing...' : 'Sync Market'}
+                </button>
               </div>
             )}
           </div>
@@ -382,10 +441,26 @@ export default function ExternalJobsPage() {
                 ? "Explore the market and bookmark jobs you're interested in."
                 : "Try different search terms or adjust your filters."}
             </p>
-            {viewMode !== "browse" && (
+            {viewMode === "browse" ? (
+              <button
+                onClick={handleTriggerSync}
+                disabled={syncing}
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-lg shadow-emerald-200 disabled:opacity-50 cursor-pointer"
+              >
+                {syncing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Ingesting Live Jobs...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4" /> Fetch Live Market Jobs
+                  </>
+                )}
+              </button>
+            ) : (
               <button
                 onClick={() => handleTabChange("browse")}
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-lg shadow-emerald-200"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-lg shadow-emerald-200 cursor-pointer"
               >
                 <Globe className="h-4 w-4" /> Explore Market
               </button>

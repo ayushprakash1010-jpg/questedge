@@ -69,6 +69,12 @@ export class ExternalJobsController {
     return this.service.getStats();
   }
 
+  @Post('sync')
+  @UserTypes('CANDIDATE', 'PLATFORM_ADMIN')
+  async triggerSync() {
+    return this.service.triggerManualSync();
+  }
+
   @Get(':id')
   @UserTypes('CANDIDATE')
   async getJobById(

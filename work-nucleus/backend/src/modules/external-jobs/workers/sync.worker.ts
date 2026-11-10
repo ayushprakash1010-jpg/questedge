@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JobQueueService } from '../../job-queue/job-queue.service';
+import { PrismaService } from '../../../prisma/prisma.service';
 import { AggregationService } from '../services/aggregation.service';
 import { MatchPrecomputeService } from '../services/match-precompute.service';
 
@@ -14,6 +15,7 @@ export class ExternalJobsSyncWorker implements OnModuleInit {
     private readonly aggregation: AggregationService,
     private readonly matchPrecompute: MatchPrecomputeService,
     private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
   ) {
     this.isEnabled =
       this.config.get<string>('FEATURE_EXTERNAL_JOBS', 'false') === 'true';
@@ -63,9 +65,43 @@ export class ExternalJobsSyncWorker implements OnModuleInit {
     });
 
     this.logger.log('External jobs sync workers registered (all sources + match pre-compute)');
+
+    // Trigger initial background sync on boot if no jobs exist
+    this.triggerInitialSyncIfEmpty();
   }
 
-  private async handleAtsSync() {
+  async triggerImmediateSync(): Promise<{ status: string }> {
+    this.logger.log('Triggering immediate full sync across all 8 sources...');
+    setImmediate(async () => {
+      try {
+        await this.aggregation.seedDefaultSources();
+        await this.handleAtsSync();
+        await this.handleRemoteSync();
+        await this.handleAggregatorSync();
+        await this.handleMatchCompute();
+        this.logger.log('Immediate full sync finished successfully!');
+      } catch (err: any) {
+        this.logger.error(`Immediate sync failed: ${err.message}`, err.stack);
+      }
+    });
+    return { status: 'Sync initiated in background' };
+  }
+
+  private async triggerInitialSyncIfEmpty() {
+    try {
+      const count = await this.prisma.externalJob.count();
+      if (count === 0) {
+        this.logger.log('0 external jobs found in DB. Starting automatic initial sync...');
+        await this.triggerImmediateSync();
+      } else {
+        this.logger.log(`Found ${count} external jobs in DB.`);
+      }
+    } catch (err: any) {
+      this.logger.warn(`Could not check external job count: ${err.message}`);
+    }
+  }
+
+  async handleAtsSync() {
     this.logger.log('Starting ATS source sync...');
     try {
       const results = await this.aggregation.syncAtsSources();
@@ -81,7 +117,7 @@ export class ExternalJobsSyncWorker implements OnModuleInit {
     }
   }
 
-  private async handleRemoteSync() {
+  async handleRemoteSync() {
     this.logger.log('Starting remote sources sync...');
     try {
       const results = await this.aggregation.syncRemoteSources();
@@ -94,7 +130,7 @@ export class ExternalJobsSyncWorker implements OnModuleInit {
     }
   }
 
-  private async handleAggregatorSync() {
+  async handleAggregatorSync() {
     this.logger.log('Starting aggregator sources sync (Careerjet, JSearch)...');
     try {
       const results = await this.aggregation.syncAggregatorSources();
@@ -107,7 +143,7 @@ export class ExternalJobsSyncWorker implements OnModuleInit {
     }
   }
 
-  private async handleExpiryCheck() {
+  async handleExpiryCheck() {
     this.logger.log('Starting expiry check...');
     try {
       const count = await this.aggregation.markExpiredJobs();
@@ -117,7 +153,7 @@ export class ExternalJobsSyncWorker implements OnModuleInit {
     }
   }
 
-  private async handleMatchCompute() {
+  async handleMatchCompute() {
     this.logger.log('Starting match pre-computation...');
     try {
       const result = await this.matchPrecompute.computeAllMatches();
