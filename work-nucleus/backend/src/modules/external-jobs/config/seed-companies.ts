@@ -201,3 +201,4 @@ export const SEED_COMPANIES: Record<string, SeedCompany[]> = {
     { slug: 'raycast', name: 'Raycast' },
   ],
 };
+

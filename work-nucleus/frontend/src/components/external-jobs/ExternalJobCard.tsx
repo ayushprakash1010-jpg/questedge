@@ -187,7 +187,11 @@ export function ExternalJobCard({ job, onSave, onClick, isSaved }: ExternalJobCa
       {/* Description Snippet */}
       {job.descriptionSnippet && (
         <p className="text-xs text-slate-500 leading-relaxed line-clamp-2 mb-3">
-          {job.descriptionSnippet}
+          {job.descriptionSnippet
+            .replace(/<[^>]+>/g, '')
+            .replace(/&[a-z0-9#]+;/gi, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()}
         </p>
       )}
 

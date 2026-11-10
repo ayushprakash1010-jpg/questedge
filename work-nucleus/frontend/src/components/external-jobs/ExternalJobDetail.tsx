@@ -250,7 +250,16 @@ export function ExternalJobDetail({ job, isOpen, onClose, onSave, onApply, isSav
               {job.descriptionHtml ? (
                 <div
                   className="prose prose-sm prose-slate max-w-none text-slate-600"
-                  dangerouslySetInnerHTML={{ __html: job.descriptionHtml }}
+                  dangerouslySetInnerHTML={{
+                    __html: job.descriptionHtml.includes('&lt;') && job.descriptionHtml.includes('&gt;')
+                      ? job.descriptionHtml
+                          .replace(/&lt;/g, '<')
+                          .replace(/&gt;/g, '>')
+                          .replace(/&quot;/g, '"')
+                          .replace(/&#39;/g, "'")
+                          .replace(/&amp;/g, '&')
+                      : job.descriptionHtml,
+                  }}
                 />
               ) : (
                 <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
