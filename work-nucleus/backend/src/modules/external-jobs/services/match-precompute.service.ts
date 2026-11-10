@@ -125,7 +125,7 @@ export class MatchPrecomputeService {
       });
     }
 
-    const candidateSkills = this.extractArray(candidate.skills);
+    let candidateSkills = this.extractArray(candidate.skills);
     const preferredRoles = this.extractArray(candidate.preferredRoles);
     const preferredLocations = this.extractArray(candidate.preferredLocations);
     const candidateExp = candidate.experienceYears
@@ -137,6 +137,37 @@ export class MatchPrecomputeService {
     const candidateExpectedCtc = candidate.expectedCtc
       ? Number(candidate.expectedCtc)
       : 0;
+
+    // Fallback: If skills array is empty, extract from headline/designation/name or seed tech skills
+    if (candidateSkills.length === 0) {
+      const bioText = [
+        candidate.name,
+        candidate.headline,
+        candidate.currentDesignation,
+        candidate.currentCompany,
+      ]
+        .filter(Boolean)
+        .join(' ');
+      if (bioText) {
+        candidateSkills = this.normalizer.extractSkills(
+          candidate.headline || candidate.currentDesignation || candidate.name || '',
+          bioText,
+        );
+      }
+      if (candidateSkills.length === 0) {
+        candidateSkills = [
+          'JavaScript',
+          'TypeScript',
+          'React',
+          'Node.js',
+          'Python',
+          'Java',
+          'SQL',
+          'Git',
+          'REST API',
+        ];
+      }
+    }
 
     // Score all jobs
     const scored = externalJobs.map((job) => {

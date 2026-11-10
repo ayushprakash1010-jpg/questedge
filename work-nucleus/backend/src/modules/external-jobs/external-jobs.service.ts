@@ -333,8 +333,44 @@ export class ExternalJobsService {
     };
   }
 
+  async resolveCandidateId(user: any): Promise<string | null> {
+    if (!user) return null;
+    if (user.candidateProfileId) return user.candidateProfileId;
+    if (user.userType === 'CANDIDATE' && user.id) return user.id;
+
+    if (user.auth0Sub) {
+      const cand = await this.prisma.candidateProfile.findUnique({
+        where: { auth0Sub: user.auth0Sub },
+        select: { id: true },
+      });
+      if (cand) return cand.id;
+    }
+
+    if (user.email) {
+      const cand = await this.prisma.candidateProfile.findUnique({
+        where: { email: user.email.toLowerCase() },
+        select: { id: true },
+      });
+      if (cand) return cand.id;
+    }
+
+    // Demo account fallback: get first active candidate profile
+    const isDemo =
+      user.isDemoAccount ||
+      user.email?.toLowerCase() === 'growytvercel@gmail.com';
+    if (isDemo) {
+      const demoCand = await this.prisma.candidateProfile.findFirst({
+        where: { isActive: true },
+        select: { id: true },
+      });
+      if (demoCand) return demoCand.id;
+    }
+
+    return user.id || null;
+  }
+
   async getRecommendedJobs(candidateProfileId: string, limit = 20) {
-    const matches = await this.prisma.externalJobMatch.findMany({
+    let matches = await this.prisma.externalJobMatch.findMany({
       where: {
         candidateProfileId,
         externalJob: { isActive: true },
@@ -365,6 +401,47 @@ export class ExternalJobsService {
         },
       },
     });
+
+    // If no precomputed matches exist, compute on demand!
+    if (matches.length === 0) {
+      const candidate = await this.prisma.candidateProfile.findUnique({
+        where: { id: candidateProfileId },
+      });
+      if (candidate) {
+        await this.matchPrecompute.computeMatchesForCandidate(candidate);
+        matches = await this.prisma.externalJobMatch.findMany({
+          where: {
+            candidateProfileId,
+            externalJob: { isActive: true },
+          },
+          orderBy: { totalScore: 'desc' },
+          take: limit,
+          include: {
+            externalJob: {
+              select: {
+                id: true,
+                sourceName: true,
+                title: true,
+                companyName: true,
+                companyLogoUrl: true,
+                location: true,
+                isRemote: true,
+                workplaceType: true,
+                salaryMin: true,
+                salaryMax: true,
+                salaryCurrency: true,
+                salaryRaw: true,
+                descriptionSnippet: true,
+                employmentType: true,
+                extractedSkills: true,
+                applyUrl: true,
+                postedAt: true,
+              },
+            },
+          },
+        });
+      }
+    }
 
     return matches.map((m) => ({
       ...m.externalJob,

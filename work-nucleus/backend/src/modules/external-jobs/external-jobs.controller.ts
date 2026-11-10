@@ -6,6 +6,7 @@ import {
   Param,
   Query,
   ParseUUIDPipe,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ExternalJobsService } from './external-jobs.service';
 import { SearchExternalJobsDto } from './dto/search-external-jobs.dto';
@@ -16,22 +17,34 @@ import { UserTypes } from '../../auth/decorators/user-types.decorator';
 export class ExternalJobsController {
   constructor(private readonly service: ExternalJobsService) {}
 
+  private async getCandidateId(user: any): Promise<string | null> {
+    if (!user) return null;
+    if (user.candidateProfileId) return user.candidateProfileId;
+    if (user.userType === 'CANDIDATE' && user.id) return user.id;
+    if (this.service.resolveCandidateId) {
+      return this.service.resolveCandidateId(user);
+    }
+    return user.id || null;
+  }
+
   @Get()
   @UserTypes('CANDIDATE')
   async searchJobs(
     @Query() dto: SearchExternalJobsDto,
     @CurrentUser() user: any,
   ) {
-    return this.service.searchJobs(dto, user?.candidateProfileId);
+    const candidateId = await this.getCandidateId(user);
+    return this.service.searchJobs(dto, candidateId || undefined);
   }
 
   @Get('recommended')
   @UserTypes('CANDIDATE')
   async getRecommended(@CurrentUser() user: any) {
-    if (!user?.candidateProfileId) {
+    const candidateId = await this.getCandidateId(user);
+    if (!candidateId) {
       return { jobs: [], message: 'Complete your profile to get recommendations' };
     }
-    const jobs = await this.service.getRecommendedJobs(user.candidateProfileId);
+    const jobs = await this.service.getRecommendedJobs(candidateId);
     return { jobs };
   }
 
@@ -42,8 +55,15 @@ export class ExternalJobsController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
+    const candidateId = await this.getCandidateId(user);
+    if (!candidateId) {
+      return {
+        savedJobs: [],
+        pagination: { page: 1, limit: 20, total: 0, totalPages: 1 },
+      };
+    }
     return this.service.getSavedJobs(
-      user.candidateProfileId,
+      candidateId,
       page ? parseInt(page, 10) : 1,
       limit ? parseInt(limit, 10) : 20,
     );
@@ -56,8 +76,15 @@ export class ExternalJobsController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
+    const candidateId = await this.getCandidateId(user);
+    if (!candidateId) {
+      return {
+        history: [],
+        pagination: { page: 1, limit: 20, total: 0, totalPages: 1 },
+      };
+    }
     return this.service.getClickHistory(
-      user.candidateProfileId,
+      candidateId,
       page ? parseInt(page, 10) : 1,
       limit ? parseInt(limit, 10) : 20,
     );
@@ -81,7 +108,8 @@ export class ExternalJobsController {
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: any,
   ) {
-    return this.service.getJobById(id, user?.candidateProfileId);
+    const candidateId = await this.getCandidateId(user);
+    return this.service.getJobById(id, candidateId || undefined);
   }
 
   @Post(':id/save')
@@ -90,7 +118,11 @@ export class ExternalJobsController {
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: any,
   ) {
-    return this.service.toggleSave(user.candidateProfileId, id);
+    const candidateId = await this.getCandidateId(user);
+    if (!candidateId) {
+      throw new UnauthorizedException('Candidate profile required');
+    }
+    return this.service.toggleSave(candidateId, id);
   }
 
   @Post(':id/click')
@@ -99,7 +131,11 @@ export class ExternalJobsController {
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: any,
   ) {
-    return this.service.recordClick(user.candidateProfileId, id);
+    const candidateId = await this.getCandidateId(user);
+    if (!candidateId) {
+      throw new UnauthorizedException('Candidate profile required');
+    }
+    return this.service.recordClick(candidateId, id);
   }
 
   @Patch(':id/applied')
@@ -108,7 +144,10 @@ export class ExternalJobsController {
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: any,
   ) {
-    return this.service.reportApplied(user.candidateProfileId, id);
+    const candidateId = await this.getCandidateId(user);
+    if (!candidateId) {
+      throw new UnauthorizedException('Candidate profile required');
+    }
+    return this.service.reportApplied(candidateId, id);
   }
 }
-

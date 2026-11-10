@@ -161,3 +161,4 @@ export function CompanyLogo({
     </div>
   );
 }
+
