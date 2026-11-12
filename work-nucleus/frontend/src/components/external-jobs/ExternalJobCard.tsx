@@ -185,7 +185,7 @@ export function ExternalJobCard({ job, onSave, onClick, isSaved }: ExternalJobCa
                   ? "bg-emerald-50/80 text-emerald-700 border-emerald-200/60"
                   : job.workplaceType.toLowerCase() === "hybrid"
                   ? "bg-amber-50 text-amber-700 border-amber-200/70"
-                  : "bg-slate-50 text-slate-600 border-slate-200/60"
+                  : "bg-orange-50 text-orange-700 border-orange-200/70"
               }`}
             >
               {isWorkplaceRemote && (
@@ -229,8 +229,8 @@ export function ExternalJobCard({ job, onSave, onClick, isSaved }: ExternalJobCa
                   key={skill}
                   className={`px-2.5 py-0.5 text-[11px] rounded-lg font-medium border transition-colors ${
                     isMatch
-                      ? "bg-violet-100 text-violet-800 border-violet-300/80 shadow-2xs"
-                      : "bg-violet-50 text-violet-700 border-violet-200/70"
+                      ? "bg-teal-100 text-teal-800 border-teal-300/80 shadow-2xs"
+                      : "bg-teal-50 text-teal-700 border-teal-200/70"
                   }`}
                 >
                   {skill}
@@ -238,7 +238,7 @@ export function ExternalJobCard({ job, onSave, onClick, isSaved }: ExternalJobCa
               );
             })}
             {job.extractedSkills.length > 5 && (
-              <span className="px-2 py-0.5 text-[11px] font-semibold rounded-lg bg-violet-50 text-violet-600 border border-violet-200/70">
+              <span className="px-2 py-0.5 text-[11px] font-semibold rounded-lg bg-teal-50 text-teal-600 border border-teal-200/70">
                 +{job.extractedSkills.length - 5}
               </span>
             )}
