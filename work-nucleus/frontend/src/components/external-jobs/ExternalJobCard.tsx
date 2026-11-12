@@ -182,14 +182,14 @@ export function ExternalJobCard({ job, onSave, onClick, isSaved }: ExternalJobCa
             <span
               className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border ${
                 isWorkplaceRemote
-                  ? "bg-emerald-50/80 text-emerald-700 border-emerald-200/60"
+                  ? "bg-lime-50 text-lime-800 border-lime-200/70"
                   : job.workplaceType.toLowerCase() === "hybrid"
                   ? "bg-amber-50 text-amber-700 border-amber-200/70"
                   : "bg-orange-50 text-orange-700 border-orange-200/70"
               }`}
             >
               {isWorkplaceRemote && (
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="h-1.5 w-1.5 rounded-full bg-lime-600 animate-pulse" />
               )}
               {formatWorkplaceType(job.workplaceType)}
             </span>
