@@ -63,8 +63,11 @@ export class MandatesController {
   @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
   @ApiOperation({ summary: 'Company: Generate a mandate using AI' })
   async generateMandate(@Body() body: { prompt: string }) {
-    if (!body.prompt || body.prompt.trim().length === 0) {
+    if (typeof body?.prompt !== 'string' || body.prompt.trim().length === 0) {
       throw new BadRequestException('Prompt is required');
+    }
+    if (body.prompt.length > 50_000) {
+      throw new BadRequestException('Prompt must be 50,000 characters or fewer');
     }
     return this.aiScreening.generateMandate(body.prompt);
   }
