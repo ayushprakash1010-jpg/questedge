@@ -624,7 +624,7 @@ export class ExternalJobsService {
       }
     });
     return {
-      status: 'running',
+      status: 'Sync initiated in background',
       message: 'Syncing jobs from all 8 sources now. It will take 15-30 seconds to populate.',
     };
   }
