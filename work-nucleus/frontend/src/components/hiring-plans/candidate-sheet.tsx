@@ -196,17 +196,17 @@ function printCandidateScorecard(app: ApplicationDetail) {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 2px solid #4f46e5;
+      border-bottom: 2px solid #0F4D2A;
       padding-bottom: 14px;
       margin-bottom: 20px;
     }
     .logo {
       font-size: 20px;
       font-weight: 800;
-      color: #4f46e5;
+      color: #0F4D2A;
       letter-spacing: -0.5px;
     }
-    .logo span { color: #06b6d4; }
+    .logo span { color: #4EA855; }
     .doc-meta { text-align: right; font-size: 11px; color: #64748b; }
     .title-row {
       display: flex;

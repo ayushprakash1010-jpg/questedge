@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, Award, Clock, ArrowRight, Sparkles, Building2 } from "lucide-react";
 import { fetchCandidateAttempt, AssessmentAttempt } from "@/lib/assessment-api";
+import { QuestEdgeLogo } from "@/components/QuestEdgeLogo";
 
 export default function AssessmentCompletePage() {
   const params = useParams();
@@ -22,10 +23,7 @@ export default function AssessmentCompletePage() {
       {/* Top Header */}
       <header className="border-b border-slate-200/80 bg-white/90 backdrop-blur py-3 px-6 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-xl bg-indigo-600 text-white font-extrabold flex items-center justify-center text-sm shadow-sm">
-            QE
-          </div>
-          <span className="font-extrabold text-slate-900 tracking-tight text-sm">QuestEdge</span>
+          <QuestEdgeLogo size="sm" />
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2 border-l border-slate-200">
             Evaluation Portal
           </span>

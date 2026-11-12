@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { motion, AnimatePresence } from "framer-motion";
+import { QuestEdgeLogo } from "@/components/QuestEdgeLogo";
 import {
   Building2,
   Target,
@@ -189,8 +190,8 @@ export default function OnboardingPage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-8 relative z-10"
         >
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-400 shadow-lg mb-4">
-            <span className="text-xl font-bold text-white">Q</span>
+          <div className="flex justify-center mb-4">
+            <QuestEdgeLogo size="lg" priority />
           </div>
           <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
             Welcome to QuestEdge

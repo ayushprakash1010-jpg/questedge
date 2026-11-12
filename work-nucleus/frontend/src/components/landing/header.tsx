@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { Menu, X, ChevronDown, Building2, Target, UserCircle } from "lucide-react";
+import { QuestEdgeLogo } from "@/components/QuestEdgeLogo";
 
 const navLinks = [
   { label: "Marketplace", href: "/#marketplace-preview" },
@@ -108,14 +109,7 @@ export function LandingHeader() {
       >
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 focus-visible:outline-indigo-600" aria-label="QuestEdge Home">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-600 to-violet-500 shadow-sm">
-              <span className="text-sm font-bold text-white">Q</span>
-            </div>
-            <span className="text-lg font-bold text-slate-900">
-              Quest<span className="text-indigo-600">Edge</span>
-            </span>
-          </Link>
+          <QuestEdgeLogo href="/" size="md" priority />
 
           {/* Desktop Nav */}
           <nav className="hidden items-center gap-7 md:flex" aria-label="Main Navigation">

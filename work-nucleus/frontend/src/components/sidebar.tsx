@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { QuestEdgeLogo } from "@/components/QuestEdgeLogo";
 import {
   LayoutDashboard,
   Briefcase,
@@ -160,16 +161,7 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
         className="flex items-center border-b border-slate-200/60 px-5"
         style={{ height: "var(--topbar-height)" }}
       >
-        <Link href={homeHref} className="flex items-center gap-2.5">
-          <div
-            className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br ${logoGradient} shadow-[0_2px_6px_rgba(0,0,0,0.15)]`}
-          >
-            <span className="text-sm font-extrabold text-white">Q</span>
-          </div>
-          <span className="text-base font-bold text-slate-900">
-            Quest<span className={config.accent}>Edge</span>
-          </span>
-        </Link>
+        <QuestEdgeLogo href={homeHref} size="md" priority />
       </div>
 
       {/* Nav */}

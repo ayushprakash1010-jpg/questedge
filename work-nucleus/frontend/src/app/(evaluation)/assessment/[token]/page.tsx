@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { QuestEdgeLogo } from "@/components/QuestEdgeLogo";
 import {
   Code2,
   FileQuestion,
@@ -87,10 +88,7 @@ export default function CandidateAssessmentLandingPage() {
         {/* Top Header */}
         <header className="border-b border-slate-200/80 bg-white/90 backdrop-blur py-3 px-6 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-xl bg-indigo-600 text-white font-extrabold flex items-center justify-center text-sm shadow-sm">
-              QE
-            </div>
-            <span className="font-extrabold text-slate-900 tracking-tight text-sm">QuestEdge</span>
+            <QuestEdgeLogo size="sm" />
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2 border-l border-slate-200">
               Evaluation Portal
             </span>
@@ -135,10 +133,7 @@ export default function CandidateAssessmentLandingPage() {
       {/* Top Header */}
       <header className="border-b border-slate-200/80 bg-white/90 backdrop-blur py-3 px-6 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-xl bg-indigo-600 text-white font-extrabold flex items-center justify-center text-sm shadow-sm">
-            QE
-          </div>
-          <span className="font-extrabold text-slate-900 tracking-tight text-sm">QuestEdge</span>
+          <QuestEdgeLogo size="sm" />
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2 border-l border-slate-200">
             Evaluation Portal
           </span>

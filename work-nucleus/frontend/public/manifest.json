@@ -1,11 +1,11 @@
 {
   "name": "QuestEdge",
-  "short_name": "Nucleus",
-  "description": "HR platform for hiring, appraisals, compensation, and BGV.",
+  "short_name": "QuestEdge",
+  "description": "QuestEdge — AI-Powered Referral Hiring Marketplace",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#4f46e5",
+  "theme_color": "#0F4D2A",
   "orientation": "portrait-primary",
   "scope": "/",
   "icons": [

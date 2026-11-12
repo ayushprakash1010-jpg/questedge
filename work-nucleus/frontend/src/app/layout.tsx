@@ -57,8 +57,11 @@ export const metadata: Metadata = {
     creator: "@questedge",
   },
   icons: {
-    icon: "/favicon.ico",
-    apple: "/icon-192.png",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/logo-icon.png", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
   },
   manifest: "/manifest.json",
   appleWebApp: {
@@ -72,7 +75,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#4f46e5",
+  themeColor: "#0F4D2A",
 };
 
 export default function RootLayout({

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { QuestEdgeLogo } from "@/components/QuestEdgeLogo";
 
 const productLinks = [
   { label: "Marketplace Preview", href: "/#marketplace-preview" },
@@ -34,14 +35,7 @@ export function LandingFooter() {
         <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-6">
           {/* Brand & Mission */}
           <div className="lg:col-span-2">
-            <Link href="/" className="flex items-center gap-2" aria-label="QuestEdge Home">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-600 to-violet-500 shadow-sm">
-                <span className="text-sm font-bold text-white">Q</span>
-              </div>
-              <span className="text-lg font-bold text-white">
-                Quest<span className="text-indigo-400">Edge</span>
-              </span>
-            </Link>
+            <QuestEdgeLogo href="/" theme="dark" size="md" />
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-slate-400">
               The AI-powered referral hiring marketplace connecting companies, independent recruiters, and top candidates. Pay only on verified tenure completion.
             </p>

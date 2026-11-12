@@ -21,6 +21,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
+import { QuestEdgeLogo } from "@/components/QuestEdgeLogo";
 
 // Offer detail surface — design-system-v2/ui-kit/07-Offer-Letter.html.
 // Two-pane layout: 340 px form/metadata column on the left, serif letter
@@ -636,16 +637,10 @@ function LetterPreviewColumn({
           </div>
 
           {/* Header */}
-          <header className="mb-8 flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-700 text-base font-extrabold text-white shadow-md">
-              W
-            </span>
-            <span
-              className="text-[17px] font-bold text-slate-900"
-              style={{ fontFamily: "var(--font-sans)" }}
-            >
-              Quest<span className="text-indigo-600">Edge</span> Technologies
-              Pvt. Ltd.
+          <header className="mb-8 flex items-center gap-3">
+            <QuestEdgeLogo size="sm" />
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest pl-2 border-l border-slate-200">
+              Technologies Pvt. Ltd.
             </span>
           </header>
 

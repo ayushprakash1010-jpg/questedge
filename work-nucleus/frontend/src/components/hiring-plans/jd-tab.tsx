@@ -118,8 +118,8 @@ function printJdPdf(jd: JdData) {
       padding-bottom: 14px;
       margin-bottom: 20px;
     }
-    .logo { font-size: 20px; font-weight: 800; color: #4f46e5; letter-spacing: -0.5px; }
-    .logo span { color: #06b6d4; }
+    .logo { font-size: 20px; font-weight: 800; color: #0F4D2A; letter-spacing: -0.5px; }
+    .logo span { color: #4EA855; }
     .doc-meta { text-align: right; font-size: 11px; color: #64748b; }
     h1 { font-size: 24px; font-weight: 800; color: #0f172a; margin: 0 0 8px 0; }
     .pills { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
