@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getMandate, fillMandate, closeMandate, Mandate } from "@/lib/marketplace-api";
+import { getMandate, fillMandate, closeMandate, publishMandate, Mandate } from "@/lib/marketplace-api";
 import { MandateStatusBadge, RewardBadge, SkillChip } from "@/components/marketplace/MandateCard";
 import {
   Loader2,
@@ -15,6 +15,7 @@ import {
   X,
   AlertCircle,
   Clock,
+  Rocket,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PipelineKanban } from "./PipelineKanban";
@@ -26,6 +27,7 @@ export default function MandateDetailPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"pipeline" | "description">("pipeline");
   const [actionLoading, setActionLoading] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [showFillModal, setShowFillModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [actionMsg, setActionMsg] = useState<{ text: string; type: "ok" | "err" } | null>(null);
@@ -85,6 +87,25 @@ export default function MandateDetailPage() {
     }
   };
 
+  const handlePublish = async () => {
+    setIsPublishing(true);
+    try {
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+      const updated = await publishMandate(accessToken, id);
+      setMandate(updated);
+      setActionMsg({
+        text: "Mandate published to the marketplace and is now active.",
+        type: "ok",
+      });
+    } catch (err: any) {
+      setActionMsg({ text: err?.message || "Failed to publish mandate.", type: "err" });
+    } finally {
+      setIsPublishing(false);
+      setTimeout(() => setActionMsg(null), 5000);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -100,6 +121,7 @@ export default function MandateDetailPage() {
     : false;
 
   const canMutate = mandate.status === "ACTIVE" || mandate.status === "PAUSED";
+  const canPublish = mandate.status === "DRAFT" || mandate.status === "PAUSED";
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -146,6 +168,26 @@ export default function MandateDetailPage() {
           </div>
 
           <div className="flex items-center gap-2.5 flex-shrink-0">
+            {canPublish && (
+              <Button
+                size="sm"
+                onClick={handlePublish}
+                disabled={isPublishing || actionLoading}
+                className="gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                {isPublishing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Rocket className="h-4 w-4" />
+                )}
+                {isPublishing
+                  ? "Publishing..."
+                  : mandate.status === "PAUSED"
+                    ? "Reactivate Mandate"
+                    : "Publish to Marketplace"}
+              </Button>
+            )}
+
             {/* Referral Inbox shortcut button */}
             <Button
               variant="outline"
