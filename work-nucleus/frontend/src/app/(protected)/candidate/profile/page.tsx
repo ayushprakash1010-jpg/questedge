@@ -64,6 +64,108 @@ const STEPS = [
   { id: 4, label: "Preferences", icon: Target },
 ];
 
+type CandidateCertification = { name: string; credentialUrl: string };
+
+function normalizeCertifications(value: unknown): CandidateCertification[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((item): CandidateCertification | null => {
+      if (typeof item === "string") {
+        const name = item.trim();
+        return name ? { name, credentialUrl: "" } : null;
+      }
+      if (!item || typeof item !== "object") return null;
+
+      const record = item as Record<string, unknown>;
+      const name = String(record.name ?? record.title ?? record.certification ?? "").trim();
+      const credentialUrl = String(record.credentialUrl ?? record.url ?? record.credentialLink ?? "").trim();
+      return name ? { name, credentialUrl } : null;
+    })
+    .filter((item): item is CandidateCertification => item !== null);
+}
+
+function CertificationsInput({
+  values,
+  onChange,
+}: {
+  values: CandidateCertification[];
+  onChange: (values: CandidateCertification[]) => void;
+}) {
+  const [name, setName] = useState("");
+  const [credentialUrl, setCredentialUrl] = useState("");
+
+  const add = () => {
+    const trimmedName = name.trim();
+    const trimmedUrl = credentialUrl.trim();
+    if (!trimmedName) return;
+
+    const alreadyAdded = values.some(
+      (item) => item.name.toLowerCase() === trimmedName.toLowerCase() && item.credentialUrl === trimmedUrl,
+    );
+    if (!alreadyAdded) onChange([...values, { name: trimmedName, credentialUrl: trimmedUrl }]);
+    setName("");
+    setCredentialUrl("");
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-semibold text-slate-700">Certifications</label>
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-2">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
+          maxLength={150}
+          placeholder="e.g. AWS Certified Developer"
+          aria-label="Certification name"
+          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+        />
+        <input
+          value={credentialUrl}
+          onChange={(e) => setCredentialUrl(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
+          maxLength={2048}
+          placeholder="Credential URL (optional)"
+          aria-label="Credential URL"
+          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+        />
+        <button
+          type="button"
+          onClick={add}
+          disabled={!name.trim()}
+          aria-label="Add certification"
+          className="px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-emerald-50 hover:border-emerald-300 text-slate-600 hover:text-emerald-700 transition-colors disabled:opacity-50"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
+      </div>
+      {values.length > 0 && (
+        <div className="space-y-2 pt-1">
+          {values.map((item, index) => (
+            <div key={`${item.name}-${index}`} className="flex items-start justify-between gap-3 rounded-lg border border-emerald-100 bg-emerald-50/60 px-3 py-2">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-emerald-800">{item.name}</p>
+                {item.credentialUrl && (
+                  <p className="break-all text-xs text-emerald-700/80">{item.credentialUrl}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => onChange(values.filter((_, i) => i !== index))}
+                aria-label={`Remove ${item.name}`}
+                className="shrink-0 text-emerald-700 hover:text-red-500"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Helpers ───────────────────────────────────────────────────────
 
 function TagInput({
@@ -159,6 +261,7 @@ function Select({ value, onChange, children, className = "" }: {
 const emptyProfile = {
   name: "", phone: "", headline: "", currentCompany: "",
   currentDesignation: "", experienceYears: "", skills: [] as string[], education: [] as string[],
+  certifications: [] as CandidateCertification[],
   currentLocation: "", preferredLocations: [] as string[],
   currentCtc: "", expectedCtc: "", noticePeriodDays: "",
   preferredRoles: [] as string[], preferredIndustries: [] as string[],
@@ -274,6 +377,10 @@ export default function CandidateProfilePage() {
               : p.experienceYears,
           skills: parsedData.skills && parsedData.skills.length > 0 ? parsedData.skills : p.skills,
           education: parsedData.education && parsedData.education.length > 0 ? parsedData.education : p.education,
+          certifications:
+            parsedData.certifications && parsedData.certifications.length > 0
+              ? normalizeCertifications(parsedData.certifications)
+              : p.certifications,
           currentLocation: parsedData.currentLocation || p.currentLocation,
           headline:
             parsedData.headline ||
@@ -322,6 +429,7 @@ export default function CandidateProfilePage() {
             experienceYears: data.experienceYears?.toString() || "",
             skills: data.skills || [],
             education: data.education || [],
+            certifications: normalizeCertifications(data.certifications),
             currentLocation: data.currentLocation || "",
             preferredLocations: data.preferredLocations || [],
             currentCtc: data.currentCtc?.toString() || "",
@@ -618,6 +726,10 @@ export default function CandidateProfilePage() {
                 onChange={(v) => set("education", v)}
                 placeholder="e.g. B.Tech Computer Science - VIT (2026)"
               />
+              <CertificationsInput
+                values={profile.certifications}
+                onChange={(v) => set("certifications", v)}
+              />
               <TagInput
                 label="Preferred Roles"
                 values={profile.preferredRoles}
@@ -686,6 +798,21 @@ export default function CandidateProfilePage() {
                           <span key={i} className="text-xs">{edu}</span>
                         ))}
                         {profile.education.length > 2 && <span className="text-xs text-slate-400">+{profile.education.length - 2} more</span>}
+                      </div>
+                    </div>
+                  )}
+                  {profile.certifications.length > 0 && (
+                    <div className="flex items-start gap-2 text-slate-600 col-span-2 mt-1">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                      <div className="flex flex-col gap-1">
+                        {profile.certifications.slice(0, 2).map((certification, i) => (
+                          <span key={`${certification.name}-${i}`} className="text-xs">
+                            {certification.name}
+                          </span>
+                        ))}
+                        {profile.certifications.length > 2 && (
+                          <span className="text-xs text-slate-400">+{profile.certifications.length - 2} more</span>
+                        )}
                       </div>
                     </div>
                   )}

@@ -577,6 +577,7 @@ export class AiScreeningService {
         "experienceYears": integer representing total years of experience (estimate if necessary, use 0 for freshers/students),
         "skills": ["list", "of", "skills"],
         "education": ["Degree from Institution (Year)", "Another Degree..."],
+        "certifications": [{"name": "Certification name", "credentialUrl": "Verification URL if explicitly present, otherwise empty string"}],
         "currentLocation": "City, State or Country",
         "linkedin": "LinkedIn URL if present in text, else empty string",
         "github": "GitHub URL if present in text, else empty string",
@@ -611,7 +612,7 @@ export class AiScreeningService {
             const parsed = this.parseAiResponse(content);
             if (
               parsed &&
-              (parsed.name || parsed.email || parsed.skills?.length)
+              (parsed.name || parsed.email || parsed.skills?.length || parsed.certifications?.length)
             ) {
               this.logger.log(
                 `Successfully parsed resume using model: ${modelName}`,
@@ -693,6 +694,32 @@ export class AiScreeningService {
       }
     }
 
+    const certificationLines: string[] = [];
+    const certificationHeadingIndex = lines.findIndex((line) =>
+      /^(?:professional )?certifications?(?:\s*(?:&|and)\s*licenses?)?\b/i.test(line),
+    );
+    if (certificationHeadingIndex !== -1) {
+      const headingLine = lines[certificationHeadingIndex];
+      const inlineCertification = headingLine.match(
+        /^(?:professional )?certifications?(?:\s*(?:&|and)\s*licenses?)?\s*:\s*(.+)$/i,
+      )?.[1];
+      const sectionLines = [
+        ...(inlineCertification ? [inlineCertification] : []),
+        ...lines.slice(certificationHeadingIndex + 1),
+      ];
+
+      for (const line of sectionLines) {
+        if (/^(?:education|work experience|professional experience|employment|skills|technical skills|projects|summary|profile|languages|awards|achievements|references|interests)\b/i.test(line)) {
+          break;
+        }
+        const cleaned = line.replace(/^[-*•\s]+/, '').trim();
+        if (cleaned.length > 2 && cleaned.length < 180) {
+          certificationLines.push(cleaned);
+        }
+        if (certificationLines.length >= 10) break;
+      }
+    }
+
     let headline = '';
     const summaryIdx = lines.findIndex((l) => /^(?:Professional )?Summary/i.test(l));
     if (summaryIdx !== -1 && lines[summaryIdx + 1]) {
@@ -709,6 +736,13 @@ export class AiScreeningService {
       experienceYears: 0,
       skills: detectedSkills,
       education: educationLines.slice(0, 3),
+      certifications: certificationLines.map((line) => {
+        const url = line.match(/https?:\/\/\S+/i)?.[0] ?? '';
+        return {
+          name: line.replace(/https?:\/\/\S+/ig, '').trim(),
+          credentialUrl: url,
+        };
+      }).filter((certification) => certification.name),
       currentLocation: '',
       linkedin: linkedinMatch ? linkedinMatch[0] : '',
       github: githubMatch ? githubMatch[0] : '',
