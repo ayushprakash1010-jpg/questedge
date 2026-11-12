@@ -67,6 +67,11 @@ export class UpsertCandidateProfileDto {
   @IsArray()
   certifications?: any[];
 
+  @ApiPropertyOptional({ description: 'Project portfolio entries as JSON array' })
+  @IsOptional()
+  @IsArray()
+  projects?: any[];
+
   @ApiPropertyOptional({ example: 'Bengaluru, India' })
   @IsOptional()
   @IsString()

@@ -65,6 +65,13 @@ const STEPS = [
 ];
 
 type CandidateCertification = { name: string; credentialUrl: string };
+type CandidateProject = {
+  id: string;
+  name: string;
+  description: string;
+  technologies: string[];
+  projectUrl: string;
+};
 
 function normalizeCertifications(value: unknown): CandidateCertification[] {
   if (!Array.isArray(value)) return [];
@@ -83,6 +90,29 @@ function normalizeCertifications(value: unknown): CandidateCertification[] {
       return name ? { name, credentialUrl } : null;
     })
     .filter((item): item is CandidateCertification => item !== null);
+}
+
+function normalizeProjects(value: unknown): CandidateProject[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((item, index): CandidateProject | null => {
+      if (!item || typeof item !== "object") return null;
+      const record = item as Record<string, unknown>;
+      const id = typeof record.id === "string" && record.id ? record.id : `project-${index}`;
+      const name = String(record.name ?? record.title ?? "").trim();
+      const description = String(record.description ?? record.summary ?? "").trim();
+      const technologies = Array.isArray(record.technologies)
+        ? record.technologies.filter((technology): technology is string => typeof technology === "string")
+        : typeof record.technologies === "string"
+          ? record.technologies.split(",").map((technology) => technology.trim()).filter(Boolean)
+          : [];
+      const projectUrl = String(record.projectUrl ?? record.url ?? record.link ?? "").trim();
+      return name || description || technologies.length || projectUrl
+        ? { id, name, description, technologies, projectUrl }
+        : null;
+    })
+    .filter((item): item is CandidateProject => item !== null);
 }
 
 function CertificationsInput({
@@ -166,6 +196,94 @@ function CertificationsInput({
   );
 }
 
+function ProjectsEditor({
+  values,
+  onChange,
+}: {
+  values: CandidateProject[];
+  onChange: (values: CandidateProject[]) => void;
+}) {
+  const updateProject = (index: number, changes: Partial<CandidateProject>) => {
+    onChange(values.map((project, i) => i === index ? { ...project, ...changes } : project));
+  };
+
+  return (
+    <section className="space-y-3" aria-labelledby="projects-heading">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 id="projects-heading" className="text-sm font-semibold text-slate-700">Projects</h3>
+          <p className="text-xs text-slate-400 mt-1">Showcase work that demonstrates your skills.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onChange([...values, { id: crypto.randomUUID(), name: "", description: "", technologies: [], projectUrl: "" }])}
+          disabled={values.length >= 10}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-50"
+        >
+          <Plus className="h-4 w-4" />
+          Add Project
+        </button>
+      </div>
+
+      {values.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-slate-200 px-4 py-3 text-sm text-slate-400">
+          No projects added yet. Projects are optional.
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {values.map((project, index) => (
+            <div key={project.id} className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-slate-700">Project {index + 1}</h4>
+                <button
+                  type="button"
+                  onClick={() => onChange(values.filter((_, i) => i !== index))}
+                  aria-label={`Remove project ${index + 1}`}
+                  className="text-slate-400 transition-colors hover:text-red-500"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <Field label="Project Name">
+                <Input
+                  value={project.name}
+                  onChange={(e) => updateProject(index, { name: e.target.value })}
+                  maxLength={150}
+                  placeholder="e.g. Smart Job Matching Platform"
+                />
+              </Field>
+              <Field label="Short Description">
+                <textarea
+                  value={project.description}
+                  onChange={(e) => updateProject(index, { description: e.target.value })}
+                  maxLength={1000}
+                  rows={3}
+                  placeholder="What did you build and what problem does it solve?"
+                  className="w-full resize-y rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white placeholder:text-slate-400"
+                />
+              </Field>
+              <TagInput
+                label="Technologies Used"
+                values={project.technologies}
+                onChange={(technologies) => updateProject(index, { technologies })}
+                placeholder="e.g. React, PostgreSQL, AWS"
+              />
+              <Field label="Project Link (optional)">
+                <Input
+                  value={project.projectUrl}
+                  onChange={(e) => updateProject(index, { projectUrl: e.target.value })}
+                  maxLength={2048}
+                  placeholder="https://github.com/you/project"
+                />
+              </Field>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 // ── Helpers ───────────────────────────────────────────────────────
 
 function TagInput({
@@ -225,10 +343,10 @@ function Field({ label, children, hint }: { label: string; children: React.React
 }
 
 function Input({
-  value, onChange, placeholder, type = "text", className = "",
+  value, onChange, placeholder, type = "text", className = "", maxLength,
 }: {
   value: string | number; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  placeholder?: string; type?: string; className?: string;
+  placeholder?: string; type?: string; className?: string; maxLength?: number;
 }) {
   return (
     <input
@@ -236,6 +354,7 @@ function Input({
       value={value}
       onChange={onChange}
       placeholder={placeholder}
+      maxLength={maxLength}
       className={`w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white placeholder:text-slate-400 ${className}`}
     />
   );
@@ -262,6 +381,7 @@ const emptyProfile = {
   name: "", phone: "", headline: "", currentCompany: "",
   currentDesignation: "", experienceYears: "", skills: [] as string[], education: [] as string[],
   certifications: [] as CandidateCertification[],
+  projects: [] as CandidateProject[],
   currentLocation: "", preferredLocations: [] as string[],
   currentCtc: "", expectedCtc: "", noticePeriodDays: "",
   preferredRoles: [] as string[], preferredIndustries: [] as string[],
@@ -430,6 +550,7 @@ export default function CandidateProfilePage() {
             skills: data.skills || [],
             education: data.education || [],
             certifications: normalizeCertifications(data.certifications),
+            projects: normalizeProjects(data.projects),
             currentLocation: data.currentLocation || "",
             preferredLocations: data.preferredLocations || [],
             currentCtc: data.currentCtc?.toString() || "",
@@ -730,6 +851,10 @@ export default function CandidateProfilePage() {
                 values={profile.certifications}
                 onChange={(v) => set("certifications", v)}
               />
+              <ProjectsEditor
+                values={profile.projects}
+                onChange={(v) => set("projects", v)}
+              />
               <TagInput
                 label="Preferred Roles"
                 values={profile.preferredRoles}
@@ -812,6 +937,22 @@ export default function CandidateProfilePage() {
                         ))}
                         {profile.certifications.length > 2 && (
                           <span className="text-xs text-slate-400">+{profile.certifications.length - 2} more</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {profile.projects.length > 0 && (
+                    <div className="flex items-start gap-2 text-slate-600 col-span-2 mt-1">
+                      <FileText className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                      <div className="flex flex-col gap-1">
+                        {profile.projects.slice(0, 2).map((project, i) => (
+                          <span key={project.id} className="text-xs">
+                            {project.name || "Untitled project"}
+                            {project.technologies.length > 0 && ` · ${project.technologies.slice(0, 3).join(", ")}`}
+                          </span>
+                        ))}
+                        {profile.projects.length > 2 && (
+                          <span className="text-xs text-slate-400">+{profile.projects.length - 2} more</span>
                         )}
                       </div>
                     </div>

@@ -1732,6 +1732,7 @@ model CandidateProfile {
   skills              Json     @default("[]")
   education           Json     @default("[]")
   certifications      Json     @default("[]")
+  projects             Json     @default("[]")
   currentLocation     String?  @map("current_location")
   preferredLocations  Json     @default("[]") @map("preferred_locations")
   currentCtc          Decimal? @map("current_ctc") @db.Decimal(12, 2)
