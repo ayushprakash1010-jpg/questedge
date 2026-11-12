@@ -173,8 +173,8 @@ export function ExternalJobCard({ job, onSave, onClick, isSaved }: ExternalJobCa
         {/* Metadata Badges: Location, Workplace, Employment */}
         <div className="flex flex-wrap items-center gap-1.5 mb-3">
           {displayLocation && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-50 text-slate-600 border border-slate-200/60">
-              <MapPin className="h-3 w-3 text-slate-400" />
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-sky-50 text-sky-700 border border-sky-200/70">
+              <MapPin className="h-3 w-3 text-sky-500" />
               {displayLocation === "IN" ? "India" : displayLocation === "US" ? "United States" : displayLocation}
             </span>
           )}
@@ -184,7 +184,7 @@ export function ExternalJobCard({ job, onSave, onClick, isSaved }: ExternalJobCa
                 isWorkplaceRemote
                   ? "bg-emerald-50/80 text-emerald-700 border-emerald-200/60"
                   : job.workplaceType.toLowerCase() === "hybrid"
-                  ? "bg-blue-50/80 text-blue-700 border-blue-200/60"
+                  ? "bg-amber-50 text-amber-700 border-amber-200/70"
                   : "bg-slate-50 text-slate-600 border-slate-200/60"
               }`}
             >
@@ -229,8 +229,8 @@ export function ExternalJobCard({ job, onSave, onClick, isSaved }: ExternalJobCa
                   key={skill}
                   className={`px-2.5 py-0.5 text-[11px] rounded-lg font-medium border transition-colors ${
                     isMatch
-                      ? "bg-emerald-50 text-emerald-800 border-emerald-200/80 shadow-2xs"
-                      : "bg-slate-50/80 text-slate-600 border-slate-200/60"
+                      ? "bg-violet-100 text-violet-800 border-violet-300/80 shadow-2xs"
+                      : "bg-violet-50 text-violet-700 border-violet-200/70"
                   }`}
                 >
                   {skill}
@@ -238,7 +238,7 @@ export function ExternalJobCard({ job, onSave, onClick, isSaved }: ExternalJobCa
               );
             })}
             {job.extractedSkills.length > 5 && (
-              <span className="px-2 py-0.5 text-[11px] font-semibold rounded-lg bg-slate-100 text-slate-500 border border-slate-200/40">
+              <span className="px-2 py-0.5 text-[11px] font-semibold rounded-lg bg-violet-50 text-violet-600 border border-violet-200/70">
                 +{job.extractedSkills.length - 5}
               </span>
             )}
