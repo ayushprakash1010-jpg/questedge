@@ -92,6 +92,10 @@ describe('ExternalJobsService', () => {
         update: jest.fn().mockResolvedValue({ id: 'click-1' }),
         count: jest.fn().mockResolvedValue(1),
       },
+      candidateProfile: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'cand-1' }),
+        findFirst: jest.fn().mockResolvedValue({ id: 'cand-1' }),
+      },
     };
 
     const cache = {

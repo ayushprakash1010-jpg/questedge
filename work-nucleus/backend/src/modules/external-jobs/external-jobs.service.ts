@@ -228,15 +228,17 @@ export class ExternalJobsService {
 
     // Ensure candidateProfileId actually exists in DB
     let validCandId = candidateProfileId;
-    const directCheck = await this.prisma.candidateProfile.findUnique({
-      where: { id: candidateProfileId },
-      select: { id: true },
-    });
-    if (!directCheck) {
-      const fallback = await this.prisma.candidateProfile.findFirst({
+    if (this.prisma?.candidateProfile) {
+      const directCheck = await this.prisma.candidateProfile.findUnique({
+        where: { id: candidateProfileId },
         select: { id: true },
       });
-      if (fallback) validCandId = fallback.id;
+      if (!directCheck) {
+        const fallback = await this.prisma.candidateProfile.findFirst({
+          select: { id: true },
+        });
+        if (fallback) validCandId = fallback.id;
+      }
     }
 
     await this.prisma.externalJobClick.create({
@@ -248,15 +250,17 @@ export class ExternalJobsService {
 
   async reportApplied(candidateProfileId: string, externalJobId: string) {
     let validCandId = candidateProfileId;
-    const directCheck = await this.prisma.candidateProfile.findUnique({
-      where: { id: candidateProfileId },
-      select: { id: true },
-    });
-    if (!directCheck) {
-      const fallback = await this.prisma.candidateProfile.findFirst({
+    if (this.prisma?.candidateProfile) {
+      const directCheck = await this.prisma.candidateProfile.findUnique({
+        where: { id: candidateProfileId },
         select: { id: true },
       });
-      if (fallback) validCandId = fallback.id;
+      if (!directCheck) {
+        const fallback = await this.prisma.candidateProfile.findFirst({
+          select: { id: true },
+        });
+        if (fallback) validCandId = fallback.id;
+      }
     }
 
     const click = await this.prisma.externalJobClick.findFirst({
@@ -336,15 +340,17 @@ export class ExternalJobsService {
 
   async getClickHistory(candidateProfileId: string, page = 1, limit = 20) {
     let validCandId = candidateProfileId;
-    const directCheck = await this.prisma.candidateProfile.findUnique({
-      where: { id: candidateProfileId },
-      select: { id: true },
-    });
-    if (!directCheck) {
-      const fallback = await this.prisma.candidateProfile.findFirst({
+    if (this.prisma?.candidateProfile) {
+      const directCheck = await this.prisma.candidateProfile.findUnique({
+        where: { id: candidateProfileId },
         select: { id: true },
       });
-      if (fallback) validCandId = fallback.id;
+      if (!directCheck) {
+        const fallback = await this.prisma.candidateProfile.findFirst({
+          select: { id: true },
+        });
+        if (fallback) validCandId = fallback.id;
+      }
     }
 
     const skip = (page - 1) * limit;
