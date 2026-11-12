@@ -195,8 +195,8 @@ export function ExternalJobCard({ job, onSave, onClick, isSaved }: ExternalJobCa
             </span>
           )}
           {job.employmentType && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-50 text-slate-600 border border-slate-200/60">
-              <Briefcase className="h-3 w-3 text-slate-400" />
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-200/70">
+              <Briefcase className="h-3 w-3 text-indigo-500" />
               {formatEmploymentType(job.employmentType)}
             </span>
           )}
