@@ -7,9 +7,9 @@ import {
   Clock,
   Bookmark,
   BookmarkCheck,
-  ExternalLink,
+  ArrowRight,
   Sparkles,
-  IndianRupee,
+  Banknote,
   Briefcase,
 } from "lucide-react";
 
@@ -53,6 +53,19 @@ function formatSalary(job: ExternalJob): string | null {
   if (job.salaryMin) return `${currency}${fmt(job.salaryMin)}+`;
   if (job.salaryMax) return `Up to ${currency}${fmt(job.salaryMax)}`;
   return null;
+}
+
+function formatWorkplaceType(value: string): string {
+  if (/^on\s?-?\s?site$/i.test(value.replace(/[_-]/g, ' '))) return 'On-site';
+  return value;
+}
+
+function formatEmploymentType(value: string): string {
+  const spaced = value.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').trim();
+  const normalized = spaced.toLowerCase();
+  if (normalized === 'full time' || normalized === 'fulltime') return 'Full-time';
+  if (normalized === 'part time' || normalized === 'parttime') return 'Part-time';
+  return spaced.replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function timeAgo(dateStr?: string | null): string {
@@ -164,13 +177,19 @@ export function ExternalJobCard({ job, onSave, onClick, isSaved }: ExternalJobCa
               {isWorkplaceRemote && (
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
               )}
-              {job.workplaceType}
+              {formatWorkplaceType(job.workplaceType)}
             </span>
           )}
           {job.employmentType && (
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-50 text-slate-600 border border-slate-200/60">
               <Briefcase className="h-3 w-3 text-slate-400" />
-              {job.employmentType}
+              {formatEmploymentType(job.employmentType)}
+            </span>
+          )}
+          {job.requiredExperience && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-violet-50 text-violet-700 border border-violet-200/70">
+              <Clock className="h-3 w-3" />
+              {job.requiredExperience} required
             </span>
           )}
         </div>
@@ -178,8 +197,11 @@ export function ExternalJobCard({ job, onSave, onClick, isSaved }: ExternalJobCa
         {/* Salary Pill (if provided) */}
         {salary && (
           <div className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50/80 border border-emerald-200/80 px-2.5 py-0.5 rounded-lg mb-3">
-            <IndianRupee className="h-3 w-3" />
+            <Banknote className="h-3 w-3" />
             {salary}
+            {job.salaryPeriod && (
+              <span className="ml-0.5 font-medium text-emerald-600">per {job.salaryPeriod.toLowerCase()}</span>
+            )}
           </div>
         )}
 
@@ -233,10 +255,18 @@ export function ExternalJobCard({ job, onSave, onClick, isSaved }: ExternalJobCa
             </span>
           )}
         </div>
-        <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-x-1 group-hover:translate-x-0">
-          View Details
-          <ExternalLink className="h-3 w-3" />
-        </span>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onClick?.(job);
+          }}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+          aria-label={`View ${job.title} at ${job.companyName}`}
+        >
+          View Job
+          <ArrowRight className="h-3.5 w-3.5" />
+        </button>
       </div>
     </div>
   );

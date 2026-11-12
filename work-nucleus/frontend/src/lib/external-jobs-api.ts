@@ -28,6 +28,7 @@ export interface ExternalJob {
   extractedSkills?: string[] | null;
   tags?: string[] | null;
   experienceLevel?: string | null;
+  requiredExperience?: string | null;
   applyUrl: string;
   postedAt?: string | null;
   createdAt?: string;

@@ -29,6 +29,7 @@ export interface NormalizedJob {
   extractedSkills: string[];
   tags: string[];
   experienceLevel?: string;
+  requiredExperience?: string;
   applyUrl: string;
   applyType: string;
   contentHash: string;
@@ -134,6 +135,7 @@ export class NormalizerService {
     const descriptionSnippet = descriptionPlain.substring(0, 200).trim();
     const extractedSkills = this.extractSkills(descriptionPlain, title, raw.tags);
     const experienceLevel = this.inferExperienceLevel(title, descriptionPlain);
+    const requiredExperience = this.extractRequiredExperience(descriptionPlain);
     const workplaceType = this.normalizeWorkplaceType(
       raw.workplaceType,
       raw.isRemote,
@@ -167,6 +169,7 @@ export class NormalizerService {
       extractedSkills,
       tags: raw.tags || [],
       experienceLevel,
+      requiredExperience,
       applyUrl: raw.applyUrl,
       applyType: 'redirect',
       contentHash: this.computeContentHash(title, companyName, location || ''),
@@ -298,6 +301,45 @@ export class NormalizerService {
       )
     )
       return 'Mid';
+    return undefined;
+  }
+
+  private extractRequiredExperience(description: string): string | undefined {
+    const text = this.stripHtml(description).replace(/\s+/g, ' ');
+    const pattern = /\b(\d{1,2})\s*(?:(\+)|(?:-|–|—|to)\s*(\d{1,2}))?\s*(years?|yrs?|months?|mos?)\s*(?:(?:of|relevant|professional|hands-on|industry|work)\s+){0,3}experience\b/gi;
+    const explicitRequirement = /\b(?:minimum|at least|required|requirement|qualification|must have|you (?:should|must|need to|have)|looking for)\b/i;
+
+    for (const match of text.matchAll(pattern)) {
+      const index = match.index ?? 0;
+      const sentenceStart = Math.max(
+        text.lastIndexOf('.', index),
+        text.lastIndexOf('!', index),
+        text.lastIndexOf('?', index),
+      ) + 1;
+      const sentenceEndCandidates = [
+        text.indexOf('.', index + match[0].length),
+        text.indexOf('!', index + match[0].length),
+        text.indexOf('?', index + match[0].length),
+      ].filter((position) => position >= 0);
+      const sentenceEnd = sentenceEndCandidates.length
+        ? Math.min(...sentenceEndCandidates)
+        : text.length;
+      const sentence = text.slice(sentenceStart, sentenceEnd);
+      const isRangeOrMinimum = Boolean(match[2] || match[3]);
+      const isExplicit = isRangeOrMinimum || explicitRequirement.test(sentence);
+      const looksLikeCompanyHistory = /\b(?:our company|the company|organization|organisation|business)\b/i.test(sentence);
+
+      if (!isExplicit || (looksLikeCompanyHistory && !explicitRequirement.test(sentence))) {
+        continue;
+      }
+
+      const first = match[1];
+      const second = match[3];
+      const unit = /^(?:months?|mos?)$/i.test(match[4]) ? 'months' : 'years';
+      if (second) return `${first}-${second} ${unit}`;
+      return `${first}${match[2] ? '+' : ''} ${unit}`;
+    }
+
     return undefined;
   }
 

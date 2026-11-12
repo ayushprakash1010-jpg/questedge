@@ -12,7 +12,7 @@ import {
   Bookmark,
   BookmarkCheck,
   Sparkles,
-  IndianRupee,
+  Banknote,
   AlertTriangle,
   CheckCircle2,
   XCircle,
@@ -203,17 +203,22 @@ export function ExternalJobDetail({ job, isOpen, onClose, onSave, onApply, isSav
                 {job.employmentType}
               </div>
             )}
-            {job.experienceLevel && (
+            {job.requiredExperience ? (
+              <div className="flex items-center gap-2 text-sm text-slate-600">
+                <Clock className="h-4 w-4 text-slate-400" />
+                {job.requiredExperience} required
+              </div>
+            ) : job.experienceLevel ? (
               <div className="flex items-center gap-2 text-sm text-slate-600">
                 <Clock className="h-4 w-4 text-slate-400" />
                 {job.experienceLevel} level
               </div>
-            )}
+            ) : null}
           </div>
 
           {salary && (
             <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-2.5">
-              <IndianRupee className="h-4 w-4 text-emerald-600" />
+              <Banknote className="h-4 w-4 text-emerald-600" />
               <span className="text-sm font-semibold text-emerald-800">{salary}</span>
               {job.salaryPeriod && (
                 <span className="text-xs text-emerald-600">per {job.salaryPeriod.toLowerCase()}</span>

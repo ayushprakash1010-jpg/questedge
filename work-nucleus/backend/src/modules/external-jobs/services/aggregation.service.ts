@@ -383,6 +383,7 @@ export class AggregationService {
       extractedSkills: job.extractedSkills,
       tags: job.tags,
       experienceLevel: job.experienceLevel,
+      requiredExperience: job.requiredExperience ?? null,
       applyUrl: job.applyUrl,
       applyType: job.applyType,
       contentHash: job.contentHash,
@@ -397,7 +398,10 @@ export class AggregationService {
       if (existing.contentHash === job.contentHash) {
         await this.prisma.externalJob.update({
           where: { id: existing.id },
-          data: { lastSyncedAt: new Date() },
+          data: {
+            lastSyncedAt: new Date(),
+            requiredExperience: job.requiredExperience ?? null,
+          },
         });
         return 'skipped';
       }

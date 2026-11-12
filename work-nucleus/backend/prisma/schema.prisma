@@ -2377,6 +2377,7 @@ model ExternalJob {
   extractedSkills     Json?     @default("[]") @map("extracted_skills")
   tags                Json?     @default("[]")
   experienceLevel     String?   @map("experience_level")
+  requiredExperience  String?   @map("required_experience")
   applyUrl            String    @map("apply_url")
   applyType           String    @default("redirect") @map("apply_type")
   contentHash         String?   @map("content_hash")
