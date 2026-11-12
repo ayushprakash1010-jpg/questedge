@@ -56,7 +56,9 @@ export class GreenhouseConnector implements IJobSourceConnector {
       descriptionHtml: job.content || '',
       department: job.departments?.[0]?.name || undefined,
       applyUrl: job.absolute_url || `https://boards.greenhouse.io/${slug}/jobs/${job.id}`,
-      postedAt: job.updated_at || job.created_at || undefined,
+      // updated_at is the last edit time, not when the role was first published.
+      // Only use Greenhouse's publication timestamp when the board provides it.
+      postedAt: job.first_published || undefined,
       tags: (job.departments || []).map((d: any) => d.name).filter(Boolean),
       metadata: {
         offices: job.offices?.map((o: any) => o.name) || [],

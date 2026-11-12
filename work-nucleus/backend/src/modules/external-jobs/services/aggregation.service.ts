@@ -389,7 +389,7 @@ export class AggregationService {
       contentHash: job.contentHash,
       urlHash: job.urlHash,
       isActive: true,
-      postedAt: job.postedAt,
+      postedAt: job.postedAt ?? null,
       expiresAt: job.expiresAt,
       lastSyncedAt: new Date(),
     };
@@ -401,6 +401,7 @@ export class AggregationService {
           data: {
             lastSyncedAt: new Date(),
             requiredExperience: job.requiredExperience ?? null,
+            postedAt: job.postedAt ?? null,
           },
         });
         return 'skipped';

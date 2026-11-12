@@ -68,17 +68,30 @@ function formatEmploymentType(value: string): string {
   return spaced.replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function timeAgo(dateStr?: string | null): string {
+function formatPostingFreshness(dateStr?: string | null): string {
   if (!dateStr) return "";
   const posted = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - posted.getTime();
-  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (days <= 0) return "Today";
-  if (days === 1) return "1d ago";
-  if (days < 7) return `${days}d ago`;
-  if (days < 30) return `${Math.floor(days / 7)}w ago`;
-  return `${Math.floor(days / 30)}mo ago`;
+  const postedTime = posted.getTime();
+  if (!Number.isFinite(postedTime)) return "";
+
+  const ageMs = Date.now() - postedTime;
+  if (ageMs < 0) return "";
+
+  const days = Math.floor(ageMs / (1000 * 60 * 60 * 24));
+  if (days === 0) return "Posted today";
+  if (days === 1) return "Posted 1d ago";
+  if (days < 7) return `Posted ${days}d ago`;
+  if (days < 30) return `Posted ${Math.floor(days / 7)}w ago`;
+
+  const postedYear = posted.getUTCFullYear();
+  const currentYear = new Date().getUTCFullYear();
+  const dateLabel = posted.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    ...(postedYear !== currentYear ? { year: "numeric" } : {}),
+    timeZone: "UTC",
+  });
+  return `Posted ${dateLabel}`;
 }
 
 function cleanSnippetText(text?: string | null): string {
@@ -92,6 +105,7 @@ function cleanSnippetText(text?: string | null): string {
 
 export function ExternalJobCard({ job, onSave, onClick, isSaved }: ExternalJobCardProps) {
   const salary = formatSalary(job);
+  const postingFreshness = formatPostingFreshness(job.postedAt);
   const sourceConfig = getSourceBadgeConfig(job.sourceName);
 
   const isWorkplaceRemote = job.workplaceType?.toLowerCase() === "remote";
@@ -248,10 +262,10 @@ export function ExternalJobCard({ job, onSave, onClick, isSaved }: ExternalJobCa
             <span className={`h-1.5 w-1.5 rounded-full ${sourceConfig.dot}`} />
             via {job.sourceName.charAt(0).toUpperCase() + job.sourceName.slice(1)}
           </span>
-          {job.postedAt && (
+          {postingFreshness && (
             <span className="flex items-center gap-1 text-[11px] text-slate-400 font-medium">
               <Clock className="h-3 w-3" />
-              {timeAgo(job.postedAt)}
+              {postingFreshness}
             </span>
           )}
         </div>

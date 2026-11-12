@@ -175,9 +175,15 @@ export class NormalizerService {
       contentHash: this.computeContentHash(title, companyName, location || ''),
       urlHash: this.computeUrlHash(raw.applyUrl),
       isActive: true,
-      postedAt: raw.postedAt ? new Date(raw.postedAt) : undefined,
+      postedAt: this.parsePostedAt(raw.postedAt),
       expiresAt: raw.expiresAt ? new Date(raw.expiresAt) : undefined,
     };
+  }
+
+  private parsePostedAt(value?: string): Date | undefined {
+    if (!value?.trim()) return undefined;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? undefined : date;
   }
 
   private cleanText(text: string): string {
