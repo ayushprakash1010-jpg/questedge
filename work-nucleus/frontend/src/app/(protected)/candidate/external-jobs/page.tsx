@@ -10,6 +10,7 @@ import {
   reportExternalJobApplied,
   getExternalJobById,
   triggerExternalJobsSync,
+  getExternalJobsSyncStatus,
   ExternalJob,
   ExternalJobSearchParams,
 } from "@/lib/external-jobs-api";
@@ -222,38 +223,30 @@ export default function ExternalJobsPage() {
       const token = await getToken();
       await triggerExternalJobsSync(token);
 
-      // Poll until jobs appear
-      let attempts = 0;
-      const interval = setInterval(async () => {
-        attempts++;
-        try {
-          const freshToken = await getToken();
-          const res = await searchExternalJobs(freshToken, {
-            page: 1,
-            limit: 15,
-          });
-          if ((res.jobs && res.jobs.length > 0) || attempts >= 8) {
-            clearInterval(interval);
-            setSyncing(false);
-            if (res.jobs && res.jobs.length > 0) {
-              setJobs(res.jobs);
-              setTotal(res.pagination?.total || res.jobs.length);
-              setTotalPages(res.pagination?.totalPages || 1);
-              toast.success(
-                `Successfully loaded ${res.pagination?.total || res.jobs.length} live market jobs!`
-              );
-            }
-          }
-        } catch {
-          if (attempts >= 8) {
-            clearInterval(interval);
-            setSyncing(false);
-          }
-        }
-      }, 3000);
+      // Sync runs in the background. Wait for its status instead of treating
+      // already-indexed jobs as proof that this sync has finished.
+      const maxWaitMs = 3 * 60 * 1000;
+      const pollIntervalMs = 3000;
+      const startedAt = Date.now();
+      let status = await getExternalJobsSyncStatus(await getToken());
+
+      while (status.status === "running" && Date.now() - startedAt < maxWaitMs) {
+        await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+        status = await getExternalJobsSyncStatus(await getToken());
+      }
+
+      if (status.status === "completed") {
+        await fetchJobs();
+        toast.success("Market sync completed. Job listings have been refreshed.");
+      } else if (status.status === "failed") {
+        toast.error("Market sync failed. Please try again later.");
+      } else {
+        toast.info("Market sync is still running. Refresh the listings in a moment.");
+      }
     } catch (err: any) {
-      setSyncing(false);
       toast.error("Failed to initiate sync. Please try again.");
+    } finally {
+      setSyncing(false);
     }
   };
 

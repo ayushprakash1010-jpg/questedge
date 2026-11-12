@@ -9,6 +9,17 @@ import { Prisma } from '@prisma/client';
 @Injectable()
 export class ExternalJobsService {
   private readonly logger = new Logger(ExternalJobsService.name);
+  private manualSyncStatus: {
+    status: 'idle' | 'running' | 'completed' | 'failed';
+    startedAt: string | null;
+    completedAt: string | null;
+    message: string;
+  } = {
+    status: 'idle',
+    startedAt: null,
+    completedAt: null,
+    message: 'No manual sync has run yet.',
+  };
 
   constructor(
     private readonly prisma: PrismaService,
@@ -573,7 +584,21 @@ export class ExternalJobsService {
   }
 
   async triggerManualSync() {
+    if (this.manualSyncStatus.status === 'running') {
+      return {
+        status: 'running',
+        message: 'A market sync is already in progress.',
+      };
+    }
+
     this.logger.log('Manual sync triggered across all 8 sources...');
+    this.manualSyncStatus = {
+      status: 'running',
+      startedAt: new Date().toISOString(),
+      completedAt: null,
+      message: 'Syncing jobs from all sources.',
+    };
+
     setImmediate(async () => {
       try {
         await this.aggregation.seedDefaultSources();
@@ -582,14 +607,30 @@ export class ExternalJobsService {
         await this.aggregation.syncAggregatorSources();
         await this.matchPrecompute.computeAllMatches();
         this.logger.log('Manual sync completed successfully!');
+        this.manualSyncStatus = {
+          ...this.manualSyncStatus,
+          status: 'completed',
+          completedAt: new Date().toISOString(),
+          message: 'Market sync completed.',
+        };
       } catch (err: any) {
         this.logger.error(`Manual sync failed: ${err.message}`, err.stack);
+        this.manualSyncStatus = {
+          ...this.manualSyncStatus,
+          status: 'failed',
+          completedAt: new Date().toISOString(),
+          message: 'Market sync failed. Check the backend logs for details.',
+        };
       }
     });
     return {
-      status: 'Sync initiated in background',
+      status: 'running',
       message: 'Syncing jobs from all 8 sources now. It will take 15-30 seconds to populate.',
     };
+  }
+
+  getManualSyncStatus() {
+    return { ...this.manualSyncStatus };
   }
 }
 

@@ -187,3 +187,17 @@ export async function triggerExternalJobsSync(
   );
 }
 
+export async function getExternalJobsSyncStatus(
+  token: string,
+): Promise<{
+  status: 'idle' | 'running' | 'completed' | 'failed';
+  startedAt: string | null;
+  completedAt: string | null;
+  message: string;
+}> {
+  return apiClient(
+    '/api/v1/external-jobs/sync/status',
+    { token },
+  );
+}
+

@@ -100,6 +100,12 @@ export class ExternalJobsController {
     return this.service.triggerManualSync();
   }
 
+  @Get('sync/status')
+  @UserTypes('CANDIDATE', 'PLATFORM_ADMIN')
+  getSyncStatus() {
+    return this.service.getManualSyncStatus();
+  }
+
   @Get(':id')
   @UserTypes('CANDIDATE')
   async getJobById(
