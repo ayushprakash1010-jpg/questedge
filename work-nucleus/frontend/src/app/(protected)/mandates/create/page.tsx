@@ -204,6 +204,7 @@ export default function CreateMandatePage() {
     department: "",
     description: "",
     requiredExperience: "",
+    educationRequirement: "",
     mandatorySkills: [] as string[],
     preferredSkills: [] as string[],
     numberOfOpenings: 1,
@@ -273,6 +274,7 @@ export default function CreateMandatePage() {
       description: sourceDescription?.slice(0, MAX_JOB_DESCRIPTION_TEXT_LENGTH) ||
         getText(data?.description, MAX_JOB_DESCRIPTION_TEXT_LENGTH) || current.description,
       requiredExperience: getText(data?.requiredExperience, 120) || current.requiredExperience,
+      educationRequirement: getText(data?.educationRequirement, 500) || current.educationRequirement,
       mandatorySkills: getSkills(data?.mandatorySkills).length
         ? getSkills(data?.mandatorySkills)
         : current.mandatorySkills,
@@ -674,6 +676,17 @@ export default function CreateMandatePage() {
                   <Input value={form.noticePeriodPref} onChange={(e) => update("noticePeriodPref", e.target.value)} placeholder="e.g. 30 days or less" />
                 </FormField>
               </div>
+              <FormField
+                label="Education / Minimum Qualification"
+                hint="Add an explicit degree, education level, or equivalent-experience requirement."
+              >
+                <Input
+                  value={form.educationRequirement}
+                  onChange={(e) => update("educationRequirement", e.target.value)}
+                  maxLength={500}
+                  placeholder="e.g. Bachelor's degree in Computer Science or equivalent experience"
+                />
+              </FormField>
               <SkillTagInput
                 label="Mandatory Skills *"
                 skills={form.mandatorySkills}
@@ -780,6 +793,7 @@ export default function CreateMandatePage() {
                 <div className="px-5 py-3 space-y-0">
                   <ReviewRow label="Location" value={`${form.location || "Not set"} · ${form.workModel}`} />
                   <ReviewRow label="Experience" value={form.requiredExperience} />
+                  <ReviewRow label="Education / Qualification" value={form.educationRequirement} />
                   <ReviewRow label="Employment" value={form.employmentType} />
                   <ReviewRow label="Openings" value={form.numberOfOpenings} />
                   <ReviewRow label="Salary Range" value={form.compensationMin && form.compensationMax ? `${form.currency} ${Number(form.compensationMin).toLocaleString()} – ${Number(form.compensationMax).toLocaleString()}` : undefined} />

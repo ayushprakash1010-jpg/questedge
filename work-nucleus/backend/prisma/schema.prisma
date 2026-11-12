@@ -1806,6 +1806,7 @@ model Mandate {
   department           String?
   description          String                   @db.Text
   requiredExperience   String?                  @map("required_experience")
+  educationRequirement String?                  @map("education_requirement") @db.Text
   mandatorySkills      Json                     @default("[]") @map("mandatory_skills")
   preferredSkills      Json                     @default("[]") @map("preferred_skills")
   numberOfOpenings     Int                      @default(1) @map("number_of_openings")

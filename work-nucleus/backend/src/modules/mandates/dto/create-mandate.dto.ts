@@ -8,6 +8,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  MaxLength,
   Min,
   IsIn,
 } from 'class-validator';
@@ -35,6 +36,15 @@ export class CreateMandateDto {
   @IsOptional()
   @IsString()
   requiredExperience?: string;
+
+  @ApiPropertyOptional({
+    description: 'Minimum education or equivalent qualification required for the role',
+    example: "Bachelor's degree in Computer Science or equivalent experience",
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  educationRequirement?: string;
 
   @ApiProperty({
     description: 'Mandatory skills list',

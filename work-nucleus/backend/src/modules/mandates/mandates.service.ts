@@ -257,6 +257,7 @@ export class MandatesService {
         department: dto.department,
         description: dto.description,
         requiredExperience: dto.requiredExperience,
+        educationRequirement: dto.educationRequirement,
         mandatorySkills: dto.mandatorySkills ?? [],
         preferredSkills: dto.preferredSkills ?? [],
         numberOfOpenings: dto.numberOfOpenings ?? 1,

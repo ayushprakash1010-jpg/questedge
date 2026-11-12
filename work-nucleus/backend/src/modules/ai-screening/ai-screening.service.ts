@@ -494,6 +494,7 @@ export class AiScreeningService {
         "department": "Department or empty string",
         "description": "Professional job description using only supported details",
         "requiredExperience": "Experience requirement or empty string",
+        "educationRequirement": "Explicit minimum education or equivalent qualification, or empty string",
         "mandatorySkills": ["explicitly required skills"],
         "preferredSkills": ["explicitly preferred skills"],
         "workModel": "Remote, Hybrid, On-site, or empty string",
@@ -507,6 +508,7 @@ export class AiScreeningService {
         "teamDescription": "Team details or empty string"
       }
       numberOfOpenings must be a positive integer or null. Compensation values must be numbers or null.
+      Only populate educationRequirement when a degree, education level, certification, or equivalent-experience requirement is explicit in the source. Do not infer one from the job title.
       For compensation, include numeric amounts only when a range or amount is clearly stated. Keep the stated amount and currency units; do not convert or guess.
     `;
 

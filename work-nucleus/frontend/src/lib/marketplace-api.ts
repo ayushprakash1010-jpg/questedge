@@ -9,6 +9,7 @@ export interface Mandate {
   department?: string;
   description: string;
   requiredExperience?: string;
+  educationRequirement?: string;
   mandatorySkills: string[];
   preferredSkills: string[];
   numberOfOpenings: number;
@@ -71,6 +72,7 @@ export interface CreateMandatePayload {
   department?: string;
   description: string;
   requiredExperience?: string;
+  educationRequirement?: string;
   mandatorySkills: string[];
   preferredSkills?: string[];
   numberOfOpenings?: number;

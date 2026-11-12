@@ -185,6 +185,16 @@ export function AiMatchModal({
 
         {/* Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {mandate.educationRequirement && (
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-700">
+                Education / Minimum Qualification
+              </h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">
+                {mandate.educationRequirement}
+              </p>
+            </div>
+          )}
           {loading ? (
             <div className="py-20 flex flex-col items-center justify-center space-y-3">
               <Loader2 className="h-10 w-10 text-indigo-600 animate-spin" />

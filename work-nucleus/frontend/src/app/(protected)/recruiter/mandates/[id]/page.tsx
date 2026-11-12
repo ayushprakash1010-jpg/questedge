@@ -441,7 +441,17 @@ export default function RecruiterMandateDetail() {
 
         <div className="space-y-6">
           <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-2xs">
-            <h3 className="font-semibold text-slate-900 mb-4">Required Skills</h3>
+            <h3 className="font-semibold text-slate-900 mb-4">Requirements</h3>
+            {mandate.educationRequirement && (
+              <div className="mb-4">
+                <span className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  Education / Minimum Qualification
+                </span>
+                <p className="text-sm text-slate-700 whitespace-pre-wrap">
+                  {mandate.educationRequirement}
+                </p>
+              </div>
+            )}
             <div className="flex flex-wrap gap-2">
               {mandate.mandatorySkills.map((s) => (
                 <SkillChip key={s} skill={s} />
