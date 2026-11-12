@@ -578,6 +578,7 @@ export class AiScreeningService {
         "skills": ["list", "of", "skills"],
         "education": ["Degree from Institution (Year)", "Another Degree..."],
         "certifications": [{"name": "Certification name", "credentialUrl": "Verification URL if explicitly present, otherwise empty string"}],
+        "projects": [{"name": "Project name", "description": "Description based on the resume", "technologies": ["Technologies explicitly associated with the project"], "projectUrl": "Project URL if explicitly associated, otherwise empty string"}],
         "currentLocation": "City, State or Country",
         "linkedin": "LinkedIn URL if present in text, else empty string",
         "github": "GitHub URL if present in text, else empty string",
@@ -612,7 +613,7 @@ export class AiScreeningService {
             const parsed = this.parseAiResponse(content);
             if (
               parsed &&
-              (parsed.name || parsed.email || parsed.skills?.length || parsed.certifications?.length)
+              (parsed.name || parsed.email || parsed.skills?.length || parsed.certifications?.length || parsed.projects?.length)
             ) {
               this.logger.log(
                 `Successfully parsed resume using model: ${modelName}`,
@@ -720,6 +721,93 @@ export class AiScreeningService {
       }
     }
 
+    const projectHeadingIndex = lines.findIndex((line) =>
+      /^(?:(?:selected|academic|personal|professional|key)\s+)?projects?\s*:?(?:\s+.*)?$/i.test(line),
+    );
+    const projects: Array<{
+      name: string;
+      description: string;
+      technologies: string[];
+      projectUrl: string;
+    }> = [];
+    if (projectHeadingIndex !== -1) {
+      const projectHeading = lines[projectHeadingIndex];
+      const inlineProject = projectHeading.match(
+        /^(?:(?:selected|academic|personal|professional|key)\s+)?projects?\s*:\s*(.+)$/i,
+      )?.[1];
+      const sectionLines = [
+        ...(inlineProject ? [inlineProject] : []),
+        ...lines.slice(projectHeadingIndex + 1),
+      ];
+      const endOfProjects = /^(?:work experience|professional experience|experience|employment|education|certifications?(?:\s*(?:&|and)\s*licenses?)?|skills|technical skills|summary|profile|languages|awards|achievements|references|interests)\b/i;
+      let currentProject: {
+        name: string;
+        description: string;
+        technologies: string[];
+        projectUrl: string;
+      } | null = null;
+
+      const saveCurrentProject = () => {
+        if (currentProject && (currentProject.name || currentProject.description)) {
+          projects.push(currentProject);
+        }
+      };
+
+      for (const line of sectionLines) {
+        if (endOfProjects.test(line)) break;
+
+        const isBullet = /^[-*•\u2022]\s*/.test(line);
+        const cleaned = line.replace(/^[-*•\u2022\s]+/, '').trim();
+        if (!cleaned || /^\[links?\s*\//i.test(cleaned)) continue;
+
+        const technologyMatch = cleaned.match(/^(?:technologies|technology|tech stack|tools|built with)\s*:\s*(.+)$/i);
+        if (technologyMatch) {
+          if (currentProject) {
+            currentProject.technologies = technologyMatch[1]
+              .split(/[,;|]/)
+              .map((technology) => technology.trim().replace(/[.]$/, ''))
+              .filter(Boolean)
+              .slice(0, 15);
+          }
+          continue;
+        }
+
+        const projectUrlMatch = cleaned.match(
+          /^(?:(?:project\s+)?(?:url|link)|github|demo)\s*:\s*(https?:\/\/\S+)/i,
+        );
+        if (projectUrlMatch) {
+          if (currentProject) {
+            currentProject.projectUrl = projectUrlMatch[1].replace(/[),.;]+$/, '');
+          }
+          continue;
+        }
+
+        const url = cleaned.match(/https?:\/\/\S+/i)?.[0]?.replace(/[),.;]+$/, '') ?? '';
+        const textWithoutUrl = cleaned.replace(/https?:\/\/\S+/ig, '').replace(/[|–—-]+\s*$/, '').trim();
+        const isShortHeading = !isBullet && textWithoutUrl.length > 2 && textWithoutUrl.length <= 100 && !/[.!?]$/.test(textWithoutUrl);
+        if (!currentProject || (isShortHeading && (currentProject.description || currentProject.technologies.length || currentProject.projectUrl))) {
+          saveCurrentProject();
+          currentProject = {
+            name: textWithoutUrl,
+            description: '',
+            technologies: [],
+            projectUrl: url,
+          };
+        } else {
+          if (textWithoutUrl) {
+            currentProject.description = [currentProject.description, textWithoutUrl]
+              .filter(Boolean)
+              .join(' ')
+              .slice(0, 1000);
+          }
+          if (url && !currentProject.projectUrl) currentProject.projectUrl = url;
+        }
+
+        if (projects.length >= 10) break;
+      }
+      saveCurrentProject();
+    }
+
     let headline = '';
     const summaryIdx = lines.findIndex((l) => /^(?:Professional )?Summary/i.test(l));
     if (summaryIdx !== -1 && lines[summaryIdx + 1]) {
@@ -743,6 +831,7 @@ export class AiScreeningService {
           credentialUrl: url,
         };
       }).filter((certification) => certification.name),
+      projects: projects.slice(0, 10),
       currentLocation: '',
       linkedin: linkedinMatch ? linkedinMatch[0] : '',
       github: githubMatch ? githubMatch[0] : '',

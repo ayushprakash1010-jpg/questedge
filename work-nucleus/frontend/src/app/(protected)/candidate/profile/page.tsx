@@ -73,6 +73,12 @@ type CandidateProject = {
   projectUrl: string;
 };
 
+function createProjectId() {
+  return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `project-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 function normalizeCertifications(value: unknown): CandidateCertification[] {
   if (!Array.isArray(value)) return [];
 
@@ -99,7 +105,7 @@ function normalizeProjects(value: unknown): CandidateProject[] {
     .map((item, index): CandidateProject | null => {
       if (!item || typeof item !== "object") return null;
       const record = item as Record<string, unknown>;
-      const id = typeof record.id === "string" && record.id ? record.id : `project-${index}`;
+      const id = typeof record.id === "string" && record.id ? record.id : createProjectId();
       const name = String(record.name ?? record.title ?? "").trim();
       const description = String(record.description ?? record.summary ?? "").trim();
       const technologies = Array.isArray(record.technologies)
@@ -113,6 +119,29 @@ function normalizeProjects(value: unknown): CandidateProject[] {
         : null;
     })
     .filter((item): item is CandidateProject => item !== null);
+}
+
+function mergeResumeProjects(
+  existing: CandidateProject[],
+  extracted: CandidateProject[],
+): CandidateProject[] {
+  if (extracted.length === 0) return existing;
+
+  const merged = [...existing];
+  const existingKeys = new Set(
+    existing
+      .map((project) => (project.name || project.description).trim().toLocaleLowerCase())
+      .filter(Boolean),
+  );
+
+  for (const project of extracted) {
+    const key = (project.name || project.description).trim().toLocaleLowerCase();
+    if (!key || existingKeys.has(key) || merged.length >= 10) continue;
+    merged.push({ ...project, id: createProjectId() });
+    existingKeys.add(key);
+  }
+
+  return merged;
 }
 
 function CertificationsInput({
@@ -216,7 +245,7 @@ function ProjectsEditor({
         </div>
         <button
           type="button"
-          onClick={() => onChange([...values, { id: crypto.randomUUID(), name: "", description: "", technologies: [], projectUrl: "" }])}
+          onClick={() => onChange([...values, { id: createProjectId(), name: "", description: "", technologies: [], projectUrl: "" }])}
           disabled={values.length >= 10}
           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-50"
         >
@@ -501,6 +530,7 @@ export default function CandidateProfilePage() {
             parsedData.certifications && parsedData.certifications.length > 0
               ? normalizeCertifications(parsedData.certifications)
               : p.certifications,
+          projects: mergeResumeProjects(p.projects, normalizeProjects(parsedData.projects)),
           currentLocation: parsedData.currentLocation || p.currentLocation,
           headline:
             parsedData.headline ||
