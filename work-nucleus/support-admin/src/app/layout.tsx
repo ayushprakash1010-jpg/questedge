@@ -10,10 +10,12 @@ export const metadata: Metadata = {
   description: "Internal support administration portal",
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/logo-icon.png", type: "image/png" },
+      { url: "/icon.png?v=3", sizes: "32x32", type: "image/png" },
+      { url: "/logo-icon.png?v=3", sizes: "192x192", type: "image/png" },
+      { url: "/favicon.ico?v=3", sizes: "any" },
     ],
-    apple: "/apple-touch-icon.png",
+    shortcut: "/favicon.ico?v=3",
+    apple: "/apple-touch-icon.png?v=3",
   },
 };
 
