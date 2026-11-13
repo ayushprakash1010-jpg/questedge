@@ -95,7 +95,7 @@ export default function ProtectedLayout({
               Sign Out & Switch Account
             </a>
             <a
-              href={process.env.NEXT_PUBLIC_MAIN_APP_URL || "https://questedge.vercel.app"}
+              href={process.env.NEXT_PUBLIC_MAIN_APP_URL || "https://questedge.in"}
               className="rounded-xl border border-slate-700 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800 transition"
             >
               Go to Main QuestEdge App

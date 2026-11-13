@@ -63,13 +63,16 @@ async function bootstrap() {
   // Global logging interceptor (with request ID and redaction)
   app.useGlobalInterceptors(new LoggingInterceptor());
 
-  // CORS â€” allow both local dev origins and production Vercel deployments
+  // CORS — allow local dev origins, Vercel deployments, and custom questedge.in domain
   app.enableCors({
     origin: [
       'http://localhost:3001', // frontend (dev)
       'http://localhost:3002', // support-admin (dev)
-      'https://questedge.vercel.app', // production frontend
-      'https://questedge-admin.vercel.app', // production support-admin
+      'https://questedge.vercel.app', // production frontend (Vercel default)
+      'https://questedge-admin.vercel.app', // production support-admin (Vercel default)
+      'https://questedge.in', // custom production domain
+      'https://www.questedge.in', // custom production domain (www)
+      'https://admin.questedge.in', // custom support-admin domain
       // Add additional preview/staging URLs as needed:
       ...(process.env.EXTRA_CORS_ORIGINS
         ? process.env.EXTRA_CORS_ORIGINS.split(',')

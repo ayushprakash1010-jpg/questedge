@@ -37,8 +37,8 @@ export class EmailService {
     const frontendUrl = process.env.FRONTEND_URL;
     if (!frontendUrl) {
       if (process.env.NODE_ENV === 'production') {
-        this.logger.warn('FRONTEND_URL env var is not set in production! Defaulting to https://questedge.vercel.app');
-        return 'https://questedge.vercel.app';
+        this.logger.warn('FRONTEND_URL env var is not set in production! Defaulting to https://questedge.in');
+        return 'https://questedge.in';
       }
       return 'http://localhost:3000';
     }

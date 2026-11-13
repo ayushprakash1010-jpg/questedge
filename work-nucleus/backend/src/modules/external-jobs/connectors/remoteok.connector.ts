@@ -18,7 +18,7 @@ export class RemoteOKConnector implements IJobSourceConnector {
       const { data } = await axios.get(this.BASE_URL, {
         headers: {
           'User-Agent':
-            'QuestEdge/1.0 (https://questedge.vercel.app; job-aggregation)',
+            'QuestEdge/1.0 (https://questedge.in; job-aggregation)',
         },
         timeout: 15000,
       });

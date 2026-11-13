@@ -30,11 +30,11 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "QuestEdge Technologies" }],
   creator: "QuestEdge",
-  metadataBase: new URL(process.env.APP_BASE_URL || "https://questedge.vercel.app"),
+  metadataBase: new URL(process.env.APP_BASE_URL || "https://questedge.in"),
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://questedge.vercel.app",
+    url: "https://questedge.in",
     title: "QuestEdge — AI-Powered Referral Hiring Marketplace",
     description:
       "Zero retainers. Trusted referrals. Pay bounties only on verified candidate tenure completion.",

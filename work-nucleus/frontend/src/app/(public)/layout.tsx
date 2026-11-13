@@ -6,16 +6,16 @@ const jsonLd = {
   "@graph": [
     {
       "@type": "Organization",
-      "@id": "https://questedge.vercel.app/#organization",
+      "@id": "https://questedge.in/#organization",
       "name": "QuestEdge Technologies",
-      "url": "https://questedge.vercel.app",
-      "logo": "https://questedge.vercel.app/icon-512.png",
+      "url": "https://questedge.in",
+      "logo": "https://questedge.in/icon-512.png",
       "description":
         "AI-Powered Referral Hiring Marketplace connecting companies, independent recruiters, and top talent with milestone-backed bounties.",
     },
     {
       "@type": "SoftwareApplication",
-      "@id": "https://questedge.vercel.app/#application",
+      "@id": "https://questedge.in/#application",
       "name": "QuestEdge",
       "applicationCategory": "BusinessApplication",
       "operatingSystem": "Web",
@@ -27,7 +27,7 @@ const jsonLd = {
     },
     {
       "@type": "FAQPage",
-      "@id": "https://questedge.vercel.app/#faq",
+      "@id": "https://questedge.in/#faq",
       "mainEntity": [
         {
           "@type": "Question",
