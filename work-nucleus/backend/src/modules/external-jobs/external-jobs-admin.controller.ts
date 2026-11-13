@@ -118,6 +118,12 @@ export class ExternalJobsAdminController {
     return { result };
   }
 
+  @Post('verify-urls')
+  async verifyUrls() {
+    const result = await this.aggregation.verifyJobUrls(25);
+    return { result };
+  }
+
   @Get('health')
   async getHealth() {
     const circuitBreakers = this.aggregation.getCircuitBreakerStatus();

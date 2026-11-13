@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import axios from 'axios';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { GreenhouseConnector } from '../connectors/greenhouse.connector';
 import { LeverConnector } from '../connectors/lever.connector';
@@ -19,6 +20,7 @@ export interface SyncResult {
   created: number;
   updated: number;
   skipped: number;
+  deactivated?: number;
   errors: string[];
   durationMs: number;
 }
@@ -129,6 +131,62 @@ export class AggregationService {
           syncResult.skipped++;
         }
       }
+
+      // ── Delta Deactivation Safeguard ──────────────────────────────
+      // Group fetched job sourceIds by companySlug
+      const activeIdsBySlug = new Map<string, string[]>();
+      for (const rawJob of result.jobs) {
+        const slug = rawJob.companySlug;
+        if (slug) {
+          if (!activeIdsBySlug.has(slug)) activeIdsBySlug.set(slug, []);
+          activeIdsBySlug.get(slug)!.push(rawJob.sourceId);
+        }
+      }
+
+      let totalDeactivated = 0;
+      for (const slug of slugs) {
+        // FAIL-SAFE 1: If there was an error fetching this company's feed, DO NOT deactivate anything.
+        const slugError = result.errors.some((err) =>
+          err.toLowerCase().includes(`[${slug.toLowerCase()}]`),
+        );
+        if (slugError) {
+          this.logger.warn(
+            `[Delta Deactivation] Skipping ${sourceName}/${slug} — fetch had errors`,
+          );
+          continue;
+        }
+
+        const currentActiveIds = activeIdsBySlug.get(slug);
+
+        // FAIL-SAFE 2: Only deactivate if company explicitly returned active jobs.
+        // If an ATS returned 0 jobs unexpectedly, do NOT purge the company catalog immediately;
+        // let the daily expiry worker handle long-term stale jobs to avoid purging on empty transient feeds.
+        if (currentActiveIds && currentActiveIds.length > 0) {
+          try {
+            const deactResult = await this.prisma.externalJob.updateMany({
+              where: {
+                sourceName,
+                sourceCompanySlug: slug,
+                isActive: true,
+                sourceId: { notIn: currentActiveIds },
+              },
+              data: { isActive: false },
+            });
+
+            if (deactResult.count > 0) {
+              totalDeactivated += deactResult.count;
+              this.logger.log(
+                `[Delta Deactivation] Marked ${deactResult.count} closed jobs as inactive for ${sourceName}/${slug}`,
+              );
+            }
+          } catch (deactErr: any) {
+            this.logger.warn(
+              `[Delta Deactivation] Error updating ${sourceName}/${slug}: ${deactErr.message}`,
+            );
+          }
+        }
+      }
+      syncResult.deactivated = totalDeactivated;
 
       syncResult.durationMs = Date.now() - start;
       results.push(syncResult);
@@ -402,6 +460,7 @@ export class AggregationService {
             lastSyncedAt: new Date(),
             requiredExperience: job.requiredExperience ?? null,
             postedAt: job.postedAt ?? null,
+            isActive: true,
           },
         });
         return 'skipped';
@@ -450,6 +509,82 @@ export class AggregationService {
       `Marked ${result.count} jobs as expired (not synced in 45+ days)`,
     );
     return result.count;
+  }
+
+  /**
+   * Safe URL Health-Check Probe:
+   * Verifies a batch of active job URLs.
+   * Only deactivates if HTTP 404 or 410 is explicitly received.
+   * Any timeouts, 403 (Cloudflare/bot protection), 429, or 5xx server errors
+   * NEVER cause deactivation.
+   */
+  async verifyJobUrls(
+    batchSize = 25,
+  ): Promise<{ checked: number; deactivated: number; verified: number }> {
+    const jobs = await this.prisma.externalJob.findMany({
+      where: { isActive: true },
+      orderBy: [
+        { lastVerifiedAt: { sort: 'asc', nulls: 'first' } },
+        { postedAt: 'desc' },
+      ],
+      take: batchSize,
+      select: { id: true, applyUrl: true, sourceName: true, companyName: true },
+    });
+
+    if (jobs.length === 0) {
+      return { checked: 0, deactivated: 0, verified: 0 };
+    }
+
+    let deactivated = 0;
+    let verified = 0;
+
+    for (const job of jobs) {
+      try {
+        const response = await axios.get(job.applyUrl, {
+          timeout: 6000,
+          maxRedirects: 5,
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            Accept:
+              'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          },
+          validateStatus: () => true, // Don't throw on non-2xx so we inspect exact status
+        });
+
+        // ONLY HTTP 404 (Not Found) or 410 (Gone) confirms the job posting was removed
+        if (response.status === 404 || response.status === 410) {
+          await this.prisma.externalJob.update({
+            where: { id: job.id },
+            data: { isActive: false, lastVerifiedAt: new Date() },
+          });
+          deactivated++;
+          this.logger.log(
+            `[URL Health-Check] Deactivated job ${job.id} (${job.companyName}) — returned HTTP ${response.status}`,
+          );
+        } else {
+          // Status 200, 301, 302, or 403/429/503 -> Keep active, update lastVerifiedAt
+          await this.prisma.externalJob.update({
+            where: { id: job.id },
+            data: { lastVerifiedAt: new Date() },
+          });
+          verified++;
+        }
+      } catch (err: any) {
+        // Network timeout / DNS issue: NEVER deactivate on network errors
+        await this.prisma.externalJob.update({
+          where: { id: job.id },
+          data: { lastVerifiedAt: new Date() },
+        });
+        verified++;
+      }
+    }
+
+    this.logger.log(
+      `[URL Health-Check] Checked ${jobs.length} jobs: ${verified} verified active, ${deactivated} confirmed dead (404/410)`,
+    );
+
+    return { checked: jobs.length, deactivated, verified };
   }
 
   /**

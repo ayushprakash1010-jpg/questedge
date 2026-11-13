@@ -57,6 +57,13 @@ export class ExternalJobsSyncWorker implements OnModuleInit {
       await this.handleExpiryCheck();
     });
 
+    // URL health-check probe every 30 minutes (25 active jobs per run)
+    await this.queue.ensureQueue('external-jobs-url-verify');
+    await this.queue.scheduleCron('external-jobs-url-verify', '*/30 * * * *');
+    await this.queue.registerWorker('external-jobs-url-verify', async () => {
+      await this.handleUrlVerification();
+    });
+
     // Match pre-computation every 6 hours (offset by 30 min from ATS sync)
     await this.queue.ensureQueue('external-jobs-match-compute');
     await this.queue.scheduleCron('external-jobs-match-compute', '30 */6 * * *');
@@ -150,6 +157,18 @@ export class ExternalJobsSyncWorker implements OnModuleInit {
       this.logger.log(`Expiry check complete: ${count} jobs marked expired`);
     } catch (err: any) {
       this.logger.error(`Expiry check failed: ${err.message}`, err.stack);
+    }
+  }
+
+  async handleUrlVerification() {
+    this.logger.log('Starting URL health-check verification probe...');
+    try {
+      const result = await this.aggregation.verifyJobUrls(25);
+      this.logger.log(
+        `URL verification probe complete: ${result.checked} checked, ${result.verified} active, ${result.deactivated} deactivated (404/410)`,
+      );
+    } catch (err: any) {
+      this.logger.error(`URL verification probe failed: ${err.message}`, err.stack);
     }
   }
 
