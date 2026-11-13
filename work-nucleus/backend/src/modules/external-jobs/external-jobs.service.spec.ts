@@ -49,6 +49,7 @@ describe('ExternalJobsService', () => {
       externalJob: {
         findMany: jest.fn().mockResolvedValue([mockJob]),
         findUnique: jest.fn().mockResolvedValue(mockJob),
+        update: jest.fn().mockResolvedValue(mockJob),
         count: jest.fn().mockResolvedValue(1),
         groupBy: jest.fn().mockResolvedValue([
           { sourceName: 'greenhouse', _count: { id: 1 } },
@@ -323,6 +324,33 @@ describe('ExternalJobsService', () => {
           }),
         }),
       );
+    });
+  });
+
+  describe('reportInactive()', () => {
+    it('should report job and update verified timestamp', async () => {
+      prisma.externalJob.findUnique.mockResolvedValueOnce({
+        id: 'job-1',
+        applyUrl: 'https://careers.example.com/job-1',
+        isActive: true,
+        companyName: 'Acme',
+      });
+
+      const result = await service.reportInactive('job-1', 'cand-1');
+      expect(result.reported).toBe(true);
+      expect(prisma.externalJob.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'job-1' },
+          data: expect.objectContaining({
+            lastVerifiedAt: expect.any(Date),
+          }),
+        }),
+      );
+    });
+
+    it('should throw NotFoundException if job does not exist', async () => {
+      prisma.externalJob.findUnique.mockResolvedValueOnce(null);
+      await expect(service.reportInactive('invalid-job')).rejects.toThrow();
     });
   });
 

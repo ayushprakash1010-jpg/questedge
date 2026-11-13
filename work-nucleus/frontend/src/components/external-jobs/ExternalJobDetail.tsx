@@ -1,6 +1,8 @@
 "use client";
 
-import { ExternalJob, ExternalJobMatchData } from "@/lib/external-jobs-api";
+import { useState } from "react";
+import { ExternalJob, ExternalJobMatchData, reportExternalJobInactive } from "@/lib/external-jobs-api";
+import { toast } from "@/components/ui/toaster";
 import { CompanyLogo } from "./CompanyLogo";
 import {
   X,
@@ -17,6 +19,8 @@ import {
   CheckCircle2,
   XCircle,
   ChevronRight,
+  Flag,
+  Loader2,
 } from "lucide-react";
 
 interface ExternalJobDetailProps {
@@ -63,7 +67,26 @@ function formatSalary(job: ExternalJob): string | null {
 }
 
 export function ExternalJobDetail({ job, isOpen, onClose, onSave, onApply, isSaved }: ExternalJobDetailProps) {
+  const [reporting, setReporting] = useState(false);
+  const [reported, setReported] = useState(false);
+
   if (!isOpen || !job) return null;
+
+  const handleReportClosed = async () => {
+    if (!job || reported || reporting) return;
+    try {
+      setReporting(true);
+      const res = await fetch("/api/auth/token");
+      const { accessToken } = await res.json();
+      const result = await reportExternalJobInactive(accessToken, job.id);
+      setReported(true);
+      toast.success(result.message || "Thank you! Listing has been flagged for verification.");
+    } catch {
+      toast.error("Could not submit report. Please try again.");
+    } finally {
+      setReporting(false);
+    }
+  };
 
   const salary = formatSalary(job);
   const match = job.matchData;
@@ -277,16 +300,41 @@ export function ExternalJobDetail({ job, isOpen, onClose, onSave, onApply, isSav
             </div>
           )}
 
-          {/* External Redirect Disclaimer */}
-          <div className="rounded-xl bg-amber-50 border border-amber-200 p-3.5 flex items-start gap-3">
-            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-900 leading-relaxed">
-              <strong>External Listing:</strong> This is a job posted on{" "}
-              <strong>
-                {job.sourceName.charAt(0).toUpperCase() + job.sourceName.slice(1)}
-              </strong>.
-              Clicking &quot;Apply Now&quot; will redirect you to the company&apos;s career page.
-            </p>
+          {/* External Redirect Disclaimer & Broken Link Report */}
+          <div className="rounded-xl bg-amber-50 border border-amber-200/80 p-3.5 space-y-2.5">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-900 leading-relaxed">
+                <strong>External Listing:</strong> This is a job posted on{" "}
+                <strong>
+                  {job.sourceName.charAt(0).toUpperCase() + job.sourceName.slice(1)}
+                </strong>.
+                Clicking &quot;Apply Now&quot; will redirect you to the company&apos;s career page.
+              </p>
+            </div>
+            <div className="flex items-center justify-between pt-2 border-t border-amber-200/60 text-xs text-amber-800">
+              <span className="text-[11px] text-amber-700/80">Found an issue with this opening?</span>
+              <button
+                type="button"
+                onClick={handleReportClosed}
+                disabled={reporting || reported}
+                className="inline-flex items-center gap-1.5 font-medium text-amber-800 hover:text-amber-950 underline decoration-amber-300 hover:decoration-amber-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {reporting ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin" /> Verifying link...
+                  </>
+                ) : reported ? (
+                  <>
+                    <CheckCircle2 className="h-3 w-3 text-emerald-600" /> Reported
+                  </>
+                ) : (
+                  <>
+                    <Flag className="h-3 w-3" /> Report closed / dead link
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
 

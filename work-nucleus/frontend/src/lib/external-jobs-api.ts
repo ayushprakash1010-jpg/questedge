@@ -164,6 +164,16 @@ export async function reportExternalJobApplied(
   );
 }
 
+export async function reportExternalJobInactive(
+  token: string,
+  jobId: string,
+): Promise<{ reported: boolean; deactivated?: boolean; message?: string }> {
+  return apiClient<{ reported: boolean; deactivated?: boolean; message?: string }>(
+    `/api/v1/external-jobs/${jobId}/report-inactive`,
+    { token, method: 'POST' },
+  );
+}
+
 export async function getExternalJobClickHistory(
   token: string,
   page = 1,

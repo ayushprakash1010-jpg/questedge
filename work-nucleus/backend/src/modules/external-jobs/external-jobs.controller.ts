@@ -154,4 +154,14 @@ export class ExternalJobsController {
     }
     return this.service.reportApplied(candidateId, id);
   }
+
+  @Post(':id/report-inactive')
+  @UserTypes('CANDIDATE')
+  async reportInactive(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: any,
+  ) {
+    const candidateId = await this.getCandidateId(user);
+    return this.service.reportInactive(id, candidateId || undefined);
+  }
 }

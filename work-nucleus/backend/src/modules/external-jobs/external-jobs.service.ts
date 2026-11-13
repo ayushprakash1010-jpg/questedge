@@ -299,6 +299,63 @@ export class ExternalJobsService {
     return { reported: true };
   }
 
+  async reportInactive(externalJobId: string, candidateProfileId?: string) {
+    const job = await this.prisma.externalJob.findUnique({
+      where: { id: externalJobId },
+      select: { id: true, applyUrl: true, isActive: true, companyName: true },
+    });
+
+    if (!job) {
+      throw new NotFoundException('External job not found');
+    }
+
+    // Trigger an immediate URL verification probe on this job
+    let confirmedDead = false;
+    try {
+      const axios = require('axios');
+      const response = await axios.get(job.applyUrl, {
+        timeout: 5000,
+        maxRedirects: 5,
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          Accept:
+            'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        },
+        validateStatus: () => true,
+      });
+
+      if (response.status === 404 || response.status === 410) {
+        confirmedDead = true;
+        await this.prisma.externalJob.update({
+          where: { id: job.id },
+          data: { isActive: false, lastVerifiedAt: new Date() },
+        });
+        this.logger.log(
+          `[Candidate Report] Deactivated job ${job.id} (${job.companyName}) — returned HTTP ${response.status}`,
+        );
+      } else {
+        await this.prisma.externalJob.update({
+          where: { id: job.id },
+          data: { lastVerifiedAt: new Date() },
+        });
+      }
+    } catch {
+      await this.prisma.externalJob.update({
+        where: { id: job.id },
+        data: { lastVerifiedAt: new Date() },
+      });
+    }
+
+    return {
+      reported: true,
+      deactivated: confirmedDead,
+      message: confirmedDead
+        ? 'Thank you. The listing has been verified as closed and removed from the active market.'
+        : 'Thank you for reporting. This listing has been queued for review.',
+    };
+  }
+
   async getSavedJobs(candidateProfileId: string, page = 1, limit = 20) {
     const skip = (page - 1) * limit;
 
