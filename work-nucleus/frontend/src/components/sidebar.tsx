@@ -108,6 +108,7 @@ const candidateNavSections: NavSection[] = [
     items: [
       { label: "Notifications", href: "/notifications", icon: Bell },
       { label: "Profile", href: "/candidate/profile", icon: UserCircle },
+      { label: "Support", href: "/support", icon: LifeBuoy },
     ],
   },
 ];
