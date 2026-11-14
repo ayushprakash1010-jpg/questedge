@@ -209,17 +209,68 @@ export class AuthService {
 
     const normalizedCallerEmail = callerEmail?.trim().toLowerCase();
 
-    // Safety guard against stolen/corrupted sub links:
-    // If the database user's email does not match the authenticated caller's email,
-    // this record was hijacked or improperly linked. Do NOT return it to the caller!
+    // 1. Reconnect any unlinked account from previous placeholder era (e.g. GCC in Quest)
+    const unlinkedOriginalUser = await this.prisma.user.findFirst({
+      where: {
+        email: `${auth0Sub}@placeholder.com`,
+        auth0Sub: { startsWith: 'unlinked_' },
+      },
+      include: { organization: true },
+    });
+
+    if (unlinkedOriginalUser) {
+      this.logger.log(
+        `Restoring unlinked original user account ${unlinkedOriginalUser.id} (${unlinkedOriginalUser.email}) for sub ${auth0Sub}`,
+      );
+      // Clean up empty newly-created dummy user/org if one was created during accidental onboarding
+      if (user && user.id !== unlinkedOriginalUser.id) {
+        const dummyOrgId = user.orgId;
+        await this.prisma.user.delete({ where: { id: user.id } }).catch(() => null);
+        const remainingUsers = await this.prisma.user.count({ where: { orgId: dummyOrgId } });
+        if (remainingUsers === 0) {
+          await this.prisma.organization.delete({ where: { id: dummyOrgId } }).catch(() => null);
+        }
+      }
+
+      // Reconnect original user
+      user = await this.prisma.user.update({
+        where: { id: unlinkedOriginalUser.id },
+        data: {
+          auth0Sub,
+          ...(normalizedCallerEmail && !normalizedCallerEmail.includes('@placeholder.com')
+            ? { email: normalizedCallerEmail }
+            : {}),
+        },
+        include: { organization: true },
+      });
+    }
+
+    // 2. Placeholder email auto-upgrade
     if (
       user &&
       normalizedCallerEmail &&
       !normalizedCallerEmail.includes('@placeholder.com') &&
-      user.email?.toLowerCase() !== normalizedCallerEmail
+      user.email?.includes('@placeholder.com')
+    ) {
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { email: normalizedCallerEmail },
+        include: { organization: true },
+      });
+    }
+
+    // 3. Safety guard against admin sub corruption:
+    // ONLY unlink if the database user is Ayush Prakash's designated admin account
+    // but the token email is someone else!
+    if (
+      user &&
+      normalizedCallerEmail &&
+      !normalizedCallerEmail.includes('@placeholder.com') &&
+      user.email?.toLowerCase() !== normalizedCallerEmail &&
+      user.email?.toLowerCase() === 'ayushprakash1110@gmail.com'
     ) {
       this.logger.warn(
-        `Auth0 sub mismatch: DB user (${user.email}) does not match token email (${normalizedCallerEmail}). Unlinking sub.`,
+        `Auth0 sub mismatch on admin account (${user.email}) for token (${normalizedCallerEmail}). Unlinking sub.`,
       );
       await this.prisma.user.update({
         where: { id: user.id },
@@ -228,7 +279,7 @@ export class AuthService {
       user = null;
     }
 
-    // Only designated support admins may auto-link an existing record by email
+    // 4. Only designated support admins may auto-link an existing record by email
     if (!user && normalizedCallerEmail && !normalizedCallerEmail.includes('@placeholder.com')) {
       const isDesignatedAdmin =
         normalizedCallerEmail === 'ayushprakash1110@gmail.com' ||

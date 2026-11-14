@@ -133,18 +133,61 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         include: { organization: true },
       });
 
-      // Safety check: If caller email is known and does not match the DB record, do not use it
+      // 1. Reconnect any unlinked account from previous placeholder era (e.g. GCC in Quest)
+      const unlinkedOriginalUser = await this.prisma.user.findFirst({
+        where: {
+          email: `${auth0Sub}@placeholder.com`,
+          auth0Sub: { startsWith: 'unlinked_' },
+        },
+        include: { organization: true },
+      });
+
+      if (unlinkedOriginalUser) {
+        if (resolvedProfile && resolvedProfile.id !== unlinkedOriginalUser.id) {
+          const dummyOrgId = resolvedProfile.orgId;
+          await this.prisma.user.delete({ where: { id: resolvedProfile.id } }).catch(() => null);
+          const remainingUsers = await this.prisma.user.count({ where: { orgId: dummyOrgId } });
+          if (remainingUsers === 0) {
+            await this.prisma.organization.delete({ where: { id: dummyOrgId } }).catch(() => null);
+          }
+        }
+        resolvedProfile = await this.prisma.user.update({
+          where: { id: unlinkedOriginalUser.id },
+          data: {
+            auth0Sub,
+            ...(rawEmail && !rawEmail.includes('@placeholder.com') ? { email: rawEmail } : {}),
+          },
+          include: { organization: true },
+        });
+      }
+
+      // Safety check: ONLY clear if the record was Ayush Prakash's designated admin account contaminated by another sub!
       if (
         resolvedProfile &&
         rawEmail &&
         !rawEmail.includes('@placeholder.com') &&
         resolvedProfile.email &&
-        resolvedProfile.email.toLowerCase() !== rawEmail
+        resolvedProfile.email.toLowerCase() !== rawEmail &&
+        resolvedProfile.email.toLowerCase() === 'ayushprakash1110@gmail.com'
       ) {
         this.logger.warn(
-          `Sub mismatch in strategy: record email ${resolvedProfile.email} does not match token email ${rawEmail}. Clearing.`,
+          `Sub mismatch in strategy: admin record ${resolvedProfile.email} does not match token email ${rawEmail}. Clearing.`,
         );
         resolvedProfile = null;
+      }
+
+      // Auto-upgrade placeholder email if rawEmail is available
+      if (
+        resolvedProfile &&
+        rawEmail &&
+        !rawEmail.includes('@placeholder.com') &&
+        resolvedProfile.email?.includes('@placeholder.com')
+      ) {
+        resolvedProfile = await this.prisma.user.update({
+          where: { id: resolvedProfile.id },
+          data: { email: rawEmail },
+          include: { organization: true },
+        });
       }
 
       if (!resolvedProfile) {
