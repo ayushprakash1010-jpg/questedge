@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Building2, Target, UserCircle } from "lucide-react";
+import { ArrowRight, Building2, Target, UserCircle, Globe } from "lucide-react";
 
 export function CTABanner() {
   return (
@@ -19,7 +19,7 @@ export function CTABanner() {
           </p>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2">
+        <div className="grid gap-6 sm:grid-cols-3">
           {/* Company CTA */}
           <div className="rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-8 backdrop-blur-sm">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-600">
@@ -57,16 +57,35 @@ export function CTABanner() {
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </a>
           </div>
+
+          {/* Candidate CTA — NEW */}
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-8 backdrop-blur-sm">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-600">
+              <Globe className="h-5 w-5 text-white" />
+            </div>
+            <h3 className="mt-4 text-xl font-bold text-white">Exploring opportunities?</h3>
+            <p className="mt-2 text-sm text-slate-400">
+              Browse 4,600+ jobs aggregated from Greenhouse, Lever, Ashby &amp; more.
+              Get AI-powered recommendations and apply directly or through referrals.
+            </p>
+            <a
+              href="/auth/login?returnTo=/candidate/external-jobs"
+              className="group mt-6 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-500"
+            >
+              Explore Job Market
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </a>
+          </div>
         </div>
 
         {/* Candidate exploration link */}
         <div className="mt-10 text-center">
           <Link
             href="/jobs"
-            className="inline-flex items-center gap-2 text-sm font-medium text-emerald-400 hover:text-emerald-300 transition-colors"
+            className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-300 transition-colors"
           >
             <UserCircle className="h-4 w-4" />
-            Looking for your next career move? Explore open marketplace roles & portal
+            Or browse the referral marketplace directly
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>

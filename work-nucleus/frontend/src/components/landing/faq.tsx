@@ -45,6 +45,11 @@ const faqs = [
     answer:
       "Independent recruiters, specialized headhunters, and industry professionals with vetted domain networks can register for free. Verified recruiter profiles build trust with companies, gain access to higher bounty tiers, and unlock automated AI candidate matching.",
   },
+  {
+    question: "What is the External Job Market?",
+    answer:
+      "The External Job Market aggregates over 4,600 job listings from leading platforms like Greenhouse, Lever, Ashby, Jobicy, Remotive, and Careerjet into a single, searchable interface. Candidates can browse, save, and apply to jobs across these platforms — plus get AI-powered \"For You\" recommendations tailored to their profile, skills, and experience. It's completely free for candidates.",
+  },
 ];
 
 export function FAQ() {

@@ -3,6 +3,7 @@ import { MarketplaceStats } from "@/components/landing/marketplace-stats";
 import { TrustStrip } from "@/components/landing/trust-strip";
 import { LiveMarketplacePreview } from "@/components/landing/live-marketplace-preview";
 import { Features } from "@/components/landing/features";
+import { ExternalJobMarket } from "@/components/landing/external-job-market";
 import { AIAgents } from "@/components/landing/ai-agents";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { RoiCalculator } from "@/components/landing/roi-calculator";
@@ -19,6 +20,7 @@ export default function LandingPage() {
       <TrustStrip />
       <LiveMarketplacePreview />
       <Features />
+      <ExternalJobMarket />
       <AIAgents />
       <HowItWorks />
       <RoiCalculator />

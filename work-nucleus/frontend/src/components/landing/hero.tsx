@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, CheckCircle, Shield, DollarSign, Lock } from "lucide-react";
+import { ArrowRight, CheckCircle, Shield, DollarSign, Lock, Globe } from "lucide-react";
 import { HeroProductPreview } from "./hero-product-preview";
 
 const trustItems = [
@@ -82,6 +82,23 @@ export function Hero() {
               >
                 See How It Works
               </Link>
+            </motion.div>
+
+            {/* Candidate Exploration Pill */}
+            <motion.div
+              className="mt-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.35 }}
+            >
+              <a
+                href="#external-job-market"
+                className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50/80 px-4 py-2 text-xs font-semibold text-emerald-700 transition-all hover:bg-emerald-100 hover:border-emerald-300 shadow-sm"
+              >
+                <Globe className="h-3.5 w-3.5" />
+                Candidate? Explore 4,600+ jobs from top platforms
+                <ArrowRight className="h-3 w-3" />
+              </a>
             </motion.div>
 
             {/* Trust items row */}
