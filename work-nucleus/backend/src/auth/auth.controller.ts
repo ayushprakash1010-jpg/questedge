@@ -93,7 +93,11 @@ export class AuthController {
           };
         }
       } else if (user.userType === 'COMPANY_USER') {
-        const profile = await this.authService.getMe(user.auth0Sub, user.email);
+        const profile = await this.authService.getMe(
+          user.auth0Sub,
+          user.email,
+          user.emailVerified === true,
+        );
         if (profile) {
           return {
             isProvisioned: true,
@@ -106,7 +110,11 @@ export class AuthController {
 
     // Default flow:
     // First check company users table (verified against token email)
-    const profile = await this.authService.getMe(user.auth0Sub, user.email);
+    const profile = await this.authService.getMe(
+      user.auth0Sub,
+      user.email,
+      user.emailVerified === true,
+    );
     if (profile) {
       return { isProvisioned: true, userType: 'COMPANY_USER', ...profile };
     }

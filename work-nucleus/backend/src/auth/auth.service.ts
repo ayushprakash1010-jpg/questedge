@@ -196,7 +196,7 @@ export class AuthService {
     }
   }
 
-  async getMe(auth0Sub: string, callerEmail?: string) {
+  async getMe(auth0Sub: string, callerEmail?: string, isEmailVerified = false) {
     let user = await this.prisma.user.findUnique({
       where: { auth0Sub },
       include: { organization: true },
@@ -205,6 +205,11 @@ export class AuthService {
     const supportAdminEmails = (process.env.SUPPORT_ADMIN_EMAILS || '')
       .split(',')
       .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+
+    const supportAdminSubs = (process.env.SUPPORT_ADMIN_SUBS || '')
+      .split(',')
+      .map((s) => s.trim())
       .filter(Boolean);
 
     const normalizedCallerEmail = callerEmail?.trim().toLowerCase();
@@ -219,6 +224,9 @@ export class AuthService {
     });
 
     if (unlinkedOriginalUser) {
+      if (unlinkedOriginalUser.isActive === false) {
+        throw new UnauthorizedException('User account is deactivated');
+      }
       this.logger.log(
         `Restoring unlinked original user account ${unlinkedOriginalUser.id} (${unlinkedOriginalUser.email}) for sub ${auth0Sub}`,
       );
@@ -287,10 +295,13 @@ export class AuthService {
     }
 
     // 4. Only designated support admins may auto-link an existing record by email
+    // CRITICAL SECURITY GUARD: Unverified emails must NEVER auto-link or escalate to admin
     if (!user && normalizedCallerEmail && !normalizedCallerEmail.includes('@placeholder.com')) {
       const isDesignatedAdmin =
-        normalizedCallerEmail === 'ayushprakash1110@gmail.com' ||
-        supportAdminEmails.includes(normalizedCallerEmail);
+        supportAdminSubs.includes(auth0Sub) ||
+        (isEmailVerified === true &&
+          (normalizedCallerEmail === 'ayushprakash1110@gmail.com' ||
+            supportAdminEmails.includes(normalizedCallerEmail)));
 
       if (isDesignatedAdmin) {
         user = await this.prisma.user.findUnique({
@@ -323,8 +334,10 @@ export class AuthService {
     }
 
     const isDesignatedAdmin =
-      user.email?.toLowerCase() === 'ayushprakash1110@gmail.com' ||
-      (user.email && supportAdminEmails.includes(user.email.toLowerCase()));
+      supportAdminSubs.includes(auth0Sub) ||
+      (isEmailVerified === true &&
+        (user.email?.toLowerCase() === 'ayushprakash1110@gmail.com' ||
+          (user.email && supportAdminEmails.includes(user.email.toLowerCase()))));
 
     if (isDesignatedAdmin && user.role !== Role.SUPPORT_ADMIN) {
       user = await this.prisma.user.update({

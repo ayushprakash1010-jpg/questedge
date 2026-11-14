@@ -73,16 +73,52 @@ export class FileUploadService implements OnModuleInit {
   private readonly logger = new Logger(FileUploadService.name);
 
   constructor(private readonly config: ConfigService) {
-    this.bucket = this.config.get<string>('S3_BUCKET', 'questedge-resumes');
-    this.s3 = new S3Client({
-      endpoint: this.config.get<string>('S3_ENDPOINT', 'http://localhost:9000'),
-      region: this.config.get<string>('S3_REGION', 'us-east-1'),
+    this.bucket =
+      this.config.get<string>('S3_BUCKET') ||
+      this.config.get<string>('AWS_BUCKET_NAME') ||
+      'questedge-resumes';
+
+    const accessKeyId =
+      this.config.get<string>('S3_ACCESS_KEY') ||
+      this.config.get<string>('S3_ACCESS_KEY_ID') ||
+      this.config.get<string>('AWS_ACCESS_KEY_ID') ||
+      'minioadmin';
+
+    const secretAccessKey =
+      this.config.get<string>('S3_SECRET_KEY') ||
+      this.config.get<string>('S3_SECRET_ACCESS_KEY') ||
+      this.config.get<string>('AWS_SECRET_ACCESS_KEY') ||
+      'minioadmin';
+
+    const region =
+      this.config.get<string>('S3_REGION') ||
+      this.config.get<string>('AWS_REGION') ||
+      'us-east-1';
+
+    const customEndpoint = this.config.get<string>('S3_ENDPOINT');
+    const isAwsConfig = Boolean(
+      this.config.get<string>('AWS_REGION') ||
+      this.config.get<string>('AWS_ACCESS_KEY_ID'),
+    );
+
+    const s3Config: any = {
+      region,
       credentials: {
-        accessKeyId: this.config.get<string>('S3_ACCESS_KEY', 'minioadmin'),
-        secretAccessKey: this.config.get<string>('S3_SECRET_KEY', 'minioadmin'),
+        accessKeyId,
+        secretAccessKey,
       },
-      forcePathStyle: true, // required for MinIO
-    });
+    };
+
+    if (customEndpoint) {
+      s3Config.endpoint = customEndpoint;
+      s3Config.forcePathStyle = true;
+    } else if (!isAwsConfig) {
+      // Local Minio fallback
+      s3Config.endpoint = 'http://localhost:9000';
+      s3Config.forcePathStyle = true;
+    }
+
+    this.s3 = new S3Client(s3Config);
   }
 
   async onModuleInit() {

@@ -6,7 +6,9 @@ import { SupportSidebar } from "@/components/support-sidebar";
 import { SupportTopBar } from "@/components/support-top-bar";
 import { useProfile } from "@/hooks/use-profile";
 
-const IS_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+const IS_MOCK =
+  process.env.NODE_ENV !== "production" &&
+  process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
 
 export default function ProtectedLayout({
   children,

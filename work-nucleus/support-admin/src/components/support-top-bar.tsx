@@ -6,7 +6,9 @@ import { LogOut } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useRef, useEffect } from "react";
 
-const IS_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+const IS_MOCK =
+  process.env.NODE_ENV !== "production" &&
+  process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
 
 export function SupportTopBar() {
   const { user } = useUser();

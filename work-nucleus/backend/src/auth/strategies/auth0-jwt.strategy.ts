@@ -385,10 +385,12 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       const unprovisioned = {
         auth0Sub,
         email:
+          verifiedEmail ||
           rawEmail ||
           payload['https://api.questedge.com/email'] ||
           payload.email ||
           `${auth0Sub}@placeholder.com`,
+        emailVerified: isEmailVerified,
         name: payload['https://api.questedge.com/name'] || payload.name,
         userType: actualUserType,
         isProvisioned: false,
@@ -402,6 +404,7 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 
     const finalProfile = {
       ...resolvedProfile,
+      emailVerified: isEmailVerified,
       userType: actualUserType,
       isProvisioned: true,
     };
