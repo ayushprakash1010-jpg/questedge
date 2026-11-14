@@ -11,8 +11,18 @@ export async function GET() {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
     const { token } = await auth0.getAccessToken();
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${token}`,
+    };
+    if (session.user?.email) {
+      headers["X-User-Email"] = session.user.email;
+    }
+    if (session.user?.name) {
+      headers["X-User-Name"] = session.user.name;
+    }
+
     const res = await fetch(`${API_URL}/api/v1/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers,
     });
     const profile = await res.json();
     const email =

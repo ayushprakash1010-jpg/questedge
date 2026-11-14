@@ -31,7 +31,7 @@ import { useProfile } from "@/hooks/use-profile";
 
 const IS_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
 const SUPPORT_ADMIN_URL =
-  process.env.NEXT_PUBLIC_SUPPORT_ADMIN_URL || "https://questedge-support-admin.vercel.app";
+  process.env.NEXT_PUBLIC_SUPPORT_ADMIN_URL || "https://admin.questedge.in";
 
 export function TopBar() {
   const { user } = useUser();

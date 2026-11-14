@@ -65,7 +65,7 @@ export default function UnifiedProfilePage() {
     .slice(0, 2);
 
   const supportAdminUrl =
-    process.env.NEXT_PUBLIC_SUPPORT_ADMIN_URL || "https://questedge-support-admin.vercel.app";
+    process.env.NEXT_PUBLIC_SUPPORT_ADMIN_URL || "https://admin.questedge.in";
 
   return (
     <div className="space-y-6 max-w-5xl">

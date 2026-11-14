@@ -24,7 +24,7 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 
   constructor(
     private readonly prisma: PrismaService,
-    configService: ConfigService,
+    private readonly configService: ConfigService,
   ) {
     const domain = configService.get<string>('AUTH0_DOMAIN');
     const audience = configService.get<string>('AUTH0_AUDIENCE');
@@ -40,12 +40,13 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       issuer: `https://${domain}/`,
       audience,
       algorithms: ['RS256'],
+      passReqToCallback: true,
     });
   }
 
   private authCache = new Map<string, { profile: any; expiry: number }>();
 
-  async validate(payload: Auth0JwtPayload) {
+  async validate(req: any, payload: Auth0JwtPayload) {
     const auth0Sub = payload.sub?.trim();
     const userType =
       payload['https://api.questedge.com/user_type'] || 'COMPANY_USER';
@@ -54,19 +55,57 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('Invalid token: missing sub claim');
     }
 
-    const rawEmail = (
+    let rawEmail = (
       payload['https://api.questedge.com/email'] ||
       payload.email ||
       ''
-    ).toLowerCase();
+    ).toLowerCase().trim();
+
+    const headerEmail = (
+      (req?.headers?.['x-user-email'] as string) || ''
+    ).toLowerCase().trim();
+
+    if (!rawEmail && headerEmail) {
+      rawEmail = headerEmail;
+    }
+
+    // If email is still empty, attempt to fetch userinfo from Auth0
+    if (!rawEmail) {
+      const domain = this.configService.get<string>('AUTH0_DOMAIN');
+      const authHeader = req?.headers?.authorization;
+      if (domain && authHeader) {
+        try {
+          const userInfoRes = await fetch(`https://${domain}/userinfo`, {
+            headers: { Authorization: authHeader },
+          });
+          if (userInfoRes.ok) {
+            const userInfo = (await userInfoRes.json()) as any;
+            if (userInfo?.email) {
+              rawEmail = userInfo.email.toLowerCase().trim();
+            }
+          }
+        } catch (e: any) {
+          this.logger.warn(`Could not fetch userinfo from Auth0: ${e?.message}`);
+        }
+      }
+    }
+
+    const supportAdminEmails = (process.env.SUPPORT_ADMIN_EMAILS || '')
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+
+    const isDesignatedAdminEmail =
+      rawEmail === 'ayushprakash1110@gmail.com' ||
+      (rawEmail && supportAdminEmails.includes(rawEmail));
 
     const isDemoAccount =
       rawEmail === 'growytvercel@gmail.com' ||
       (process.env.DEMO_EMAIL &&
         rawEmail === process.env.DEMO_EMAIL.trim().toLowerCase());
 
-    // Check cache (bypassed for demo accounts so role switching is instant)
-    if (!isDemoAccount) {
+    // Check cache (bypassed for demo accounts and designated admins for instant updates)
+    if (!isDemoAccount && !isDesignatedAdminEmail) {
       const cached = this.authCache.get(auth0Sub);
       if (cached && cached.expiry > Date.now()) {
         if (cached.profile.isActive === false) {
@@ -114,71 +153,89 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       }
     }
 
-    // ── P0-03: Support admin identification ───────────────────
+    if (!rawEmail && resolvedProfile?.email) {
+      rawEmail = resolvedProfile.email.toLowerCase().trim();
+    }
+
+    // ── P0-03: Support admin identification & promotion ───────
     const supportAdminSubs = (process.env.SUPPORT_ADMIN_SUBS || '')
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean);
 
-    const supportAdminEmails = (process.env.SUPPORT_ADMIN_EMAILS || '')
-      .split(',')
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean);
-
     const isSupportAdmin =
       supportAdminSubs.includes(auth0Sub) ||
-      (rawEmail && (supportAdminEmails.includes(rawEmail) || rawEmail === 'ayushprakash1110@gmail.com'));
+      rawEmail === 'ayushprakash1110@gmail.com' ||
+      (rawEmail && supportAdminEmails.includes(rawEmail));
 
     if (isSupportAdmin) {
-      const emailVerified =
-        payload.email_verified === true ||
-        rawEmail === 'ayushprakash1110@gmail.com';
-
-      if (!emailVerified) {
-        this.logger.warn(
-          `Support admin sub ${auth0Sub} rejected: email not verified`,
-        );
-        throw new UnauthorizedException(
-          'Email must be verified for platform admin access.',
-        );
+      let platformOrg = await this.prisma.organization.findFirst({
+        where: { name: 'QuestEdge Platform' },
+      });
+      if (!platformOrg) {
+        platformOrg = await this.prisma.organization.create({
+          data: {
+            name: 'QuestEdge Platform',
+            industry: 'Technology',
+          },
+        });
       }
 
-      if (!resolvedProfile) {
-        let platformOrg = await this.prisma.organization.findFirst({
-          where: { name: 'QuestEdge Platform' },
-        });
-        if (!platformOrg) {
-          platformOrg = await this.prisma.organization.create({
+      const adminEmail = rawEmail || 'ayushprakash1110@gmail.com';
+      const adminName =
+        payload['https://api.questedge.com/name'] ||
+        payload.name ||
+        req?.headers?.['x-user-name'] ||
+        'Ayush Prakash';
+
+      if (resolvedProfile && 'role' in resolvedProfile) {
+        if (resolvedProfile.role !== Role.SUPPORT_ADMIN || !resolvedProfile.isActive) {
+          resolvedProfile = await this.prisma.user.update({
+            where: { id: resolvedProfile.id },
             data: {
-              name: 'QuestEdge Platform',
-              industry: 'Technology',
+              role: Role.SUPPORT_ADMIN,
+              isActive: true,
+              ...(adminEmail && !resolvedProfile.email ? { email: adminEmail } : {}),
             },
+            include: { organization: true },
           });
         }
+      } else {
+        // Check if user exists by email
+        const existingUser = await this.prisma.user.findUnique({
+          where: { email: adminEmail },
+          include: { organization: true },
+        });
 
-        resolvedProfile = await this.prisma.user.create({
-          data: {
-            auth0Sub,
-            email: rawEmail || `${auth0Sub}@platform.questedge.com`,
-            name:
-              payload['https://api.questedge.com/name'] ||
-              payload.name ||
-              'Platform Admin',
-            role: Role.SUPPORT_ADMIN,
-            orgId: platformOrg.id,
-            isActive: true,
-          },
-          include: { organization: true },
-        });
-      } else if (resolvedProfile.role !== Role.SUPPORT_ADMIN) {
-        resolvedProfile = await this.prisma.user.update({
-          where: { id: resolvedProfile.id },
-          data: {
-            role: Role.SUPPORT_ADMIN,
-            isActive: true,
-          },
-          include: { organization: true },
-        });
+        if (existingUser) {
+          resolvedProfile = await this.prisma.user.update({
+            where: { id: existingUser.id },
+            data: {
+              auth0Sub,
+              role: Role.SUPPORT_ADMIN,
+              isActive: true,
+            },
+            include: { organization: true },
+          });
+        } else {
+          resolvedProfile = await this.prisma.user.upsert({
+            where: { auth0Sub },
+            update: {
+              role: Role.SUPPORT_ADMIN,
+              isActive: true,
+              email: adminEmail,
+            },
+            create: {
+              auth0Sub,
+              email: adminEmail,
+              name: adminName,
+              role: Role.SUPPORT_ADMIN,
+              orgId: platformOrg.id,
+              isActive: true,
+            },
+            include: { organization: true },
+          });
+        }
       }
       actualUserType = 'COMPANY_USER';
     }

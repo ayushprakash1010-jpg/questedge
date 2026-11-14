@@ -20,7 +20,7 @@ export const auth0 = new Auth0Client({
     process.env.AUTHO_BASE_URL ||
     (process.env.VERCEL_PROJECT_PRODUCTION_URL
       ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : "https://questedge-support-admin.vercel.app")
+      : "https://admin.questedge.in")
   ).trim(),
   routes: {
     callback: "/auth/callback",

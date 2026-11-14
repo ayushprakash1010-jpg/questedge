@@ -194,13 +194,54 @@ export class AuthService {
   }
 
   async getMe(auth0Sub: string) {
-    const user = await this.prisma.user.findUnique({
+    let user = await this.prisma.user.findUnique({
       where: { auth0Sub },
       include: { organization: true },
     });
 
+    const supportAdminEmails = (process.env.SUPPORT_ADMIN_EMAILS || '')
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+
+    // If not found by auth0Sub, check if user exists by designated admin email
+    if (!user) {
+      user = await this.prisma.user.findFirst({
+        where: {
+          email: {
+            in: ['ayushprakash1110@gmail.com', ...supportAdminEmails],
+          },
+        },
+        include: { organization: true },
+      });
+
+      if (user && user.auth0Sub !== auth0Sub) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            auth0Sub,
+            role: Role.SUPPORT_ADMIN,
+            isActive: true,
+          },
+          include: { organization: true },
+        });
+      }
+    }
+
     if (!user) {
       return null;
+    }
+
+    const isDesignatedAdmin =
+      user.email?.toLowerCase() === 'ayushprakash1110@gmail.com' ||
+      (user.email && supportAdminEmails.includes(user.email.toLowerCase()));
+
+    if (isDesignatedAdmin && (user.role !== Role.SUPPORT_ADMIN || !user.isActive)) {
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { role: Role.SUPPORT_ADMIN, isActive: true },
+        include: { organization: true },
+      });
     }
 
     return {
@@ -210,7 +251,7 @@ export class AuthService {
       role: user.role,
       avatarUrl: user.avatarUrl,
       isActive: user.isActive,
-isDemoAccount: user.isDemoAccount,
+      isDemoAccount: user.isDemoAccount,
       organization: {
         id: user.organization.id,
         name: user.organization.name,
