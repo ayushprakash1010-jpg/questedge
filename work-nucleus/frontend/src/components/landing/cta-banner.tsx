@@ -65,7 +65,7 @@ export function CTABanner() {
             </div>
             <h3 className="mt-4 text-xl font-bold text-white">Exploring opportunities?</h3>
             <p className="mt-2 text-sm text-slate-400">
-              Browse 4,600+ jobs aggregated from Greenhouse, Lever, Ashby &amp; more.
+              Browse thousands of live jobs aggregated from Greenhouse, Lever, Ashby &amp; more.
               Get AI-powered recommendations and apply directly or through referrals.
             </p>
             <a

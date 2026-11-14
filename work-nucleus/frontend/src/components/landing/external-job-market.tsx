@@ -100,7 +100,7 @@ export function ExternalJobMarket() {
           <h2 className="mt-5 text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
             Explore{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
-              4,600+ jobs
+              thousands of live jobs
             </span>{" "}
             from top hiring platforms
           </h2>
@@ -155,7 +155,7 @@ export function ExternalJobMarket() {
                 </div>
                 <div className="ml-3 flex items-center gap-2 rounded-lg bg-slate-700/50 px-3 py-1 text-[11px] text-slate-400 font-mono flex-1 max-w-xs">
                   <Search className="h-3 w-3" />
-                  queststedge.in/candidate/external-jobs
+                  questedge.in/candidate/external-jobs
                 </div>
               </div>
 
@@ -223,10 +223,10 @@ export function ExternalJobMarket() {
               <div className="flex items-center justify-between border-t border-slate-700/50 px-4 py-3">
                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
                   <Zap className="h-3.5 w-3.5" />
-                  4,651 jobs found
+                  Thousands of active roles
                 </span>
                 <span className="text-[10px] text-slate-500">
-                  Updated every few hours
+                  Continuously synced across ATS boards
                 </span>
               </div>
             </div>

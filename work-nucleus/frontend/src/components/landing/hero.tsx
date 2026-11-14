@@ -96,7 +96,7 @@ export function Hero() {
                 className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50/80 px-4 py-2 text-xs font-semibold text-emerald-700 transition-all hover:bg-emerald-100 hover:border-emerald-300 shadow-sm"
               >
                 <Globe className="h-3.5 w-3.5" />
-                Candidate? Explore 4,600+ jobs from top platforms
+                Candidate? Explore thousands of live jobs from top platforms
                 <ArrowRight className="h-3 w-3" />
               </a>
             </motion.div>
