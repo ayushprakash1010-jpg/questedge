@@ -4,12 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Search, Filter, ChevronRight, Download, RefreshCw, CheckSquare,
-  Square, Users, X, Clock, AlertTriangle,
+  Square, Users, X, Clock, AlertTriangle, UserPlus, ShieldCheck,
 } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { TableSkeleton } from "@/components/skeletons";
 import { EmptyState, ErrorState } from "@/components/feedback";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
+import { useProfile } from "@/hooks/use-profile";
 
 interface User {
   id: string;
@@ -51,6 +52,58 @@ export default function UsersPage() {
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkResult, setBulkResult] = useState<string | null>(null);
   const [showBulkPanel, setShowBulkPanel] = useState(false);
+
+  // Profile and Support Admin modal state
+  const { profile } = useProfile();
+  const isSuperAdmin = profile?.role === "SUPPORT_ADMIN";
+  const [showAddAdminModal, setShowAddAdminModal] = useState(false);
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminName, setAdminName] = useState("");
+  const [adminRole, setAdminRole] = useState<"SUPPORT_ADMIN" | "SUPPORT_REP">("SUPPORT_ADMIN");
+  const [adminReason, setAdminReason] = useState("");
+  const [adminSubmitting, setAdminSubmitting] = useState(false);
+  const [adminError, setAdminError] = useState<string | null>(null);
+  const [adminSuccess, setAdminSuccess] = useState<string | null>(null);
+
+  async function handleAddSupportAdmin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!adminEmail.trim() || !adminReason.trim()) {
+      setAdminError("Email and reason are required.");
+      return;
+    }
+    setAdminSubmitting(true);
+    setAdminError(null);
+    setAdminSuccess(null);
+    try {
+      const res = await fetch("/api/support/users/admins", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: adminEmail.trim(),
+          name: adminName.trim() || undefined,
+          role: adminRole,
+          reason: adminReason.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || data.error || "Failed to grant admin access");
+      }
+      setAdminSuccess(data.message || `Successfully granted ${adminRole} access to ${adminEmail}`);
+      setTimeout(() => {
+        setShowAddAdminModal(false);
+        setAdminEmail("");
+        setAdminName("");
+        setAdminReason("");
+        setAdminSuccess(null);
+        fetchUsers();
+      }, 1600);
+    } catch (err: any) {
+      setAdminError(err.message || "Failed to grant admin access");
+    } finally {
+      setAdminSubmitting(false);
+    }
+  }
 
   // Search debounce
   useEffect(() => {
@@ -219,11 +272,25 @@ export default function UsersPage() {
           <button
             id="users-export-csv"
             onClick={exportCsv}
-            className="flex items-center gap-1.5 h-9 rounded-md bg-primary text-primary-foreground px-3 text-xs font-medium hover:bg-primary/90 transition-colors"
+            className="flex items-center gap-1.5 h-9 rounded-md border px-3 text-xs font-medium hover:bg-accent transition-colors"
           >
             <Download className="h-3.5 w-3.5" />
             Export CSV
           </button>
+          {isSuperAdmin && (
+            <button
+              id="users-add-admin-btn"
+              onClick={() => {
+                setAdminError(null);
+                setAdminSuccess(null);
+                setShowAddAdminModal(true);
+              }}
+              className="flex items-center gap-1.5 h-9 rounded-md bg-primary text-primary-foreground px-3 text-xs font-medium hover:bg-primary/90 transition-colors shadow-sm"
+            >
+              <UserPlus className="h-3.5 w-3.5" />
+              Add Support Admin
+            </button>
+          )}
         </div>
       </div>
 
@@ -459,6 +526,139 @@ export default function UsersPage() {
           </div>
         )}
       </div>
+
+      {/* Add Support Admin Modal */}
+      {showAddAdminModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-admin-modal-title"
+        >
+          <div className="w-full max-w-lg rounded-2xl bg-card border p-6 shadow-2xl space-y-4 animate-in fade-in-0 zoom-in-95">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 id="add-admin-modal-title" className="font-semibold text-lg">
+                    Grant Support Admin Access
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Authorize a team member to access the Support Admin Portal.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddAdminModal(false)}
+                className="text-muted-foreground hover:text-foreground p-1 rounded-md"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {adminError && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {adminError}
+              </div>
+            )}
+
+            {adminSuccess && (
+              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-600">
+                ✓ {adminSuccess}
+              </div>
+            )}
+
+            <form onSubmit={handleAddSupportAdmin} className="space-y-4 text-sm">
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">
+                  User Email <span className="text-destructive">*</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                  placeholder="e.g. colleague@questedge.in"
+                  className="w-full h-9 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">
+                  Full Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={adminName}
+                  onChange={(e) => setAdminName(e.target.value)}
+                  placeholder="e.g. Sarah Jenkins"
+                  className="w-full h-9 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">
+                  Select Role <span className="text-destructive">*</span>
+                </label>
+                <select
+                  value={adminRole}
+                  onChange={(e) => setAdminRole(e.target.value as any)}
+                  className="w-full h-9 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="SUPPORT_ADMIN">SUPPORT_ADMIN (Full Platform & Operations Access)</option>
+                  <option value="SUPPORT_REP">SUPPORT_REP (Support Tickets & Directory View Only)</option>
+                </select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  {adminRole === "SUPPORT_ADMIN"
+                    ? "Full administrative access: can manage users, view AI costs, inspect audit logs, and toggle platform tools."
+                    : "Standard support access: can manage customer tickets and view user directory."}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">
+                  Reason for Access <span className="text-destructive">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  minLength={5}
+                  value={adminReason}
+                  onChange={(e) => setAdminReason(e.target.value)}
+                  placeholder="e.g. Onboarding new platform operations engineer"
+                  className="w-full h-9 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Written to the immutable audit log for compliance.
+                </p>
+              </div>
+
+              <div className="rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">Important:</span> The user must log in via Auth0 using this exact email with a verified email address to claim admin access.
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowAddAdminModal(false)}
+                  className="h-9 px-4 rounded-md border text-xs font-medium hover:bg-accent transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={adminSubmitting}
+                  className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {adminSubmitting ? "Granting..." : "Grant Admin Access"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

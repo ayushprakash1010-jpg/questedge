@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { Role, UserType } from '@prisma/client';
@@ -665,5 +665,150 @@ export class PlatformUsersService {
         organization: { select: { name: true } },
       },
     });
+  }
+
+  async addSupportAdmin(
+    dto: { email: string; name?: string; role: Role; reason: string },
+    actorId: string,
+  ) {
+    const normalizedEmail = dto.email.trim().toLowerCase();
+    if (!([Role.SUPPORT_ADMIN, Role.SUPPORT_REP] as Role[]).includes(dto.role)) {
+      throw new BadRequestException('Role must be SUPPORT_ADMIN or SUPPORT_REP');
+    }
+    if (!dto.reason || dto.reason.trim().length < 5) {
+      throw new BadRequestException('Reason must be at least 5 characters');
+    }
+
+    // Get or create QuestEdge Platform organization
+    let platformOrg = await this.prisma.organization.findFirst({
+      where: { name: 'QuestEdge Platform' },
+    });
+    if (!platformOrg) {
+      platformOrg = await this.prisma.organization.create({
+        data: {
+          name: 'QuestEdge Platform',
+          industry: 'Technology',
+        },
+      });
+    }
+
+    let user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    const previousRole = user?.role ?? null;
+
+    if (user) {
+      if (user.isActive === false) {
+        throw new BadRequestException('Cannot grant admin access to a deactivated user. Reactivate the account first.');
+      }
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          role: dto.role,
+          ...(dto.name ? { name: dto.name } : {}),
+        },
+      });
+    } else {
+      // Pre-provision user record so that when they sign in with verified Auth0 email, they auto-link
+      const tempAuth0Sub = `pending_admin_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      user = await this.prisma.user.create({
+        data: {
+          email: normalizedEmail,
+          name: dto.name || normalizedEmail.split('@')[0],
+          auth0Sub: tempAuth0Sub,
+          role: dto.role,
+          orgId: platformOrg.id,
+          isActive: true,
+        },
+      });
+    }
+
+    const orgId = await this.getValidOrgId(actorId);
+    await this.auditService.log({
+      orgId,
+      userId: actorId,
+      action: 'GRANT_SUPPORT_ROLE',
+      entityType: 'USER',
+      entityId: user.id,
+      changes: {
+        before: { role: previousRole },
+        after: { role: dto.role },
+        reason: dto.reason,
+        targetEmail: user.email,
+        targetName: user.name,
+      },
+    });
+
+    return {
+      success: true,
+      message: `Successfully granted ${dto.role} access to ${user.email}`,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
+    };
+  }
+
+  async updateUserRole(
+    userId: string,
+    role: Role,
+    actorId: string,
+    reason: string,
+  ) {
+    if (!reason || reason.trim().length < 5) {
+      throw new BadRequestException('Reason must be at least 5 characters');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    // Protect root admin owner from demotion
+    if (user.email?.toLowerCase() === 'ayushprakash1110@gmail.com' && role !== Role.SUPPORT_ADMIN) {
+      throw new BadRequestException('Root platform owner cannot be demoted');
+    }
+
+    // Protect self-lockout
+    if (actorId === user.id && role !== Role.SUPPORT_ADMIN) {
+      throw new BadRequestException('You cannot remove your own admin access');
+    }
+
+    const previousRole = user.role;
+    if (previousRole === role) {
+      return { success: true, message: `User already has role ${role}`, user };
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { role },
+    });
+
+    const orgId = await this.getValidOrgId(actorId);
+    await this.auditService.log({
+      orgId,
+      userId: actorId,
+      action: 'CHANGE_USER_ROLE',
+      entityType: 'USER',
+      entityId: user.id,
+      changes: {
+        before: { role: previousRole },
+        after: { role },
+        reason,
+        targetEmail: user.email,
+        targetName: user.name,
+      },
+    });
+
+    return {
+      success: true,
+      message: `User role updated from ${previousRole} to ${role}`,
+      user: updated,
+    };
   }
 }

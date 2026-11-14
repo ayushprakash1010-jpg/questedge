@@ -21,6 +21,7 @@ import {
 import { Role, UserType } from '@prisma/client';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { PlatformUsersService } from './platform-users.service';
+import { AddSupportAdminDto, UpdateUserRoleDto } from './dto/add-support-admin.dto';
 
 @ApiTags('Platform Users (Support Admin)')
 @ApiBearerAuth()
@@ -163,6 +164,33 @@ export class PlatformUsersController {
     }
     return this.platformUsersService.activateUser(
       userId,
+      req.user.id,
+      body.reason,
+    );
+  }
+
+  @Post('admins')
+  @Roles(Role.SUPPORT_ADMIN)
+  @ApiOperation({
+    summary: 'Platform: Add or pre-provision a Support Admin / Rep (SUPPORT_ADMIN only)',
+  })
+  addSupportAdmin(@Body() body: AddSupportAdminDto, @Req() req: any) {
+    return this.platformUsersService.addSupportAdmin(body, req.user.id);
+  }
+
+  @Patch(':userId/role')
+  @Roles(Role.SUPPORT_ADMIN)
+  @ApiOperation({
+    summary: 'Platform: Update user role (SUPPORT_ADMIN only)',
+  })
+  updateUserRole(
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Body() body: UpdateUserRoleDto,
+    @Req() req: any,
+  ) {
+    return this.platformUsersService.updateUserRole(
+      userId,
+      body.role,
       req.user.id,
       body.reason,
     );

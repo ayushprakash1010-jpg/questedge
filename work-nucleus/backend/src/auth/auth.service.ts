@@ -297,11 +297,26 @@ export class AuthService {
     // 4. Only designated support admins may auto-link an existing record by email
     // CRITICAL SECURITY GUARD: Unverified emails must NEVER auto-link or escalate to admin
     if (!user && normalizedCallerEmail && !normalizedCallerEmail.includes('@placeholder.com')) {
-      const isDesignatedAdmin =
+      let isDesignatedAdmin =
         supportAdminSubs.includes(auth0Sub) ||
         (isEmailVerified === true &&
           (normalizedCallerEmail === 'ayushprakash1110@gmail.com' ||
             supportAdminEmails.includes(normalizedCallerEmail)));
+
+      let preProvisionedRole: Role | null = null;
+      if (!isDesignatedAdmin && isEmailVerified === true) {
+        const preProvisioned = await this.prisma.user.findUnique({
+          where: { email: normalizedCallerEmail },
+          select: { role: true, isActive: true },
+        });
+        if (
+          preProvisioned &&
+          (preProvisioned.role === Role.SUPPORT_ADMIN || preProvisioned.role === Role.SUPPORT_REP)
+        ) {
+          isDesignatedAdmin = true;
+          preProvisionedRole = preProvisioned.role;
+        }
+      }
 
       if (isDesignatedAdmin) {
         user = await this.prisma.user.findUnique({
@@ -317,7 +332,7 @@ export class AuthService {
             where: { id: user.id },
             data: {
               auth0Sub,
-              role: Role.SUPPORT_ADMIN,
+              role: preProvisionedRole || Role.SUPPORT_ADMIN,
             },
             include: { organization: true },
           });

@@ -190,4 +190,49 @@ describe('AuthService - Admin Protection and Identity Verification', () => {
       include: { organization: true },
     });
   });
+
+  it('allows auto-linking a UI pre-provisioned support admin when email is verified', async () => {
+    delete process.env.SUPPORT_ADMIN_EMAILS;
+
+    const preProvisionedAdmin = {
+      id: 'pre-admin-uuid',
+      auth0Sub: 'pending_admin_123',
+      email: 'newadmin@questedge.in',
+      name: 'New Admin',
+      role: Role.SUPPORT_ADMIN,
+      isActive: true,
+      orgId: 'org-uuid',
+      organization: { id: 'org-uuid', name: 'QuestEdge Platform' },
+    };
+
+    prismaMock.user.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ role: Role.SUPPORT_ADMIN, isActive: true })
+      .mockResolvedValueOnce(preProvisionedAdmin);
+
+    prismaMock.user.findFirst.mockResolvedValueOnce(null);
+
+    prismaMock.user.update.mockResolvedValueOnce({
+      ...preProvisionedAdmin,
+      auth0Sub: 'auth0|verified-new-admin',
+      role: Role.SUPPORT_ADMIN,
+    });
+
+    const result = await authService.getMe(
+      'auth0|verified-new-admin',
+      'newadmin@questedge.in',
+      true,
+    );
+
+    expect(result).toBeDefined();
+    expect(result?.role).toBe(Role.SUPPORT_ADMIN);
+    expect(prismaMock.user.update).toHaveBeenCalledWith({
+      where: { id: 'pre-admin-uuid' },
+      data: {
+        auth0Sub: 'auth0|verified-new-admin',
+        role: Role.SUPPORT_ADMIN,
+      },
+      include: { organization: true },
+    });
+  });
 });

@@ -114,11 +114,25 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 
     // CRITICAL SECURITY GUARD:
     // Only strictly verified email (email_verified === true) or immutable sub can qualify for admin privileges
-    const isDesignatedAdmin =
+    let isDesignatedAdmin =
       supportAdminSubs.includes(auth0Sub) ||
       (Boolean(verifiedEmail) &&
         (verifiedEmail === 'ayushprakash1110@gmail.com' ||
          supportAdminEmails.includes(verifiedEmail)));
+
+    // Check if user was pre-provisioned in database with a support role
+    if (!isDesignatedAdmin && verifiedEmail) {
+      const preProvisioned = await this.prisma.user.findUnique({
+        where: { email: verifiedEmail },
+        select: { role: true, isActive: true },
+      });
+      if (
+        preProvisioned &&
+        (preProvisioned.role === Role.SUPPORT_ADMIN || preProvisioned.role === Role.SUPPORT_REP)
+      ) {
+        isDesignatedAdmin = true;
+      }
+    }
 
     const isDemoAccount =
       rawEmail === 'growytvercel@gmail.com' ||
@@ -352,7 +366,10 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
             where: { id: existingUser.id },
             data: {
               auth0Sub,
-              role: Role.SUPPORT_ADMIN,
+              role:
+                existingUser.role === Role.SUPPORT_REP
+                  ? Role.SUPPORT_REP
+                  : Role.SUPPORT_ADMIN,
             },
             include: { organization: true },
           });

@@ -11,6 +11,8 @@ import {
   UserCheck,
   AlertTriangle,
   Clock,
+  ShieldCheck,
+  ShieldAlert,
 } from "lucide-react";
 import { useProfile } from "@/hooks/use-profile";
 
@@ -61,6 +63,49 @@ export default function UserDetailPage() {
     error: "",
   });
   const [successMsg, setSuccessMsg] = useState("");
+
+  // Role update state
+  const [targetRole, setTargetRole] = useState<string>("");
+  const [roleReason, setRoleReason] = useState<string>("");
+  const [roleSubmitting, setRoleSubmitting] = useState(false);
+  const [roleError, setRoleError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user?.role) {
+      setTargetRole(user.role);
+    }
+  }, [user]);
+
+  async function handleUpdateRole(e: React.FormEvent) {
+    e.preventDefault();
+    if (!targetRole || !roleReason.trim() || roleReason.trim().length < 5) {
+      setRoleError("A reason (minimum 5 characters) is required.");
+      return;
+    }
+    setRoleSubmitting(true);
+    setRoleError(null);
+    try {
+      const res = await fetch(`/api/support/users/${params.userId}/role`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role: targetRole,
+          reason: roleReason.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || data.error || "Failed to update role");
+      }
+      setSuccessMsg(data.message || `Role updated to ${targetRole}`);
+      setRoleReason("");
+      await fetchUser();
+    } catch (e: any) {
+      setRoleError(e.message || "Failed to update role");
+    } finally {
+      setRoleSubmitting(false);
+    }
+  }
 
   useEffect(() => {
     fetchUser();
@@ -226,32 +271,100 @@ export default function UserDetailPage() {
 
       {/* Actions Tab — SUPPORT_ADMIN only */}
       {tab === "actions" && isAdmin && (
-        <div className="rounded-xl border bg-card p-6 space-y-4">
-          <h3 className="font-semibold text-sm">Account Actions</h3>
-          <div className="flex gap-3">
-            {user.isActive ? (
-              <button
-                id="btn-deactivate-user"
-                onClick={() => setConfirm({ open: true, action: "deactivate", reason: "", submitting: false, error: "" })}
-                className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
-              >
-                <UserX className="h-4 w-4" /> Deactivate Account
-              </button>
-            ) : (
-              <button
-                id="btn-activate-user"
-                onClick={() => setConfirm({ open: true, action: "activate", reason: "", submitting: false, error: "" })}
-                className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 transition-colors"
-              >
-                <UserCheck className="h-4 w-4" /> Reactivate Account
-              </button>
+        <div className="space-y-6">
+          {/* Change Role Card */}
+          <div className="rounded-xl border bg-card p-6 space-y-4">
+            <div className="flex items-center gap-2 text-foreground font-semibold text-sm">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              Change User Role & Permissions
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Promote or change this user&apos;s platform access level. Changes take effect immediately upon next request and are logged in the audit trail.
+            </p>
+
+            {roleError && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {roleError}
+              </div>
             )}
+
+            <form onSubmit={handleUpdateRole} className="space-y-4 max-w-md">
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">
+                  Assigned Role
+                </label>
+                <select
+                  value={targetRole}
+                  onChange={(e) => setTargetRole(e.target.value)}
+                  className="w-full h-9 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <optgroup label="Platform Support Roles (Admin Portal)">
+                    <option value="SUPPORT_ADMIN">SUPPORT_ADMIN (Full Platform Operations & Controls)</option>
+                    <option value="SUPPORT_REP">SUPPORT_REP (Customer Support Representative)</option>
+                  </optgroup>
+                  <optgroup label="Company Workspace Roles (Main App)">
+                    <option value="ADMIN">ADMIN (Company Workspace Owner)</option>
+                    <option value="HR">HR (Talent Acquisition)</option>
+                    <option value="HIRING_MANAGER">HIRING_MANAGER (Hiring Lead)</option>
+                    <option value="INTERVIEWER">INTERVIEWER (Scorecards & Evaluations)</option>
+                    <option value="VIEWER">VIEWER (Read-only)</option>
+                  </optgroup>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">
+                  Reason for Role Change <span className="text-destructive">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  minLength={5}
+                  value={roleReason}
+                  onChange={(e) => setRoleReason(e.target.value)}
+                  placeholder="e.g. Promoted to Support Administrator"
+                  className="w-full h-9 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={roleSubmitting || targetRole === user.role}
+                className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {roleSubmitting ? "Updating..." : "Save Role"}
+              </button>
+            </form>
           </div>
-          <p className="text-xs text-muted-foreground">
-            {user.isActive
-              ? "Deactivating will prevent all logins immediately and write an audit log entry."
-              : "Reactivating will restore access to the platform."}
-          </p>
+
+          {/* Account Status Card */}
+          <div className="rounded-xl border bg-card p-6 space-y-4">
+            <h3 className="font-semibold text-sm">Account Status</h3>
+            <div className="flex gap-3">
+              {user.isActive ? (
+                <button
+                  id="btn-deactivate-user"
+                  onClick={() => setConfirm({ open: true, action: "deactivate", reason: "", submitting: false, error: "" })}
+                  className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
+                >
+                  <UserX className="h-4 w-4" /> Deactivate Account
+                </button>
+              ) : (
+                <button
+                  id="btn-activate-user"
+                  onClick={() => setConfirm({ open: true, action: "activate", reason: "", submitting: false, error: "" })}
+                  className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 transition-colors"
+                >
+                  <UserCheck className="h-4 w-4" /> Reactivate Account
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {user.isActive
+                ? "Deactivating will prevent all logins immediately and write an audit log entry."
+                : "Reactivating will restore access to the platform."}
+            </p>
+          </div>
         </div>
       )}
 
