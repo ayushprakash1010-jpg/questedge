@@ -38,8 +38,8 @@ const statusColor: Record<string, string> = {
   CLOSED: "bg-gray-100 text-gray-800",
 };
 
-function SlaIndicator({ deadline }: { deadline: string | null }) {
-  if (!deadline) return null;
+function SlaIndicator({ deadline, status }: { deadline: string | null; status?: string }) {
+  if (!deadline || status === "RESOLVED" || status === "CLOSED") return null;
   const now = new Date();
   const dl = new Date(deadline);
   const hoursLeft = Math.round((dl.getTime() - now.getTime()) / (1000 * 60 * 60));
@@ -156,7 +156,7 @@ export default function TicketsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 ml-4">
-                      <SlaIndicator deadline={t.slaDeadline} />
+                      <SlaIndicator deadline={t.slaDeadline} status={t.status} />
                       <Badge className={priorityColor[t.priority]}>{t.priority}</Badge>
                       <Badge className={statusColor[t.status]}>{t.status.replace(/_/g, " ")}</Badge>
                     </div>

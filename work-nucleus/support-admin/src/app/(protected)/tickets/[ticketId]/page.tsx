@@ -105,7 +105,7 @@ export default function TicketDetailPage() {
   if (!ticket) return <p className="text-muted-foreground">Ticket not found.</p>;
 
   const slaStatus = () => {
-    if (!ticket.slaDeadline) return null;
+    if (!ticket.slaDeadline || ticket.status === "RESOLVED" || ticket.status === "CLOSED") return null;
     const now = new Date();
     const dl = new Date(ticket.slaDeadline);
     const hoursLeft = Math.round((dl.getTime() - now.getTime()) / (1000 * 60 * 60));
