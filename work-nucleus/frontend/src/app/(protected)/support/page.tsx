@@ -39,7 +39,11 @@ export default function SupportPage() {
     try {
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+      const API_URL =
+        process.env.NEXT_PUBLIC_API_URL ||
+        (process.env.NODE_ENV === "production"
+          ? "https://questedge.onrender.com"
+          : "http://localhost:3000");
 
       const res = await fetch(`${API_URL}/api/v1/user/support/tickets`, {
         headers: { Authorization: `Bearer ${accessToken}` }
@@ -65,7 +69,11 @@ export default function SupportPage() {
     try {
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+      const API_URL =
+        process.env.NEXT_PUBLIC_API_URL ||
+        (process.env.NODE_ENV === "production"
+          ? "https://questedge.onrender.com"
+          : "http://localhost:3000");
 
       const res = await fetch(`${API_URL}/api/v1/user/support/tickets`, {
         method: "POST",
