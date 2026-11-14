@@ -762,9 +762,71 @@ export class PlatformUsersService {
       throw new BadRequestException('Reason must be at least 5 characters');
     }
 
-    const user = await this.prisma.user.findUnique({
+    let user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
+
+    if (!user) {
+      // Check if target is a candidate or recruiter being promoted to platform user / admin
+      const candidate = await this.prisma.candidateProfile.findUnique({
+        where: { id: userId },
+      });
+      if (candidate) {
+        let platformOrg = await this.prisma.organization.findFirst({
+          where: { name: 'QuestEdge Platform' },
+        });
+        if (!platformOrg) {
+          platformOrg = await this.prisma.organization.create({
+            data: { name: 'QuestEdge Platform', industry: 'Technology' },
+          });
+        }
+        user = await this.prisma.user.upsert({
+          where: { email: candidate.email.toLowerCase() },
+          update: {
+            role,
+            isActive: candidate.isActive,
+          },
+          create: {
+            email: candidate.email.toLowerCase(),
+            name: candidate.name,
+            auth0Sub: candidate.auth0Sub || `candidate_promoted_${candidate.id}`,
+            role,
+            orgId: platformOrg.id,
+            isActive: candidate.isActive,
+          },
+        });
+      } else {
+        const recruiter = await this.prisma.recruiterProfile.findUnique({
+          where: { id: userId },
+        });
+        if (recruiter) {
+          let platformOrg = await this.prisma.organization.findFirst({
+            where: { name: 'QuestEdge Platform' },
+          });
+          if (!platformOrg) {
+            platformOrg = await this.prisma.organization.create({
+              data: { name: 'QuestEdge Platform', industry: 'Technology' },
+            });
+          }
+          user = await this.prisma.user.upsert({
+            where: { email: recruiter.email.toLowerCase() },
+            update: {
+              role,
+              isActive: recruiter.isActive,
+            },
+            create: {
+              email: recruiter.email.toLowerCase(),
+              name: recruiter.name,
+              auth0Sub: recruiter.auth0Sub,
+              role,
+              orgId: platformOrg.id,
+              isActive: recruiter.isActive,
+            },
+          });
+        }
+      }
+    }
+
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
@@ -785,7 +847,7 @@ export class PlatformUsersService {
     }
 
     const updated = await this.prisma.user.update({
-      where: { id: userId },
+      where: { id: user.id },
       data: { role },
     });
 
