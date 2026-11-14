@@ -83,7 +83,11 @@ export default function SupportPage() {
         },
         body: JSON.stringify(form)
       });
-      if (!res.ok) throw new Error("Failed to create ticket");
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        const msg = Array.isArray(errJson.message) ? errJson.message.join(", ") : errJson.message || errJson.error;
+        throw new Error(msg || "Failed to create ticket");
+      }
       
       toast.success("Support ticket created!");
       setDialogOpen(false);

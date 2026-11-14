@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { TicketsService } from './tickets.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { UserTypes } from '../../auth/decorators/user-types.decorator';
@@ -12,7 +13,10 @@ import { CreateTicketDto } from './dto/create-ticket.dto';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('api/v1/user/support/tickets')
 export class UserTicketsController {
-  constructor(private readonly ticketsService: TicketsService) {}
+  constructor(
+    private readonly ticketsService: TicketsService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @Post()
   @UserTypes(
@@ -22,9 +26,20 @@ export class UserTicketsController {
     UserType.CANDIDATE,
   )
   @ApiOperation({ summary: 'Create a support ticket as a user' })
-  createTicket(@Body() dto: CreateTicketDto, @Req() req: any) {
-    dto.orgId = req.user.orgId;
-    dto.reportedBy = req.user.id;
+  async createTicket(@Body() dto: CreateTicketDto, @Req() req: any) {
+    let orgId = req.user.orgId;
+    if (!orgId) {
+      const platformOrg = await this.prisma.organization.findFirst({
+        where: { name: 'QuestEdge Platform' },
+      });
+      orgId = platformOrg?.id;
+      if (!orgId) {
+        const anyOrg = await this.prisma.organization.findFirst();
+        orgId = anyOrg?.id;
+      }
+    }
+    dto.orgId = orgId;
+    dto.reportedBy = req.user.email || req.user.id || req.user.name || 'client';
     return this.ticketsService.createTicket(dto, req.user.id);
   }
 
@@ -37,15 +52,21 @@ export class UserTicketsController {
   )
   @ApiOperation({ summary: 'List my support tickets' })
   listTickets(@Req() req: any) {
-    // If not a company admin, maybe filter by reportedBy? Or let org admins see all org tickets.
-    const orgId = req.user.orgId;
+    const isCompanyAdmin =
+      req.user.userType === UserType.COMPANY_ADMIN || req.user.role === 'ADMIN';
+
+    if (isCompanyAdmin && req.user.orgId) {
+      return this.ticketsService.listTickets({
+        page: 1,
+        limit: 50,
+        orgId: req.user.orgId,
+      });
+    }
+
     return this.ticketsService.listTickets({
       page: 1,
       limit: 50,
-      orgId,
-      ...(req.user.userType !== UserType.COMPANY_ADMIN
-        ? { reportedBy: req.user.id }
-        : {}),
+      reportedBy: req.user.email || req.user.id,
     });
   }
 }

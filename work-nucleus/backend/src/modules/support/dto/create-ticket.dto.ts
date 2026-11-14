@@ -2,8 +2,9 @@ import { IsString, IsOptional, IsEnum, IsUUID, IsArray } from 'class-validator';
 import { TicketPriority, TicketCategory } from '@prisma/client';
 
 export class CreateTicketDto {
+  @IsOptional()
   @IsUUID()
-  orgId: string;
+  orgId?: string;
 
   @IsString()
   title: string;
@@ -19,8 +20,9 @@ export class CreateTicketDto {
   @IsEnum(TicketCategory)
   category?: string;
 
+  @IsOptional()
   @IsString()
-  reportedBy: string;
+  reportedBy?: string;
 
   @IsOptional()
   @IsUUID()

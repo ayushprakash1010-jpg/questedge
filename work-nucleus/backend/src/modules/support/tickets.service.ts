@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { TicketPriority, TicketStatus } from '@prisma/client';
@@ -22,6 +22,21 @@ export class TicketsService {
   ) {}
 
   async createTicket(dto: CreateTicketDto, creatorId: string) {
+    let orgId = dto.orgId;
+    if (!orgId) {
+      const platformOrg = await this.prisma.organization.findFirst({
+        where: { name: 'QuestEdge Platform' },
+      });
+      orgId = platformOrg?.id;
+      if (!orgId) {
+        const anyOrg = await this.prisma.organization.findFirst();
+        orgId = anyOrg?.id;
+      }
+    }
+    if (!orgId) {
+      throw new BadRequestException('Organization ID is required');
+    }
+
     const slaDeadline = new Date();
     slaDeadline.setHours(
       slaDeadline.getHours() + (SLA_HOURS[dto.priority || 'MEDIUM'] || 24),
@@ -29,7 +44,7 @@ export class TicketsService {
 
     const ticket = await this.prisma.supportTicket.create({
       data: {
-        orgId: dto.orgId,
+        orgId,
         title: dto.title,
         description: dto.description,
         priority: (dto.priority as TicketPriority) || 'MEDIUM',
