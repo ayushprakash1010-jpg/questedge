@@ -1,4 +1,8 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV === "production"
+    ? "https://questedge.onrender.com"
+    : "http://localhost:3000");
 
 function getDemoRole(): string | null {
   if (typeof document !== "undefined") {

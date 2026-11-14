@@ -122,10 +122,34 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       resolvedProfile = await this.prisma.candidateProfile.findUnique({
         where: { auth0Sub },
       });
+      if (
+        resolvedProfile &&
+        rawEmail &&
+        !rawEmail.includes('@placeholder.com') &&
+        resolvedProfile.email?.includes('@placeholder.com')
+      ) {
+        resolvedProfile.email = rawEmail;
+        await this.prisma.candidateProfile.update({
+          where: { id: resolvedProfile.id },
+          data: { email: rawEmail },
+        }).catch(() => null);
+      }
     } else if (userType === 'RECRUITER') {
       resolvedProfile = await this.prisma.recruiterProfile.findUnique({
         where: { auth0Sub },
       });
+      if (
+        resolvedProfile &&
+        rawEmail &&
+        !rawEmail.includes('@placeholder.com') &&
+        resolvedProfile.email?.includes('@placeholder.com')
+      ) {
+        resolvedProfile.email = rawEmail;
+        await this.prisma.recruiterProfile.update({
+          where: { id: resolvedProfile.id },
+          data: { email: rawEmail },
+        }).catch(() => null);
+      }
     } else {
       // Defaulted to COMPANY_USER, but let's double check if they are actually a Recruiter or Candidate
       resolvedProfile = await this.prisma.user.findUnique({
@@ -145,6 +169,13 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       if (unlinkedOriginalUser) {
         if (resolvedProfile && resolvedProfile.id !== unlinkedOriginalUser.id) {
           const dummyOrgId = resolvedProfile.orgId;
+          await this.prisma.user.update({
+            where: { id: resolvedProfile.id },
+            data: {
+              auth0Sub: `dummy_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+              email: `dummy_${Date.now()}_${Math.random().toString(36).slice(2, 7)}@placeholder.com`,
+            },
+          }).catch(() => null);
           await this.prisma.user.delete({ where: { id: resolvedProfile.id } }).catch(() => null);
           const remainingUsers = await this.prisma.user.count({ where: { orgId: dummyOrgId } });
           if (remainingUsers === 0) {
@@ -196,8 +227,22 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         });
         if (
           recruiterProfile &&
-          (!rawEmail || rawEmail.includes('@placeholder.com') || recruiterProfile.email?.toLowerCase() === rawEmail)
+          (!rawEmail ||
+           recruiterProfile.email?.includes('@placeholder.com') ||
+           rawEmail.includes('@placeholder.com') ||
+           recruiterProfile.email?.toLowerCase() === rawEmail)
         ) {
+          if (
+            rawEmail &&
+            !rawEmail.includes('@placeholder.com') &&
+            recruiterProfile.email?.includes('@placeholder.com')
+          ) {
+            recruiterProfile.email = rawEmail;
+            await this.prisma.recruiterProfile.update({
+              where: { id: recruiterProfile.id },
+              data: { email: rawEmail },
+            }).catch(() => null);
+          }
           resolvedProfile = recruiterProfile;
           actualUserType = 'RECRUITER';
         } else {
@@ -207,8 +252,22 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
             });
           if (
             candidateProfile &&
-            (!rawEmail || rawEmail.includes('@placeholder.com') || candidateProfile.email?.toLowerCase() === rawEmail)
+            (!rawEmail ||
+             candidateProfile.email?.includes('@placeholder.com') ||
+             rawEmail.includes('@placeholder.com') ||
+             candidateProfile.email?.toLowerCase() === rawEmail)
           ) {
+            if (
+              rawEmail &&
+              !rawEmail.includes('@placeholder.com') &&
+              candidateProfile.email?.includes('@placeholder.com')
+            ) {
+              candidateProfile.email = rawEmail;
+              await this.prisma.candidateProfile.update({
+                where: { id: candidateProfile.id },
+                data: { email: rawEmail },
+              }).catch(() => null);
+            }
             resolvedProfile = candidateProfile;
             actualUserType = 'CANDIDATE';
           }

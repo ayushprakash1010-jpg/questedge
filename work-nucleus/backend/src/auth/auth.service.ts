@@ -225,6 +225,13 @@ export class AuthService {
       // Clean up empty newly-created dummy user/org if one was created during accidental onboarding
       if (user && user.id !== unlinkedOriginalUser.id) {
         const dummyOrgId = user.orgId;
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            auth0Sub: `dummy_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            email: `dummy_${Date.now()}_${Math.random().toString(36).slice(2, 7)}@placeholder.com`,
+          },
+        }).catch(() => null);
         await this.prisma.user.delete({ where: { id: user.id } }).catch(() => null);
         const remainingUsers = await this.prisma.user.count({ where: { orgId: dummyOrgId } });
         if (remainingUsers === 0) {

@@ -76,15 +76,22 @@ export class RecruiterService {
     email: string,
     dto: CreateRecruiterProfileDto,
   ): Promise<RecruiterProfile> {
-    const existing = await this.prisma.recruiterProfile.findUnique({
-      where: { auth0Sub },
+    const cleanEmail = email && !email.includes('@placeholder.com') ? email.toLowerCase().trim() : null;
+    const existing = await this.prisma.recruiterProfile.findFirst({
+      where: {
+        OR: [
+          { auth0Sub },
+          ...(cleanEmail ? [{ email: cleanEmail }] : []),
+        ],
+      },
     });
     if (existing) {
       // Idempotent upsert: if the profile already exists, update it with the new onboarding details
       return this.prisma.recruiterProfile.update({
         where: { id: existing.id },
         data: {
-          ...(email && !email.includes('@placeholder.com') ? { email } : {}),
+          auth0Sub,
+          ...(cleanEmail ? { email: cleanEmail } : {}),
           name: dto.name || existing.name,
           phone: dto.phone ?? existing.phone,
           headline: dto.headline ?? existing.headline,

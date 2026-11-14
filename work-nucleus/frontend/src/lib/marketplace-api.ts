@@ -304,7 +304,11 @@ export async function publicDiscoverMandates(filters?: MandateFilters): Promise<
     });
   }
   // Public endpoint — no token required
-  const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+  const base =
+    process.env.NEXT_PUBLIC_API_URL ??
+    (process.env.NODE_ENV === "production"
+      ? "https://questedge.onrender.com"
+      : "http://localhost:3000");
   const res = await fetch(`${base}/api/v1/mandates/public?${params.toString()}`, {
     cache: 'no-store',
   });

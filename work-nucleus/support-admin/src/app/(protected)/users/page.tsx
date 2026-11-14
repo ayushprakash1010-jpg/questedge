@@ -367,6 +367,7 @@ export default function UsersPage() {
               </th>
               <th scope="col" className="px-4 py-3 text-left font-semibold">Name</th>
               <th scope="col" className="px-4 py-3 text-left font-semibold">Email</th>
+              <th scope="col" className="px-4 py-3 text-left font-semibold">Type</th>
               <th scope="col" className="px-4 py-3 text-left font-semibold">Organization</th>
               <th scope="col" className="px-4 py-3 text-left font-semibold">Role</th>
               <th scope="col" className="px-4 py-3 text-left font-semibold">Status</th>
@@ -374,11 +375,11 @@ export default function UsersPage() {
             </tr>
           </thead>
           {loading ? (
-            <TableSkeleton cols={7} rows={8} />
+            <TableSkeleton cols={8} rows={8} />
           ) : error ? (
-            <tbody><tr><td colSpan={7}><ErrorState message={error} onRetry={fetchUsers} /></td></tr></tbody>
+            <tbody><tr><td colSpan={8}><ErrorState message={error} onRetry={fetchUsers} /></td></tr></tbody>
           ) : users.length === 0 ? (
-            <tbody><tr><td colSpan={7}><EmptyState title="No users found" description="Try adjusting your search or filters." /></td></tr></tbody>
+            <tbody><tr><td colSpan={8}><EmptyState title="No users found" description="Try adjusting your search or filters." /></td></tr></tbody>
           ) : (
             <tbody className="divide-y">
               {users.map((user) => (
@@ -397,18 +398,25 @@ export default function UsersPage() {
                   </td>
                   <td className="px-4 py-3 font-medium">{user.name}</td>
                   <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
+                  <td className="px-4 py-3"><StatusBadge value={user.userType || "COMPANY_USER"} /></td>
                   <td className="px-4 py-3">
                     {user.orgName ? (
-                      <Link href={`/organizations/${user.orgId}`} className="text-primary hover:underline text-sm">
-                        {user.orgName}
-                      </Link>
+                      user.orgId ? (
+                        <Link href={`/organizations/${user.orgId}`} className="text-primary hover:underline text-sm">
+                          {user.orgName}
+                        </Link>
+                      ) : (
+                        <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                          {user.orgName}
+                        </span>
+                      )
                     ) : <span className="text-muted-foreground">—</span>}
                   </td>
                   <td className="px-4 py-3"><StatusBadge value={user.role} /></td>
                   <td className="px-4 py-3"><StatusBadge value={user.isActive ? "active" : "inactive"} /></td>
                   <td className="px-4 py-3">
                     <Link
-                      href={`/users/${user.id}`}
+                      href={user.userType === "RECRUITER" ? `/marketplace/recruiters/${user.id}` : `/users/${user.id}`}
                       className="inline-flex items-center gap-1 text-xs text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary rounded"
                       aria-label={`View details for ${user.name}`}
                     >
