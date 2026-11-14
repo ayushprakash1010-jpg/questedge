@@ -12,7 +12,8 @@ interface HealthStatus {
 }
 
 function StatusIcon({ status }: { status?: string }) {
-  if (!status || status === "ok" || status === "up")
+  const s = status?.toLowerCase();
+  if (!s || s === "ok" || s === "up" || s === "healthy")
     return <CheckCircle2 className="h-5 w-5 text-green-500" />;
   if (status === "degraded")
     return <AlertTriangle className="h-5 w-5 text-amber-500" />;

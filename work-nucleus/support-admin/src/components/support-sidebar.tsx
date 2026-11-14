@@ -64,7 +64,7 @@ const navGroups: NavGroup[] = [
   },
 ];
 
-const MAIN_APP_URL = process.env.NEXT_PUBLIC_MAIN_APP_URL || "http://localhost:3001";
+const MAIN_APP_URL = process.env.NEXT_PUBLIC_MAIN_APP_URL || "https://www.questedge.in";
 
 export function SupportSidebar() {
   const pathname = usePathname();

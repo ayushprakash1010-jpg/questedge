@@ -7,6 +7,8 @@ export function getApiUrl(): string {
   return (
     process.env.API_URL_INTERNAL ||
     process.env.NEXT_PUBLIC_API_URL ||
-    "http://localhost:3000"
+    (process.env.NODE_ENV === "production"
+      ? "https://questedge.onrender.com"
+      : "http://localhost:3000")
   );
 }
