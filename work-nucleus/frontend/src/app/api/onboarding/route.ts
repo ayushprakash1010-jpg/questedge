@@ -90,8 +90,12 @@ export async function POST(req: NextRequest) {
     }
 
     if (!res.ok) {
+      let errMsg = data?.message || data?.error?.message || data?.error;
+      if (typeof errMsg === "object") {
+        errMsg = errMsg.message || JSON.stringify(errMsg);
+      }
       return NextResponse.json(
-        { error: data.message || `Backend provisioning error (${res.status}): ${text}` },
+        { error: errMsg || `Provisioning failed (${res.status})` },
         { status: res.status }
       );
     }

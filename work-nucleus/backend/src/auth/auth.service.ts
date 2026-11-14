@@ -301,7 +301,12 @@ export class AuthService {
       !normalizedCallerEmail.includes('@placeholder.com') &&
       recruiter.email?.toLowerCase() !== normalizedCallerEmail
     ) {
-      return null;
+      // Auto-heal: update placeholder or outdated email to the verified Auth0 email
+      await this.prisma.recruiterProfile.update({
+        where: { id: recruiter.id },
+        data: { email: normalizedCallerEmail },
+      });
+      recruiter.email = normalizedCallerEmail;
     }
 
     return {
@@ -334,7 +339,12 @@ export class AuthService {
       !normalizedCallerEmail.includes('@placeholder.com') &&
       candidate.email?.toLowerCase() !== normalizedCallerEmail
     ) {
-      return null;
+      // Auto-heal: update placeholder or outdated email to the verified Auth0 email
+      await this.prisma.candidateProfile.update({
+        where: { id: candidate.id },
+        data: { email: normalizedCallerEmail },
+      });
+      candidate.email = normalizedCallerEmail;
     }
 
     return {

@@ -79,10 +79,24 @@ export class RecruiterService {
     const existing = await this.prisma.recruiterProfile.findUnique({
       where: { auth0Sub },
     });
-    if (existing)
-      throw new ConflictException(
-        'Recruiter profile already exists. Use PATCH to update.',
-      );
+    if (existing) {
+      // Idempotent upsert: if the profile already exists, update it with the new onboarding details
+      return this.prisma.recruiterProfile.update({
+        where: { id: existing.id },
+        data: {
+          ...(email && !email.includes('@placeholder.com') ? { email } : {}),
+          name: dto.name || existing.name,
+          phone: dto.phone ?? existing.phone,
+          headline: dto.headline ?? existing.headline,
+          bio: dto.bio ?? existing.bio,
+          portfolioUrl: dto.portfolioUrl ?? existing.portfolioUrl,
+          avatarUrl: dto.avatarUrl ?? existing.avatarUrl,
+          specializations: (dto.specializations ?? (existing.specializations as any)) ?? [],
+          experienceYears: dto.experienceYears ?? existing.experienceYears,
+          linkedinUrl: dto.linkedinUrl ?? existing.linkedinUrl,
+        },
+      });
+    }
 
     if (this.prisma.user) {
       const existingUser = await this.prisma.user.findUnique({
