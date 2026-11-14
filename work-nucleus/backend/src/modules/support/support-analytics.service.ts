@@ -160,7 +160,7 @@ export class SupportAnalyticsService {
         complianceRate:
           overall.met + overall.breached > 0
             ? Math.round((overall.met / (overall.met + overall.breached)) * 100)
-            : 100,
+            : null,
       },
       byPriority: Object.entries(byPriority).map(([priority, data]) => ({
         priority,
@@ -169,7 +169,7 @@ export class SupportAnalyticsService {
         complianceRate:
           data.met + data.breached > 0
             ? Math.round((data.met / (data.met + data.breached)) * 100)
-            : 100,
+            : null,
       })),
     };
   }

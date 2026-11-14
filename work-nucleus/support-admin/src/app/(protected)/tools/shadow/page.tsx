@@ -100,8 +100,8 @@ export default function ShadowModePage() {
               <p><strong>Started:</strong> {new Date(activeSession.startedAt).toLocaleString()}</p>
             </div>
             <div className="flex items-center gap-2 text-xs text-blue-600">
-              <Badge className="bg-blue-100 text-blue-800">Read-Only Mode</Badge>
-              <span>All actions are being logged for audit purposes</span>
+              <Badge className="bg-blue-100 text-blue-800">Audited Support Session</Badge>
+              <span>Session record is active and logged in audit trails.</span>
             </div>
             <Button variant="destructive" size="sm" onClick={endSession}>
               <StopCircle className="h-4 w-4 mr-2" /> End Session
@@ -110,7 +110,12 @@ export default function ShadowModePage() {
         </Card>
       ) : (
         <Card>
-          <CardHeader><CardTitle>Start Shadow Session</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>Register Support Audit Session</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Creates an authorized, audited support session record before investigating client accounts.
+            </p>
+          </CardHeader>
           <CardContent className="space-y-4">
             <div>
               <label className="text-sm font-medium">Organization *</label>

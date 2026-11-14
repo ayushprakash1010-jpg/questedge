@@ -179,20 +179,34 @@ export class PlatformExternalJobsController {
       },
     });
 
-    await this.audit.log({
-      orgId: 'platform',
-      userId: req.user?.id || 'support-admin',
-      action: newStatus ? 'EXTERNAL_JOB_ACTIVATED' : 'EXTERNAL_JOB_DEACTIVATED',
-      entityType: 'EXTERNAL_JOB',
-      entityId: id,
-      changes: {
-        before: { isActive: job.isActive },
-        after: { isActive: newStatus },
-        title: job.title,
-        companyName: job.companyName,
-        reason: reason || 'Manual toggle from Support Admin',
-      },
+    const actor = await this.prisma.user.findUnique({
+      where: { id: req.user?.id },
+      select: { orgId: true },
     });
+    let orgId = actor?.orgId;
+    if (!orgId) {
+      const fallbackOrg = await this.prisma.organization.findFirst({
+        select: { id: true },
+      });
+      orgId = fallbackOrg?.id;
+    }
+
+    if (orgId && req.user?.id) {
+      await this.audit.log({
+        orgId,
+        userId: req.user.id,
+        action: newStatus ? 'EXTERNAL_JOB_ACTIVATED' : 'EXTERNAL_JOB_DEACTIVATED',
+        entityType: 'EXTERNAL_JOB',
+        entityId: id,
+        changes: {
+          before: { isActive: job.isActive },
+          after: { isActive: newStatus },
+          title: job.title,
+          companyName: job.companyName,
+          reason: reason || 'Manual toggle from Support Admin',
+        },
+      });
+    }
 
     return { success: true, job: updated };
   }

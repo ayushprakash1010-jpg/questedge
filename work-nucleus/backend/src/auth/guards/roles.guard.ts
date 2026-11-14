@@ -37,7 +37,13 @@ export class RolesGuard implements CanActivate {
       (process.env.DEMO_EMAIL &&
         user.email?.toLowerCase() === process.env.DEMO_EMAIL.trim().toLowerCase());
 
-    if (isDemo) {
+    const isSupportRoute =
+      requiredRoles?.some((r) =>
+        ([Role.SUPPORT_ADMIN, Role.SUPPORT_REP] as Role[]).includes(r),
+      ) ||
+      requiredUserTypes?.some((u) => (u as string) === 'PLATFORM_ADMIN');
+
+    if (isDemo && !isSupportRoute) {
       return true;
     }
 

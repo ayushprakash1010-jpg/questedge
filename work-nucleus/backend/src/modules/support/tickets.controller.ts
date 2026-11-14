@@ -79,8 +79,9 @@ export class TicketsController {
   assignTicket(
     @Param('id') id: string,
     @Body('assigneeId') assigneeId: string,
+    @Req() req: any,
   ) {
-    return this.ticketsService.assignTicket(id, assigneeId);
+    return this.ticketsService.assignTicket(id, assigneeId, req.user?.id);
   }
 
   @Post(':id/escalate')
@@ -90,18 +91,18 @@ export class TicketsController {
     @Body() dto: EscalateTicketDto,
     @Req() req: any,
   ) {
-    return this.ticketsService.escalateTicket(id, dto, req.user.id);
+    return this.ticketsService.escalateTicket(id, dto, req.user?.id);
   }
 
   @Post(':id/resolve')
   @ApiOperation({ summary: 'Resolve a ticket' })
-  resolveTicket(@Param('id') id: string) {
-    return this.ticketsService.resolveTicket(id);
+  resolveTicket(@Param('id') id: string, @Req() req: any) {
+    return this.ticketsService.resolveTicket(id, req.user?.id);
   }
 
   @Post(':id/close')
   @ApiOperation({ summary: 'Close a ticket' })
-  closeTicket(@Param('id') id: string) {
-    return this.ticketsService.closeTicket(id);
+  closeTicket(@Param('id') id: string, @Req() req: any) {
+    return this.ticketsService.closeTicket(id, req.user?.id);
   }
 }

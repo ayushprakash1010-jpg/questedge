@@ -119,7 +119,11 @@ export default function MetricsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">SLA Compliance</p>
-                <p className="text-2xl font-bold">{sla?.overall.complianceRate || 0}%</p>
+                <p className="text-2xl font-bold">
+                  {sla?.overall.complianceRate != null
+                    ? `${sla.overall.complianceRate}%`
+                    : "N/A"}
+                </p>
               </div>
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
@@ -229,7 +233,11 @@ export default function MetricsPage() {
             <CardContent>
               <div className="flex items-center gap-8">
                 <div className="text-center">
-                  <p className="text-4xl font-bold text-green-600">{sla.overall.complianceRate}%</p>
+                  <p className="text-4xl font-bold text-green-600">
+                    {sla.overall.complianceRate != null
+                      ? `${sla.overall.complianceRate}%`
+                      : "N/A"}
+                  </p>
                   <p className="text-sm text-muted-foreground">Compliance Rate</p>
                 </div>
                 <div className="flex-1 grid grid-cols-3 gap-4 text-center">

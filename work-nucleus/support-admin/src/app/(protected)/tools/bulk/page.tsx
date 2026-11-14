@@ -64,20 +64,32 @@ export default function BulkToolsPage() {
     });
   };
 
+  const [bulkReason, setBulkReason] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
   const executeBulk = async () => {
+    if (!bulkReason.trim() || bulkReason.trim().length < 5) {
+      alert("A valid reason of at least 5 characters is required.");
+      return;
+    }
     setBulkResult(null);
     const params: any = { daysOld: parseInt(bulkDays) };
     if (bulkAction === "deactivate-inactive-users") {
-      if (!selectedOrg) return;
+      if (!selectedOrg) {
+        alert("Please select an organization");
+        return;
+      }
       params.orgId = selectedOrg;
       params.daysInactive = parseInt(bulkDays);
     }
     const res = await fetch("/api/support/tools/bulk", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: bulkAction, params }),
+      body: JSON.stringify({ action: bulkAction, params, reason: bulkReason }),
     });
     const data = await res.json();
+    setConfirmOpen(false);
+    setBulkReason("");
     setBulkResult(`Action "${data.action}" completed. ${data.affected} records affected.`);
   };
 
@@ -241,7 +253,50 @@ export default function BulkToolsPage() {
               </label>
               <Input type="number" value={bulkDays} onChange={(e) => setBulkDays(e.target.value)} className="max-w-[200px]" />
             </div>
-            <Button variant="destructive" onClick={executeBulk}>Execute Bulk Action</Button>
+            {!confirmOpen ? (
+              <Button
+                variant="destructive"
+                onClick={() => setConfirmOpen(true)}
+              >
+                Review & Execute Bulk Action
+              </Button>
+            ) : (
+              <div className="rounded-lg border border-red-200 bg-red-50/50 p-4 space-y-3">
+                <div className="text-sm font-semibold text-red-900">
+                  Confirm Destructive Bulk Operation
+                </div>
+                <p className="text-xs text-red-700">
+                  This operation modifies database records in bulk and is recorded in the immutable audit log.
+                </p>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Reason for this operation (required):</label>
+                  <Input
+                    placeholder="e.g. Quarterly resolution cleanup requested by operations..."
+                    value={bulkReason}
+                    onChange={(e) => setBulkReason(e.target.value)}
+                    className="mt-1 bg-white text-xs"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="destructive"
+                    onClick={executeBulk}
+                    disabled={bulkReason.trim().length < 5}
+                  >
+                    Confirm & Execute
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setConfirmOpen(false);
+                      setBulkReason("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
             {bulkResult && (
               <div className="rounded-md border bg-green-50 p-3 text-sm text-green-800">
                 <CheckCircle className="h-4 w-4 inline mr-1" /> {bulkResult}

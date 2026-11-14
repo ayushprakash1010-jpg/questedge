@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ToolsService } from './tools.service';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -17,8 +17,9 @@ export class ToolsController {
   exportData(
     @Body('orgId') orgId: string,
     @Body('dataTypes') dataTypes: string[],
+    @Req() req: any,
   ) {
-    return this.toolsService.exportData(orgId, dataTypes);
+    return this.toolsService.exportData(orgId, dataTypes, req.user?.id);
   }
 
   @Get('feature-flags/:orgId')
@@ -33,14 +34,28 @@ export class ToolsController {
   updateFeatureFlags(
     @Param('orgId') orgId: string,
     @Body() flags: Record<string, boolean>,
+    @Req() req: any,
   ) {
-    return this.toolsService.updateFeatureFlags(orgId, flags);
+    return this.toolsService.updateFeatureFlags(orgId, flags, req.user?.id);
   }
 
   @Post('bulk-action')
   @Roles(Role.SUPPORT_ADMIN)
   @ApiOperation({ summary: 'Execute bulk operations' })
-  bulkAction(@Body() payload: { action: string; params: Record<string, any> }) {
-    return this.toolsService.bulkAction(payload.action, payload.params);
+  bulkAction(
+    @Body()
+    payload: {
+      action: string;
+      params: Record<string, any>;
+      reason?: string;
+    },
+    @Req() req: any,
+  ) {
+    return this.toolsService.bulkAction(
+      payload.action,
+      payload.params,
+      req.user?.id,
+      payload.reason,
+    );
   }
 }

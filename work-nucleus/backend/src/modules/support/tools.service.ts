@@ -4,12 +4,32 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class ToolsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
-  async exportData(orgId: string, dataTypes: string[]) {
+  private async getValidOrgId(actorId?: string, targetOrgId?: string): Promise<string> {
+    if (targetOrgId) return targetOrgId;
+    if (actorId) {
+      const actor = await this.prisma.user.findUnique({
+        where: { id: actorId },
+        select: { orgId: true },
+      });
+      if (actor?.orgId) return actor.orgId;
+    }
+    const fallbackOrg = await this.prisma.organization.findFirst({
+      select: { id: true },
+    });
+    if (!fallbackOrg) throw new Error('No valid organization found for audit trail');
+    return fallbackOrg.id;
+  }
+
+  async exportData(orgId: string, dataTypes: string[], actorId?: string) {
     const org = await this.prisma.organization.findUnique({
       where: { id: orgId },
     });
@@ -53,6 +73,19 @@ export class ToolsService {
       });
     }
 
+    if (actorId) {
+      await this.audit
+        .log({
+          orgId,
+          userId: actorId,
+          action: 'DATA_EXPORTED',
+          entityType: 'ORGANIZATION',
+          entityId: orgId,
+          changes: { dataTypes },
+        })
+        .catch(() => null);
+    }
+
     return {
       exportedAt: new Date().toISOString(),
       orgId,
@@ -82,7 +115,11 @@ export class ToolsService {
     return { orgId, featureFlags };
   }
 
-  async updateFeatureFlags(orgId: string, flags: Record<string, boolean>) {
+  async updateFeatureFlags(
+    orgId: string,
+    flags: Record<string, boolean>,
+    actorId?: string,
+  ) {
     const existing = await this.prisma.orgSettings.findUnique({
       where: { orgId },
     });
@@ -105,10 +142,28 @@ export class ToolsService {
       });
     }
 
+    if (actorId) {
+      await this.audit
+        .log({
+          orgId,
+          userId: actorId,
+          action: 'FEATURE_FLAGS_UPDATED',
+          entityType: 'ORG_SETTINGS',
+          entityId: orgId,
+          changes: { updatedFlags: flags },
+        })
+        .catch(() => null);
+    }
+
     return { orgId, featureFlags: updatedSettings.featureFlags };
   }
 
-  async bulkAction(action: string, params: Record<string, any>) {
+  async bulkAction(
+    action: string,
+    params: Record<string, any>,
+    actorId?: string,
+    reason?: string,
+  ) {
     switch (action) {
       case 'close-old-tickets': {
         const daysOld = params.daysOld || 30;
@@ -122,6 +177,23 @@ export class ToolsService {
           },
           data: { status: 'CLOSED', closedAt: new Date() },
         });
+
+        if (actorId) {
+          const auditOrgId = await this.getValidOrgId(actorId);
+          await this.audit
+            .log({
+              orgId: auditOrgId,
+              userId: actorId,
+              action: 'BULK_CLOSE_OLD_TICKETS',
+              entityType: 'SUPPORT_TICKET',
+              changes: {
+                affected: result.count,
+                daysOld,
+                reason: reason || 'Automated bulk resolution closure',
+              },
+            })
+            .catch(() => null);
+        }
 
         return { action, affected: result.count };
       }
@@ -142,6 +214,22 @@ export class ToolsService {
           },
           data: { isActive: false },
         });
+
+        if (actorId) {
+          await this.audit
+            .log({
+              orgId,
+              userId: actorId,
+              action: 'BULK_DEACTIVATE_INACTIVE_USERS',
+              entityType: 'USER',
+              changes: {
+                affected: result.count,
+                daysInactive,
+                reason: reason || 'Bulk inactive user deactivation',
+              },
+            })
+            .catch(() => null);
+        }
 
         return { action, affected: result.count };
       }

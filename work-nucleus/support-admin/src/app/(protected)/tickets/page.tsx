@@ -54,20 +54,31 @@ export default function TicketsPage() {
   const [tickets, setTickets] = useState<TicketItem[]>([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, totalPages: 1 });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [page, setPage] = useState(1);
 
   const fetchTickets = () => {
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams({ page: String(page), limit: "20" });
     if (statusFilter !== "all") params.set("status", statusFilter);
     if (priorityFilter !== "all") params.set("priority", priorityFilter);
     fetch(`/api/support/tickets?${params}`)
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (!r.ok) {
+          const body = await r.json().catch(() => null);
+          throw new Error(body?.error || body?.message || `HTTP ${r.status}`);
+        }
+        return r.json();
+      })
       .then((d) => {
         setTickets(d.data || []);
         setMeta(d.meta || { total: 0, page: 1, totalPages: 1 });
+      })
+      .catch((err) => {
+        setError(err.message || "Failed to load support tickets");
       })
       .finally(() => setLoading(false));
   };
@@ -105,11 +116,18 @@ export default function TicketsPage() {
         </Select>
       </div>
 
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-center justify-between">
+          <span>Failed to load tickets: {error}</span>
+          <Button variant="outline" size="sm" onClick={fetchTickets}>Retry</Button>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
         </div>
-      ) : !tickets.length ? (
+      ) : error ? null : !tickets.length ? (
         <p className="text-muted-foreground text-center py-10">No tickets found.</p>
       ) : (
         <div className="space-y-3">

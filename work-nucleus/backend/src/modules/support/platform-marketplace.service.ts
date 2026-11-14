@@ -184,32 +184,51 @@ export class PlatformMarketplaceService {
     return safe;
   }
 
+  private async getValidOrgId(actorId: string): Promise<string> {
+    const actor = await this.prisma.user.findUnique({
+      where: { id: actorId },
+      select: { orgId: true },
+    });
+    if (actor?.orgId) return actor.orgId;
+    const fallbackOrg = await this.prisma.organization.findFirst({
+      select: { id: true },
+    });
+    if (!fallbackOrg) throw new Error('No valid organization found for audit trail');
+    return fallbackOrg.id;
+  }
+
   async verifyRecruiter(recruiterId: string, actorId: string) {
+    const orgId = await this.getValidOrgId(actorId);
+
     const recruiter = await this.prisma.recruiterProfile.findUniqueOrThrow({
       where: { id: recruiterId },
       select: { id: true, email: true, name: true, isVerified: true },
     });
 
-    await this.prisma.recruiterProfile.update({
-      where: { id: recruiterId },
-      data: { isVerified: true, verifiedAt: new Date() },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      await tx.recruiterProfile.update({
+        where: { id: recruiterId },
+        data: { isVerified: true, verifiedAt: new Date() },
+      });
 
-    await this.auditService.log({
-      orgId: 'platform',
-      userId: actorId,
-      action: 'RECRUITER_VERIFIED',
-      entityType: 'RECRUITER_PROFILE',
-      entityId: recruiterId,
-      changes: {
-        before: { isVerified: recruiter.isVerified },
-        after: { isVerified: true },
-        targetEmail: recruiter.email,
-        targetName: recruiter.name,
-      },
-    });
+      await tx.auditLog.create({
+        data: {
+          orgId,
+          userId: actorId,
+          action: 'RECRUITER_VERIFIED',
+          entityType: 'RECRUITER_PROFILE',
+          entityId: recruiterId,
+          changes: {
+            before: { isVerified: recruiter.isVerified },
+            after: { isVerified: true },
+            targetEmail: recruiter.email,
+            targetName: recruiter.name,
+          },
+        },
+      });
 
-    return { success: true, message: `Recruiter ${recruiter.name} verified` };
+      return { success: true, message: `Recruiter ${recruiter.name} verified` };
+    });
   }
 
   async deactivateRecruiter(
@@ -217,35 +236,41 @@ export class PlatformMarketplaceService {
     actorId: string,
     reason: string,
   ) {
+    const orgId = await this.getValidOrgId(actorId);
+
     const recruiter = await this.prisma.recruiterProfile.findUniqueOrThrow({
       where: { id: recruiterId },
       select: { id: true, email: true, name: true, isActive: true },
     });
 
-    await this.prisma.recruiterProfile.update({
-      where: { id: recruiterId },
-      data: { isActive: false },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      await tx.recruiterProfile.update({
+        where: { id: recruiterId },
+        data: { isActive: false },
+      });
 
-    await this.auditService.log({
-      orgId: 'platform',
-      userId: actorId,
-      action: 'RECRUITER_DEACTIVATED',
-      entityType: 'RECRUITER_PROFILE',
-      entityId: recruiterId,
-      changes: {
-        before: { isActive: true },
-        after: { isActive: false },
-        reason,
-        targetEmail: recruiter.email,
-        targetName: recruiter.name,
-      },
-    });
+      await tx.auditLog.create({
+        data: {
+          orgId,
+          userId: actorId,
+          action: 'RECRUITER_DEACTIVATED',
+          entityType: 'RECRUITER_PROFILE',
+          entityId: recruiterId,
+          changes: {
+            before: { isActive: true },
+            after: { isActive: false },
+            reason,
+            targetEmail: recruiter.email,
+            targetName: recruiter.name,
+          },
+        },
+      });
 
-    return {
-      success: true,
-      message: `Recruiter ${recruiter.name} deactivated`,
-    };
+      return {
+        success: true,
+        message: `Recruiter ${recruiter.name} deactivated`,
+      };
+    });
   }
 
   // ── Rewards ─────────────────────────────────────────────────────

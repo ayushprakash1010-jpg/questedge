@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { TicketPriority, TicketStatus } from '@prisma/client';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
@@ -15,7 +16,10 @@ const SLA_HOURS: Record<string, number> = {
 
 @Injectable()
 export class TicketsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   async createTicket(dto: CreateTicketDto, creatorId: string) {
     const slaDeadline = new Date();
@@ -23,14 +27,14 @@ export class TicketsService {
       slaDeadline.getHours() + (SLA_HOURS[dto.priority || 'MEDIUM'] || 24),
     );
 
-    return this.prisma.supportTicket.create({
+    const ticket = await this.prisma.supportTicket.create({
       data: {
         orgId: dto.orgId,
         title: dto.title,
         description: dto.description,
         priority: (dto.priority as TicketPriority) || 'MEDIUM',
         category: (dto.category as any) || 'GENERAL',
-        reportedBy: dto.reportedBy,
+        reportedBy: dto.reportedBy || creatorId,
         assigneeId: dto.assigneeId,
         tags: dto.tags || [],
         slaDeadline,
@@ -40,6 +44,25 @@ export class TicketsService {
         assignee: { select: { id: true, name: true, email: true } },
       },
     });
+
+    if (creatorId) {
+      await this.audit
+        .log({
+          orgId: ticket.orgId,
+          userId: creatorId,
+          action: 'TICKET_CREATED',
+          entityType: 'SUPPORT_TICKET',
+          entityId: ticket.id,
+          changes: {
+            title: ticket.title,
+            priority: ticket.priority,
+            category: ticket.category,
+          },
+        })
+        .catch(() => null);
+    }
+
+    return ticket;
   }
 
   async listTickets(query: {
@@ -165,8 +188,8 @@ export class TicketsService {
     return note;
   }
 
-  async assignTicket(id: string, assigneeId: string) {
-    return this.prisma.supportTicket.update({
+  async assignTicket(id: string, assigneeId: string, actorId?: string) {
+    const updated = await this.prisma.supportTicket.update({
       where: { id },
       data: { assigneeId, status: 'IN_PROGRESS' },
       include: {
@@ -174,6 +197,24 @@ export class TicketsService {
         assignee: { select: { id: true, name: true } },
       },
     });
+
+    if (actorId) {
+      await this.audit
+        .log({
+          orgId: updated.orgId,
+          userId: actorId,
+          action: 'TICKET_ASSIGNED',
+          entityType: 'SUPPORT_TICKET',
+          entityId: id,
+          changes: {
+            assigneeId,
+            assigneeName: updated.assignee?.name,
+          },
+        })
+        .catch(() => null);
+    }
+
+    return updated;
   }
 
   async escalateTicket(
@@ -197,20 +238,66 @@ export class TicketsService {
       }),
     ]);
 
+    if (escalatedById) {
+      await this.audit
+        .log({
+          orgId: ticket.orgId,
+          userId: escalatedById,
+          action: 'TICKET_ESCALATED',
+          entityType: 'SUPPORT_TICKET',
+          entityId: id,
+          changes: {
+            level: dto.level,
+            reason: dto.reason,
+          },
+        })
+        .catch(() => null);
+    }
+
     return { ticket, escalation };
   }
 
-  async resolveTicket(id: string) {
-    return this.prisma.supportTicket.update({
+  async resolveTicket(id: string, actorId?: string) {
+    const updated = await this.prisma.supportTicket.update({
       where: { id },
       data: { status: 'RESOLVED', resolvedAt: new Date() },
     });
+
+    if (actorId) {
+      await this.audit
+        .log({
+          orgId: updated.orgId,
+          userId: actorId,
+          action: 'TICKET_RESOLVED',
+          entityType: 'SUPPORT_TICKET',
+          entityId: id,
+          changes: { status: 'RESOLVED' },
+        })
+        .catch(() => null);
+    }
+
+    return updated;
   }
 
-  async closeTicket(id: string) {
-    return this.prisma.supportTicket.update({
+  async closeTicket(id: string, actorId?: string) {
+    const updated = await this.prisma.supportTicket.update({
       where: { id },
       data: { status: 'CLOSED', closedAt: new Date() },
     });
+
+    if (actorId) {
+      await this.audit
+        .log({
+          orgId: updated.orgId,
+          userId: actorId,
+          action: 'TICKET_CLOSED',
+          entityType: 'SUPPORT_TICKET',
+          entityId: id,
+          changes: { status: 'CLOSED' },
+        })
+        .catch(() => null);
+    }
+
+    return updated;
   }
 }

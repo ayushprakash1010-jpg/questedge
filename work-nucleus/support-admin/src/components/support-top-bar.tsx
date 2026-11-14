@@ -1,6 +1,7 @@
 "use client";
 
 import { useUser } from "@auth0/nextjs-auth0/client";
+import { useProfile } from "@/hooks/use-profile";
 import { LogOut } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useRef, useEffect } from "react";
@@ -9,6 +10,7 @@ const IS_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
 
 export function SupportTopBar() {
   const { user } = useUser();
+  const { profile } = useProfile();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -22,8 +24,8 @@ export function SupportTopBar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const displayName = IS_MOCK ? "Support Admin" : user?.name;
-  const displayPicture = IS_MOCK ? undefined : user?.picture || undefined;
+  const displayName = IS_MOCK ? "Support Admin" : profile?.name || user?.name || "Support Admin";
+  const displayPicture = IS_MOCK ? undefined : profile?.avatarUrl || user?.picture || undefined;
 
   const initials = displayName
     ? displayName
