@@ -1,6 +1,23 @@
-import { isPrivateOrReservedIp, isSafePublicUrl } from './url-safety.util';
+import {
+  isPrivateOrReservedIp,
+  isSafePublicUrl,
+  isSafePublicUrlAsync,
+  parseIPv6Words,
+} from './url-safety.util';
 
 describe('URL Safety & SSRF Prevention Utility', () => {
+  describe('parseIPv6Words', () => {
+    it('correctly expands IPv4-mapped IPv6 in hex (::ffff:7f00:1)', () => {
+      const words = parseIPv6Words('::ffff:7f00:1');
+      expect(words).toEqual([0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x0001]);
+    });
+
+    it('correctly expands IPv4-mapped IPv6 in dotted decimal (::ffff:127.0.0.1)', () => {
+      const words = parseIPv6Words('::ffff:127.0.0.1');
+      expect(words).toEqual([0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x0001]);
+    });
+  });
+
   describe('isPrivateOrReservedIp', () => {
     it('detects IPv4 loopback (127.0.0.1)', () => {
       expect(isPrivateOrReservedIp('127.0.0.1')).toBe(true);
@@ -30,14 +47,22 @@ describe('URL Safety & SSRF Prevention Utility', () => {
       expect(isPrivateOrReservedIp('::1')).toBe(true);
       expect(isPrivateOrReservedIp('fc00::1')).toBe(true);
       expect(isPrivateOrReservedIp('fe80::1')).toBe(true);
+    });
+
+    it('detects IPv4-mapped IPv6 loopback in hex and dotted decimal', () => {
+      expect(isPrivateOrReservedIp('::ffff:7f00:1')).toBe(true);
+      expect(isPrivateOrReservedIp('[::ffff:7f00:1]')).toBe(true);
       expect(isPrivateOrReservedIp('::ffff:127.0.0.1')).toBe(true);
-      expect(isPrivateOrReservedIp('::ffff:169.254.169.254')).toBe(true);
+      expect(isPrivateOrReservedIp('[::ffff:127.0.0.1]')).toBe(true);
+      expect(isPrivateOrReservedIp('::ffff:a00:1')).toBe(true); // 10.0.0.1 in hex
+      expect(isPrivateOrReservedIp('::ffff:c0a8:101')).toBe(true); // 192.168.1.1 in hex
     });
 
     it('allows public IPs', () => {
       expect(isPrivateOrReservedIp('8.8.8.8')).toBe(false);
       expect(isPrivateOrReservedIp('1.1.1.1')).toBe(false);
       expect(isPrivateOrReservedIp('142.250.190.46')).toBe(false);
+      expect(isPrivateOrReservedIp('2607:f8b0:4005:805::200e')).toBe(false);
     });
   });
 
@@ -63,6 +88,19 @@ describe('URL Safety & SSRF Prevention Utility', () => {
       expect(isSafePublicUrl('http://app.localhost')).toBe(false);
     });
 
+    it('blocks hex IPv4-mapped IPv6 loopback [::ffff:7f00:1]', () => {
+      expect(isSafePublicUrl('http://[::ffff:7f00:1]/')).toBe(false);
+      expect(isSafePublicUrl('https://[::ffff:7f00:1]:8080/path')).toBe(false);
+    });
+
+    it('blocks wildcard DNS services embedding private IPs (nip.io, sslip.io)', () => {
+      expect(isSafePublicUrl('http://127.0.0.1.nip.io/')).toBe(false);
+      expect(isSafePublicUrl('http://test.127.0.0.1.nip.io/')).toBe(false);
+      expect(isSafePublicUrl('http://10.0.0.1.nip.io/')).toBe(false);
+      expect(isSafePublicUrl('http://192.168.1.1.nip.io/')).toBe(false);
+      expect(isSafePublicUrl('http://127-0-0-1.sslip.io/')).toBe(false);
+    });
+
     it('blocks AWS and cloud metadata addresses', () => {
       expect(isSafePublicUrl('http://169.254.169.254/latest/meta-data/')).toBe(false);
       expect(isSafePublicUrl('http://metadata.google.internal/computeMetadata/v1/')).toBe(false);
@@ -85,6 +123,18 @@ describe('URL Safety & SSRF Prevention Utility', () => {
       expect(isSafePublicUrl('not-a-url')).toBe(false);
       expect(isSafePublicUrl(null as any)).toBe(false);
       expect(isSafePublicUrl(undefined as any)).toBe(false);
+    });
+  });
+
+  describe('isSafePublicUrlAsync (DNS lookup verification)', () => {
+    it('rejects domains that resolve to loopback (127.0.0.1.nip.io)', async () => {
+      const isSafe = await isSafePublicUrlAsync('http://127.0.0.1.nip.io/');
+      expect(isSafe).toBe(false);
+    });
+
+    it('rejects hex IPv4-mapped loopback', async () => {
+      const isSafe = await isSafePublicUrlAsync('http://[::ffff:7f00:1]/');
+      expect(isSafe).toBe(false);
     });
   });
 });

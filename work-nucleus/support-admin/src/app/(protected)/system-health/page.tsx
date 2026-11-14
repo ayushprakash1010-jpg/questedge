@@ -66,8 +66,18 @@ export default function SystemHealthPage() {
       ]
     : [];
 
-  const overallOk = services.length > 0 && services.every((s) => ["ok", "up", "healthy", "in-memory"].includes(s.status?.toLowerCase() ?? ""));
-  const overallDegraded = services.some((s) => s.status?.toLowerCase() === "degraded");
+  const hasError = services.some((s) => ["down", "error"].includes(s.status?.toLowerCase() ?? ""));
+  const isDegraded = services.some((s) => s.status?.toLowerCase() === "degraded");
+  const overallOk =
+    services.length > 0 &&
+    !hasError &&
+    !isDegraded &&
+    services.every((s) =>
+      ["ok", "up", "healthy", "in-memory", "configured", "not_configured"].includes(
+        s.status?.toLowerCase() ?? "",
+      ),
+    );
+  const overallDegraded = !hasError && isDegraded;
 
   return (
     <div className="space-y-6">

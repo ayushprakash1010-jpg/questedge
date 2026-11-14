@@ -19,15 +19,15 @@ export class HealthController {
       dbStatus = 'down';
     }
 
-    // Cache service: transparently reflect whether live Redis is wired or in-memory LRU is active
-    const redisStatus = process.env.REDIS_URL ? 'ok' : 'in-memory';
+    // Cache service: HotCacheService actively uses in-memory LRU map storage
+    const redisStatus = 'in-memory';
 
-    // Storage service: verify whether S3 / object storage is configured
+    // Storage service: verify whether S3 / object storage credentials exist
     const hasS3Config = Boolean(
       (process.env.S3_BUCKET || process.env.AWS_BUCKET_NAME) &&
       (process.env.AWS_ACCESS_KEY_ID || process.env.S3_ACCESS_KEY_ID || process.env.AWS_REGION),
     );
-    const storageStatus = hasS3Config ? 'ok' : 'not_configured';
+    const storageStatus = hasS3Config ? 'configured' : 'not_configured';
 
     const overall = dbStatus === 'ok' ? 'ok' : 'degraded';
 

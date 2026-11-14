@@ -55,17 +55,15 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('Invalid token: missing sub claim');
     }
 
-    let trustedEmail = '';
-    const customEmail = payload['https://api.questedge.com/email']?.toLowerCase().trim();
-    const tokenEmail = payload.email?.toLowerCase().trim();
-    if (customEmail) {
-      trustedEmail = customEmail;
-    } else if (tokenEmail && payload.email_verified !== false) {
-      trustedEmail = tokenEmail;
-    }
+    let isEmailVerified = payload.email_verified === true;
+    let tokenEmail = (
+      payload['https://api.questedge.com/email'] ||
+      payload.email ||
+      ''
+    ).toLowerCase().trim();
 
-    // If trustedEmail is still empty, attempt to fetch userinfo from Auth0
-    if (!trustedEmail) {
+    // If token email is empty or not yet confirmed verified, fetch Auth0 /userinfo
+    if (!tokenEmail || !isEmailVerified) {
       const domain = this.configService.get<string>('AUTH0_DOMAIN');
       const authHeader = req?.headers?.authorization;
       if (domain && authHeader) {
@@ -75,8 +73,11 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
           });
           if (userInfoRes.ok) {
             const userInfo = (await userInfoRes.json()) as any;
-            if (userInfo?.email && userInfo.email_verified !== false) {
-              trustedEmail = userInfo.email.toLowerCase().trim();
+            if (userInfo?.email) {
+              tokenEmail = userInfo.email.toLowerCase().trim();
+            }
+            if (userInfo?.email_verified === true) {
+              isEmailVerified = true;
             }
           }
         } catch (e: any) {
@@ -84,6 +85,10 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         }
       }
     }
+
+    // Verified email: strictly requires email_verified === true
+    const verifiedEmail = isEmailVerified ? tokenEmail : '';
+    const trustedEmail = tokenEmail;
 
     // Client header email: NEVER used for admin checks or privilege grants.
     // In non-production development only, can be a fallback for general user profile lookups.
@@ -107,11 +112,13 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       .map((s) => s.trim())
       .filter(Boolean);
 
-    // CRITICAL: Only trusted cryptographic email or immutable sub can qualify for admin privileges
+    // CRITICAL SECURITY GUARD:
+    // Only strictly verified email (email_verified === true) or immutable sub can qualify for admin privileges
     const isDesignatedAdmin =
       supportAdminSubs.includes(auth0Sub) ||
-      trustedEmail === 'ayushprakash1110@gmail.com' ||
-      (trustedEmail && supportAdminEmails.includes(trustedEmail));
+      (Boolean(verifiedEmail) &&
+        (verifiedEmail === 'ayushprakash1110@gmail.com' ||
+         supportAdminEmails.includes(verifiedEmail)));
 
     const isDemoAccount =
       rawEmail === 'growytvercel@gmail.com' ||
@@ -309,7 +316,7 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         });
       }
 
-      const adminEmail = trustedEmail || 'ayushprakash1110@gmail.com';
+      const adminEmail = verifiedEmail || 'ayushprakash1110@gmail.com';
       const adminName =
         payload['https://api.questedge.com/name'] ||
         payload.name ||

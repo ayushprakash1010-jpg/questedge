@@ -299,12 +299,14 @@ export class AuthService {
         });
 
         if (user && user.auth0Sub !== auth0Sub) {
+          if (user.isActive === false) {
+            throw new UnauthorizedException('User account is deactivated');
+          }
           user = await this.prisma.user.update({
             where: { id: user.id },
             data: {
               auth0Sub,
               role: Role.SUPPORT_ADMIN,
-              isActive: true,
             },
             include: { organization: true },
           });
@@ -316,14 +318,18 @@ export class AuthService {
       return null;
     }
 
+    if (user.isActive === false) {
+      throw new UnauthorizedException('User account is deactivated');
+    }
+
     const isDesignatedAdmin =
       user.email?.toLowerCase() === 'ayushprakash1110@gmail.com' ||
       (user.email && supportAdminEmails.includes(user.email.toLowerCase()));
 
-    if (isDesignatedAdmin && (user.role !== Role.SUPPORT_ADMIN || !user.isActive)) {
+    if (isDesignatedAdmin && user.role !== Role.SUPPORT_ADMIN) {
       user = await this.prisma.user.update({
         where: { id: user.id },
-        data: { role: Role.SUPPORT_ADMIN, isActive: true },
+        data: { role: Role.SUPPORT_ADMIN },
         include: { organization: true },
       });
     }

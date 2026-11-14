@@ -13,7 +13,7 @@ import { NormalizerService, NormalizedJob } from './normalizer.service';
 import { IJobSourceConnector } from '../connectors/connector.interface';
 import { CircuitBreaker } from './circuit-breaker';
 import { SEED_COMPANIES } from '../config/seed-companies';
-import { isSafePublicUrl } from './url-safety.util';
+import { isSafePublicUrl, isSafePublicUrlAsync, createSsrfSafeAgent } from './url-safety.util';
 
 export interface SyncResult {
   source: string;
@@ -539,9 +539,12 @@ export class AggregationService {
     let deactivated = 0;
     let verified = 0;
 
+    const { httpAgent, httpsAgent } = createSsrfSafeAgent();
+
     for (const job of jobs) {
       try {
-        if (!isSafePublicUrl(job.applyUrl)) {
+        const isSafe = await isSafePublicUrlAsync(job.applyUrl);
+        if (!isSafe) {
           this.logger.warn(
             `[SSRF Prevention] Skipped unsafe job applyUrl for ${job.id}: ${job.applyUrl}`,
           );
@@ -551,6 +554,8 @@ export class AggregationService {
         const response = await axios.get(job.applyUrl, {
           timeout: 6000,
           maxRedirects: 3,
+          httpAgent,
+          httpsAgent,
           beforeRedirect: (options: any) => {
             const redirectUrl =
               options.href ||
