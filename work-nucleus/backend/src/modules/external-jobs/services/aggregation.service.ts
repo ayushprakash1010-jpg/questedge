@@ -13,6 +13,7 @@ import { NormalizerService, NormalizedJob } from './normalizer.service';
 import { IJobSourceConnector } from '../connectors/connector.interface';
 import { CircuitBreaker } from './circuit-breaker';
 import { SEED_COMPANIES } from '../config/seed-companies';
+import { isSafePublicUrl } from './url-safety.util';
 
 export interface SyncResult {
   source: string;
@@ -540,9 +541,24 @@ export class AggregationService {
 
     for (const job of jobs) {
       try {
+        if (!isSafePublicUrl(job.applyUrl)) {
+          this.logger.warn(
+            `[SSRF Prevention] Skipped unsafe job applyUrl for ${job.id}: ${job.applyUrl}`,
+          );
+          continue;
+        }
+
         const response = await axios.get(job.applyUrl, {
           timeout: 6000,
-          maxRedirects: 5,
+          maxRedirects: 3,
+          beforeRedirect: (options: any) => {
+            const redirectUrl =
+              options.href ||
+              `${options.protocol || 'http:'}//${options.host}${options.path || ''}`;
+            if (!isSafePublicUrl(redirectUrl)) {
+              throw new Error(`SSRF Prevention: Blocked redirect to ${redirectUrl}`);
+            }
+          },
           headers: {
             'User-Agent':
               'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',

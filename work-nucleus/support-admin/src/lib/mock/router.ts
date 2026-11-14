@@ -8,6 +8,10 @@ import * as data from "./data";
 type Params = URLSearchParams;
 
 export function isMockMode(): boolean {
+  // Fail closed: mock mode is strictly forbidden in production
+  if (process.env.NODE_ENV === "production") {
+    return false;
+  }
   return process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
 }
 
@@ -16,7 +20,7 @@ export function handleMockRequest(
   method: string,
   pathname: string,
   params: Params,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  
   body?: any,
 ): NextResponse | null {
   const m = method.toUpperCase();

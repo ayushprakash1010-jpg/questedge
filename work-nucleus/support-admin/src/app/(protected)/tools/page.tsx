@@ -7,7 +7,7 @@ import Link from "next/link";
 const tools = [
   {
     title: "Shadow Mode",
-    description: "View the platform as a client user sees it (read-only). Useful for troubleshooting UI issues.",
+    description: "Audited support session recording for investigating customer accounts.",
     icon: Eye,
     href: "/tools/shadow",
     color: "text-blue-600",

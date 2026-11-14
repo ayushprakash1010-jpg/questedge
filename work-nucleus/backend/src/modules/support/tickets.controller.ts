@@ -60,8 +60,12 @@ export class TicketsController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update ticket status, priority, or assignee' })
-  updateTicket(@Param('id') id: string, @Body() dto: UpdateTicketDto) {
-    return this.ticketsService.updateTicket(id, dto);
+  updateTicket(
+    @Param('id') id: string,
+    @Body() dto: UpdateTicketDto,
+    @Req() req: any,
+  ) {
+    return this.ticketsService.updateTicket(id, dto, req.user?.id);
   }
 
   @Post(':id/notes')

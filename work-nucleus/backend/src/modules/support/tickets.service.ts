@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { TicketPriority, TicketStatus } from '@prisma/client';
@@ -16,6 +21,8 @@ const SLA_HOURS: Record<string, number> = {
 
 @Injectable()
 export class TicketsService {
+  private readonly logger = new Logger(TicketsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
@@ -145,7 +152,12 @@ export class TicketsService {
     return ticket;
   }
 
-  async updateTicket(id: string, dto: UpdateTicketDto) {
+  async updateTicket(id: string, dto: UpdateTicketDto, actorId?: string) {
+    const existing = await this.prisma.supportTicket.findUnique({
+      where: { id },
+    });
+    if (!existing) throw new NotFoundException('Ticket not found');
+
     const data: any = {};
     if (dto.status) data.status = dto.status;
     if (dto.priority) {
@@ -160,7 +172,7 @@ export class TicketsService {
     if (dto.assigneeId) data.assigneeId = dto.assigneeId;
     if (dto.category) data.category = dto.category;
 
-    return this.prisma.supportTicket.update({
+    const updated = await this.prisma.supportTicket.update({
       where: { id },
       data,
       include: {
@@ -168,13 +180,43 @@ export class TicketsService {
         assignee: { select: { id: true, name: true } },
       },
     });
+
+    if (actorId) {
+      await this.audit
+        .log({
+          orgId: updated.orgId,
+          userId: actorId,
+          action: 'TICKET_UPDATED',
+          entityType: 'SUPPORT_TICKET',
+          entityId: id,
+          changes: {
+            before: {
+              status: existing.status,
+              priority: existing.priority,
+              category: existing.category,
+              assigneeId: existing.assigneeId,
+            },
+            after: {
+              status: updated.status,
+              priority: updated.priority,
+              category: updated.category,
+              assigneeId: updated.assigneeId,
+            },
+          },
+        })
+        .catch((err) =>
+          this.logger.warn(`Failed to write ticket update audit log: ${err?.message}`),
+        );
+    }
+
+    return updated;
   }
 
   async addNote(ticketId: string, dto: CreateNoteDto, authorId: string) {
     // Check if this is the first response
     const ticket = await this.prisma.supportTicket.findUnique({
       where: { id: ticketId },
-      select: { firstResponseAt: true, status: true },
+      select: { orgId: true, firstResponseAt: true, status: true },
     });
 
     if (!ticket) throw new NotFoundException('Ticket not found');
@@ -198,6 +240,24 @@ export class TicketsService {
           status: ticket.status === 'OPEN' ? 'IN_PROGRESS' : undefined,
         },
       });
+    }
+
+    if (authorId) {
+      await this.audit
+        .log({
+          orgId: ticket.orgId,
+          userId: authorId,
+          action: 'TICKET_NOTE_ADDED',
+          entityType: 'SUPPORT_TICKET',
+          entityId: ticketId,
+          changes: {
+            noteId: note.id,
+            isInternal: note.isInternal,
+          },
+        })
+        .catch((err) =>
+          this.logger.warn(`Failed to write note audit log: ${err?.message}`),
+        );
     }
 
     return note;
@@ -226,7 +286,9 @@ export class TicketsService {
             assigneeName: updated.assignee?.name,
           },
         })
-        .catch(() => null);
+        .catch((err) =>
+          this.logger.warn(`Failed to write ticket assign audit log: ${err?.message}`),
+        );
     }
 
     return updated;
@@ -266,7 +328,9 @@ export class TicketsService {
             reason: dto.reason,
           },
         })
-        .catch(() => null);
+        .catch((err) =>
+          this.logger.warn(`Failed to write ticket escalate audit log: ${err?.message}`),
+        );
     }
 
     return { ticket, escalation };
@@ -288,7 +352,9 @@ export class TicketsService {
           entityId: id,
           changes: { status: 'RESOLVED' },
         })
-        .catch(() => null);
+        .catch((err) =>
+          this.logger.warn(`Failed to write ticket resolve audit log: ${err?.message}`),
+        );
     }
 
     return updated;
@@ -310,7 +376,9 @@ export class TicketsService {
           entityId: id,
           changes: { status: 'CLOSED' },
         })
-        .catch(() => null);
+        .catch((err) =>
+          this.logger.warn(`Failed to write ticket close audit log: ${err?.message}`),
+        );
     }
 
     return updated;

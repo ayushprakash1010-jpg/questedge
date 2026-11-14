@@ -13,9 +13,9 @@ interface HealthStatus {
 
 function StatusIcon({ status }: { status?: string }) {
   const s = status?.toLowerCase();
-  if (!s || s === "ok" || s === "up" || s === "healthy")
+  if (!s || s === "ok" || s === "up" || s === "healthy" || s === "in-memory")
     return <CheckCircle2 className="h-5 w-5 text-green-500" />;
-  if (status === "degraded")
+  if (status === "degraded" || status === "not_configured")
     return <AlertTriangle className="h-5 w-5 text-amber-500" />;
   return <XCircle className="h-5 w-5 text-red-500" />;
 }
@@ -24,6 +24,10 @@ function StatusBadge({ status }: { status?: string }) {
   const s = status?.toLowerCase() ?? "unknown";
   if (s === "ok" || s === "up" || s === "healthy")
     return <span className="inline-flex items-center rounded-full bg-green-50 border border-green-200 px-2.5 py-0.5 text-xs font-medium text-green-700">Healthy</span>;
+  if (s === "in-memory")
+    return <span className="inline-flex items-center rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs font-medium text-blue-700">In-Memory (Active)</span>;
+  if (s === "not_configured")
+    return <span className="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-xs font-medium text-amber-700">Not Configured</span>;
   if (s === "degraded")
     return <span className="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-xs font-medium text-amber-700">Degraded</span>;
   if (s === "down" || s === "error")
@@ -57,12 +61,12 @@ export default function SystemHealthPage() {
     ? [
         { name: "API Server", status: health.status, description: "Backend NestJS application" },
         { name: "Database", status: health.db ?? health.status, description: "PostgreSQL via Neon" },
-        { name: "Cache", status: health.redis ?? "unknown", description: "Redis via Upstash" },
+        { name: "Cache", status: health.redis ?? "unknown", description: "In-memory LRU / Redis" },
         { name: "Storage", status: health.storage ?? "unknown", description: "S3-compatible object storage" },
       ]
     : [];
 
-  const overallOk = services.length > 0 && services.every((s) => ["ok", "up", "healthy"].includes(s.status?.toLowerCase() ?? ""));
+  const overallOk = services.length > 0 && services.every((s) => ["ok", "up", "healthy", "in-memory"].includes(s.status?.toLowerCase() ?? ""));
   const overallDegraded = services.some((s) => s.status?.toLowerCase() === "degraded");
 
   return (

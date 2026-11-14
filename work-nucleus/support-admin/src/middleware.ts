@@ -5,8 +5,8 @@ import { handleMockRequest, isMockMode } from "./lib/mock/router";
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // ── Mock mode: intercept API routes and bypass auth ────────
-  if (isMockMode()) {
+  // ── Mock mode: intercept API routes and bypass auth (NEVER permitted in production) ────────
+  if (process.env.NODE_ENV !== "production" && isMockMode()) {
     if (pathname.startsWith("/api/") && !pathname.startsWith("/api/auth")) {
       let body: unknown = undefined;
       if (request.method !== "GET" && request.method !== "HEAD") {

@@ -1,8 +1,9 @@
+/* eslint-disable */
 // =============================================================
 // Mock Data for QuestEdge Support Admin
 // =============================================================
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 
 export const PROFILE = {
   isProvisioned: true,
@@ -36,7 +37,7 @@ export const SUPPORT_DASHBOARD = {
   recentOrgs: SUPPORT_ORGANIZATIONS.slice(0, 5).map((o) => ({ id: o.id, name: o.name, industry: o.industry, createdAt: o.createdAt })),
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 export const ORG_DETAIL: Record<string, any> = {
   "org-001": {
     id: "org-001", name: "Acme Technologies", industry: "Technology", createdAt: "2025-10-01T10:00:00Z",
@@ -61,7 +62,7 @@ export const ORG_DETAIL: Record<string, any> = {
   },
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 export const ORG_USERS: Record<string, any[]> = {
   "org-001": [
     { id: "usr-001", email: "admin@acme.com", name: "Priya Sharma", role: "ADMIN", isActive: true, createdAt: "2025-12-01T10:00:00Z", auth0Sub: "auth0|mock-001" },
@@ -86,7 +87,7 @@ export const ORG_USERS: Record<string, any[]> = {
   ],
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 export const ORG_HIRING_PLANS: Record<string, any[]> = {
   "org-001": [
     { id: "hp-001", title: "Senior Frontend Engineer", department: "Engineering", status: "ACTIVE", totalRoles: 3, filledRoles: 1, hiringManager: { name: "Anita Desai" } },
@@ -104,7 +105,7 @@ export const ORG_HIRING_PLANS: Record<string, any[]> = {
   ],
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 export const ORG_HEALTH_METRICS: Record<string, any[]> = {
   "org-001": [
     { metricDate: "2025-10-01", healthScore: 60, activeUsers: 3, fillRate: 0, openRoles: 0 },

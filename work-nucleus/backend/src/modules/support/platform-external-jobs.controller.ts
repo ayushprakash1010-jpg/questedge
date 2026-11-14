@@ -8,6 +8,7 @@ import {
   Body,
   Req,
   ParseUUIDPipe,
+  Logger,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -27,6 +28,8 @@ import { ExternalJobsService } from '../external-jobs/external-jobs.service';
 @Roles(Role.SUPPORT_REP, Role.SUPPORT_ADMIN)
 @Controller('api/v1/support/external-jobs')
 export class PlatformExternalJobsController {
+  private readonly logger = new Logger(PlatformExternalJobsController.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
@@ -134,13 +137,35 @@ export class PlatformExternalJobsController {
   @Post('verify-urls')
   @Roles(Role.SUPPORT_ADMIN)
   @ApiOperation({ summary: 'Run on-demand URL health verification & deactivation' })
-  async verifyUrls(@Body('batchSize') batchSize?: number) {
+  async verifyUrls(@Body('batchSize') batchSize?: number, @Req() req?: any) {
     const count = batchSize && batchSize > 0 ? Math.min(batchSize, 100) : 30;
     const startTime = Date.now();
     const result = await this.aggregation.verifyJobUrls(count);
+    const durationMs = Date.now() - startTime;
+
+    if (req?.user?.id) {
+      let orgId = req.user.orgId;
+      if (!orgId) {
+        const platformOrg = await this.prisma.organization.findFirst({ select: { id: true } });
+        orgId = platformOrg?.id;
+      }
+      if (orgId) {
+        await this.audit
+          .log({
+            orgId,
+            userId: req.user.id,
+            action: 'EXTERNAL_JOBS_VERIFY_URLS',
+            entityType: 'EXTERNAL_JOB',
+            entityId: 'batch',
+            changes: { batchSize: count, ...result, durationMs },
+          })
+          .catch((err) => this.logger.warn(`Failed to write verify-urls audit log: ${err?.message}`));
+      }
+    }
+
     return {
       ...result,
-      durationMs: Date.now() - startTime,
+      durationMs,
       timestamp: new Date().toISOString(),
     };
   }
@@ -148,8 +173,30 @@ export class PlatformExternalJobsController {
   @Post('sync')
   @Roles(Role.SUPPORT_ADMIN)
   @ApiOperation({ summary: 'Trigger market sync across all job sources' })
-  async triggerSync() {
-    return this.externalJobsService.triggerManualSync();
+  async triggerSync(@Req() req?: any) {
+    const result = await this.externalJobsService.triggerManualSync();
+
+    if (req?.user?.id) {
+      let orgId = req.user.orgId;
+      if (!orgId) {
+        const platformOrg = await this.prisma.organization.findFirst({ select: { id: true } });
+        orgId = platformOrg?.id;
+      }
+      if (orgId) {
+        await this.audit
+          .log({
+            orgId,
+            userId: req.user.id,
+            action: 'EXTERNAL_JOBS_MANUAL_SYNC',
+            entityType: 'EXTERNAL_JOB',
+            entityId: 'sync',
+            changes: { result },
+          })
+          .catch((err) => this.logger.warn(`Failed to write manual-sync audit log: ${err?.message}`));
+      }
+    }
+
+    return result;
   }
 
   @Get('sync-status')
