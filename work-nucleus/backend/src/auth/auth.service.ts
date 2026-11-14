@@ -27,8 +27,11 @@ export class AuthService {
 
   async provision(auth0Sub: string, email: string, dto: ProvisionDto) {
     // Check if user is already provisioned
-    const existing = await this.prisma.user.findUnique({
-      where: { auth0Sub },
+    const normalizedEmail = email.toLowerCase().trim();
+    const existing = await this.prisma.user.findFirst({
+      where: {
+        OR: [{ auth0Sub }, { email: normalizedEmail }],
+      },
     });
 
     if (existing) {
@@ -193,7 +196,7 @@ export class AuthService {
     }
   }
 
-  async getMe(auth0Sub: string) {
+  async getMe(auth0Sub: string, callerEmail?: string) {
     let user = await this.prisma.user.findUnique({
       where: { auth0Sub },
       include: { organization: true },
@@ -204,27 +207,50 @@ export class AuthService {
       .map((s) => s.trim().toLowerCase())
       .filter(Boolean);
 
-    // If not found by auth0Sub, check if user exists by designated admin email
-    if (!user) {
-      user = await this.prisma.user.findFirst({
-        where: {
-          email: {
-            in: ['ayushprakash1110@gmail.com', ...supportAdminEmails],
-          },
-        },
-        include: { organization: true },
-      });
+    const normalizedCallerEmail = callerEmail?.trim().toLowerCase();
 
-      if (user && user.auth0Sub !== auth0Sub) {
-        user = await this.prisma.user.update({
-          where: { id: user.id },
-          data: {
-            auth0Sub,
-            role: Role.SUPPORT_ADMIN,
-            isActive: true,
-          },
+    // Safety guard against stolen/corrupted sub links:
+    // If the database user's email does not match the authenticated caller's email,
+    // this record was hijacked or improperly linked. Do NOT return it to the caller!
+    if (
+      user &&
+      normalizedCallerEmail &&
+      !normalizedCallerEmail.includes('@placeholder.com') &&
+      user.email?.toLowerCase() !== normalizedCallerEmail
+    ) {
+      this.logger.warn(
+        `Auth0 sub mismatch: DB user (${user.email}) does not match token email (${normalizedCallerEmail}). Unlinking sub.`,
+      );
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { auth0Sub: `unlinked_${Date.now()}_${Math.random().toString(36).substring(7)}` },
+      });
+      user = null;
+    }
+
+    // Only designated support admins may auto-link an existing record by email
+    if (!user && normalizedCallerEmail && !normalizedCallerEmail.includes('@placeholder.com')) {
+      const isDesignatedAdmin =
+        normalizedCallerEmail === 'ayushprakash1110@gmail.com' ||
+        supportAdminEmails.includes(normalizedCallerEmail);
+
+      if (isDesignatedAdmin) {
+        user = await this.prisma.user.findUnique({
+          where: { email: normalizedCallerEmail },
           include: { organization: true },
         });
+
+        if (user && user.auth0Sub !== auth0Sub) {
+          user = await this.prisma.user.update({
+            where: { id: user.id },
+            data: {
+              auth0Sub,
+              role: Role.SUPPORT_ADMIN,
+              isActive: true,
+            },
+            include: { organization: true },
+          });
+        }
       }
     }
 
@@ -260,12 +286,21 @@ export class AuthService {
     };
   }
 
-      async getRecruiterMe(auth0Sub: string) {
+  async getRecruiterMe(auth0Sub: string, callerEmail?: string) {
     const recruiter = await this.prisma.recruiterProfile.findUnique({
       where: { auth0Sub },
     });
 
     if (!recruiter) {
+      return null;
+    }
+
+    const normalizedCallerEmail = callerEmail?.trim().toLowerCase();
+    if (
+      normalizedCallerEmail &&
+      !normalizedCallerEmail.includes('@placeholder.com') &&
+      recruiter.email?.toLowerCase() !== normalizedCallerEmail
+    ) {
       return null;
     }
 
@@ -284,12 +319,21 @@ export class AuthService {
     };
   }
 
-      async getCandidateMe(auth0Sub: string) {
+  async getCandidateMe(auth0Sub: string, callerEmail?: string) {
     const candidate = await this.prisma.candidateProfile.findUnique({
       where: { auth0Sub },
     });
 
     if (!candidate) {
+      return null;
+    }
+
+    const normalizedCallerEmail = callerEmail?.trim().toLowerCase();
+    if (
+      normalizedCallerEmail &&
+      !normalizedCallerEmail.includes('@placeholder.com') &&
+      candidate.email?.toLowerCase() !== normalizedCallerEmail
+    ) {
       return null;
     }
 

@@ -133,11 +133,28 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         include: { organization: true },
       });
 
+      // Safety check: If caller email is known and does not match the DB record, do not use it
+      if (
+        resolvedProfile &&
+        rawEmail &&
+        !rawEmail.includes('@placeholder.com') &&
+        resolvedProfile.email &&
+        resolvedProfile.email.toLowerCase() !== rawEmail
+      ) {
+        this.logger.warn(
+          `Sub mismatch in strategy: record email ${resolvedProfile.email} does not match token email ${rawEmail}. Clearing.`,
+        );
+        resolvedProfile = null;
+      }
+
       if (!resolvedProfile) {
         const recruiterProfile = await this.prisma.recruiterProfile.findUnique({
           where: { auth0Sub },
         });
-        if (recruiterProfile) {
+        if (
+          recruiterProfile &&
+          (!rawEmail || rawEmail.includes('@placeholder.com') || recruiterProfile.email?.toLowerCase() === rawEmail)
+        ) {
           resolvedProfile = recruiterProfile;
           actualUserType = 'RECRUITER';
         } else {
@@ -145,7 +162,10 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
             await this.prisma.candidateProfile.findUnique({
               where: { auth0Sub },
             });
-          if (candidateProfile) {
+          if (
+            candidateProfile &&
+            (!rawEmail || rawEmail.includes('@placeholder.com') || candidateProfile.email?.toLowerCase() === rawEmail)
+          ) {
             resolvedProfile = candidateProfile;
             actualUserType = 'CANDIDATE';
           }
@@ -244,6 +264,7 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       const unprovisioned = {
         auth0Sub,
         email:
+          rawEmail ||
           payload['https://api.questedge.com/email'] ||
           payload.email ||
           `${auth0Sub}@placeholder.com`,

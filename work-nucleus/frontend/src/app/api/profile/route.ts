@@ -21,6 +21,12 @@ export async function GET(req: NextRequest) {
     if (demoRole) {
       headers["X-Demo-Role"] = demoRole;
     }
+    if (session.user?.email) {
+      headers["X-User-Email"] = session.user.email;
+    }
+    if (session.user?.name) {
+      headers["X-User-Name"] = session.user.name;
+    }
 
     const res = await fetch(`${apiUrl}/api/v1/auth/me`, {
       headers,
@@ -37,7 +43,13 @@ export async function GET(req: NextRequest) {
     }
 
     const data = await res.json();
-    return NextResponse.json(data);
+    const email =
+      !data.email || data.email.includes("@placeholder.com")
+        ? session.user?.email || data.email
+        : data.email;
+    const name = data.name || session.user?.name;
+
+    return NextResponse.json({ ...data, email, name });
   } catch (err: any) {
     const apiUrl = getApiUrl();
     console.error(`[API /profile] Failed to connect to backend at ${apiUrl}:`, err);

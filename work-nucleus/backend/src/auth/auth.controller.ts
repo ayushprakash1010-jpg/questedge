@@ -71,6 +71,7 @@ export class AuthController {
       if (user.userType === 'RECRUITER') {
         const recruiterProfile = await this.authService.getRecruiterMe(
           user.auth0Sub,
+          user.email,
         );
         if (recruiterProfile) {
           return {
@@ -82,6 +83,7 @@ export class AuthController {
       } else if (user.userType === 'CANDIDATE') {
         const candidateProfile = await this.authService.getCandidateMe(
           user.auth0Sub,
+          user.email,
         );
         if (candidateProfile) {
           return {
@@ -91,7 +93,7 @@ export class AuthController {
           };
         }
       } else if (user.userType === 'COMPANY_USER') {
-        const profile = await this.authService.getMe(user.auth0Sub);
+        const profile = await this.authService.getMe(user.auth0Sub, user.email);
         if (profile) {
           return {
             isProvisioned: true,
@@ -103,8 +105,8 @@ export class AuthController {
     }
 
     // Default flow:
-    // First check company users table
-    const profile = await this.authService.getMe(user.auth0Sub);
+    // First check company users table (verified against token email)
+    const profile = await this.authService.getMe(user.auth0Sub, user.email);
     if (profile) {
       return { isProvisioned: true, userType: 'COMPANY_USER', ...profile };
     }
@@ -112,6 +114,7 @@ export class AuthController {
     // Check recruiter profiles table
     const recruiterProfile = await this.authService.getRecruiterMe(
       user.auth0Sub,
+      user.email,
     );
     if (recruiterProfile) {
       return {
@@ -124,6 +127,7 @@ export class AuthController {
     // Check candidate profiles table
     const candidateProfile = await this.authService.getCandidateMe(
       user.auth0Sub,
+      user.email,
     );
     if (candidateProfile) {
       return {

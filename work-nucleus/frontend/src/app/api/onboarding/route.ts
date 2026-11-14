@@ -62,12 +62,20 @@ export async function POST(req: NextRequest) {
 
     console.log("[Onboarding API] Sending to backend:", targetEndpoint, "for role:", role);
 
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    };
+    if (session.user?.email) {
+      headers["X-User-Email"] = session.user.email;
+    }
+    if (session.user?.name) {
+      headers["X-User-Name"] = session.user.name;
+    }
+
     const res = await fetch(targetEndpoint, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
+      headers,
       body: JSON.stringify(payload),
     });
 
