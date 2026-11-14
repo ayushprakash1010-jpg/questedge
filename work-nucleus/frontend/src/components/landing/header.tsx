@@ -7,10 +7,10 @@ import { QuestEdgeLogo } from "@/components/QuestEdgeLogo";
 
 const navLinks = [
   { label: "Marketplace", href: "/#marketplace-preview" },
-  { label: "Job Market", href: "/#external-job-market" },
   { label: "Features", href: "/#features" },
-  { label: "AI Engines", href: "/#ai-agents" },
+  { label: "Job Market", href: "/#external-job-market" },
   { label: "How It Works", href: "/#how-it-works" },
+  { label: "AI Engines", href: "/#ai-agents" },
   { label: "Calculator", href: "/#roi-calculator" },
   { label: "Pricing", href: "/#pricing" },
 ];

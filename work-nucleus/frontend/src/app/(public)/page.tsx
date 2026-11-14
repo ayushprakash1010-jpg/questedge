@@ -21,8 +21,8 @@ export default function LandingPage() {
       <LiveMarketplacePreview />
       <Features />
       <ExternalJobMarket />
-      <AIAgents />
       <HowItWorks />
+      <AIAgents />
       <RoiCalculator />
       <Testimonials />
       <Pricing />
