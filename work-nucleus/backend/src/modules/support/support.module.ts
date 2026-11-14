@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuditModule } from '../audit/audit.module';
+import { ExternalJobsModule } from '../external-jobs/external-jobs.module';
 
 import { SupportController } from './support.controller';
 import { SupportService } from './support.service';
@@ -20,9 +21,10 @@ import { PlatformMarketplaceController } from './platform-marketplace.controller
 import { PlatformMarketplaceService } from './platform-marketplace.service';
 import { PlatformObservabilityController } from './platform-observability.controller';
 import { PlatformObservabilityService } from './platform-observability.service';
+import { PlatformExternalJobsController } from './platform-external-jobs.controller';
 
 @Module({
-  imports: [AuditModule],
+  imports: [AuditModule, ExternalJobsModule],
   controllers: [
     SupportController,
     TicketsController,
@@ -34,6 +36,7 @@ import { PlatformObservabilityService } from './platform-observability.service';
     PlatformUsersController,
     PlatformMarketplaceController,
     PlatformObservabilityController,
+    PlatformExternalJobsController,
   ],
   providers: [
     SupportService,

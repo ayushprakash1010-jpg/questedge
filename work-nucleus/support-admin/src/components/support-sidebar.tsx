@@ -17,6 +17,7 @@ import {
   HeartPulse,
   FileText,
   ScrollText,
+  Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useProfile } from "@/hooks/use-profile";
@@ -49,6 +50,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: "Tickets", href: "/tickets", icon: Ticket },
       { label: "Marketplace", href: "/marketplace", icon: Store },
+      { label: "External Jobs", href: "/external-jobs", icon: Briefcase },
     ],
   },
   {
