@@ -72,7 +72,11 @@ export default function UserDetailPage() {
 
   useEffect(() => {
     if (user?.role) {
-      setTargetRole(user.role);
+      if (user.role === "CANDIDATE" || user.role === "RECRUITER") {
+        setTargetRole("SUPPORT_ADMIN");
+      } else {
+        setTargetRole(user.role);
+      }
     }
   }, [user]);
 
@@ -329,7 +333,13 @@ export default function UserDetailPage() {
 
               <button
                 type="submit"
-                disabled={roleSubmitting || targetRole === user.role}
+                disabled={
+                  roleSubmitting ||
+                  !targetRole ||
+                  (user.role !== "CANDIDATE" &&
+                    user.role !== "RECRUITER" &&
+                    targetRole === user.role)
+                }
                 className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1.5"
               >
                 {roleSubmitting ? "Updating..." : "Save Role"}
