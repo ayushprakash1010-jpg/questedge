@@ -216,22 +216,26 @@ export default function ProtectedLayout({
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen print:h-auto print:block print:overflow-visible">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 z-50 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg ring-2 ring-white ring-offset-2 ring-offset-indigo-600 outline-none transition-all"
       >
         Skip to main content
       </a>
-      <Sidebar userType={sidebarUserType} />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar />
+      <div className="print:hidden">
+        <Sidebar userType={sidebarUserType} />
+      </div>
+      <div className="flex flex-1 flex-col overflow-hidden print:h-auto print:block print:overflow-visible">
+        <div className="print:hidden">
+          <TopBar />
+        </div>
         <main
           id="main-content"
           tabIndex={-1}
           role="main"
           aria-label="Main Content"
-          className="flex-1 overflow-y-auto bg-background p-6 outline-none"
+          className="flex-1 overflow-y-auto bg-background p-6 outline-none print:h-auto print:block print:overflow-visible print:p-0 print:bg-white"
         >
           {profileError && (
             <div className="mb-4 flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-sm">

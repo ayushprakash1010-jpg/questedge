@@ -100,10 +100,10 @@ export default function RankedCandidateCard({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow print:shadow-none print:border-slate-300 break-inside-avoid print:mb-5">
       {/* Header */}
       <div
-        className="flex items-center gap-4 px-5 py-4 cursor-pointer"
+        className="flex items-center gap-4 px-5 py-4 cursor-pointer print:cursor-default"
         onClick={() => setExpanded(!expanded)}
       >
         {/* Rank */}
@@ -128,7 +128,7 @@ export default function RankedCandidateCard({
                 title={`Email ${c.candidateName}`}
               >
                 <Mail className="w-3 h-3 text-gray-400" />
-                <span className="truncate max-w-[140px]">{c.email}</span>
+                <span className="truncate max-w-[140px] print:max-w-none">{c.email}</span>
               </a>
             )}
             {c.phone && (
@@ -176,7 +176,7 @@ export default function RankedCandidateCard({
           <button
             type="button"
             onClick={handleCopySummary}
-            className="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-600 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors cursor-pointer"
+            className="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-600 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors cursor-pointer print:hidden"
             title="Copy evaluation summary for Slack/Email"
           >
             {copied ? (
@@ -198,113 +198,117 @@ export default function RankedCandidateCard({
           >
             {Math.round(c.totalScore)}/100
           </span>
-          {expanded ? (
-            <ChevronUp className="w-4 h-4 text-gray-400" />
-          ) : (
-            <ChevronDown className="w-4 h-4 text-gray-400" />
-          )}
+          <div className="print:hidden">
+            {expanded ? (
+              <ChevronUp className="w-4 h-4 text-gray-400" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-gray-400" />
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Compact breakdown (always visible) */}
-      <div className="px-5 pb-3">
+      {/* Compact breakdown (visible on screen when collapsed, hidden in print because full breakdown is printed below) */}
+      <div className={`px-5 pb-3 ${expanded ? "hidden" : "block"} print:hidden`}>
         <ScoreBreakdownChart scoreBreakdown={c.scoreBreakdown} compact />
       </div>
 
-      {/* Expanded details */}
-      {expanded && (
-        <div className="border-t border-gray-100 px-5 py-4 space-y-4">
-          {/* Strengths & Gaps */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Strengths */}
-            <div>
-              <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">
-                Strengths
-              </h4>
-              <div className="space-y-1">
-                {(c.strengths || []).map((s, i) => (
-                  <div
-                    key={i}
-                    className="flex items-start gap-1.5 text-xs text-gray-700"
-                  >
-                    <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                    <span>{s}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Gaps */}
-            <div>
-              <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">
-                Gaps
-              </h4>
-              <div className="space-y-1">
-                {(c.gaps || []).map((g, i) => (
-                  <div
-                    key={i}
-                    className="flex items-start gap-1.5 text-xs text-gray-700"
-                  >
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-                    <span>{g}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Standout Factors */}
-          {c.standoutFactors && c.standoutFactors.length > 0 && (
-            <div>
-              <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">
-                Standout Factors
-              </h4>
-              <div className="flex flex-wrap gap-1.5">
-                {(c.standoutFactors || []).map((f, i) => (
-                  <span
-                    key={i}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-50 border border-yellow-200 rounded-full text-[11px] text-yellow-800"
-                  >
-                    <Star className="w-3 h-3" />
-                    {f}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Why This Rank */}
-          {c.comparisonNote && (
-            <div className="bg-gray-50 rounded-lg p-3">
-              <h4 className="text-xs font-semibold text-gray-500 uppercase mb-1">
-                Why this rank
-              </h4>
-              <p className="text-xs text-gray-700">{c.comparisonNote}</p>
-            </div>
-          )}
-
-          {/* Recommendation */}
-          {c.recommendation && (
-            <div className="bg-blue-50 rounded-lg p-3">
-              <h4 className="text-xs font-semibold text-blue-600 uppercase mb-1">
-                Recommendation
-              </h4>
-              <p className="text-xs text-gray-700">{c.recommendation}</p>
-            </div>
-          )}
-
-          {/* Detailed Score Breakdown */}
+      {/* Expanded details (shown on screen when expanded, ALWAYS visible in print so all candidates show full details) */}
+      <div
+        className={`border-t border-gray-100 print:border-slate-200 px-5 py-4 space-y-4 ${
+          expanded ? "block" : "hidden print:block"
+        }`}
+      >
+        {/* Strengths & Gaps */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Strengths */}
           <div>
             <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">
-              Detailed Score Breakdown
+              Strengths
             </h4>
-            <ScoreBreakdownChart
-              scoreBreakdown={c.scoreBreakdown}
-              showEvidence
-            />
+            <div className="space-y-1">
+              {(c.strengths || []).map((s, i) => (
+                <div
+                  key={i}
+                  className="flex items-start gap-1.5 text-xs text-gray-700"
+                >
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                  <span>{s}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Gaps */}
+          <div>
+            <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">
+              Gaps
+            </h4>
+            <div className="space-y-1">
+              {(c.gaps || []).map((g, i) => (
+                <div
+                  key={i}
+                  className="flex items-start gap-1.5 text-xs text-gray-700"
+                >
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                  <span>{g}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      )}
+
+        {/* Standout Factors */}
+        {c.standoutFactors && c.standoutFactors.length > 0 && (
+          <div>
+            <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">
+              Standout Factors
+            </h4>
+            <div className="flex flex-wrap gap-1.5">
+              {(c.standoutFactors || []).map((f, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-50 border border-yellow-200 rounded-full text-[11px] text-yellow-800 print:bg-yellow-50/70"
+                >
+                  <Star className="w-3 h-3" />
+                  {f}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Why This Rank */}
+        {c.comparisonNote && (
+          <div className="bg-gray-50 rounded-lg p-3 print:bg-slate-50 print:border print:border-slate-200">
+            <h4 className="text-xs font-semibold text-gray-500 uppercase mb-1">
+              Why this rank
+            </h4>
+            <p className="text-xs text-gray-700">{c.comparisonNote}</p>
+          </div>
+        )}
+
+        {/* Recommendation */}
+        {c.recommendation && (
+          <div className="bg-blue-50 rounded-lg p-3 print:bg-blue-50/60 print:border print:border-blue-200">
+            <h4 className="text-xs font-semibold text-blue-600 uppercase mb-1">
+              Recommendation
+            </h4>
+            <p className="text-xs text-gray-700">{c.recommendation}</p>
+          </div>
+        )}
+
+        {/* Detailed Score Breakdown */}
+        <div>
+          <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">
+            Detailed Score Breakdown
+          </h4>
+          <ScoreBreakdownChart
+            scoreBreakdown={c.scoreBreakdown}
+            showEvidence
+          />
+        </div>
+      </div>
     </div>
   );
 }

@@ -855,7 +855,7 @@ export default function ResumeRankerPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
@@ -1566,7 +1566,181 @@ export default function ResumeRankerPage() {
             results?.rankings || results?.candidates || [];
           return (
             <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              {/* ══════════════════════════════════════════════════════════════
+                  EXECUTIVE PRINT-ONLY REPORT HEADER & COHORT SUMMARY
+                  ══════════════════════════════════════════════════════════════ */}
+              <div className="hidden print:block mb-6 space-y-4">
+                {/* Executive Brand Bar */}
+                <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl font-black text-slate-900 tracking-tight">
+                        QuestEdge
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-900 text-white rounded">
+                        TALENT INTELLIGENCE
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-0.5 font-medium">
+                      AI-Powered 8-Dimension Candidate Fit Evaluation Report
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded">
+                      Strictly Confidential
+                    </span>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Generated: {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Mandate & Target Role Specifications */}
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3.5 text-xs text-slate-800">
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase text-slate-400 block">
+                        Target Role
+                      </span>
+                      <span className="font-bold text-sm text-slate-900">
+                        {results?.jobTitle || jobTitle || "Target Role"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase text-slate-400 block">
+                        Department & Location
+                      </span>
+                      <span className="font-semibold text-slate-800">
+                        {department || "Engineering / Technology"} • {location || "India"} {workModel ? `(${workModel})` : ""}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase text-slate-400 block">
+                        Experience & Education Required
+                      </span>
+                      <span className="text-slate-700">
+                        {requiredExperience || "Relevant experience"} • {educationRequirement || "B.Tech/B.E. or relevant degree"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase text-slate-400 block">
+                        Candidates Evaluated
+                      </span>
+                      <span className="font-semibold text-slate-800">
+                        {candidateList.length} candidate{candidateList.length !== 1 ? "s" : ""} evaluated across 8 dimensions
+                      </span>
+                    </div>
+                  </div>
+                  {mandatorySkills && mandatorySkills.length > 0 && (
+                    <div className="mt-2.5 pt-2 border-t border-slate-200 flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] font-bold uppercase text-slate-500">
+                        Core Skills:
+                      </span>
+                      {mandatorySkills.map((sk) => (
+                        <span
+                          key={sk}
+                          className="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[10px] text-slate-700 font-medium"
+                        >
+                          {sk}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* AI Cohort Pool Assessment (Print-friendly) */}
+                {(results?.summary || results?.poolSummary) && (
+                  <div className="border border-blue-200 bg-blue-50/70 rounded-lg p-3 text-xs text-blue-950">
+                    <span className="font-bold text-[11px] uppercase tracking-wide text-blue-900 block mb-1">
+                      AI Candidate Pool Assessment
+                    </span>
+                    <p className="leading-relaxed text-blue-950/90 whitespace-pre-line">
+                      {results.summary || results.poolSummary}
+                    </p>
+                  </div>
+                )}
+
+                {/* Executive Cohort Comparison Matrix (Print-Only Table) */}
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">
+                    Executive Candidate Ranking Summary
+                  </h3>
+                  <table className="print-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: "45px", textAlign: "center" }}>Rank</th>
+                        <th style={{ width: "20%" }}>Candidate</th>
+                        <th style={{ width: "18%" }}>Contact Info</th>
+                        <th style={{ width: "12%", textAlign: "center" }}>Fit & Score</th>
+                        <th style={{ width: "26%" }}>Key Strengths</th>
+                        <th style={{ width: "24%" }}>AI Recommendation</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {candidateList.map((cand: any, idx: number) => {
+                        const matched = resumes.find(
+                          (r) =>
+                            r.id === cand.candidateId ||
+                            r.name.toLowerCase() === (cand.candidateName || "").toLowerCase()
+                        );
+                        const cEmail = cand.email || matched?.email;
+                        const cPhone = cand.phone || matched?.phone;
+                        const cRole = matched?.currentRole || cand.currentRole;
+                        const cCompany = matched?.currentCompany || cand.currentCompany;
+                        const score = Math.round(Number(cand.totalScore) || 0);
+
+                        return (
+                          <tr key={cand.candidateId || idx}>
+                            <td style={{ textAlign: "center", fontWeight: "bold", fontSize: "10pt" }}>
+                              #{cand.rank || idx + 1}
+                            </td>
+                            <td>
+                              <div className="font-bold text-slate-900 text-xs">
+                                {cand.candidateName}
+                              </div>
+                              {(cRole || cCompany) && (
+                                <div className="text-[9.5px] text-slate-500">
+                                  {cRole}{cRole && cCompany ? " @ " : ""}{cCompany}
+                                </div>
+                              )}
+                            </td>
+                            <td className="text-[9.5px] text-slate-600">
+                              {cEmail && <div>{cEmail}</div>}
+                              {cPhone && <div>{cPhone}</div>}
+                              {cand.linkedin && <div className="text-blue-700">LinkedIn Profile</div>}
+                            </td>
+                            <td style={{ textAlign: "center" }}>
+                              <span className="font-bold text-xs text-slate-900 block">
+                                {score}/100
+                              </span>
+                              <span className="text-[9px] uppercase font-bold text-slate-600">
+                                {(cand.verdict || "").replace(/_/g, " ")}
+                              </span>
+                            </td>
+                            <td className="text-[9.5px] text-slate-700">
+                              {(cand.strengths || []).slice(0, 2).map((st: string, sIdx: number) => (
+                                <div key={sIdx}>• {st}</div>
+                              ))}
+                            </td>
+                            <td className="text-[9.5px] text-slate-700">
+                              {cand.recommendation || cand.comparisonNote || "Recommended for review."}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="pt-2">
+                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">
+                    Detailed Candidate Profiles & 8-Dimension Fit Breakdown
+                  </h3>
+                </div>
+              </div>
+
+              {/* On-Screen Header & Action Controls */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
                 <div>
                   <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
                     <Trophy className="w-5 h-5 text-yellow-500" />
@@ -1645,9 +1819,9 @@ export default function ResumeRankerPage() {
                 </div>
               </div>
 
-              {/* AI Pool Summary Banner if available */}
+              {/* AI Pool Summary Banner if available (Screen Only) */}
               {(results?.summary || results?.poolSummary) && (
-                <div className="bg-blue-50/80 border border-blue-200 rounded-xl p-4 text-xs text-blue-900 leading-relaxed shadow-xs space-y-1">
+                <div className="bg-blue-50/80 border border-blue-200 rounded-xl p-4 text-xs text-blue-900 leading-relaxed shadow-xs space-y-1 print:hidden">
                   <span className="font-bold text-blue-950 flex items-center gap-1.5">
                     <Sparkles className="w-4 h-4 text-blue-600" />
                     AI Candidate Pool Assessment
@@ -1709,7 +1883,7 @@ export default function ResumeRankerPage() {
               )}
 
               {/* New Ranking buttons */}
-              <div className="pt-4 border-t border-gray-200 flex justify-between items-center">
+              <div className="pt-4 border-t border-gray-200 flex justify-between items-center print:hidden">
                 <button
                   type="button"
                   onClick={handleClearAll}

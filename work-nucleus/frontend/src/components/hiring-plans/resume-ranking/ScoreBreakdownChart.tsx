@@ -77,7 +77,7 @@ export default function ScoreBreakdownChart({
               <div
                 className={`flex-1 ${
                   compact ? "h-2" : "h-3"
-                } bg-gray-100 rounded-full overflow-hidden`}
+                } bg-gray-100 print:bg-slate-200 rounded-full overflow-hidden`}
               >
                 <div
                   className={`h-full rounded-full transition-all duration-500 ${barColor(ratio)}`}

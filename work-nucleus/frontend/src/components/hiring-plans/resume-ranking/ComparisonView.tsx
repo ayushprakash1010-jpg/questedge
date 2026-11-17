@@ -158,7 +158,7 @@ export default function ComparisonView({
   const dimensions = Object.keys(DIMENSION_LABELS);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 print:hidden">
       <div className="relative w-full max-w-6xl max-h-[90vh] overflow-auto rounded-xl bg-white shadow-2xl">
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-4">
