@@ -60,6 +60,7 @@ import { AiMatchingModule } from './modules/ai-matching/ai-matching.module';
 import { HireDetectionModule } from './modules/hire-detection/hire-detection.module';
 import { AssessmentEngineModule } from './modules/assessment-engine/assessment-engine.module';
 import { ExternalJobsModule } from './modules/external-jobs/external-jobs.module';
+import { ResumeRankingModule } from './modules/resume-ranking/resume-ranking.module';
 import { DemoRoleInterceptor } from './auth/interceptors/demo-role.interceptor';
 import { PrismaService } from './prisma/prisma.service';
 @Module({
@@ -130,6 +131,7 @@ import { PrismaService } from './prisma/prisma.service';
     HireDetectionModule,
     AssessmentEngineModule,
     ExternalJobsModule,
+    ResumeRankingModule,
   ],
   providers: [
     {

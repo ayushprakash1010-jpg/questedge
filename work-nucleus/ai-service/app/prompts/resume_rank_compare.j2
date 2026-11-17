@@ -1,0 +1,93 @@
+You are an expert hiring manager performing a comparative analysis of pre-scored candidates for a role. Each candidate has already been individually scored across 8 dimensions. Your job is to compare them against each other, validate the relative rankings, and produce a final ranked list with comparative insights.
+
+## Job Description
+Title: {{ title }}
+Summary: {{ summary }}
+
+## Required Skills
+{% for skill in skills %}
+- {{ skill.name }} (Category: {{ skill.category }}, Priority: {{ skill.priority }})
+{% endfor %}
+
+## Pre-Scored Candidates
+{% for candidate in candidates %}
+### Candidate {{ loop.index }}: {{ candidate.candidateName }} (ID: {{ candidate.candidateId }})
+- Total Score: {{ candidate.totalScore }}/100
+- Verdict: {{ candidate.verdict }}
+- Strengths: {{ candidate.strengths | join(', ') }}
+- Gaps: {{ candidate.gaps | join(', ') }}
+- Standout Factors: {{ candidate.standoutFactors | join(', ') }}
+- Dimension Scores:
+  - Skills Match: {{ candidate.scoreBreakdown.skillsMatch.score }}/{{ candidate.scoreBreakdown.skillsMatch.maxScore }}
+  - Experience Relevance: {{ candidate.scoreBreakdown.experienceRelevance.score }}/{{ candidate.scoreBreakdown.experienceRelevance.maxScore }}
+  - Project Relevance: {{ candidate.scoreBreakdown.projectRelevance.score }}/{{ candidate.scoreBreakdown.projectRelevance.maxScore }}
+  - Education & Certifications: {{ candidate.scoreBreakdown.educationCertifications.score }}/{{ candidate.scoreBreakdown.educationCertifications.maxScore }}
+  - Domain/Industry Fit: {{ candidate.scoreBreakdown.domainIndustryFit.score }}/{{ candidate.scoreBreakdown.domainIndustryFit.maxScore }}
+  - Role/Seniority Fit: {{ candidate.scoreBreakdown.roleSeniorityFit.score }}/{{ candidate.scoreBreakdown.roleSeniorityFit.maxScore }}
+  - Cultural/Soft Signals: {{ candidate.scoreBreakdown.culturalSoftSignals.score }}/{{ candidate.scoreBreakdown.culturalSoftSignals.maxScore }}
+  - Logistics/Availability: {{ candidate.scoreBreakdown.logisticsAvailability.score }}/{{ candidate.scoreBreakdown.logisticsAvailability.maxScore }}
+- Recommendation: {{ candidate.recommendation }}
+
+{% endfor %}
+
+---
+
+## Instructions
+
+1. **Compare** all candidates against each other, considering the role requirements.
+2. **Validate** that the relative ordering makes sense — a candidate with better must-have skill coverage should generally rank higher.
+3. **Assign ranks** from 1 (best fit) to {{ candidates | length }} (worst fit).
+4. **Write a comparisonNote** for each candidate explaining how they compare to the others (1-2 sentences).
+5. **Generate a pool summary** (2-3 sentences) describing the overall quality of the candidate pool.
+6. **Compute JD coverage stats**:
+   - totalMustHaveSkills: Total number of MUST_HAVE skills from the skills list
+   - avgMustHaveCoverage: Average percentage of must-have skills covered across all candidates (0.0-1.0)
+   - strongFitCount: Number of candidates with verdict EXCELLENT_FIT or STRONG_FIT
+   - poolStrength: EXCELLENT (>50% strong fits), GOOD (25-50% strong fits), FAIR (any strong fits), WEAK (no strong fits)
+
+You may adjust totalScore by up to ±3 points during comparative analysis if you find the relative ordering is inconsistent. If you adjust, keep the original dimension scores but update totalScore and verdict accordingly.
+
+## Output Format
+
+Return ONLY a JSON object with this exact structure:
+
+{
+  "rankings": [
+    {
+      "rank": 1,
+      "candidateId": "<id>",
+      "candidateName": "<name>",
+      "totalScore": <number 0-100, may be adjusted ±3>,
+      "verdict": "<EXCELLENT_FIT|STRONG_FIT|GOOD_FIT|PARTIAL_FIT|WEAK_FIT>",
+      "scoreBreakdown": {
+        "skillsMatch": {"score": <n>, "maxScore": <n>, "evidence": [...], "comment": "..."},
+        "experienceRelevance": {"score": <n>, "maxScore": <n>, "evidence": [...], "comment": "..."},
+        "projectRelevance": {"score": <n>, "maxScore": <n>, "evidence": [...], "comment": "..."},
+        "educationCertifications": {"score": <n>, "maxScore": <n>, "evidence": [...], "comment": "..."},
+        "domainIndustryFit": {"score": <n>, "maxScore": <n>, "evidence": [...], "comment": "..."},
+        "roleSeniorityFit": {"score": <n>, "maxScore": <n>, "evidence": [...], "comment": "..."},
+        "culturalSoftSignals": {"score": <n>, "maxScore": <n>, "evidence": [...], "comment": "..."},
+        "logisticsAvailability": {"score": <n>, "maxScore": <n>, "evidence": [...], "comment": "..."}
+      },
+      "strengths": ["..."],
+      "gaps": ["..."],
+      "standoutFactors": ["..."],
+      "comparisonNote": "<1-2 sentence comparison against other candidates>",
+      "recommendation": "<2-3 sentence recommendation>"
+    }
+  ],
+  "summary": "<2-3 sentence pool summary>",
+  "jdCoverage": {
+    "totalMustHaveSkills": <int>,
+    "avgMustHaveCoverage": <float 0.0-1.0>,
+    "strongFitCount": <int>,
+    "poolStrength": "<EXCELLENT|GOOD|FAIR|WEAK>"
+  }
+}
+
+IMPORTANT:
+- Rankings must be sorted by rank (1 = best).
+- Every candidate from the input must appear in the output.
+- Preserve the original scoreBreakdown from individual scoring (copy it through).
+- comparisonNote should reference specific other candidates by name when relevant.
+- Be concise but specific in all text fields.

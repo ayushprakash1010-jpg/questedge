@@ -16,6 +16,7 @@ import {
   AlertCircle,
   Clock,
   Rocket,
+  Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PipelineKanban } from "./PipelineKanban";
@@ -202,6 +203,17 @@ export default function MandateDetailPage() {
                   {(mandate as any).stats?.totalReferrals ?? mandate._count?.referrals}
                 </span>
               )}
+            </Button>
+
+            {/* AI Resume Ranking */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push(`/mandates/${id}/ranking`)}
+              className="gap-2 border-yellow-200 text-yellow-700 hover:bg-yellow-50"
+            >
+              <Trophy className="h-4 w-4" />
+              AI Rank Resumes
             </Button>
 
             {/* Lifecycle actions */}

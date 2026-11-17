@@ -542,6 +542,9 @@ model Organization {
   assessmentQuestions AssessmentQuestion[]
   videoInterviews     VideoInterview[]
 
+  // -- Resume Ranking Relations --
+  resumeRankingSessions ResumeRankingSession[]
+
   @@map("organizations")
 }
 
@@ -600,6 +603,9 @@ model User {
 
   // -- Assessment Engine Relations --
   conductedVideoInterviews VideoInterview[] @relation("VideoInterviewer")
+
+  // -- Resume Ranking Relations --
+  resumeRankingSessions ResumeRankingSession[]
 
   @@index([orgId])
   @@index([auth0Sub])
@@ -1848,6 +1854,9 @@ model Mandate {
   hiringAssessments HiringAssessment[] @relation("MandateAssessments")
   videoInterviews   VideoInterview[]   @relation("MandateVideoInterviews")
 
+  // -- Resume Ranking Relations --
+  resumeRankingSessions ResumeRankingSession[]
+
   @@index([orgId, status])
   @@index([status])
   @@map("mandates")
@@ -2473,3 +2482,59 @@ model JobSourceConfig {
   @@map("job_source_configs")
 }
 
+
+
+// ── Resume Ranking ──────────────────────────────────────────────────
+
+enum RankingStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model ResumeRankingSession {
+  id               String        @id @default(uuid()) @db.Uuid
+  orgId            String        @map("org_id") @db.Uuid
+  mandateId        String        @map("mandate_id") @db.Uuid
+  createdById      String        @map("created_by_id") @db.Uuid
+  status           RankingStatus @default(PROCESSING)
+  candidateCount   Int           @map("candidate_count")
+  customWeights    Json?         @map("custom_weights")
+  poolSummary      String?       @map("pool_summary") @db.Text
+  aiModel          String?       @map("ai_model")
+  processingTimeMs Int?          @map("processing_time_ms")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  completedAt      DateTime?     @map("completed_at")
+
+  organization Organization           @relation(fields: [orgId], references: [id])
+  mandate      Mandate                @relation(fields: [mandateId], references: [id])
+  createdBy    User                   @relation(fields: [createdById], references: [id])
+  results      ResumeRankingResult[]
+
+  @@index([orgId, mandateId])
+  @@index([createdAt(sort: Desc)])
+  @@map("resume_ranking_sessions")
+}
+
+model ResumeRankingResult {
+  id              String   @id @default(uuid()) @db.Uuid
+  sessionId       String   @map("session_id") @db.Uuid
+  candidateId     String?  @map("candidate_id") @db.Uuid
+  referralId      String?  @map("referral_id") @db.Uuid
+  candidateName   String   @map("candidate_name")
+  rank            Int
+  totalScore      Decimal  @map("total_score") @db.Decimal(5, 2)
+  verdict         String
+  scoreBreakdown  Json     @map("score_breakdown")
+  strengths       Json     @default("[]")
+  gaps            Json     @default("[]")
+  standoutFactors Json     @default("[]") @map("standout_factors")
+  comparisonNote  String?  @map("comparison_note") @db.Text
+  recommendation  String?  @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  session ResumeRankingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, rank])
+  @@map("resume_ranking_results")
+}

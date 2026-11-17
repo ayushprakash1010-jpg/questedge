@@ -19,6 +19,8 @@ from app.schemas.insights import InsightsRequest, InsightsResponse
 from app.agents.insights_agent import InsightsAgent
 from app.schemas.resume_match import ResumeMatchRequest, ResumeMatchResponse
 from app.agents.resume_matcher import ResumeMatcherAgent
+from app.schemas.resume_ranking import ResumeRankingRequest, ResumeRankingResponse
+from app.agents.resume_ranker import ResumeRankerAgent
 from app.schemas.bgv import BgvSummariseRequest, BgvSummariseResponse
 from app.agents.bgv_summariser import BgvSummariserAgent
 from app.schemas.appraisal import (
@@ -39,6 +41,7 @@ candidate_scorer = CandidateScorerAgent()
 communication_drafter = CommunicationDrafterAgent()
 insights_agent = InsightsAgent()
 resume_matcher = ResumeMatcherAgent()
+resume_ranker = ResumeRankerAgent()
 bgv_summariser = BgvSummariserAgent()
 appraisal_agent = AppraisalAgent()
 
@@ -148,6 +151,18 @@ async def match_resume(
     logger.info(f"Matching resume for: {request.candidateName}")
     result = await resume_matcher.match(request)
     logger.info(f"Resume match complete for {request.candidateName}: score={result.matchScore}")
+    return result
+
+
+@app.post("/ai/rank-resumes", response_model=ResumeRankingResponse)
+async def rank_resumes(
+    request: ResumeRankingRequest,
+    _api_key: str = Depends(verify_internal_api_key),
+):
+    """Rank multiple candidate resumes against a job description using AI."""
+    logger.info(f"Ranking {len(request.candidates)} resumes")
+    result = await resume_ranker.rank(request)
+    logger.info(f"Ranking complete: {len(result.rankings)} candidates ranked")
     return result
 
 
