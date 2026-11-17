@@ -1264,56 +1264,105 @@ export default function ResumeRankerPage() {
         </div>
       ) : (
         /* Results View */
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-yellow-500" />
-                Ranking Results
-              </h2>
-              <p className="text-xs text-gray-500 mt-0.5">
-                {results.candidates?.length} candidates evaluated against{" "}
-                <span className="font-medium text-gray-700">
-                  {results.jobTitle || jobTitle || "Job Description"}
-                </span>
-                {results.weightsUsed && " • Custom weights applied"}
-              </p>
+        (() => {
+          const candidateList: any[] =
+            results?.rankings || results?.candidates || [];
+          return (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-yellow-500" />
+                    Ranking Results
+                  </h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {candidateList.length} candidate
+                    {candidateList.length !== 1 ? "s" : ""} evaluated against{" "}
+                    <span className="font-semibold text-gray-800">
+                      {results?.jobTitle || jobTitle || "Job Description"}
+                    </span>
+                    {results?.processingTimeMs && (
+                      <span className="text-gray-400">
+                        {" "}
+                        • {(results.processingTimeMs / 1000).toFixed(1)}s
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setResults(null)}
+                  className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Re-rank / Modify
+                </button>
+              </div>
+
+              {/* AI Pool Summary Banner if available */}
+              {(results?.summary || results?.poolSummary) && (
+                <div className="bg-blue-50/80 border border-blue-200 rounded-xl p-4 text-xs text-blue-900 leading-relaxed shadow-xs space-y-1">
+                  <span className="font-bold text-blue-950 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-blue-600" />
+                    AI Candidate Pool Assessment
+                  </span>
+                  <p className="text-blue-900/90 whitespace-pre-line">
+                    {results.summary || results.poolSummary}
+                  </p>
+                </div>
+              )}
+
+              {/* Candidate Cards */}
+              {candidateList.length > 0 ? (
+                <div className="space-y-3">
+                  {candidateList.map((candidate: any, idx: number) => (
+                    <RankedCandidateCard
+                      key={candidate.candidateId || candidate.id || idx}
+                      candidate={{
+                        ...candidate,
+                        rank: candidate.rank || idx + 1,
+                        totalScore: Number(candidate.totalScore) || 0,
+                        strengths: Array.isArray(candidate.strengths)
+                          ? candidate.strengths
+                          : [],
+                        gaps: Array.isArray(candidate.gaps)
+                          ? candidate.gaps
+                          : [],
+                        standoutFactors: Array.isArray(candidate.standoutFactors)
+                          ? candidate.standoutFactors
+                          : [],
+                        scoreBreakdown: candidate.scoreBreakdown || {},
+                      }}
+                      defaultExpanded={idx === 0}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-10 bg-gray-50 rounded-xl border border-gray-200 text-gray-500 text-xs">
+                  No candidate rankings returned. Please adjust your inputs and try again.
+                </div>
+              )}
+
+              {/* New Ranking buttons */}
+              <div className="pt-4 border-t border-gray-200 flex justify-between items-center">
+                <button
+                  type="button"
+                  onClick={handleClearAll}
+                  className="text-xs text-gray-500 hover:text-gray-700 cursor-pointer"
+                >
+                  Start New Ranking
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setResults(null)}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
+                >
+                  Adjust Inputs & Re-run
+                </button>
+              </div>
             </div>
-            <button
-              onClick={() => setResults(null)}
-              className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Re-rank / Modify
-            </button>
-          </div>
-
-          {/* Candidate Cards */}
-          <div className="space-y-3">
-            {results.candidates?.map((candidate: any) => (
-              <RankedCandidateCard
-                key={candidate.candidateId}
-                candidate={candidate}
-              />
-            ))}
-          </div>
-
-          {/* New Ranking button */}
-          <div className="pt-4 border-t border-gray-200 flex justify-between items-center">
-            <button
-              onClick={handleClearAll}
-              className="text-xs text-gray-500 hover:text-gray-700"
-            >
-              Start New Ranking
-            </button>
-            <button
-              onClick={() => setResults(null)}
-              className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-            >
-              Adjust Inputs & Re-run
-            </button>
-          </div>
-        </div>
+          );
+        })()
       )}
     </div>
   );

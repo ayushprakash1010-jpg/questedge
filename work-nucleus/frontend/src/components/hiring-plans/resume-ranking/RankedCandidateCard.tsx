@@ -112,7 +112,7 @@ export default function RankedCandidateCard({
                 Strengths
               </h4>
               <div className="space-y-1">
-                {c.strengths.map((s, i) => (
+                {(c.strengths || []).map((s, i) => (
                   <div
                     key={i}
                     className="flex items-start gap-1.5 text-xs text-gray-700"
@@ -130,7 +130,7 @@ export default function RankedCandidateCard({
                 Gaps
               </h4>
               <div className="space-y-1">
-                {c.gaps.map((g, i) => (
+                {(c.gaps || []).map((g, i) => (
                   <div
                     key={i}
                     className="flex items-start gap-1.5 text-xs text-gray-700"
@@ -144,13 +144,13 @@ export default function RankedCandidateCard({
           </div>
 
           {/* Standout Factors */}
-          {c.standoutFactors.length > 0 && (
+          {c.standoutFactors && c.standoutFactors.length > 0 && (
             <div>
               <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">
                 Standout Factors
               </h4>
               <div className="flex flex-wrap gap-1.5">
-                {c.standoutFactors.map((f, i) => (
+                {(c.standoutFactors || []).map((f, i) => (
                   <span
                     key={i}
                     className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-50 border border-yellow-200 rounded-full text-[11px] text-yellow-800"

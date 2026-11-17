@@ -512,12 +512,19 @@ export class ResumeRankingService {
 
     const processingTimeMs = Date.now() - startTime;
 
+    const mappedRankings = sanitized.map((r: any) => ({
+      ...r,
+      totalScore: Number(r.totalScore) || 0,
+    }));
+
     return {
-      rankings: sanitized,
+      rankings: mappedRankings,
+      candidates: mappedRankings,
       summary: aiResult.summary || null,
       jdCoverage: aiResult.jdCoverage || null,
       processingTimeMs,
       candidateCount: validCandidates.length,
+      jobTitle: dto.jobTitle || 'Job Position',
       isQuickRank: true,
     };
   }

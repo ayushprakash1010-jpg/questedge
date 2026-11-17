@@ -53,6 +53,8 @@ export default function ScoreBreakdownChart({
   compact = false,
   showEvidence = false,
 }: ScoreBreakdownChartProps) {
+  if (!scoreBreakdown) return null;
+
   return (
     <div className={compact ? "space-y-1.5" : "space-y-2.5"}>
       {DIMENSION_CONFIG.map(({ key, label, icon }) => {
