@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Trophy,
   Upload,
@@ -22,8 +23,17 @@ import {
   Plus,
   ChevronDown,
   ChevronUp,
+  Download,
+  Printer,
+  UploadCloud,
+  Check,
+  Mail,
+  Phone,
+  Globe,
+  ExternalLink,
 } from "lucide-react";
 import RankedCandidateCard from "@/components/hiring-plans/resume-ranking/RankedCandidateCard";
+import ComparisonView from "@/components/hiring-plans/resume-ranking/ComparisonView";
 import WeightCustomizer, {
   DEFAULT_WEIGHTS,
   type ScoringWeights,
@@ -34,7 +44,7 @@ interface ResumeFile {
   name: string;
   text: string;
   fileName?: string;
-  fileType?: "pdf" | "txt";
+  fileType?: "pdf" | "docx" | "txt";
   currentRole?: string;
   currentCompany?: string;
   experienceYears?: number;
@@ -42,6 +52,8 @@ interface ResumeFile {
   skills?: string[];
   email?: string;
   phone?: string;
+  linkedin?: string;
+  github?: string;
 }
 
 /**
@@ -82,6 +94,17 @@ async function extractTextFromFile(file: File): Promise<string> {
       text += pageText + "\n\n";
     }
     return text.replace(/\u0000/g, "").trim();
+  }
+
+  if (
+    ext === "docx" ||
+    file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  ) {
+    // @ts-ignore
+    const mammoth = await import("mammoth/mammoth.browser.js");
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    return (result.value || "").replace(/\u0000/g, "").trim();
   }
 
   // Fallback for TXT or other plain text files
@@ -186,6 +209,29 @@ function heuristicExtractResume(text: string, fileName: string): Partial<ResumeF
     new RegExp(`\\b${s.replace(".", "\\.")}\\b`, "i").test(text)
   );
 
+  // Extract contact info
+  const emailMatch = text.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/);
+  const email = emailMatch ? emailMatch[0].trim() : undefined;
+
+  const phoneMatch = text.match(/(?:\+?\d{1,3}[-.\s]?)?\(?\d{3,5}\)?[-.\s]?\d{3,5}[-.\s]?\d{3,5}/);
+  let phone: string | undefined;
+  if (phoneMatch) {
+    const digits = phoneMatch[0].replace(/\D/g, "");
+    if (digits.length >= 10 && digits.length <= 15) {
+      phone = phoneMatch[0].trim();
+    }
+  }
+
+  const linkedinMatch = text.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/([a-zA-Z0-9_-]+)/i);
+  const linkedin = linkedinMatch
+    ? (linkedinMatch[0].startsWith("http") ? linkedinMatch[0] : `https://${linkedinMatch[0]}`)
+    : undefined;
+
+  const githubMatch = text.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/([a-zA-Z0-9_-]+)/i);
+  const github = githubMatch
+    ? (githubMatch[0].startsWith("http") ? githubMatch[0] : `https://${githubMatch[0]}`)
+    : undefined;
+
   return {
     name,
     experienceYears,
@@ -193,6 +239,10 @@ function heuristicExtractResume(text: string, fileName: string): Partial<ResumeF
     currentCompany,
     education,
     skills: detectedSkills.slice(0, 10),
+    email,
+    phone,
+    linkedin,
+    github,
   };
 }
 
@@ -241,6 +291,14 @@ function heuristicExtractJD(text: string) {
 }
 
 export default function ResumeRankerPage() {
+  const router = useRouter();
+
+  // Drag & drop + Modals + Local Session
+  const [isDragging, setIsDragging] = useState(false);
+  const [showComparison, setShowComparison] = useState(false);
+  const [sessionRestored, setSessionRestored] = useState(false);
+  const STORAGE_KEY = "questedge_quick_ranker_session";
+
   // JD state
   const [jdText, setJdText] = useState("");
   const [jobTitle, setJobTitle] = useState("");
@@ -396,11 +454,8 @@ export default function ResumeRankerPage() {
     }
   };
 
-  // Handle Resume files upload (multiple PDFs or TXTs) with full field extraction
-  const handleResumeFileUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const files = e.target.files;
+  // Handle Resume files upload (multiple PDFs, DOCX, or TXTs) with full field extraction
+  const processResumeFileList = async (files: FileList | File[]) => {
     if (!files || files.length === 0) return;
 
     setResumesUploading(true);
@@ -462,19 +517,26 @@ export default function ResumeRankerPage() {
               ? aiParsed.skills
               : heuristic.skills || [];
 
+          let detectedFileType: "pdf" | "docx" | "txt" = "txt";
+          const lower = file.name.toLowerCase();
+          if (lower.endsWith(".pdf")) detectedFileType = "pdf";
+          else if (lower.endsWith(".docx")) detectedFileType = "docx";
+
           newResumes.push({
             id: `file-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
             name: candidateName,
             fileName: file.name,
-            fileType: file.name.toLowerCase().endsWith(".pdf") ? "pdf" : "txt",
+            fileType: detectedFileType,
             text: text.substring(0, 15000),
             currentRole,
             currentCompany,
             experienceYears,
             education,
             skills,
-            email: aiParsed?.email || undefined,
-            phone: aiParsed?.phone || undefined,
+            email: aiParsed?.email || heuristic.email,
+            phone: aiParsed?.phone || heuristic.phone,
+            linkedin: heuristic.linkedin,
+            github: heuristic.github,
           });
         }
       } catch (err: any) {
@@ -486,13 +548,21 @@ export default function ResumeRankerPage() {
       setResumes((prev) => [...prev, ...newResumes]);
     } else {
       setError(
-        "No readable text found in the selected files. Please check that PDFs have selectable text."
+        "No readable text found in the selected files. Please check that PDFs/Word docs have readable text."
       );
     }
 
     setResumesUploading(false);
     setResumesUploadStatus("");
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleResumeFileUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    if (e.target.files) {
+      await processResumeFileList(e.target.files);
+    }
   };
 
   const addPastedResume = () => {
@@ -510,6 +580,10 @@ export default function ResumeRankerPage() {
         experienceYears: heuristic.experienceYears,
         education: heuristic.education,
         skills: heuristic.skills,
+        email: heuristic.email,
+        phone: heuristic.phone,
+        linkedin: heuristic.linkedin,
+        github: heuristic.github,
       },
     ]);
     setPasteText("");
@@ -535,6 +609,184 @@ export default function ResumeRankerPage() {
     setResumes([]);
     setResults(null);
     setError(null);
+    setSessionRestored(false);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {}
+  };
+
+  // Restore session from localStorage on initial mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const data = JSON.parse(raw);
+        if (data.jdText) setJdText(data.jdText);
+        if (data.jobTitle) setJobTitle(data.jobTitle);
+        if (data.department) setDepartment(data.department);
+        if (data.location) setLocation(data.location);
+        if (data.workModel) setWorkModel(data.workModel);
+        if (data.requiredExperience) setRequiredExperience(data.requiredExperience);
+        if (data.educationRequirement) setEducationRequirement(data.educationRequirement);
+        if (Array.isArray(data.mandatorySkills)) setMandatorySkills(data.mandatorySkills);
+        if (Array.isArray(data.preferredSkills)) setPreferredSkills(data.preferredSkills);
+        if (data.jdFileName) setJdFileName(data.jdFileName);
+        if (Array.isArray(data.resumes) && data.resumes.length > 0) setResumes(data.resumes);
+        if (data.results) setResults(data.results);
+        if (data.jdText || (data.resumes && data.resumes.length > 0)) {
+          setSessionRestored(true);
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to restore session from localStorage", e);
+    }
+  }, []);
+
+  // Auto-save session to localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (jdText || resumes.length > 0 || results) {
+      try {
+        const payload = {
+          jdText,
+          jobTitle,
+          department,
+          location,
+          workModel,
+          requiredExperience,
+          educationRequirement,
+          mandatorySkills,
+          preferredSkills,
+          jdFileName,
+          resumes,
+          results,
+          savedAt: Date.now(),
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      } catch (e) {}
+    }
+  }, [
+    jdText,
+    jobTitle,
+    department,
+    location,
+    workModel,
+    requiredExperience,
+    educationRequirement,
+    mandatorySkills,
+    preferredSkills,
+    jdFileName,
+    resumes,
+    results,
+  ]);
+
+  // Export ranking table to CSV
+  const handleExportCSV = () => {
+    const candidateList: any[] = results?.rankings || results?.candidates || [];
+    if (!candidateList.length) return;
+
+    const escapeCsv = (val: any) => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    const headers = [
+      "Rank",
+      "Candidate Name",
+      "Total Score (/100)",
+      "Fit Verdict",
+      "Skills Match (/25)",
+      "Experience (/20)",
+      "Projects (/15)",
+      "Education (/10)",
+      "Domain Fit (/10)",
+      "Role Fit (/10)",
+      "Culture (/5)",
+      "Logistics (/5)",
+      "Email",
+      "Phone",
+      "LinkedIn",
+      "GitHub",
+      "Top Strengths",
+      "Identified Gaps",
+      "Recommendation",
+      "Why This Rank",
+    ];
+
+    const rows = candidateList.map((c, idx) => {
+      const matched = resumes.find(
+        (r) =>
+          r.id === c.candidateId ||
+          r.name.toLowerCase() === (c.candidateName || "").toLowerCase()
+      );
+      const b = c.scoreBreakdown || {};
+      const strengths = Array.isArray(c.strengths) ? c.strengths.join(" | ") : "";
+      const gaps = Array.isArray(c.gaps) ? c.gaps.join(" | ") : "";
+
+      return [
+        c.rank || idx + 1,
+        escapeCsv(c.candidateName),
+        Number(c.totalScore) || 0,
+        escapeCsv(c.verdict || "N/A"),
+        b.skillsMatch?.score ?? "",
+        b.experienceRelevance?.score ?? "",
+        b.projectRelevance?.score ?? "",
+        b.educationCertifications?.score ?? "",
+        b.domainIndustryFit?.score ?? "",
+        b.roleSeniorityFit?.score ?? "",
+        b.culturalSoftSignals?.score ?? "",
+        b.logisticsAvailability?.score ?? "",
+        escapeCsv(c.email || matched?.email || ""),
+        escapeCsv(c.phone || matched?.phone || ""),
+        escapeCsv(c.linkedin || matched?.linkedin || ""),
+        escapeCsv(c.github || matched?.github || ""),
+        escapeCsv(strengths),
+        escapeCsv(gaps),
+        escapeCsv(c.recommendation || ""),
+        escapeCsv(c.comparisonNote || ""),
+      ].join(",");
+    });
+
+    const csvContent = [headers.join(","), ...rows].join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const roleSlug = (jobTitle || results?.jobTitle || "candidates")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .slice(0, 30);
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `resume-ranking-${roleSlug}-${new Date().toISOString().slice(0, 10)}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleCreateMandate = () => {
+    const prefillData = {
+      title: jobTitle || results?.jobTitle || "New Role",
+      department,
+      description: jdText,
+      location,
+      workModel: workModel || "Hybrid",
+      requiredExperience,
+      educationRequirement,
+      mandatorySkills,
+      preferredSkills,
+    };
+    try {
+      sessionStorage.setItem("mandate_draft_prefill", JSON.stringify(prefillData));
+    } catch (e) {}
+    router.push("/mandates/create");
   };
 
   const weightsTotal = Object.values(weights).reduce((s, v) => s + v, 0);
@@ -603,14 +855,22 @@ export default function ResumeRankerPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-yellow-500" />
-            Quick Resume Ranker
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-yellow-500" />
+              Quick Resume Ranker
+            </h1>
+            {sessionRestored && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                <Check className="w-3 h-3 text-emerald-600" />
+                Session restored
+              </span>
+            )}
+          </div>
           <p className="text-sm text-gray-500 mt-1">
-            Upload a Job Description (PDF/TXT) and multiple candidate resumes (PDF/TXT)
+            Upload a Job Description (PDF/DOCX/TXT) and multiple candidate resumes (PDF/DOCX/TXT)
             for instant AI-powered 8-dimension fit analysis.
           </p>
         </div>
@@ -618,7 +878,7 @@ export default function ResumeRankerPage() {
           <button
             type="button"
             onClick={handleClearAll}
-            className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 border border-gray-200 hover:border-red-200 transition-colors cursor-pointer"
+            className="self-start sm:self-center flex items-center gap-1.5 text-xs text-gray-500 hover:text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 border border-gray-200 hover:border-red-200 transition-colors cursor-pointer"
           >
             <Trash2 className="w-3.5 h-3.5" />
             Clear All
@@ -630,12 +890,12 @@ export default function ResumeRankerPage() {
         <div className="space-y-5">
           {/* JD Input */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div className="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                 <FileText className="w-4 h-4 text-blue-500" />
                 Job Description & Role Requirements
               </h3>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {jdFileName && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 text-xs font-medium border border-blue-200">
                     <FileCheck className="w-3.5 h-3.5 text-blue-600" />
@@ -661,6 +921,18 @@ export default function ResumeRankerPage() {
                     </button>
                   </span>
                 )}
+                {/* 1-Click Save as Mandate */}
+                {jdText.trim().length >= 30 && (
+                  <button
+                    type="button"
+                    onClick={handleCreateMandate}
+                    className="flex items-center gap-1 text-xs text-purple-700 bg-purple-50 hover:bg-purple-100 px-2.5 py-1.5 rounded-lg border border-purple-200 font-medium transition-colors cursor-pointer"
+                    title="Create a live QuestEdge mandate from this Job Description"
+                  >
+                    <Briefcase className="w-3.5 h-3.5 text-purple-600" />
+                    Save as Mandate
+                  </button>
+                )}
                 {jdText.length >= 50 && (
                   <button
                     type="button"
@@ -682,19 +954,19 @@ export default function ResumeRankerPage() {
                   {jdUploading ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      Reading PDF...
+                      Reading Document...
                     </>
                   ) : (
                     <>
                       <Upload className="w-3.5 h-3.5" />
-                      Upload JD (PDF / TXT)
+                      Upload JD (PDF / DOCX / TXT)
                     </>
                   )}
                 </button>
                 <input
                   ref={jdFileInputRef}
                   type="file"
-                  accept=".pdf,.txt,application/pdf,text/plain"
+                  accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
                   onChange={handleJdFileUpload}
                   className="hidden"
                 />
@@ -915,7 +1187,31 @@ export default function ResumeRankerPage() {
           </div>
 
           {/* Resume Upload */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDragging(true);
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDragging(false);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDragging(false);
+              if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                processResumeFileList(e.dataTransfer.files);
+              }
+            }}
+            className={`bg-white rounded-xl border transition-all shadow-sm ${
+              isDragging
+                ? "border-blue-500 ring-2 ring-blue-300 bg-blue-50/20"
+                : "border-gray-200"
+            }`}
+          >
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                 <Upload className="w-4 h-4 text-emerald-500" />
@@ -923,6 +1219,7 @@ export default function ResumeRankerPage() {
               </h3>
               <div className="flex gap-2">
                 <button
+                  type="button"
                   onClick={() => setPasteMode(!pasteMode)}
                   className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded border border-blue-200 hover:bg-blue-50 cursor-pointer"
                 >
@@ -930,6 +1227,7 @@ export default function ResumeRankerPage() {
                   Paste Text
                 </button>
                 <button
+                  type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={resumesUploading || resumes.length >= 10}
                   className="flex items-center gap-1.5 text-xs text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-lg border border-emerald-300 font-medium transition-colors cursor-pointer disabled:opacity-50"
@@ -937,19 +1235,19 @@ export default function ResumeRankerPage() {
                   {resumesUploading ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      Parsing PDFs...
+                      Parsing Documents...
                     </>
                   ) : (
                     <>
                       <Upload className="w-3.5 h-3.5" />
-                      Upload Resumes (PDF / TXT)
+                      Upload Resumes (PDF / DOCX / TXT)
                     </>
                   )}
                 </button>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".pdf,.txt,application/pdf,text/plain"
+                  accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
                   multiple
                   onChange={handleResumeFileUpload}
                   className="hidden"
@@ -1020,31 +1318,35 @@ export default function ResumeRankerPage() {
                       >
                         {/* Candidate Header Row */}
                         <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="flex items-start gap-2.5 min-w-0">
                             {r.fileType === "pdf" ? (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200 shrink-0">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200 shrink-0 mt-0.5">
                                 PDF
                               </span>
+                            ) : r.fileType === "docx" ? (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200 shrink-0 mt-0.5">
+                                DOCX
+                              </span>
                             ) : (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 shrink-0">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 shrink-0 mt-0.5">
                                 TXT
                               </span>
                             )}
-                            <div>
+                            <div className="min-w-0">
                               <div className="flex items-center gap-2">
-                                <span className="text-sm text-gray-900 font-bold">
+                                <span className="text-sm text-gray-900 font-bold truncate">
                                   {r.name}
                                 </span>
                                 {r.fileName && r.fileName !== r.name && (
-                                  <span className="text-xs text-gray-400">
+                                  <span className="text-xs text-gray-400 truncate">
                                     ({r.fileName})
                                   </span>
                                 )}
                               </div>
                               {(r.currentRole || r.currentCompany) && (
                                 <p className="text-xs text-gray-600 flex items-center gap-1.5 mt-0.5">
-                                  <Briefcase className="w-3 h-3 text-gray-400" />
-                                  <span>
+                                  <Briefcase className="w-3 h-3 text-gray-400 shrink-0" />
+                                  <span className="truncate">
                                     {r.currentRole || "Role"}
                                     {r.currentCompany && (
                                       <span className="font-medium text-gray-800">
@@ -1054,6 +1356,45 @@ export default function ResumeRankerPage() {
                                     )}
                                   </span>
                                 </p>
+                              )}
+                              {/* Contact chips */}
+                              {(r.email || r.phone || r.linkedin || r.github) && (
+                                <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                  {r.email && (
+                                    <span className="inline-flex items-center gap-1 text-[11px] text-gray-600 bg-gray-50 px-2 py-0.5 rounded border border-gray-200">
+                                      <Mail className="w-3 h-3 text-gray-400" />
+                                      {r.email}
+                                    </span>
+                                  )}
+                                  {r.phone && (
+                                    <span className="inline-flex items-center gap-1 text-[11px] text-gray-600 bg-gray-50 px-2 py-0.5 rounded border border-gray-200">
+                                      <Phone className="w-3 h-3 text-gray-400" />
+                                      {r.phone}
+                                    </span>
+                                  )}
+                                  {r.linkedin && (
+                                    <a
+                                      href={r.linkedin}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-[11px] text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded border border-blue-200"
+                                    >
+                                      <Globe className="w-3 h-3 text-blue-600" />
+                                      LinkedIn
+                                    </a>
+                                  )}
+                                  {r.github && (
+                                    <a
+                                      href={r.github}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-[11px] text-gray-800 bg-gray-100 hover:bg-gray-200 px-2 py-0.5 rounded border border-gray-300"
+                                    >
+                                      <ExternalLink className="w-3 h-3 text-gray-700" />
+                                      GitHub
+                                    </a>
+                                  )}
+                                </div>
                               )}
                             </div>
                           </div>
@@ -1142,14 +1483,31 @@ export default function ResumeRankerPage() {
                   })}
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-400 border border-dashed border-gray-200 rounded-lg">
-                  <Upload className="w-8 h-8 mx-auto mb-2 opacity-50 text-emerald-500" />
-                  <p className="text-sm font-medium text-gray-600">
-                    No resumes added yet.
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`text-center py-9 px-4 rounded-xl border-2 border-dashed transition-all cursor-pointer ${
+                    isDragging
+                      ? "border-blue-500 bg-blue-50/80 scale-[1.01]"
+                      : "border-gray-300 hover:border-gray-400 bg-gray-50/50 hover:bg-gray-50"
+                  }`}
+                >
+                  <UploadCloud
+                    className={`w-10 h-10 mx-auto mb-2.5 transition-colors ${
+                      isDragging ? "text-blue-600 animate-bounce" : "text-gray-400"
+                    }`}
+                  />
+                  <p className="text-sm font-semibold text-gray-800">
+                    {isDragging
+                      ? "Drop candidate resumes here..."
+                      : "Drag & drop candidate resumes here, or click to browse"}
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Upload PDF / TXT resumes or paste resume text. Skills, role, experience, and education will be automatically extracted.
+                  <p className="text-xs text-gray-500 mt-1 max-w-md mx-auto">
+                    Supports <strong>PDF</strong>, <strong>Word (.docx)</strong>, and <strong>TXT</strong> files. Automatically extracts candidate role, experience, contact details, and technical skills.
                   </p>
+                  <div className="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 shadow-2xs">
+                    <Upload className="w-3.5 h-3.5 text-blue-600" />
+                    Browse Files (up to 10)
+                  </div>
                 </div>
               )}
             </div>
@@ -1208,7 +1566,7 @@ export default function ResumeRankerPage() {
             results?.rankings || results?.candidates || [];
           return (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
                     <Trophy className="w-5 h-5 text-yellow-500" />
@@ -1228,14 +1586,63 @@ export default function ResumeRankerPage() {
                     )}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setResults(null)}
-                  className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  Re-rank / Modify
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Compare Candidates */}
+                  {candidateList.length >= 2 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowComparison(true)}
+                      className="flex items-center gap-1.5 text-xs text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg border border-indigo-200 font-medium transition-colors cursor-pointer"
+                      title="Compare candidates side-by-side"
+                    >
+                      <BarChart3 className="w-3.5 h-3.5" />
+                      Compare Candidates
+                    </button>
+                  )}
+
+                  {/* Export CSV */}
+                  <button
+                    type="button"
+                    onClick={handleExportCSV}
+                    className="flex items-center gap-1.5 text-xs text-slate-700 bg-white hover:bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 font-medium shadow-2xs transition-colors cursor-pointer"
+                    title="Export ranking table to CSV file"
+                  >
+                    <Download className="w-3.5 h-3.5 text-emerald-600" />
+                    Export CSV
+                  </button>
+
+                  {/* Print / Save PDF */}
+                  <button
+                    type="button"
+                    onClick={handlePrint}
+                    className="flex items-center gap-1.5 text-xs text-slate-700 bg-white hover:bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 font-medium shadow-2xs transition-colors cursor-pointer"
+                    title="Print or save as PDF report"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-slate-600" />
+                    Print / PDF
+                  </button>
+
+                  {/* Create Mandate from this JD */}
+                  <button
+                    type="button"
+                    onClick={handleCreateMandate}
+                    className="flex items-center gap-1.5 text-xs text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg border border-purple-200 font-medium transition-colors cursor-pointer"
+                    title="Convert this JD into a live QuestEdge mandate"
+                  >
+                    <Briefcase className="w-3.5 h-3.5 text-purple-600" />
+                    Save as Mandate
+                  </button>
+
+                  {/* Re-rank / Modify */}
+                  <button
+                    type="button"
+                    onClick={() => setResults(null)}
+                    className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Re-rank / Modify
+                  </button>
+                </div>
               </div>
 
               {/* AI Pool Summary Banner if available */}
@@ -1254,32 +1661,51 @@ export default function ResumeRankerPage() {
               {/* Candidate Cards */}
               {candidateList.length > 0 ? (
                 <div className="space-y-3">
-                  {candidateList.map((candidate: any, idx: number) => (
-                    <RankedCandidateCard
-                      key={candidate.candidateId || candidate.id || idx}
-                      candidate={{
-                        ...candidate,
-                        rank: candidate.rank || idx + 1,
-                        totalScore: Number(candidate.totalScore) || 0,
-                        strengths: Array.isArray(candidate.strengths)
-                          ? candidate.strengths
-                          : [],
-                        gaps: Array.isArray(candidate.gaps)
-                          ? candidate.gaps
-                          : [],
-                        standoutFactors: Array.isArray(candidate.standoutFactors)
-                          ? candidate.standoutFactors
-                          : [],
-                        scoreBreakdown: candidate.scoreBreakdown || {},
-                      }}
-                      defaultExpanded={idx === 0}
-                    />
-                  ))}
+                  {candidateList.map((candidate: any, idx: number) => {
+                    const matched = resumes.find(
+                      (r) =>
+                        r.id === candidate.candidateId ||
+                        r.name.toLowerCase() === (candidate.candidateName || "").toLowerCase()
+                    );
+                    return (
+                      <RankedCandidateCard
+                        key={candidate.candidateId || candidate.id || idx}
+                        candidate={{
+                          ...candidate,
+                          rank: candidate.rank || idx + 1,
+                          totalScore: Number(candidate.totalScore) || 0,
+                          email: candidate.email || matched?.email,
+                          phone: candidate.phone || matched?.phone,
+                          linkedin: candidate.linkedin || matched?.linkedin,
+                          github: candidate.github || matched?.github,
+                          strengths: Array.isArray(candidate.strengths)
+                            ? candidate.strengths
+                            : [],
+                          gaps: Array.isArray(candidate.gaps)
+                            ? candidate.gaps
+                            : [],
+                          standoutFactors: Array.isArray(candidate.standoutFactors)
+                            ? candidate.standoutFactors
+                            : [],
+                          scoreBreakdown: candidate.scoreBreakdown || {},
+                        }}
+                        defaultExpanded={idx === 0}
+                      />
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-10 bg-gray-50 rounded-xl border border-gray-200 text-gray-500 text-xs">
                   No candidate rankings returned. Please adjust your inputs and try again.
                 </div>
+              )}
+
+              {/* Comparison Modal */}
+              {showComparison && (
+                <ComparisonView
+                  rankings={candidateList}
+                  onClose={() => setShowComparison(false)}
+                />
               )}
 
               {/* New Ranking buttons */}

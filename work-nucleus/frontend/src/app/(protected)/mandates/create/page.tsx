@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createMandate, publishMandate } from "@/lib/marketplace-api";
@@ -136,6 +136,12 @@ async function extractJobDescriptionText(file: File): Promise<{ text: string; tr
 
   if (extension === "txt") {
     text = await file.text();
+  } else if (extension === "docx") {
+    // @ts-ignore
+    const mammoth = await import("mammoth/mammoth.browser.js");
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    text = (result.value || "").replace(/\u0000/g, "").trim();
   } else if (extension === "pdf") {
     const pdfjsLib = await import("pdfjs-dist");
     pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
@@ -230,6 +236,36 @@ export default function CreateMandatePage() {
   });
 
   const update = (key: string, value: any) => setForm((f) => ({ ...f, [key]: value }));
+
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem("mandate_draft_prefill");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        sessionStorage.removeItem("mandate_draft_prefill");
+        setForm((prev) => ({
+          ...prev,
+          title: parsed.title || prev.title,
+          department: parsed.department || prev.department,
+          description: parsed.description || prev.description,
+          location: parsed.location || prev.location,
+          workModel: parsed.workModel || prev.workModel,
+          requiredExperience: parsed.requiredExperience || prev.requiredExperience,
+          educationRequirement: parsed.educationRequirement || prev.educationRequirement,
+          mandatorySkills: Array.isArray(parsed.mandatorySkills) && parsed.mandatorySkills.length
+            ? parsed.mandatorySkills
+            : prev.mandatorySkills,
+          preferredSkills: Array.isArray(parsed.preferredSkills) && parsed.preferredSkills.length
+            ? parsed.preferredSkills
+            : prev.preferredSkills,
+        }));
+        setJobDescriptionFileName("Imported from Resume Ranker");
+        toast.success("Job description details imported from Resume Ranker!");
+      }
+    } catch (e) {
+      console.warn("Failed to read mandate_draft_prefill from sessionStorage", e);
+    }
+  }, []);
 
   const [aiPrompt, setAiPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -510,17 +546,17 @@ export default function CreateMandatePage() {
                     <div>
                       <h3 className="text-sm font-bold text-slate-900">Import a job description</h3>
                       <p className="mt-1 text-xs leading-5 text-slate-500">
-                        Choose a PDF or TXT file to extract the role details and fill the mandate fields.
+                        Choose a PDF, DOCX, or TXT file to extract the role details and fill the mandate fields.
                       </p>
                     </div>
                   </div>
                   <input
                     ref={jobDescriptionFileInput}
                     type="file"
-                    accept=".pdf,.txt,application/pdf,text/plain"
+                    accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
                     onChange={handleJobDescriptionFile}
                     className="sr-only"
-                    aria-label="Choose a PDF or TXT job description"
+                    aria-label="Choose a PDF, DOCX, or TXT job description"
                   />
                   <Button
                     type="button"

@@ -1,7 +1,19 @@
 "use client";
 
 import React, { useState } from "react";
-import { ChevronDown, ChevronUp, CheckCircle, AlertTriangle, Star } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  CheckCircle,
+  AlertTriangle,
+  Star,
+  Mail,
+  Phone,
+  Globe,
+  ExternalLink,
+  Copy,
+  Check,
+} from "lucide-react";
 import ScoreBreakdownChart, { type ScoreBreakdown } from "./ScoreBreakdownChart";
 
 interface RankedCandidateData {
@@ -16,6 +28,10 @@ interface RankedCandidateData {
   standoutFactors: string[];
   comparisonNote: string;
   recommendation: string;
+  email?: string;
+  phone?: string;
+  linkedin?: string;
+  github?: string;
 }
 
 const MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
@@ -53,7 +69,35 @@ export default function RankedCandidateCard({
   defaultExpanded = false,
 }: RankedCandidateCardProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const [copied, setCopied] = useState(false);
   const c = candidate;
+
+  const handleCopySummary = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const summaryText = [
+      `Candidate: ${c.candidateName} (Rank #${c.rank})`,
+      `Score: ${Math.round(c.totalScore)}/100 • Verdict: ${c.verdict.replace(/_/g, " ")}`,
+      c.email ? `Email: ${c.email}` : "",
+      c.phone ? `Phone: ${c.phone}` : "",
+      c.linkedin ? `LinkedIn: ${c.linkedin}` : "",
+      c.github ? `GitHub: ${c.github}` : "",
+      "",
+      "Top Strengths:",
+      ...(c.strengths || []).map((s) => `• ${s}`),
+      "",
+      "Identified Gaps:",
+      ...(c.gaps || []).map((g) => `• ${g}`),
+      c.recommendation ? `\nRecommendation: ${c.recommendation}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    if (navigator?.clipboard) {
+      navigator.clipboard.writeText(summaryText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
@@ -69,18 +113,84 @@ export default function RankedCandidateCard({
           </span>
         </div>
 
-        {/* Name + verdict */}
+        {/* Name + verdict + contact links */}
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-semibold text-gray-900 truncate">
             {c.candidateName}
           </h3>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex flex-wrap items-center gap-2 mt-1">
             {verdictBadge(c.verdict)}
+            {c.email && (
+              <a
+                href={`mailto:${c.email}`}
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 text-[11px] text-gray-600 hover:text-blue-600 bg-gray-50 hover:bg-blue-50 px-2 py-0.5 rounded border border-gray-200 transition-colors"
+                title={`Email ${c.candidateName}`}
+              >
+                <Mail className="w-3 h-3 text-gray-400" />
+                <span className="truncate max-w-[140px]">{c.email}</span>
+              </a>
+            )}
+            {c.phone && (
+              <a
+                href={`tel:${c.phone}`}
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 text-[11px] text-gray-600 hover:text-emerald-600 bg-gray-50 hover:bg-emerald-50 px-2 py-0.5 rounded border border-gray-200 transition-colors"
+                title={`Call ${c.candidateName}`}
+              >
+                <Phone className="w-3 h-3 text-gray-400" />
+                <span>{c.phone}</span>
+              </a>
+            )}
+            {c.linkedin && (
+              <a
+                href={c.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 text-[11px] text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded border border-blue-200 transition-colors"
+                title="LinkedIn Profile"
+              >
+                <Globe className="w-3 h-3 text-blue-600" />
+                <span>LinkedIn</span>
+              </a>
+            )}
+            {c.github && (
+              <a
+                href={c.github}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 text-[11px] text-gray-800 bg-gray-100 hover:bg-gray-200 px-2 py-0.5 rounded border border-gray-300 transition-colors"
+                title="GitHub Profile"
+              >
+                <ExternalLink className="w-3 h-3 text-gray-700" />
+                <span>GitHub</span>
+              </a>
+            )}
           </div>
         </div>
 
-        {/* Score */}
-        <div className="flex items-center gap-3 shrink-0">
+        {/* Score & Actions */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          <button
+            type="button"
+            onClick={handleCopySummary}
+            className="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-600 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors cursor-pointer"
+            title="Copy evaluation summary for Slack/Email"
+          >
+            {copied ? (
+              <>
+                <Check className="w-3 h-3 text-emerald-600" />
+                <span className="text-emerald-700 text-[11px] font-medium">Copied!</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-3 h-3 text-gray-400" />
+                <span className="text-[11px]">Copy Summary</span>
+              </>
+            )}
+          </button>
           <span
             className={`inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold border ${scoreBadgeColor(
               c.totalScore

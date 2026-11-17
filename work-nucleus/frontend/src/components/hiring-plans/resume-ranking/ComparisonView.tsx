@@ -27,7 +27,7 @@ interface DimensionLeader {
 }
 
 interface ComparisonViewProps {
-  sessionId: string;
+  sessionId?: string;
   rankings: any[];
   onClose: () => void;
 }
@@ -85,22 +85,71 @@ export default function ComparisonView({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(
-        `/api/resume-ranking/session/${sessionId}/compare`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ candidateIds: selectedIds }),
+      if (sessionId) {
+        const res = await fetch(
+          `/api/resume-ranking/session/${sessionId}/compare`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ candidateIds: selectedIds }),
+          }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setComparisonData(data);
+          return;
         }
-      );
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Compare failed");
       }
-      const data = await res.json();
-      setComparisonData(data);
+
+      // Standalone / client-side instant computation fallback
+      const dims = [
+        "skillsMatch",
+        "experienceRelevance",
+        "projectRelevance",
+        "educationCertifications",
+        "domainIndustryFit",
+        "roleSeniorityFit",
+        "culturalSoftSignals",
+        "logisticsAvailability",
+      ];
+
+      const selected = rankings.filter((r: any) =>
+        selectedIds.includes(String(r.candidateId || r.id))
+      );
+
+      const candidates: ComparisonCandidate[] = selected.map((r: any) => ({
+        candidateId: String(r.candidateId || r.id),
+        candidateName: r.candidateName,
+        rank: r.rank,
+        totalScore: Number(r.totalScore) || 0,
+        verdict: r.verdict || "GOOD_FIT",
+        scores: dims.map((dim) => ({
+          dimension: dim,
+          score: Number(r.scoreBreakdown?.[dim]?.score) || 0,
+          maxScore: Number(r.scoreBreakdown?.[dim]?.maxScore) || 10,
+          comment: r.scoreBreakdown?.[dim]?.comment || "",
+        })),
+        strengths: Array.isArray(r.strengths) ? r.strengths : [],
+        gaps: Array.isArray(r.gaps) ? r.gaps : [],
+        recommendation: r.recommendation || "",
+      }));
+
+      const dimensionLeaders: DimensionLeader[] = dims.map((dim) => {
+        const scores = candidates.map((c) => ({
+          name: c.candidateName,
+          score: c.scores.find((s) => s.dimension === dim)?.score || 0,
+        }));
+        scores.sort((a, b) => b.score - a.score);
+        return {
+          dimension: dim,
+          leader: scores[0]?.score > 0 ? scores[0]?.name : "Tie",
+          score: scores[0]?.score || 0,
+        };
+      });
+
+      setComparisonData({ candidates, dimensionLeaders });
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Failed to compare candidates");
     } finally {
       setLoading(false);
     }
