@@ -1732,8 +1732,8 @@ export default function ResumeRankerPage() {
                   </table>
                 </div>
 
-                <div className="pt-2">
-                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">
+                <div className="pt-4 border-t border-slate-200 print:break-before-page print:pt-0 print:border-t-0">
+                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3">
                     Detailed Candidate Profiles & 8-Dimension Fit Breakdown
                   </h3>
                 </div>
