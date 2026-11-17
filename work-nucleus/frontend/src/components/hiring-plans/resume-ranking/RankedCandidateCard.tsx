@@ -13,6 +13,7 @@ import {
   ExternalLink,
   Copy,
   Check,
+  FileText,
 } from "lucide-react";
 import ScoreBreakdownChart, { type ScoreBreakdown } from "./ScoreBreakdownChart";
 
@@ -59,23 +60,56 @@ function scoreBadgeColor(score: number): string {
   return "text-red-700 bg-red-50 border-red-200";
 }
 
+export function formatCandidateName(name?: string): string {
+  if (!name) return "Candidate";
+  const trimmed = name.trim();
+  const lettersOnly = trimmed.replace(/[^A-Za-z]/g, "");
+  if (
+    lettersOnly.length > 0 &&
+    (lettersOnly === lettersOnly.toUpperCase() ||
+      lettersOnly === lettersOnly.toLowerCase())
+  ) {
+    return trimmed
+      .toLowerCase()
+      .split(/\s+/)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  }
+  return trimmed;
+}
+
 interface RankedCandidateCardProps {
   candidate: RankedCandidateData;
   defaultExpanded?: boolean;
+  expanded?: boolean;
+  onToggleExpand?: () => void;
+  onViewResume?: () => void;
 }
 
 export default function RankedCandidateCard({
   candidate,
   defaultExpanded = false,
+  expanded: controlledExpanded,
+  onToggleExpand,
+  onViewResume,
 }: RankedCandidateCardProps) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
+  const [internalExpanded, setInternalExpanded] = useState(defaultExpanded);
+  const isExpanded = controlledExpanded !== undefined ? controlledExpanded : internalExpanded;
+  const toggle = () => {
+    if (onToggleExpand) {
+      onToggleExpand();
+    } else {
+      setInternalExpanded(!internalExpanded);
+    }
+  };
   const [copied, setCopied] = useState(false);
   const c = candidate;
+  const displayName = formatCandidateName(c.candidateName);
 
   const handleCopySummary = (e: React.MouseEvent) => {
     e.stopPropagation();
     const summaryText = [
-      `Candidate: ${c.candidateName} (Rank #${c.rank})`,
+      `Candidate: ${displayName} (Rank #${c.rank})`,
       `Score: ${Math.round(c.totalScore)}/100 • Verdict: ${c.verdict.replace(/_/g, " ")}`,
       c.email ? `Email: ${c.email}` : "",
       c.phone ? `Phone: ${c.phone}` : "",
@@ -104,7 +138,7 @@ export default function RankedCandidateCard({
       {/* Header */}
       <div
         className="flex items-center gap-4 px-5 py-4 cursor-pointer print:cursor-default"
-        onClick={() => setExpanded(!expanded)}
+        onClick={toggle}
       >
         {/* Rank */}
         <div className="flex flex-col items-center w-10 shrink-0">
@@ -116,7 +150,7 @@ export default function RankedCandidateCard({
         {/* Name + verdict + contact links */}
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-semibold text-gray-900 truncate">
-            {c.candidateName}
+            {displayName}
           </h3>
           <div className="flex flex-wrap items-center gap-2 mt-1">
             {verdictBadge(c.verdict)}
@@ -125,7 +159,7 @@ export default function RankedCandidateCard({
                 href={`mailto:${c.email}`}
                 onClick={(e) => e.stopPropagation()}
                 className="inline-flex items-center gap-1 text-[11px] text-gray-600 hover:text-blue-600 bg-gray-50 hover:bg-blue-50 px-2 py-0.5 rounded border border-gray-200 transition-colors"
-                title={`Email ${c.candidateName}`}
+                title={`Email ${displayName}`}
               >
                 <Mail className="w-3 h-3 text-gray-400" />
                 <span className="truncate max-w-[140px] print:max-w-none">{c.email}</span>
@@ -136,7 +170,7 @@ export default function RankedCandidateCard({
                 href={`tel:${c.phone}`}
                 onClick={(e) => e.stopPropagation()}
                 className="inline-flex items-center gap-1 text-[11px] text-gray-600 hover:text-emerald-600 bg-gray-50 hover:bg-emerald-50 px-2 py-0.5 rounded border border-gray-200 transition-colors"
-                title={`Call ${c.candidateName}`}
+                title={`Call ${displayName}`}
               >
                 <Phone className="w-3 h-3 text-gray-400" />
                 <span>{c.phone}</span>
@@ -172,7 +206,22 @@ export default function RankedCandidateCard({
         </div>
 
         {/* Score & Actions */}
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
+          {onViewResume && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewResume();
+              }}
+              className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 text-xs text-indigo-700 hover:text-indigo-900 bg-indigo-50/80 hover:bg-indigo-100 rounded-lg border border-indigo-200 font-medium transition-colors cursor-pointer print:hidden"
+              title="View original resume"
+            >
+              <FileText className="w-3.5 h-3.5 text-indigo-600" />
+              <span className="text-[11px]">View Resume</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={handleCopySummary}
@@ -199,7 +248,7 @@ export default function RankedCandidateCard({
             {Math.round(c.totalScore)}/100
           </span>
           <div className="print:hidden">
-            {expanded ? (
+            {isExpanded ? (
               <ChevronUp className="w-4 h-4 text-gray-400" />
             ) : (
               <ChevronDown className="w-4 h-4 text-gray-400" />
@@ -209,14 +258,14 @@ export default function RankedCandidateCard({
       </div>
 
       {/* Compact breakdown (visible on screen when collapsed, hidden in print because full breakdown is printed below) */}
-      <div className={`px-5 pb-3 ${expanded ? "hidden" : "block"} print:hidden`}>
+      <div className={`px-5 pb-3 ${isExpanded ? "hidden" : "block"} print:hidden`}>
         <ScoreBreakdownChart scoreBreakdown={c.scoreBreakdown} compact />
       </div>
 
       {/* Expanded details (shown on screen when expanded, ALWAYS visible in print so all candidates show full details) */}
       <div
         className={`border-t border-gray-100 print:border-slate-200 px-5 py-4 space-y-4 ${
-          expanded ? "block" : "hidden print:block"
+          isExpanded ? "block" : "hidden print:block"
         }`}
       >
         {/* Strengths & Gaps */}

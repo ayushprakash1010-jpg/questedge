@@ -31,8 +31,12 @@ import {
   Phone,
   Globe,
   ExternalLink,
+  Search,
+  Copy,
 } from "lucide-react";
-import RankedCandidateCard from "@/components/hiring-plans/resume-ranking/RankedCandidateCard";
+import RankedCandidateCard, {
+  formatCandidateName,
+} from "@/components/hiring-plans/resume-ranking/RankedCandidateCard";
 import ComparisonView from "@/components/hiring-plans/resume-ranking/ComparisonView";
 import WeightCustomizer, {
   DEFAULT_WEIGHTS,
@@ -338,6 +342,25 @@ export default function ResumeRankerPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<any>(null);
+
+  // Interactive Results State: Expand/Collapse, Filtering, and Quick-Peek Drawer
+  const [expandedCardIds, setExpandedCardIds] = useState<Record<string, boolean>>({});
+  const [fitFilter, setFitFilter] = useState<"ALL" | "TOP" | "GOOD" | "REVIEW">("ALL");
+  const [viewingResume, setViewingResume] = useState<ResumeFile | null>(null);
+  const [resumeSearchTerm, setResumeSearchTerm] = useState("");
+  const [copiedResumeText, setCopiedResumeText] = useState(false);
+
+  useEffect(() => {
+    const list: any[] = results?.rankings || results?.candidates || [];
+    if (list.length > 0) {
+      const initialMap: Record<string, boolean> = {};
+      list.forEach((c: any, idx: number) => {
+        const id = c.candidateId || c.id || `cand-${idx}`;
+        initialMap[id] = idx === 0;
+      });
+      setExpandedCardIds(initialMap);
+    }
+  }, [results]);
 
   // Helper to add skill tags
   const addMandatorySkill = () => {
@@ -1696,7 +1719,7 @@ export default function ResumeRankerPage() {
                             </td>
                             <td>
                               <div className="font-bold text-slate-900 text-xs">
-                                {cand.candidateName}
+                                {formatCandidateName(cand.candidateName)}
                               </div>
                               {(cRole || cCompany) && (
                                 <div className="text-[9.5px] text-slate-500">
@@ -1740,137 +1763,440 @@ export default function ResumeRankerPage() {
               </div>
 
               {/* On-Screen Header & Action Controls */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
-                <div>
-                  <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-                    <Trophy className="w-5 h-5 text-yellow-500" />
-                    Ranking Results
-                  </h2>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {candidateList.length} candidate
-                    {candidateList.length !== 1 ? "s" : ""} evaluated against{" "}
-                    <span className="font-semibold text-gray-800">
-                      {results?.jobTitle || jobTitle || "Job Description"}
-                    </span>
-                    {results?.processingTimeMs && (
-                      <span className="text-gray-400">
-                        {" "}
-                        • {(results.processingTimeMs / 1000).toFixed(1)}s
-                      </span>
+              {(() => {
+                const topFitCount = candidateList.filter(
+                  (c: any) =>
+                    c.verdict === "EXCELLENT_FIT" ||
+                    c.verdict === "STRONG_FIT" ||
+                    Number(c.totalScore) >= 70
+                ).length;
+
+                const goodFitCount = candidateList.filter((c: any) => {
+                  const isTop =
+                    c.verdict === "EXCELLENT_FIT" ||
+                    c.verdict === "STRONG_FIT" ||
+                    Number(c.totalScore) >= 70;
+                  return (
+                    !isTop &&
+                    (c.verdict === "GOOD_FIT" || Number(c.totalScore) >= 55)
+                  );
+                }).length;
+
+                const reviewFitCount = candidateList.filter((c: any) => {
+                  const isTop =
+                    c.verdict === "EXCELLENT_FIT" ||
+                    c.verdict === "STRONG_FIT" ||
+                    Number(c.totalScore) >= 70;
+                  const isGood =
+                    !isTop &&
+                    (c.verdict === "GOOD_FIT" || Number(c.totalScore) >= 55);
+                  return !isTop && !isGood;
+                }).length;
+
+                const filteredList = candidateList.filter((c: any) => {
+                  if (fitFilter === "ALL") return true;
+                  const isTop =
+                    c.verdict === "EXCELLENT_FIT" ||
+                    c.verdict === "STRONG_FIT" ||
+                    Number(c.totalScore) >= 70;
+                  if (fitFilter === "TOP") return isTop;
+                  const isGood =
+                    !isTop &&
+                    (c.verdict === "GOOD_FIT" || Number(c.totalScore) >= 55);
+                  if (fitFilter === "GOOD") return isGood;
+                  if (fitFilter === "REVIEW") return !isTop && !isGood;
+                  return true;
+                });
+
+                const allExpanded =
+                  candidateList.length > 0 &&
+                  candidateList.every((c: any, idx: number) => {
+                    const id = c.candidateId || c.id || `cand-${idx}`;
+                    return Boolean(expandedCardIds[id]);
+                  });
+
+                const handleToggleExpandAll = () => {
+                  const nextVal = !allExpanded;
+                  const newMap: Record<string, boolean> = {};
+                  candidateList.forEach((c: any, idx: number) => {
+                    const id = c.candidateId || c.id || `cand-${idx}`;
+                    newMap[id] = nextVal;
+                  });
+                  setExpandedCardIds(newMap);
+                };
+
+                return (
+                  <>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <div>
+                          <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                            <Trophy className="w-5 h-5 text-yellow-500" />
+                            Ranking Results
+                          </h2>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {candidateList.length} candidate
+                            {candidateList.length !== 1 ? "s" : ""} evaluated against{" "}
+                            <span className="font-semibold text-gray-800">
+                              {results?.jobTitle || jobTitle || "Job Description"}
+                            </span>
+                            {results?.processingTimeMs && (
+                              <span className="text-gray-400">
+                                {" "}
+                                • {(results.processingTimeMs / 1000).toFixed(1)}s
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                        {/* Expand / Collapse All Toggle Button */}
+                        <button
+                          type="button"
+                          onClick={handleToggleExpandAll}
+                          className="inline-flex items-center gap-1.5 text-xs text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 px-2.5 py-1.5 rounded-lg font-medium border border-slate-200 transition-colors cursor-pointer"
+                          title={allExpanded ? "Collapse all candidate cards" : "Expand all candidate cards"}
+                        >
+                          {allExpanded ? (
+                            <>
+                              <ChevronUp className="w-3.5 h-3.5 text-slate-600" />
+                              <span>Collapse All</span>
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="w-3.5 h-3.5 text-slate-600" />
+                              <span>Expand All</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* Compare Candidates */}
+                        {candidateList.length >= 2 && (
+                          <button
+                            type="button"
+                            onClick={() => setShowComparison(true)}
+                            className="flex items-center gap-1.5 text-xs text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg border border-indigo-200 font-medium transition-colors cursor-pointer"
+                            title="Compare candidates side-by-side"
+                          >
+                            <BarChart3 className="w-3.5 h-3.5" />
+                            Compare Candidates
+                          </button>
+                        )}
+
+                        {/* Export CSV */}
+                        <button
+                          type="button"
+                          onClick={handleExportCSV}
+                          className="flex items-center gap-1.5 text-xs text-slate-700 bg-white hover:bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 font-medium shadow-2xs transition-colors cursor-pointer"
+                          title="Export ranking table to CSV file"
+                        >
+                          <Download className="w-3.5 h-3.5 text-emerald-600" />
+                          Export CSV
+                        </button>
+
+                        {/* Print / Save PDF */}
+                        <button
+                          type="button"
+                          onClick={handlePrint}
+                          className="flex items-center gap-1.5 text-xs text-slate-700 bg-white hover:bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 font-medium shadow-2xs transition-colors cursor-pointer"
+                          title="Print or save as PDF report"
+                        >
+                          <Printer className="w-3.5 h-3.5 text-slate-600" />
+                          Print / PDF
+                        </button>
+
+                        {/* Create Mandate from this JD */}
+                        <button
+                          type="button"
+                          onClick={handleCreateMandate}
+                          className="flex items-center gap-1.5 text-xs text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg border border-purple-200 font-medium transition-colors cursor-pointer"
+                          title="Convert this JD into a live QuestEdge mandate"
+                        >
+                          <Briefcase className="w-3.5 h-3.5 text-purple-600" />
+                          Save as Mandate
+                        </button>
+
+                        {/* Re-rank / Modify */}
+                        <button
+                          type="button"
+                          onClick={() => setResults(null)}
+                          className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                          Re-rank / Modify
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* AI Pool Summary Banner if available (Screen Only) */}
+                    {(results?.summary || results?.poolSummary) && (
+                      <div className="bg-blue-50/80 border border-blue-200 rounded-xl p-4 text-xs text-blue-900 leading-relaxed shadow-xs space-y-1 print:hidden">
+                        <span className="font-bold text-blue-950 flex items-center gap-1.5">
+                          <Sparkles className="w-4 h-4 text-blue-600" />
+                          AI Candidate Pool Assessment
+                        </span>
+                        <p className="text-blue-900/90 whitespace-pre-line">
+                          {results.summary || results.poolSummary}
+                        </p>
+                      </div>
                     )}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {/* Compare Candidates */}
-                  {candidateList.length >= 2 && (
-                    <button
-                      type="button"
-                      onClick={() => setShowComparison(true)}
-                      className="flex items-center gap-1.5 text-xs text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg border border-indigo-200 font-medium transition-colors cursor-pointer"
-                      title="Compare candidates side-by-side"
-                    >
-                      <BarChart3 className="w-3.5 h-3.5" />
-                      Compare Candidates
-                    </button>
-                  )}
 
-                  {/* Export CSV */}
-                  <button
-                    type="button"
-                    onClick={handleExportCSV}
-                    className="flex items-center gap-1.5 text-xs text-slate-700 bg-white hover:bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 font-medium shadow-2xs transition-colors cursor-pointer"
-                    title="Export ranking table to CSV file"
+                    {/* Quick Fit Filter Pills */}
+                    {candidateList.length > 1 && (
+                      <div className="flex items-center gap-2 flex-wrap pt-1 print:hidden">
+                        <span className="text-xs font-semibold text-slate-500">Filter by Fit:</span>
+                        <button
+                          type="button"
+                          onClick={() => setFitFilter("ALL")}
+                          className={`px-3 py-1 text-xs rounded-full font-medium transition-colors cursor-pointer ${
+                            fitFilter === "ALL"
+                              ? "bg-slate-900 text-white font-semibold shadow-2xs"
+                              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                          }`}
+                        >
+                          All ({candidateList.length})
+                        </button>
+                        {topFitCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setFitFilter("TOP")}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-full font-medium transition-colors cursor-pointer border ${
+                              fitFilter === "TOP"
+                                ? "bg-emerald-600 text-white border-emerald-600 font-semibold shadow-2xs"
+                                : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-emerald-200"
+                            }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                fitFilter === "TOP" ? "bg-white" : "bg-emerald-500"
+                              }`}
+                            />
+                            Top Fits ({topFitCount})
+                          </button>
+                        )}
+                        {goodFitCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setFitFilter("GOOD")}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-full font-medium transition-colors cursor-pointer border ${
+                              fitFilter === "GOOD"
+                                ? "bg-blue-600 text-white border-blue-600 font-semibold shadow-2xs"
+                              : "bg-blue-50 text-blue-800 hover:bg-blue-100 border-blue-200"
+                            }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                fitFilter === "GOOD" ? "bg-white" : "bg-blue-500"
+                              }`}
+                            />
+                            Good Fit ({goodFitCount})
+                          </button>
+                        )}
+                        {reviewFitCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setFitFilter("REVIEW")}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-full font-medium transition-colors cursor-pointer border ${
+                              fitFilter === "REVIEW"
+                                ? "bg-amber-600 text-white border-amber-600 font-semibold shadow-2xs"
+                                : "bg-amber-50 text-amber-800 hover:bg-amber-100 border-amber-200"
+                            }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                fitFilter === "REVIEW" ? "bg-white" : "bg-amber-500"
+                              }`}
+                            />
+                            Needs Review ({reviewFitCount})
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Candidate Cards */}
+                    {filteredList.length > 0 ? (
+                      <div className="space-y-3">
+                        {filteredList.map((candidate: any, idx: number) => {
+                          const matched = resumes.find(
+                            (r) =>
+                              r.id === candidate.candidateId ||
+                              r.name.toLowerCase() ===
+                                (candidate.candidateName || "").toLowerCase()
+                          );
+                          const candId =
+                            candidate.candidateId || candidate.id || `cand-${idx}`;
+                          return (
+                            <RankedCandidateCard
+                              key={candId}
+                              candidate={{
+                                ...candidate,
+                                rank: candidate.rank || idx + 1,
+                                totalScore: Number(candidate.totalScore) || 0,
+                                email: candidate.email || matched?.email,
+                                phone: candidate.phone || matched?.phone,
+                                linkedin: candidate.linkedin || matched?.linkedin,
+                                github: candidate.github || matched?.github,
+                                strengths: Array.isArray(candidate.strengths)
+                                  ? candidate.strengths
+                                  : [],
+                                gaps: Array.isArray(candidate.gaps)
+                                  ? candidate.gaps
+                                  : [],
+                                standoutFactors: Array.isArray(candidate.standoutFactors)
+                                  ? candidate.standoutFactors
+                                  : [],
+                                scoreBreakdown: candidate.scoreBreakdown || {},
+                              }}
+                              expanded={Boolean(expandedCardIds[candId])}
+                              onToggleExpand={() => {
+                                setExpandedCardIds((prev) => ({
+                                  ...prev,
+                                  [candId]: !prev[candId],
+                                }));
+                              }}
+                              onViewResume={
+                                matched ? () => setViewingResume(matched) : undefined
+                              }
+                            />
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 bg-gray-50 rounded-xl border border-gray-200 text-gray-500 text-xs space-y-2">
+                        <p>No candidates match the selected fit filter.</p>
+                        <button
+                          type="button"
+                          onClick={() => setFitFilter("ALL")}
+                          className="px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors cursor-pointer"
+                        >
+                          Show All {candidateList.length} Candidates
+                        </button>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
+              {/* View Resume Quick-Peek Drawer / Modal */}
+              {viewingResume && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs print:hidden animate-in fade-in duration-150"
+                  onClick={() => {
+                    setViewingResume(null);
+                    setResumeSearchTerm("");
+                  }}
+                >
+                  <div
+                    className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col max-h-[85vh] overflow-hidden"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <Download className="w-3.5 h-3.5 text-emerald-600" />
-                    Export CSV
-                  </button>
+                    {/* Header */}
+                    <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-base font-bold text-slate-900 truncate">
+                            {formatCandidateName(viewingResume.name)}
+                          </h3>
+                          {viewingResume.fileType && (
+                            <span className="uppercase text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 border border-indigo-200">
+                              {viewingResume.fileType}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500 truncate mt-0.5">
+                          {viewingResume.fileName || "Uploaded Resume Document"}
+                          {(viewingResume.currentRole || viewingResume.currentCompany) && (
+                            <span>
+                              {" "}• {viewingResume.currentRole}
+                              {viewingResume.currentCompany
+                                ? ` @ ${viewingResume.currentCompany}`
+                                : ""}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (navigator?.clipboard && viewingResume.text) {
+                              navigator.clipboard.writeText(viewingResume.text);
+                              setCopiedResumeText(true);
+                              setTimeout(() => setCopiedResumeText(false), 2000);
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg font-medium transition-colors cursor-pointer shadow-2xs"
+                          title="Copy raw resume text to clipboard"
+                        >
+                          {copiedResumeText ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                              <span className="text-emerald-700 font-semibold">Copied!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5 text-slate-500" />
+                              <span>Copy Text</span>
+                            </>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setViewingResume(null);
+                            setResumeSearchTerm("");
+                          }}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                          title="Close resume viewer"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
 
-                  {/* Print / Save PDF */}
-                  <button
-                    type="button"
-                    onClick={handlePrint}
-                    className="flex items-center gap-1.5 text-xs text-slate-700 bg-white hover:bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 font-medium shadow-2xs transition-colors cursor-pointer"
-                    title="Print or save as PDF report"
-                  >
-                    <Printer className="w-3.5 h-3.5 text-slate-600" />
-                    Print / PDF
-                  </button>
-
-                  {/* Create Mandate from this JD */}
-                  <button
-                    type="button"
-                    onClick={handleCreateMandate}
-                    className="flex items-center gap-1.5 text-xs text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg border border-purple-200 font-medium transition-colors cursor-pointer"
-                    title="Convert this JD into a live QuestEdge mandate"
-                  >
-                    <Briefcase className="w-3.5 h-3.5 text-purple-600" />
-                    Save as Mandate
-                  </button>
-
-                  {/* Re-rank / Modify */}
-                  <button
-                    type="button"
-                    onClick={() => setResults(null)}
-                    className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    Re-rank / Modify
-                  </button>
-                </div>
-              </div>
-
-              {/* AI Pool Summary Banner if available (Screen Only) */}
-              {(results?.summary || results?.poolSummary) && (
-                <div className="bg-blue-50/80 border border-blue-200 rounded-xl p-4 text-xs text-blue-900 leading-relaxed shadow-xs space-y-1 print:hidden">
-                  <span className="font-bold text-blue-950 flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-blue-600" />
-                    AI Candidate Pool Assessment
-                  </span>
-                  <p className="text-blue-900/90 whitespace-pre-line">
-                    {results.summary || results.poolSummary}
-                  </p>
-                </div>
-              )}
-
-              {/* Candidate Cards */}
-              {candidateList.length > 0 ? (
-                <div className="space-y-3">
-                  {candidateList.map((candidate: any, idx: number) => {
-                    const matched = resumes.find(
-                      (r) =>
-                        r.id === candidate.candidateId ||
-                        r.name.toLowerCase() === (candidate.candidateName || "").toLowerCase()
-                    );
-                    return (
-                      <RankedCandidateCard
-                        key={candidate.candidateId || candidate.id || idx}
-                        candidate={{
-                          ...candidate,
-                          rank: candidate.rank || idx + 1,
-                          totalScore: Number(candidate.totalScore) || 0,
-                          email: candidate.email || matched?.email,
-                          phone: candidate.phone || matched?.phone,
-                          linkedin: candidate.linkedin || matched?.linkedin,
-                          github: candidate.github || matched?.github,
-                          strengths: Array.isArray(candidate.strengths)
-                            ? candidate.strengths
-                            : [],
-                          gaps: Array.isArray(candidate.gaps)
-                            ? candidate.gaps
-                            : [],
-                          standoutFactors: Array.isArray(candidate.standoutFactors)
-                            ? candidate.standoutFactors
-                            : [],
-                          scoreBreakdown: candidate.scoreBreakdown || {},
-                        }}
-                        defaultExpanded={idx === 0}
+                    {/* Search inside resume toolbar */}
+                    <div className="px-6 py-2.5 bg-white border-b border-slate-100 flex items-center gap-2">
+                      <Search className="w-4 h-4 text-slate-400 shrink-0" />
+                      <input
+                        type="text"
+                        value={resumeSearchTerm}
+                        onChange={(e) => setResumeSearchTerm(e.target.value)}
+                        placeholder="Search keywords in resume (e.g., React, Python, AWS, education)..."
+                        className="w-full text-xs bg-transparent border-0 outline-none text-slate-800 placeholder:text-slate-400"
                       />
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-10 bg-gray-50 rounded-xl border border-gray-200 text-gray-500 text-xs">
-                  No candidate rankings returned. Please adjust your inputs and try again.
+                      {resumeSearchTerm && (
+                        <button
+                          type="button"
+                          onClick={() => setResumeSearchTerm("")}
+                          className="text-xs text-slate-400 hover:text-slate-600 cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Resume Body */}
+                    <div className="p-6 overflow-y-auto flex-1 font-mono text-xs leading-relaxed text-slate-800 bg-slate-50/50 whitespace-pre-wrap select-text">
+                      {viewingResume.text}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="px-6 py-3 bg-white border-t border-slate-200 flex items-center justify-between">
+                      <div className="flex items-center gap-3 text-xs text-slate-500">
+                        {viewingResume.email && <span>Email: {viewingResume.email}</span>}
+                        {viewingResume.phone && <span>Phone: {viewingResume.phone}</span>}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setViewingResume(null);
+                          setResumeSearchTerm("");
+                        }}
+                        className="px-4 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 
