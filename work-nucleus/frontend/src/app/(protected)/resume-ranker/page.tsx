@@ -581,12 +581,15 @@ export default function ResumeRankerPage() {
         preferredSkills: preferredSkills.length > 0 ? preferredSkills : undefined,
         resumes: resumes.map((r) => ({
           resumeText: r.text,
-          candidateName: r.name,
-          currentRole: r.currentRole,
-          currentCompany: r.currentCompany,
-          experienceYears: r.experienceYears,
-          education: r.education,
-          skills: r.skills,
+          candidateName: r.name || undefined,
+          currentRole: r.currentRole || undefined,
+          currentCompany: r.currentCompany || undefined,
+          experienceYears:
+            r.experienceYears !== undefined && r.experienceYears !== null && !isNaN(Number(r.experienceYears))
+              ? Number(r.experienceYears)
+              : undefined,
+          education: r.education || undefined,
+          skills: r.skills && r.skills.length > 0 ? r.skills : undefined,
         })),
       };
       if (isCustom) body.customWeights = weights;
@@ -599,7 +602,10 @@ export default function ResumeRankerPage() {
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.message || "Ranking failed");
+        const msg = Array.isArray(err.message)
+          ? err.message.join("; ")
+          : err.message || err.error || "Ranking failed";
+        throw new Error(msg);
       }
 
       const data = await res.json();
