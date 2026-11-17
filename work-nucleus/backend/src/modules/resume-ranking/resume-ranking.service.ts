@@ -55,7 +55,7 @@ export class ResumeRankingService {
 
     if (candidateData.length === 0) {
       throw new BadRequestException(
-        'No valid candidates found with resumes. At least one candidate must have a resume uploaded.',
+        'No valid candidates found. At least one candidate must have a resume uploaded or profile data filled in.',
       );
     }
 
@@ -452,6 +452,13 @@ export class ResumeRankingService {
           currentDesignation: true,
           experienceYears: true,
           education: true,
+          skills: true,
+          headline: true,
+          certifications: true,
+          projects: true,
+          currentLocation: true,
+          noticePeriodDays: true,
+          workModel: true,
         },
       }),
     ]);
@@ -472,6 +479,13 @@ export class ResumeRankingService {
             currentDesignation: true,
             experienceYears: true,
             education: true,
+            skills: true,
+            headline: true,
+            certifications: true,
+            projects: true,
+            currentLocation: true,
+            noticePeriodDays: true,
+            workModel: true,
           },
         },
       },
@@ -486,6 +500,7 @@ export class ResumeRankingService {
       currentRole: string | null;
       experienceYears: number | null;
       education: string | null;
+      profileText: string | null; // Fallback text built from profile fields
     }> = [];
 
     const seenIds = new Set<string>();
@@ -504,6 +519,7 @@ export class ResumeRankingService {
             ? Number(c.experienceYears)
             : null,
           education: null,
+          profileText: null,
         });
       }
     }
@@ -522,6 +538,7 @@ export class ResumeRankingService {
             ? Number(c.experienceYears)
             : null,
           education: c.education as string | null,
+          profileText: this.buildProfileText(c),
         });
       }
     }
@@ -541,19 +558,20 @@ export class ResumeRankingService {
             ? Number(c.experienceYears)
             : null,
           education: c.education as string | null,
+          profileText: this.buildProfileText(c),
         });
       }
     }
 
-    // Filter to only those with resumes (Feature 5: warn about those without)
-    const withResumes = candidates.filter((c) => c.resumeUrl);
-    const withoutResumes = candidates.filter((c) => !c.resumeUrl);
-    if (withoutResumes.length > 0) {
+    // Include candidates with either resume URL or profile data
+    const usable = candidates.filter((c) => c.resumeUrl || c.profileText);
+    const unusable = candidates.filter((c) => !c.resumeUrl && !c.profileText);
+    if (unusable.length > 0) {
       this.logger.warn(
-        `${withoutResumes.length} candidate(s) skipped (no resume): ${withoutResumes.map((c) => c.name).join(', ')}`,
+        `${unusable.length} candidate(s) skipped (no resume and no profile data): ${unusable.map((c) => c.name).join(', ')}`,
       );
     }
-    return withResumes;
+    return usable;
   }
 
   // ── Feature 1: Resume Text Caching ────────────────────────────────
@@ -567,6 +585,7 @@ export class ResumeRankingService {
       currentRole: string | null;
       experienceYears: number | null;
       education: string | null;
+      profileText?: string | null;
     }>,
   ): Promise<
     Array<{
@@ -590,22 +609,38 @@ export class ResumeRankingService {
     }> = [];
 
     for (const candidate of candidates) {
-      if (!candidate.resumeUrl) continue;
-
       try {
-        // Feature 1: Check cache first
-        const cached = await this.getCachedResumeText(candidate.id);
-        let resumeText: string;
+        let resumeText: string | null = null;
 
-        if (cached) {
-          this.logger.debug(`Cache hit for candidate ${candidate.id}`);
-          resumeText = cached;
-        } else {
-          resumeText = await this.extractSingleResume(candidate.resumeUrl);
-          // Store in cache
-          if (resumeText && resumeText.trim().length > 50) {
-            await this.cacheResumeText(candidate.id, resumeText);
+        // Try to extract from resume URL first
+        if (candidate.resumeUrl) {
+          // Feature 1: Check cache first
+          const cached = await this.getCachedResumeText(candidate.id);
+
+          if (cached) {
+            this.logger.debug(`Cache hit for candidate ${candidate.id}`);
+            resumeText = cached;
+          } else {
+            try {
+              resumeText = await this.extractSingleResume(candidate.resumeUrl);
+              // Store in cache
+              if (resumeText && resumeText.trim().length > 50) {
+                await this.cacheResumeText(candidate.id, resumeText);
+              }
+            } catch (err: any) {
+              this.logger.warn(
+                `Failed to extract resume file for ${candidate.name}: ${err.message}. Falling back to profile data.`,
+              );
+            }
           }
+        }
+
+        // Fallback: use profile-based text if no resume URL or extraction failed
+        if ((!resumeText || resumeText.trim().length <= 50) && candidate.profileText) {
+          this.logger.log(
+            `Using profile-based text for candidate ${candidate.name} (no resume file)`,
+          );
+          resumeText = candidate.profileText;
         }
 
         if (resumeText && resumeText.trim().length > 50) {
@@ -620,13 +655,13 @@ export class ResumeRankingService {
           });
         } else {
           this.logger.warn(
-            `Resume text too short or empty for candidate ${candidate.id} (${candidate.name})`,
+            `No usable resume data for candidate ${candidate.id} (${candidate.name})`,
           );
         }
       } catch (err: any) {
         // Feature 5: Better error logging with candidate context
         this.logger.warn(
-          `Failed to extract resume for ${candidate.name} (${candidate.id}): ${err.message}`,
+          `Failed to process resume for ${candidate.name} (${candidate.id}): ${err.message}`,
         );
       }
     }
@@ -675,6 +710,105 @@ export class ResumeRankingService {
     this.logger.debug(
       `Cached resume text for candidate ${candidateId} (${text.length} chars)`,
     );
+  }
+
+  /**
+   * Build a synthetic resume-like text from a candidate's profile fields.
+   * Used as a fallback when no uploaded resume file (PDF/DOCX) is available.
+   */
+  private buildProfileText(profile: {
+    name?: string | null;
+    headline?: string | null;
+    currentCompany?: string | null;
+    currentDesignation?: string | null;
+    experienceYears?: any;
+    skills?: any;
+    education?: any;
+    certifications?: any;
+    projects?: any;
+    currentLocation?: string | null;
+    noticePeriodDays?: number | null;
+    workModel?: string | null;
+  }): string | null {
+    const parts: string[] = [];
+
+    if (profile.name) parts.push(profile.name.toUpperCase());
+    if (profile.headline) parts.push(profile.headline);
+    if (profile.currentLocation) parts.push(`Location: ${profile.currentLocation}`);
+    if (profile.workModel) parts.push(`Work Model: ${profile.workModel}`);
+
+    parts.push('');
+
+    if (profile.currentCompany || profile.currentDesignation) {
+      parts.push('CURRENT POSITION');
+      if (profile.currentDesignation && profile.currentCompany) {
+        parts.push(`${profile.currentDesignation} at ${profile.currentCompany}`);
+      } else if (profile.currentCompany) {
+        parts.push(`Company: ${profile.currentCompany}`);
+      } else if (profile.currentDesignation) {
+        parts.push(`Role: ${profile.currentDesignation}`);
+      }
+      if (profile.experienceYears) {
+        parts.push(`Total Experience: ${profile.experienceYears} years`);
+      }
+      parts.push('');
+    }
+
+    // Skills
+    const skills = Array.isArray(profile.skills) ? profile.skills : [];
+    if (skills.length > 0) {
+      parts.push('TECHNICAL SKILLS');
+      parts.push(skills.join(', '));
+      parts.push('');
+    }
+
+    // Education
+    const education = Array.isArray(profile.education) ? profile.education : [];
+    if (education.length > 0) {
+      parts.push('EDUCATION');
+      for (const edu of education) {
+        if (typeof edu === 'string') {
+          parts.push(edu);
+        } else if (edu && typeof edu === 'object') {
+          const line = [edu.degree, edu.university, edu.year].filter(Boolean).join(' - ');
+          if (line) parts.push(line);
+        }
+      }
+      parts.push('');
+    }
+
+    // Certifications
+    const certs = Array.isArray(profile.certifications) ? profile.certifications : [];
+    if (certs.length > 0) {
+      parts.push('CERTIFICATIONS');
+      for (const cert of certs) {
+        parts.push(typeof cert === 'string' ? `- ${cert}` : `- ${JSON.stringify(cert)}`);
+      }
+      parts.push('');
+    }
+
+    // Projects
+    const projects = Array.isArray(profile.projects) ? profile.projects : [];
+    if (projects.length > 0) {
+      parts.push('PROJECTS');
+      for (const proj of projects) {
+        if (typeof proj === 'string') {
+          parts.push(`- ${proj}`);
+        } else if (proj && typeof proj === 'object') {
+          parts.push(`- ${proj.name || proj.title || JSON.stringify(proj)}`);
+          if (proj.description) parts.push(`  ${proj.description}`);
+        }
+      }
+      parts.push('');
+    }
+
+    if (profile.noticePeriodDays != null) {
+      parts.push(`Notice Period: ${profile.noticePeriodDays} days`);
+    }
+
+    const text = parts.join('\n').trim();
+    // Only return if we have meaningful content (more than just the name)
+    return text.length > 80 ? text : null;
   }
 
   private async extractSingleResume(resumeUrl: string): Promise<string> {

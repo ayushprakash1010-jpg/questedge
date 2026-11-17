@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { FileText, ChevronDown, ChevronUp, Loader2, Trophy, Settings2 } from "lucide-react";
+import { FileText, ChevronDown, ChevronUp, Loader2, Trophy, Settings2, Users } from "lucide-react";
 import WeightCustomizer, { DEFAULT_WEIGHTS, type ScoringWeights } from "./WeightCustomizer";
 
 interface CandidateOption {
@@ -10,6 +10,7 @@ interface CandidateOption {
   email: string;
   source: string;
   hasResume: boolean;
+  hasProfileData?: boolean;
 }
 
 interface RankingTriggerProps {
@@ -29,14 +30,14 @@ export default function RankingTrigger({
   const [weights, setWeights] = useState<ScoringWeights>({ ...DEFAULT_WEIGHTS });
   const [error, setError] = useState<string | null>(null);
 
-  const withResume = candidates.filter((c) => c.hasResume);
-  const allSelected = withResume.length > 0 && withResume.every((c) => selected.has(c.id));
+  const selectable = candidates.filter((c) => c.hasResume || c.hasProfileData);
+  const allSelected = selectable.length > 0 && selectable.every((c) => selected.has(c.id));
 
   const toggleAll = () => {
     if (allSelected) {
       setSelected(new Set());
     } else {
-      setSelected(new Set(withResume.map((c) => c.id)));
+      setSelected(new Set(selectable.map((c) => c.id)));
     }
   };
 
@@ -89,7 +90,7 @@ export default function RankingTrigger({
           Select Candidates to Rank
         </h3>
         <p className="text-xs text-gray-500 mt-1">
-          Choose candidates with uploaded resumes to rank against this mandate&apos;s JD.
+          Choose candidates with uploaded resumes or profile data to rank against this mandate&apos;s JD.
         </p>
       </div>
 
@@ -103,7 +104,7 @@ export default function RankingTrigger({
             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
           <span className="text-xs text-gray-600">
-            Select all with resumes ({withResume.length})
+            Select all candidates ({selectable.length})
           </span>
         </label>
         <span className="text-xs text-gray-400">
@@ -117,13 +118,13 @@ export default function RankingTrigger({
           <label
             key={c.id}
             className={`flex items-center gap-3 px-5 py-2.5 cursor-pointer hover:bg-gray-50 transition-colors ${
-              !c.hasResume ? "opacity-50 cursor-not-allowed" : ""
+              !c.hasResume && !c.hasProfileData ? "opacity-50 cursor-not-allowed" : ""
             }`}
           >
             <input
               type="checkbox"
               checked={selected.has(c.id)}
-              disabled={!c.hasResume}
+              disabled={!c.hasResume && !c.hasProfileData}
               onChange={() => toggle(c.id)}
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
@@ -144,8 +145,10 @@ export default function RankingTrigger({
             </span>
             {c.hasResume ? (
               <FileText className="w-3.5 h-3.5 text-emerald-500" />
+            ) : c.hasProfileData ? (
+              <Users className="w-3.5 h-3.5 text-blue-500" />
             ) : (
-              <span className="text-[10px] text-gray-400">No resume</span>
+              <span className="text-[10px] text-gray-400">No data</span>
             )}
           </label>
         ))}

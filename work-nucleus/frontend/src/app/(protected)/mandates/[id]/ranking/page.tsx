@@ -68,10 +68,16 @@ export default function RankingPage() {
         const data = await candidatesRes.json();
         const candidateList = (data.data || data || []).map((c: any) => ({
           id: c.candidateProfileId || c.id,
-          name: c.name || "Unknown",
-          email: c.email || "",
+          name: c.name || c.candidateProfile?.name || "Unknown",
+          email: c.email || c.candidateProfile?.email || "",
           source: c.source || "DIRECT",
-          hasResume: !!(c.resumeUrl),
+          hasResume: !!(c.resumeUrl || c.candidateProfile?.resumeUrl),
+          hasProfileData: !!(
+            c.currentCompany || c.currentRole || c.experienceYears ||
+            c.candidateProfile?.currentCompany || c.candidateProfile?.headline ||
+            (c.skills && (Array.isArray(c.skills) ? c.skills.length > 0 : true)) ||
+            (c.candidateProfile?.skills && (Array.isArray(c.candidateProfile.skills) ? c.candidateProfile.skills.length > 0 : true))
+          ),
         }));
         setCandidates(candidateList);
       }
