@@ -11,9 +11,12 @@ import {
   Loader2,
   RefreshCw,
   BarChart3,
+  Download,
+  GitCompare,
 } from "lucide-react";
 import RankingTrigger, { type CandidateOption } from "@/components/hiring-plans/resume-ranking/RankingTrigger";
 import RankedCandidateCard from "@/components/hiring-plans/resume-ranking/RankedCandidateCard";
+import ComparisonView from "@/components/hiring-plans/resume-ranking/ComparisonView";
 
 interface RankingSession {
   id: string;
@@ -44,6 +47,7 @@ export default function RankingPage() {
   const [sessions, setSessions] = useState<RankingSession[]>([]);
   const [results, setResults] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showCompare, setShowCompare] = useState(false);
 
   // Fetch mandate info and candidates
   const fetchData = useCallback(async () => {
@@ -230,13 +234,38 @@ export default function RankingPage() {
             </div>
           )}
 
-          {/* Back button */}
-          <button
-            onClick={() => setResults(null)}
-            className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
-          >
-            <RefreshCw className="w-3 h-3" /> New Ranking
-          </button>
+          {/* Back button + Action buttons */}
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <button
+              onClick={() => setResults(null)}
+              className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+            >
+              <RefreshCw className="w-3 h-3" /> New Ranking
+            </button>
+            <div className="flex gap-2">
+              {results.session?.id && (
+                <>
+                  <button
+                    onClick={() => setShowCompare(true)}
+                    className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <GitCompare className="w-3.5 h-3.5" /> Compare
+                  </button>
+                  <button
+                    onClick={() => {
+                      const link = document.createElement("a");
+                      link.href = `/api/resume-ranking/session/${results.session.id}/export`;
+                      link.download = `ranking-${results.session.id.substring(0, 8)}.csv`;
+                      link.click();
+                    }}
+                    className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Export CSV
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
 
           {/* Ranked Cards */}
           <div className="space-y-3">
@@ -310,6 +339,14 @@ export default function RankingPage() {
             ))
           )}
         </div>
+      )}
+      {/* Comparison Modal (Feature 3) */}
+      {showCompare && results?.rankings && results.session?.id && (
+        <ComparisonView
+          sessionId={results.session.id}
+          rankings={results.rankings}
+          onClose={() => setShowCompare(false)}
+        />
       )}
     </div>
   );

@@ -5,6 +5,7 @@ import {
   Param,
   Body,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -14,6 +15,7 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
+import { Response } from 'express';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { ResumeRankingService } from './resume-ranking.service';
@@ -85,5 +87,49 @@ export class ResumeRankingController {
     const orgId = user.orgId;
     const userId = user.id || user.sub;
     return this.rankingService.reRank(orgId, userId, sessionId, dto.customWeights);
+  }
+
+  // ── Feature 4: CSV Export ───────────────────────────────────────
+
+  @Get('session/:sessionId/export/csv')
+  @ApiOperation({
+    summary: 'Export ranking session results as CSV',
+  })
+  @ApiParam({ name: 'sessionId', description: 'Ranking session UUID' })
+  async exportCsv(
+    @CurrentUser() user: any,
+    @Param('sessionId') sessionId: string,
+    @Res() res: Response,
+  ) {
+    const csv = await this.rankingService.exportSessionCsv(
+      user.orgId,
+      sessionId,
+    );
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="ranking-${sessionId.substring(0, 8)}.csv"`,
+    );
+    res.send(csv);
+  }
+
+  // ── Feature 3: Compare Candidates ─────────────────────────────
+
+  @Post('session/:sessionId/compare')
+  @ApiOperation({
+    summary: 'Compare 2-4 candidates side by side from a ranking session',
+  })
+  @ApiParam({ name: 'sessionId', description: 'Ranking session UUID' })
+  async compareCandidates(
+    @CurrentUser() user: any,
+    @Param('sessionId') sessionId: string,
+    @Body() body: { candidateIds: string[] },
+  ) {
+    return this.rankingService.compareCandidates(
+      user.orgId,
+      sessionId,
+      body.candidateIds,
+    );
   }
 }
