@@ -195,7 +195,7 @@ export class ResumeRankingService {
     ]);
 
     return {
-      data: sessions.map((s) => ({
+      data: sessions.map((s: any) => ({
         id: s.id,
         mandateId: s.mandateId,
         status: s.status,
@@ -254,7 +254,7 @@ export class ResumeRankingService {
         completedAt: session.completedAt,
         createdBy: session.createdBy,
       },
-      rankings: session.results.map((r) => ({
+      rankings: session.results.map((r: any) => ({
         id: r.id,
         candidateId: r.candidateId,
         referralId: r.referralId,
@@ -294,7 +294,7 @@ export class ResumeRankingService {
     }
 
     const candidateIds = original.results
-      .map((r) => r.candidateId)
+      .map((r: any) => r.candidateId)
       .filter(Boolean) as string[];
 
     if (candidateIds.length === 0) {
