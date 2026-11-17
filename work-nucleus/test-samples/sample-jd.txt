@@ -1,0 +1,47 @@
+SENIOR FULL STACK DEVELOPER — JOB DESCRIPTION
+
+Company: TechVista Solutions
+Location: Bengaluru, India (Hybrid — 3 days in office)
+Department: Engineering
+Experience Required: 4–7 years
+
+ABOUT THE ROLE
+We are looking for a Senior Full Stack Developer to join our product engineering team. You will design, build, and maintain scalable web applications serving millions of users. You'll work closely with product managers, designers, and fellow engineers to deliver high-quality features end to end.
+
+RESPONSIBILITIES
+- Design and implement full-stack features using React/Next.js (frontend) and Node.js/NestJS (backend)
+- Build and maintain RESTful and GraphQL APIs with PostgreSQL as the primary database
+- Write clean, testable code with comprehensive unit and integration tests
+- Optimize application performance, including Core Web Vitals and API response times
+- Participate in code reviews, architectural discussions, and sprint planning
+- Deploy and monitor applications on AWS (EC2, S3, RDS, Lambda, CloudFront)
+- Collaborate with UX designers to implement responsive, accessible interfaces
+- Mentor junior developers and contribute to engineering best practices
+
+MUST-HAVE SKILLS
+- React.js (3+ years) with hooks, context, and state management (Redux/Zustand)
+- Node.js with Express or NestJS (3+ years)
+- TypeScript (strong proficiency)
+- PostgreSQL or MySQL (query optimization, indexing, migrations)
+- REST API design and implementation
+- Git version control and CI/CD pipelines
+- AWS basics (EC2, S3, RDS)
+
+NICE-TO-HAVE SKILLS
+- Next.js (App Router, SSR, ISR)
+- GraphQL (Apollo or similar)
+- Docker and Kubernetes
+- Redis for caching
+- Tailwind CSS
+- Testing frameworks (Jest, Cypress, React Testing Library)
+- Agile/Scrum experience
+
+EDUCATION
+- B.Tech/B.E. in Computer Science or related field (or equivalent experience)
+
+WHAT WE OFFER
+- Competitive salary: ₹18–35 LPA based on experience
+- Stock options (ESOPs)
+- Health insurance for you and family
+- Learning budget (₹50K/year)
+- Flexible hybrid work model

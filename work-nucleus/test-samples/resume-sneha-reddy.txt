@@ -1,0 +1,40 @@
+SNEHA REDDY
+Junior Full Stack Developer
+Email: sneha.reddy@email.com | Phone: +91-9765432109 | Location: Bengaluru, India
+LinkedIn: linkedin.com/in/snehareddy-dev | GitHub: github.com/snehareddy
+
+PROFESSIONAL SUMMARY
+Enthusiastic Full Stack Developer with 2.5 years of experience building web applications using the MERN stack (MongoDB, Express.js, React, Node.js) and TypeScript. Strong foundation in JavaScript, REST API integration, and modern CSS frameworks. Fast learner with a passion for collaborative product development.
+
+WORK EXPERIENCE
+
+Full Stack Developer — Zomato / Blinkit (Apr 2023 – Present)
+- Developed customer-facing grocery ordering features using React, TypeScript, and Tailwind CSS
+- Created backend micro-endpoints using Node.js and Express for order status tracking
+- Implemented client-side caching with React Query, decreasing redundant network requests by 30%
+- Wrote unit tests using Jest and React Testing Library for checkout flow components
+- Participated in bi-weekly code reviews and agile sprint planning sessions
+
+Associate Software Engineer — Mindtree (Aug 2022 – Mar 2023)
+- Built interactive dashboard pages for an internal logistics tracking tool using React and Redux
+- Assisted in developing RESTful web services in Node.js and MongoDB
+- Fixed UI bugs, improved mobile viewport responsiveness, and updated API documentation with Postman
+
+Software Engineering Intern — Mindtree (Jan 2022 – Jul 2022)
+- Underwent intensive bootcamp in JavaScript, HTML5/CSS3, React, and Node.js fundamentals
+- Built full-stack proof-of-concept internal employee directory web application
+
+EDUCATION
+B.E. in Computer Science — PES University, Bengaluru (2018–2022) — CGPA: 8.2/10
+
+TECHNICAL SKILLS
+Frontend: React, Next.js (basic), JavaScript (ES6+), TypeScript, Tailwind CSS, HTML5, CSS3, Redux Toolkit
+Backend: Node.js, Express.js, RESTful APIs, JSON
+Database: MongoDB, PostgreSQL (basic queries), Mongoose, Prisma ORM
+Cloud & Tools: Git, GitHub, Postman, Docker (basic), Vercel, Netlify, VS Code, Linux basics
+Testing: Jest, React Testing Library (basic)
+
+PROJECTS
+- Task Management App: Kanban-style task manager built with React, Node.js, Express, and MongoDB with JWT auth
+- DevFolio: Developer portfolio generator using Next.js, TypeScript, and Tailwind CSS with GitHub API integration
+- Expense Tracker: Full-stack mobile-responsive app using React and Node.js with chart visualizer

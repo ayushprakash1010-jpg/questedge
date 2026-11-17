@@ -1,0 +1,47 @@
+ANANYA IYER
+Frontend Lead / Senior UI Engineer
+Email: ananya.iyer@email.com | Phone: +91-9876543210 | Location: Bengaluru, India
+LinkedIn: linkedin.com/in/ananyaiyer | GitHub: github.com/ananyaiyer
+
+PROFESSIONAL SUMMARY
+Senior Frontend Engineer with 6 years of experience specializing in high-performance web applications, design systems, and responsive user experiences. Deep expertise in React, Next.js, TypeScript, Vue.js, and CSS architecture. Strong advocate for web accessibility (WCAG 2.1 AA) and web vitals optimization.
+
+WORK EXPERIENCE
+
+Lead Frontend Engineer — Razorpay (Jan 2022 – Present)
+- Led a team of 5 frontend engineers building the next-gen merchant checkout suite using Next.js and TypeScript
+- Improved Core Web Vitals across merchant pages, lowering Largest Contentful Paint (LCP) from 3.2s to 1.1s
+- Architected enterprise-wide Design System and component library adopted by 12 cross-functional teams
+- Integrated React micro-frontends with Module Federation for seamless modular deployments
+- Collaborated closely with Product and UX teams to build accessible, mobile-first payment flows
+
+Senior Frontend Developer — Cure.fit (Cult.fit) (Aug 2019 – Dec 2021)
+- Developed interactive fitness video streaming and live class booking web app in React and Redux
+- Implemented state management, offline persistence, and progressive web app (PWA) capabilities
+- Built interactive analytics charts and fitness tracking widgets using D3.js and Recharts
+- Set up automated visual regression testing with Percy and Cypress, catching 40+ UI regressions prior to release
+- Collaborated with backend engineers on GraphQL schemas and RESTful API consumption
+
+Frontend Web Developer — Infosys (Jul 2018 – Jul 2019)
+- Built enterprise customer portals using React, HTML5, and Sass for global banking client
+- Implemented responsive mobile layouts and cross-browser compatibility fixes
+- Participated in agile sprints, daily standups, and bi-weekly sprint reviews
+
+EDUCATION
+B.E. in Information Science — RV College of Engineering, Bengaluru (2014–2018) — CGPA: 8.9/10
+
+TECHNICAL SKILLS
+Frontend: React, Next.js, TypeScript, JavaScript (ES6+), Vue.js, Redux Toolkit, Zustand, Tailwind CSS, Sass, HTML5, CSS3, Webpack, Vite
+Backend (Basic): Node.js, Express.js (basic APIs), REST endpoints, GraphQL client (Apollo)
+Database (Basic): PostgreSQL (basic CRUD), MongoDB (basic)
+Cloud & DevOps: AWS S3, CloudFront, Vercel, Netlify, Docker basics, GitHub Actions
+Testing & Quality: Jest, React Testing Library, Cypress, Storybook, Lighthouse, WCAG Accessibility
+Design: Figma, Adobe XD, UI/UX prototyping
+
+CERTIFICATIONS
+- Meta Certified Front-End Developer (2022)
+- AWS Certified Cloud Practitioner (2021)
+
+PROJECTS
+- Component Library "PulseUI": Open-source accessible React UI toolkit with 1.2k GitHub stars
+- Design Tokens Generator: CLI tool automating Figma variable export to CSS and Tailwind variables

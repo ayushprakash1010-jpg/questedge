@@ -1,0 +1,54 @@
+ARJUN MEHTA
+Senior Full Stack Developer
+Email: arjun.mehta@email.com | Phone: +91-9988776655 | Location: Bengaluru, India
+LinkedIn: linkedin.com/in/arjunmehta | GitHub: github.com/arjunmehta
+
+PROFESSIONAL SUMMARY
+Senior Full Stack Developer with 5+ years of experience building scalable web applications using React, Node.js, and TypeScript. Expert in AWS cloud services and PostgreSQL. Passionate about clean architecture, performance optimization, and mentoring junior developers.
+
+WORK EXPERIENCE
+
+Senior Software Engineer — Swiggy (Mar 2022 – Present)
+- Led development of restaurant partner dashboard serving 200,000+ merchants using React, Next.js, and Node.js
+- Architected microservices backend on AWS (ECS, Lambda, RDS) handling 50,000+ API requests/minute
+- Reduced page load time by 45% through code splitting, lazy loading, and CDN optimization
+- Built real-time order tracking system using WebSockets and Redis pub/sub
+- Mentored 3 junior developers through code reviews and pair programming
+- Implemented CI/CD pipeline with GitHub Actions reducing deployment time from 2 hours to 15 minutes
+
+Software Engineer — Freshworks (Jun 2019 – Feb 2022)
+- Developed customer support ticketing features using React and Redux for Freshdesk product
+- Built REST APIs with Express.js and PostgreSQL handling 20,000+ concurrent users
+- Implemented automated testing achieving 82% code coverage with Jest and Cypress
+- Created reusable component library with Storybook used across 4 product teams
+- Optimized PostgreSQL queries reducing average response time by 35%
+
+Junior Developer — Zoho (Jul 2018 – May 2019)
+- Built internal CRM modules using JavaScript and Java
+- Developed email automation workflows processing 5K+ emails daily
+- Created automated regression test suite with Selenium
+
+EDUCATION
+B.Tech in Computer Science — NIT Surathkal (2014–2018) — CGPA: 8.6/10
+
+TECHNICAL SKILLS
+Frontend: React, Next.js, TypeScript, Redux, Zustand, Tailwind CSS, HTML5, CSS3
+Backend: Node.js, NestJS, Express, GraphQL, REST APIs
+Database: PostgreSQL, MongoDB, Redis, Elasticsearch
+Cloud: AWS (EC2, S3, Lambda, RDS, CloudFront, SQS), Docker, Kubernetes
+Testing: Jest, Cypress, React Testing Library, Storybook
+Tools: Git, GitHub Actions, Jira, Figma, Postman, VS Code
+
+CERTIFICATIONS
+- AWS Solutions Architect Associate (2023)
+- Google Cloud Professional Developer (2022)
+
+PROJECTS
+- E-commerce Platform: Full-stack Next.js + NestJS platform with Stripe payments, serving 1000+ daily orders
+- Real-time Analytics Dashboard: Built with React, D3.js, and WebSockets for live data visualization
+- Open Source: Contributed to Next.js and NestJS repositories (5 merged PRs)
+
+ACHIEVEMENTS
+- Swiggy Engineering Excellence Award 2023
+- Speaker at ReactConf Bengaluru 2023
+- 500+ reputation on Stack Overflow

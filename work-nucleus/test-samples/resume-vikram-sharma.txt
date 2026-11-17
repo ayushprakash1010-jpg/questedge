@@ -1,0 +1,42 @@
+VIKRAM SHARMA
+Principal Backend Architect / Engineering Lead
+Email: vikram.sharma@email.com | Phone: +91-9123456780 | Location: Bengaluru, India
+LinkedIn: linkedin.com/in/vikramsharma-arch
+
+PROFESSIONAL SUMMARY
+Senior Principal Software Architect with 11+ years of experience designing high-throughput distributed systems, event-driven architectures, and cloud-native microservices. Deep expertise in Java, Spring Boot, Apache Kafka, PostgreSQL, and AWS/GCP infrastructure. Proven record managing large engineering teams and high-scale financial platforms.
+
+WORK EXPERIENCE
+
+Principal Backend Architect — PhonePe (Oct 2020 – Present)
+- Architected core payment settlement platform processing 120M+ transactions daily with 99.999% uptime
+- Designed distributed event-driven data pipeline with Apache Kafka, Debezium, and Flink
+- Migrated legacy monolith into 18 domain-driven microservices on Kubernetes (EKS)
+- Led database sharding and partitioning strategies on PostgreSQL and Cassandra, cutting query latency by 60%
+- Managed and mentored team of 14 senior backend engineers and tech leads
+
+Staff Software Engineer — Walmart Global Tech (Jan 2017 – Sep 2020)
+- Designed inventory allocation engines using Spring Boot, Java 11, and Redis distributed caching
+- Implemented real-time stream processing architecture with Apache Spark and Kafka Streams
+- Integrated fault tolerance, circuit breakers, and rate limiting using resilience4j and Envoy proxy
+- Authored internal RFCs for multi-region active-active cloud failover on AWS and Azure
+
+Senior Software Engineer — Oracle (Aug 2013 – Dec 2016)
+- Developed enterprise database connectors and transactional middleware in Core Java and C++
+- Tuned JVM garbage collection and heap utilization for memory-constrained server environments
+- Implemented JDBC driver optimizations and automated load testing with JMeter
+
+EDUCATION
+M.Tech in Computer Science — IIT Madras (2011–2013)
+B.Tech in Information Technology — NIT Warangal (2007–2011)
+
+TECHNICAL SKILLS
+Backend: Java 17/21, Spring Boot, Spring Cloud, Go (Golang), gRPC, Apache Kafka, RabbitMQ
+Database: PostgreSQL, Oracle, Cassandra, Redis, DynamoDB, Elasticsearch
+Cloud & Infra: AWS (EKS, RDS, MSK, IAM, CloudWatch), GCP, Kubernetes, Docker, Terraform
+Architecture: Distributed Systems, CQRS, Event Sourcing, Domain-Driven Design (DDD), Microservices
+Frontend (Minimal): Basic HTML/JavaScript, internal admin dashboards (Thymeleaf/legacy React)
+
+CERTIFICATIONS
+- AWS Certified Solutions Architect — Professional (2022)
+- Confluent Certified Developer for Apache Kafka (2021)

@@ -1,0 +1,41 @@
+KAVITA PATEL
+Full Stack Software Engineer
+Email: kavita.patel@email.com | Phone: +91-9654321098 | Location: Bengaluru, India (Open to Hybrid)
+LinkedIn: linkedin.com/in/kavitapatel-eng | GitHub: github.com/kavitapatel
+
+PROFESSIONAL SUMMARY
+Full Stack Software Engineer with 4.5 years of experience delivering robust web applications and data-driven systems. Strong frontend experience with React and TypeScript, paired with high-performance Python (Django/FastAPI) and Node.js backends. Experienced with PostgreSQL optimization, Redis caching, and AWS deployments.
+
+WORK EXPERIENCE
+
+Full Stack Engineer — Groww (Sep 2021 – Present)
+- Built user-facing mutual fund discovery and portfolio rebalancing workflows using React, TypeScript, and Tailwind CSS
+- Architected asynchronous financial calculation microservices in Python (FastAPI) and Node.js
+- Designed normalized relational schemas in PostgreSQL with complex indexing, reducing report query latency by 40%
+- Built real-time NAV tracking and alert notifications using Redis pub/sub and WebSocket feeds
+- Implemented containerized deployment workflows using Docker and AWS ECS with GitHub Actions CI/CD
+- Led migration of 15+ legacy frontend components to modern React hooks and React Query
+
+Software Engineer — Mu Sigma (Jul 2019 – Aug 2021)
+- Developed interactive analytics and decision dashboards with React, Redux, and D3.js for US retail clients
+- Built automated data ingest and validation REST APIs using Python (Django) and Celery task queues
+- Integrated PostgreSQL and Elasticsearch for full-text search across 5M+ transaction records
+- Automated integration testing suite achieving 78% test coverage using PyTest and Jest
+
+EDUCATION
+B.Tech in Computer Science & Engineering — Manipal Institute of Technology (2015–2019) — CGPA: 8.4/10
+
+TECHNICAL SKILLS
+Frontend: React, TypeScript, JavaScript, Next.js, Redux Toolkit, Tailwind CSS, HTML5, CSS3, D3.js
+Backend: Python (FastAPI, Django), Node.js (Express), REST APIs, Celery, WebSockets
+Database: PostgreSQL, Redis, Elasticsearch, MongoDB
+Cloud & DevOps: AWS (ECS, S3, RDS, Lambda, CloudWatch), Docker, Git, CI/CD (GitHub Actions)
+Testing: Jest, PyTest, Postman
+
+CERTIFICATIONS
+- AWS Certified Developer — Associate (2022)
+- DeepLearning.AI Machine Learning Specialization (2021)
+
+PROJECTS
+- FinTrack: Personal finance tracker with automated bank statement parsing (React + FastAPI + PostgreSQL)
+- AlgoTrader: Cryptographic paper-trading simulator with WebSocket orderbook feeds and chart visualizations

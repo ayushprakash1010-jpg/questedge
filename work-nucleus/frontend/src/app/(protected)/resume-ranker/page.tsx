@@ -11,12 +11,16 @@ import {
   BarChart3,
   RefreshCw,
   Clipboard,
+  Download,
+  Zap,
+  Trash2,
 } from "lucide-react";
 import RankedCandidateCard from "@/components/hiring-plans/resume-ranking/RankedCandidateCard";
 import WeightCustomizer, {
   DEFAULT_WEIGHTS,
   type ScoringWeights,
 } from "@/components/hiring-plans/resume-ranking/WeightCustomizer";
+import { SAMPLE_JD, SAMPLE_RESUMES } from "./sample-data";
 
 interface ResumeFile {
   id: string;
@@ -89,6 +93,24 @@ export default function ResumeRankerPage() {
     setResumes((prev) => prev.filter((r) => r.id !== id));
   };
 
+  const handleLoadSamples = () => {
+    setJobTitle(SAMPLE_JD.title);
+    setLocation(SAMPLE_JD.location);
+    setWorkModel(SAMPLE_JD.workModel);
+    setJdText(SAMPLE_JD.text);
+    setResumes(SAMPLE_RESUMES);
+  };
+
+  const handleClearAll = () => {
+    setJobTitle("");
+    setLocation("");
+    setWorkModel("");
+    setJdText("");
+    setResumes([]);
+    setResults(null);
+    setError(null);
+  };
+
   const weightsTotal = Object.values(weights).reduce((s, v) => s + v, 0);
   const canRank =
     jdText.trim().length >= 20 &&
@@ -152,6 +174,53 @@ export default function ResumeRankerPage() {
           fit analysis — no mandate needed.
         </p>
       </div>
+
+      {/* Test Samples Banner */}
+      {!results && (
+        <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border border-blue-100 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-600 text-white tracking-wide">
+                TEST DATA
+              </span>
+              <span className="text-sm font-semibold text-gray-900">
+                Want to test with sample resumes?
+              </span>
+            </div>
+            <p className="text-xs text-gray-600">
+              Preload 1 Full Stack JD + 5 diverse candidate profiles in one click, or download the sample files.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleLoadSamples}
+              className="flex items-center gap-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 px-3.5 py-2 rounded-lg shadow-sm transition-colors cursor-pointer"
+            >
+              <Zap className="w-3.5 h-3.5 fill-current" />
+              Load 5 Samples
+            </button>
+            <a
+              href="/samples/resume-ranker-samples.zip"
+              download="resume-ranker-samples.zip"
+              className="flex items-center gap-1.5 text-xs font-medium text-blue-700 bg-white hover:bg-blue-50 px-3 py-2 rounded-lg border border-blue-200 shadow-sm transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Download ZIP
+            </a>
+            {(jdText || resumes.length > 0) && (
+              <button
+                type="button"
+                onClick={handleClearAll}
+                className="flex items-center gap-1 text-xs text-gray-500 hover:text-red-600 px-2.5 py-2 rounded-lg hover:bg-red-50 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {!results ? (
         <div className="space-y-5">
