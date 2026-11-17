@@ -98,6 +98,27 @@ export class QuickRankResumeDto {
   @ApiPropertyOptional({ description: 'Candidate name (optional)' })
   @IsOptional()
   candidateName?: string;
+
+  @ApiPropertyOptional({ description: 'Current job title or designation' })
+  @IsOptional()
+  currentRole?: string;
+
+  @ApiPropertyOptional({ description: 'Current or most recent company' })
+  @IsOptional()
+  currentCompany?: string;
+
+  @ApiPropertyOptional({ description: 'Total years of experience' })
+  @IsOptional()
+  experienceYears?: number;
+
+  @ApiPropertyOptional({ description: 'Education qualification' })
+  @IsOptional()
+  education?: string;
+
+  @ApiPropertyOptional({ description: 'Key skills array', type: [String] })
+  @IsOptional()
+  @IsArray()
+  skills?: string[];
 }
 
 export class QuickRankDto {
@@ -119,6 +140,28 @@ export class QuickRankDto {
   @ApiPropertyOptional({ description: 'Work model (Remote, Hybrid, Onsite)' })
   @IsOptional()
   workModel?: string;
+
+  @ApiPropertyOptional({ description: 'Experience required (e.g. 4-7 years)' })
+  @IsOptional()
+  requiredExperience?: string;
+
+  @ApiPropertyOptional({ description: 'Education requirement (e.g. B.Tech)' })
+  @IsOptional()
+  educationRequirement?: string;
+
+  @ApiPropertyOptional({ description: 'Mandatory skills', type: [String] })
+  @IsOptional()
+  @IsArray()
+  mandatorySkills?: string[];
+
+  @ApiPropertyOptional({ description: 'Preferred skills', type: [String] })
+  @IsOptional()
+  @IsArray()
+  preferredSkills?: string[];
+
+  @ApiPropertyOptional({ description: 'Employment type (e.g. Full-time)' })
+  @IsOptional()
+  employmentType?: string;
 
   @ApiProperty({
     description: 'Array of resume objects with text content',

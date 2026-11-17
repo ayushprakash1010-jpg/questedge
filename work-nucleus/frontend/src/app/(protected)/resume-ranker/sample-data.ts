@@ -1,7 +1,12 @@
 export const SAMPLE_JD = {
   title: "Senior Full Stack Developer",
+  department: "Engineering",
   location: "Bengaluru, India",
   workModel: "Hybrid",
+  requiredExperience: "4–7 years",
+  educationRequirement: "B.Tech/B.E. in Computer Science or related field",
+  mandatorySkills: ["React", "Node.js", "TypeScript", "PostgreSQL", "AWS", "REST APIs"],
+  preferredSkills: ["Next.js", "GraphQL", "Docker", "Kubernetes", "Redis", "Tailwind CSS"],
   text: `SENIOR FULL STACK DEVELOPER — JOB DESCRIPTION
 
 Company: TechVista Solutions
@@ -54,7 +59,14 @@ WHAT WE OFFER
 export const SAMPLE_RESUMES = [
   {
     id: "sample-1",
-    name: "Arjun Mehta (Strong Full Stack Match)",
+    name: "Arjun Mehta",
+    currentRole: "Senior Software Engineer",
+    currentCompany: "Swiggy",
+    experienceYears: 5.5,
+    education: "B.Tech in Computer Science — NIT Surathkal (8.6 CGPA)",
+    skills: ["React", "Next.js", "TypeScript", "Node.js", "NestJS", "PostgreSQL", "AWS", "Redis", "Docker"],
+    fileName: "resume-arjun-mehta.pdf",
+    fileType: "pdf" as const,
     text: `ARJUN MEHTA
 Senior Full Stack Developer
 Email: arjun.mehta@email.com | Phone: +91-9988776655 | Location: Bengaluru, India
@@ -106,7 +118,14 @@ PROJECTS
   },
   {
     id: "sample-2",
-    name: "Ananya Iyer (Frontend Lead Specialist)",
+    name: "Ananya Iyer",
+    currentRole: "Lead Frontend Engineer",
+    currentCompany: "Razorpay",
+    experienceYears: 6,
+    education: "B.E. in Information Science — RV College of Engineering (8.9 CGPA)",
+    skills: ["React", "Next.js", "TypeScript", "Vue.js", "Tailwind CSS", "Redux Toolkit", "Design Systems", "Web Vitals"],
+    fileName: "resume-ananya-iyer.pdf",
+    fileType: "pdf" as const,
     text: `ANANYA IYER
 Frontend Lead / Senior UI Engineer
 Email: ananya.iyer@email.com | Phone: +91-9876543210 | Location: Bengaluru, India
@@ -152,7 +171,14 @@ CERTIFICATIONS
   },
   {
     id: "sample-3",
-    name: "Vikram Sharma (Principal Backend Architect)",
+    name: "Vikram Sharma",
+    currentRole: "Principal Backend Architect",
+    currentCompany: "PhonePe",
+    experienceYears: 11,
+    education: "M.Tech in CS — IIT Madras, B.Tech in IT — NIT Warangal",
+    skills: ["Java", "Spring Boot", "Apache Kafka", "PostgreSQL", "Cassandra", "Kubernetes", "Distributed Systems"],
+    fileName: "resume-vikram-sharma.pdf",
+    fileType: "pdf" as const,
     text: `VIKRAM SHARMA
 Principal Backend Architect / Engineering Lead
 Email: vikram.sharma@email.com | Phone: +91-9123456780 | Location: Bengaluru, India
@@ -198,7 +224,14 @@ CERTIFICATIONS
   },
   {
     id: "sample-4",
-    name: "Sneha Reddy (Junior Full Stack MERN)",
+    name: "Sneha Reddy",
+    currentRole: "Full Stack Developer",
+    currentCompany: "Zomato / Blinkit",
+    experienceYears: 2.5,
+    education: "B.E. in Computer Science — PES University (8.2 CGPA)",
+    skills: ["React", "TypeScript", "Tailwind CSS", "Node.js", "Express", "MongoDB", "MERN Stack"],
+    fileName: "resume-sneha-reddy.pdf",
+    fileType: "pdf" as const,
     text: `SNEHA REDDY
 Junior Full Stack Developer
 Email: sneha.reddy@email.com | Phone: +91-9765432109 | Location: Bengaluru, India
@@ -237,7 +270,14 @@ PROJECTS
   },
   {
     id: "sample-5",
-    name: "Kavita Patel (Full Stack React + Python/AWS)",
+    name: "Kavita Patel",
+    currentRole: "Full Stack Engineer",
+    currentCompany: "Groww",
+    experienceYears: 4.5,
+    education: "B.Tech in CSE — Manipal Institute of Technology (8.4 CGPA)",
+    skills: ["React", "TypeScript", "Python", "FastAPI", "Django", "PostgreSQL", "AWS", "Redis"],
+    fileName: "resume-kavita-patel.pdf",
+    fileType: "pdf" as const,
     text: `KAVITA PATEL
 Full Stack Software Engineer
 Email: kavita.patel@email.com | Phone: +91-9654321098 | Location: Bengaluru, India (Open to Hybrid)

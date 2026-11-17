@@ -438,10 +438,16 @@ export class ResumeRankingService {
       candidateId: `quick-${i + 1}`,
       candidateName: r.candidateName || `Candidate ${i + 1}`,
       resumeText: r.resumeText,
-      currentCompany: null,
-      currentRole: null,
-      experienceYears: null,
-      education: null,
+      currentCompany: r.currentCompany || null,
+      currentRole: r.currentRole || null,
+      experienceYears:
+        r.experienceYears !== undefined && r.experienceYears !== null && !isNaN(Number(r.experienceYears))
+          ? Number(r.experienceYears)
+          : null,
+      education: Array.isArray(r.education)
+        ? r.education.join(', ')
+        : r.education || null,
+      skills: Array.isArray(r.skills) ? r.skills : [],
     }));
 
     const validCandidates = candidates.filter(
@@ -454,6 +460,23 @@ export class ResumeRankingService {
       );
     }
 
+    // Build skills array from mandatory and preferred skills
+    const skills: { name: string; priority: string }[] = [];
+    if (Array.isArray(dto.mandatorySkills)) {
+      dto.mandatorySkills.forEach((s: string) => {
+        if (s && typeof s === 'string' && s.trim()) {
+          skills.push({ name: s.trim(), priority: 'MANDATORY' });
+        }
+      });
+    }
+    if (Array.isArray(dto.preferredSkills)) {
+      dto.preferredSkills.forEach((s: string) => {
+        if (s && typeof s === 'string' && s.trim()) {
+          skills.push({ name: s.trim(), priority: 'PREFERRED' });
+        }
+      });
+    }
+
     // Build the AI payload (similar to rankResumes but with raw JD text)
     const payload = {
       jobDescription: {
@@ -461,10 +484,12 @@ export class ResumeRankingService {
         department: dto.department || null,
         location: dto.location || null,
         workModel: dto.workModel || null,
-        requiredExperience: null,
+        requiredExperience: dto.requiredExperience || null,
+        educationRequirement: dto.educationRequirement || null,
+        employmentType: dto.employmentType || null,
         summary: dto.jdText,
       },
-      skills: [],
+      skills,
       candidates: validCandidates.map((c: any) => ({
         candidateId: c.candidateId,
         candidateName: c.candidateName,
@@ -473,6 +498,7 @@ export class ResumeRankingService {
         currentRole: c.currentRole,
         experienceYears: c.experienceYears,
         education: c.education,
+        skills: c.skills,
       })),
       weights: dto.customWeights || undefined,
     };
@@ -1205,8 +1231,9 @@ ID: ${c.candidateId}
 Name: ${c.candidateName}
 Current Role: ${c.currentRole || 'N/A'}
 Current Company: ${c.currentCompany || 'N/A'}
-Experience: ${c.experienceYears || 'N/A'} years
+Experience: ${c.experienceYears != null ? `${c.experienceYears} years` : 'N/A'}
 Education: ${c.education || 'N/A'}
+Key Skills: ${Array.isArray(c.skills) && c.skills.length > 0 ? c.skills.join(', ') : 'N/A'}
 
 RESUME TEXT:
 ${(c.resumeText || '').substring(0, 4000)}
@@ -1228,6 +1255,8 @@ Department: ${jd.department || 'N/A'}
 Location: ${jd.location || 'N/A'}
 Work Model: ${jd.workModel || 'N/A'}
 Required Experience: ${jd.requiredExperience || 'N/A'}
+Education Requirement: ${jd.educationRequirement || 'N/A'}
+Employment Type: ${jd.employmentType || 'N/A'}
 Description: ${jd.summary || ''}
 Required Skills: ${skillsList || 'N/A'}
 </job_description>
