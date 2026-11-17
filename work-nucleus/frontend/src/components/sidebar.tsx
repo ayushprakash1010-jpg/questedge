@@ -46,6 +46,7 @@ const companyNavSections: NavSection[] = [
       { label: "Mandates", href: "/mandates", icon: Briefcase },
       { label: "Candidates", href: "/candidates", icon: Users },
       { label: "Assessments", href: "/assessments", icon: Code2 },
+      { label: "Resume Ranker", href: "/resume-ranker", icon: Trophy },
     ],
   },
   {

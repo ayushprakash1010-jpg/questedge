@@ -19,7 +19,7 @@ import { Response } from 'express';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { ResumeRankingService } from './resume-ranking.service';
-import { RankResumesDto, ReRankDto } from './dto/rank-resumes.dto';
+import { RankResumesDto, ReRankDto, QuickRankDto } from './dto/rank-resumes.dto';
 
 @ApiTags('Resume Ranking')
 @ApiBearerAuth()
@@ -131,5 +131,18 @@ export class ResumeRankingController {
       sessionId,
       body.candidateIds,
     );
+  }
+
+  // ── Quick Rank: Standalone ad-hoc ranking ─────────────────────
+
+  @Post('quick-rank')
+  @ApiOperation({
+    summary: 'Quick rank: upload JD text + resume texts for instant ranking (no mandate needed)',
+  })
+  async quickRank(
+    @CurrentUser() user: any,
+    @Body() dto: QuickRankDto,
+  ) {
+    return this.rankingService.quickRank(user.orgId, dto);
   }
 }

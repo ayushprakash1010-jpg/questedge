@@ -418,6 +418,84 @@ export class ResumeRankingService {
     };
   }
 
+  // ── Quick Rank: Ad-hoc ranking without mandate ──────────────────
+
+  async quickRank(orgId: string, dto: any) {
+    const startTime = Date.now();
+
+    if (!dto.jdText || dto.jdText.trim().length < 20) {
+      throw new BadRequestException(
+        'Job description text must be at least 20 characters.',
+      );
+    }
+
+    if (!dto.resumes || dto.resumes.length === 0) {
+      throw new BadRequestException('At least one resume is required.');
+    }
+
+    // Build candidates from provided resume texts
+    const candidates = dto.resumes.map((r: any, i: number) => ({
+      candidateId: `quick-${i + 1}`,
+      candidateName: r.candidateName || `Candidate ${i + 1}`,
+      resumeText: r.resumeText,
+      currentCompany: null,
+      currentRole: null,
+      experienceYears: null,
+      education: null,
+    }));
+
+    const validCandidates = candidates.filter(
+      (c: any) => c.resumeText && c.resumeText.trim().length > 30,
+    );
+
+    if (validCandidates.length === 0) {
+      throw new BadRequestException(
+        'No valid resume content found. Please provide resume text with at least 30 characters.',
+      );
+    }
+
+    // Build the AI payload (similar to rankResumes but with raw JD text)
+    const payload = {
+      jobDescription: {
+        title: dto.jobTitle || 'Job Position',
+        department: dto.department || null,
+        location: dto.location || null,
+        workModel: dto.workModel || null,
+        requiredExperience: null,
+        summary: dto.jdText,
+      },
+      skills: [],
+      candidates: validCandidates.map((c: any) => ({
+        candidateId: c.candidateId,
+        candidateName: c.candidateName,
+        resumeText: c.resumeText,
+        currentCompany: c.currentCompany,
+        currentRole: c.currentRole,
+        experienceYears: c.experienceYears,
+        education: c.education,
+      })),
+      weights: dto.customWeights || undefined,
+    };
+
+    // Call AI with retry
+    const aiResult = await this.callAiWithRetry(payload, 2);
+
+    // Sanitize results (use a temp sessionId)
+    const tempSessionId = `quick-${Date.now()}`;
+    const sanitized = this.sanitizeRankingResults(aiResult, tempSessionId);
+
+    const processingTimeMs = Date.now() - startTime;
+
+    return {
+      rankings: sanitized,
+      summary: aiResult.summary || null,
+      jdCoverage: aiResult.jdCoverage || null,
+      processingTimeMs,
+      candidateCount: validCandidates.length,
+      isQuickRank: true,
+    };
+  }
+
   // ── Private Helpers ──────────────────────────────────────────────
 
   private async gatherCandidateData(orgId: string, candidateIds: string[]) {
