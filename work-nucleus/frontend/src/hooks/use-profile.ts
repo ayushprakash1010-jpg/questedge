@@ -34,6 +34,7 @@ export function useProfile() {
 
   const fetchProfile = useCallback(async () => {
     try {
+      setIsLoading(true);
       setError(null);
       const res = await fetch(`/api/profile?t=${Date.now()}`);
       const data = await res.json();
@@ -62,7 +63,13 @@ export function useProfile() {
       return;
     }
 
-    if (auth0Loading || !user) {
+    // Still waiting for Auth0 session — keep isLoading true, do not prematurely mark done
+    if (auth0Loading) {
+      return;
+    }
+
+    // Auth0 finished and there is no logged-in user
+    if (!user) {
       setIsLoading(false);
       return;
     }

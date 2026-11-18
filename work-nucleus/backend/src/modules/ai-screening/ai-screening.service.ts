@@ -446,9 +446,10 @@ export class AiScreeningService {
         ? skillsList.slice(4, 8)
         : ['Git', 'Agile / Scrum', 'CI/CD'];
 
-    let workModel = 'Hybrid';
-    if (lower.includes('remote')) workModel = 'Remote';
-    if (lower.includes('on-site') || lower.includes('onsite'))
+    let workModel = '';
+    if (lower.includes('remote') || lower.includes('wfh')) workModel = 'Remote';
+    else if (lower.includes('hybrid') || lower.includes('flexible')) workModel = 'Hybrid';
+    else if (lower.includes('on-site') || lower.includes('onsite') || lower.includes('in-office') || lower.includes('office'))
       workModel = 'On-site';
 
     const description = `We are looking for an exceptional **${title}** to join our fast-growing ${department} team. In this role, you will play a central part in building high-impact products, collaborating across functions, and driving technical excellence.\n\n### Key Responsibilities\n- Design, develop, and deliver high-quality, scalable solutions.\n- Collaborate closely with product managers, designers, and engineering colleagues.\n- Participate actively in code reviews, technical architecture sessions, and sprint planning.\n- Ensure robust system reliability, performance optimization, and clean code standards.\n\n### Requirements\n- **Experience:** ${requiredExperience} in relevant industry roles.\n- **Core Proficiencies:** ${mandatorySkills.join(', ')}.\n- Proven track record of shipping production-grade software or executing high-quality deliverables.\n- Strong problem-solving mindset and excellent cross-team communication.`;
@@ -493,11 +494,11 @@ export class AiScreeningService {
         "title": "Professional job title or empty string",
         "department": "Department or empty string",
         "description": "Professional job description using only supported details",
-        "requiredExperience": "Experience requirement or empty string",
+        "requiredExperience": "Concise experience range only (e.g. '4-7 years', '5+ years', max 30 characters; do not write long sentences)",
         "educationRequirement": "Explicit minimum education or equivalent qualification, or empty string",
         "mandatorySkills": ["explicitly required skills"],
         "preferredSkills": ["explicitly preferred skills"],
-        "workModel": "Remote, Hybrid, On-site, or empty string",
+        "workModel": "Explicitly 'Remote', 'Hybrid', 'On-site', or empty string if unknown. If an in-office/city location is required without remote flexibility, set to 'On-site'",
         "employmentType": "Full-time, Contract, Part-time, Internship, or empty string",
         "location": "Location or empty string",
         "numberOfOpenings": null,
@@ -535,6 +536,21 @@ export class AiScreeningService {
         if (content) {
           const parsed = this.parseAiResponse(content);
           if (parsed && parsed.title) {
+            if (typeof parsed.requiredExperience === 'string') {
+              const match = parsed.requiredExperience.match(
+                /\b(\d{1,2})\s*(?:(\+)|(?:-|–|—|to)\s*(\d{1,2}))?\s*(years?|yrs?|months?|mos?)\b/i,
+              );
+              if (match) {
+                const first = match[1];
+                const second = match[3];
+                const unit = /^(?:months?|mos?)$/i.test(match[4]) ? 'months' : 'years';
+                parsed.requiredExperience = second
+                  ? `${first}-${second} ${unit}`
+                  : `${first}${match[2] ? '+' : '+'} ${unit}`;
+              } else {
+                parsed.requiredExperience = parsed.requiredExperience.trim().slice(0, 40);
+              }
+            }
             this.logger.log(
               `Successfully generated mandate using model: ${modelName}`,
             );

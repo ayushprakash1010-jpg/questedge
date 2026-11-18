@@ -129,6 +129,23 @@ const MAX_JOB_DESCRIPTION_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_JOB_DESCRIPTION_TEXT_LENGTH = 40_000;
 const MAX_JOB_DESCRIPTION_PDF_PAGES = 50;
 
+function formatExperience(value: unknown, maxLength = 40): string {
+  if (typeof value !== "string" || !value.trim()) return "";
+  const clean = value.trim();
+  // Extract concise range if the AI/user pasted a full sentence (e.g. "Minimum 5+ years of software engineering experience...")
+  const match = clean.match(
+    /\b(\d{1,2})\s*(?:(\+)|(?:-|–|—|to)\s*(\d{1,2}))?\s*(years?|yrs?|months?|mos?)\b/i
+  );
+  if (match) {
+    const first = match[1];
+    const second = match[3];
+    const unit = /^(?:months?|mos?)$/i.test(match[4]) ? "months" : "years";
+    if (second) return `${first}-${second} ${unit}`;
+    return `${first}${match[2] ? "+" : "+"} ${unit}`;
+  }
+  return clean.slice(0, maxLength);
+}
+
 async function extractJobDescriptionText(file: File): Promise<{ text: string; truncated: boolean }> {
   const extension = file.name.split(".").pop()?.toLowerCase();
   let text = "";
@@ -215,7 +232,7 @@ export default function CreateMandatePage() {
     preferredSkills: [] as string[],
     numberOfOpenings: 1,
     location: "",
-    workModel: "Hybrid",
+    workModel: "",
     employmentType: "Full-time",
     compensationMin: "",
     compensationMax: "",
@@ -236,6 +253,47 @@ export default function CreateMandatePage() {
   });
 
   const update = (key: string, value: any) => setForm((f) => ({ ...f, [key]: value }));
+
+  const isPercentageReward = form.referralRewardType === "PERCENTAGE";
+  const rewardNum = Number(form.referralRewardAmount) || 0;
+  const compMin = Number(form.compensationMin) || 0;
+  const compMax = Number(form.compensationMax) || 0;
+  const currSymbol = form.currency === "INR" ? "₹" : "$";
+
+  let estimatedRewardText = "";
+  if (isPercentageReward && rewardNum > 0) {
+    if (compMin > 0 && compMax > 0) {
+      const minEst = Math.round((rewardNum / 100) * compMin);
+      const maxEst = Math.round((rewardNum / 100) * compMax);
+      estimatedRewardText = `${currSymbol}${minEst.toLocaleString()} – ${currSymbol}${maxEst.toLocaleString()}`;
+    } else if (compMax > 0) {
+      const maxEst = Math.round((rewardNum / 100) * compMax);
+      estimatedRewardText = `Up to ${currSymbol}${maxEst.toLocaleString()}`;
+    } else if (compMin > 0) {
+      const minEst = Math.round((rewardNum / 100) * compMin);
+      estimatedRewardText = `From ${currSymbol}${minEst.toLocaleString()}`;
+    }
+  }
+
+  const handleRewardTypeChange = (newType: string) => {
+    if (newType === "PERCENTAGE") {
+      const currentNum = Number(form.referralRewardAmount);
+      const nextVal = (!currentNum || currentNum > 100) ? "8.33" : form.referralRewardAmount;
+      setForm((prev) => ({
+        ...prev,
+        referralRewardType: "PERCENTAGE",
+        referralRewardAmount: String(nextVal),
+      }));
+    } else {
+      const currentNum = Number(form.referralRewardAmount);
+      const nextVal = (!currentNum || currentNum <= 100) ? "50000" : form.referralRewardAmount;
+      setForm((prev) => ({
+        ...prev,
+        referralRewardType: "FIXED",
+        referralRewardAmount: String(nextVal),
+      }));
+    }
+  };
 
   const [importedRankingData, setImportedRankingData] = useState<{
     evaluatedCandidates?: any[];
@@ -261,7 +319,7 @@ export default function CreateMandatePage() {
           description: parsed.description || prev.description,
           location: parsed.location || prev.location,
           workModel: parsed.workModel || prev.workModel,
-          requiredExperience: parsed.requiredExperience || prev.requiredExperience,
+          requiredExperience: formatExperience(parsed.requiredExperience) || prev.requiredExperience,
           educationRequirement: parsed.educationRequirement || prev.educationRequirement,
           mandatorySkills: Array.isArray(parsed.mandatorySkills) && parsed.mandatorySkills.length
             ? parsed.mandatorySkills
@@ -300,10 +358,27 @@ export default function CreateMandatePage() {
         : "";
     };
     const workModel = getText(data?.workModel);
-    const normalizedWorkModel = ["Remote", "Hybrid", "On-site"].find(
+    let normalizedWorkModel = ["Remote", "Hybrid", "On-site"].find(
       (option) => option.toLowerCase() === workModel.toLowerCase() ||
         (option === "On-site" && ["onsite", "on site"].includes(workModel.toLowerCase())),
     );
+
+    // Smart context inference if AI didn't explicitly identify the work model
+    if (!normalizedWorkModel) {
+      const fullText = `${sourceDescription || ""} ${getText(data?.description)} ${getText(data?.title)}`.toLowerCase();
+      const locText = getText(data?.location).toLowerCase();
+
+      if (/\b(?:remote|wfh|work from home|work from anywhere|distributed team)\b/i.test(fullText) || locText.includes("remote")) {
+        normalizedWorkModel = "Remote";
+      } else if (/\b(?:hybrid|flexible work|days in office|days office|days remote)\b/i.test(fullText)) {
+        normalizedWorkModel = "Hybrid";
+      } else if (/\b(?:on-?site|in-?office|work from office|wfo|relocation required)\b/i.test(fullText)) {
+        normalizedWorkModel = "On-site";
+      } else if (data?.location && String(data.location).trim()) {
+        // Physical city/office location specified without any remote/hybrid mention -> standard convention is On-site
+        normalizedWorkModel = "On-site";
+      }
+    }
     const employmentType = getText(data?.employmentType);
     const normalizedEmploymentType = ["Full-time", "Contract", "Part-time", "Internship"].find(
       (option) => option.toLowerCase() === employmentType.toLowerCase(),
@@ -320,7 +395,7 @@ export default function CreateMandatePage() {
       department: getText(data?.department, 100) || current.department,
       description: sourceDescription?.slice(0, MAX_JOB_DESCRIPTION_TEXT_LENGTH) ||
         getText(data?.description, MAX_JOB_DESCRIPTION_TEXT_LENGTH) || current.description,
-      requiredExperience: getText(data?.requiredExperience, 120) || current.requiredExperience,
+      requiredExperience: formatExperience(data?.requiredExperience) || current.requiredExperience,
       educationRequirement: getText(data?.educationRequirement, 500) || current.educationRequirement,
       mandatorySkills: getSkills(data?.mandatorySkills).length
         ? getSkills(data?.mandatorySkills)
@@ -755,17 +830,34 @@ export default function CreateMandatePage() {
                 <FormField label="Location">
                   <Input value={form.location} onChange={(e) => update("location", e.target.value)} placeholder="Bangalore, India" />
                 </FormField>
-                <FormField label="Work Model">
-                  <select value={form.workModel} onChange={(e) => update("workModel", e.target.value)} className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm">
-                    <option>Remote</option>
-                    <option>Hybrid</option>
-                    <option>On-site</option>
+                <FormField
+                  label="Work Model"
+                  required
+                  hint={!form.workModel ? "Please select whether this role is On-site, Hybrid, or Remote" : undefined}
+                >
+                  <select
+                    value={form.workModel}
+                    onChange={(e) => update("workModel", e.target.value)}
+                    className={cn(
+                      "w-full rounded-md border bg-white px-3 py-2 text-sm transition-colors",
+                      !form.workModel ? "border-amber-300 text-slate-400 font-normal" : "border-slate-200 text-slate-800 font-medium"
+                    )}
+                  >
+                    <option value="" disabled>-- Select Work Model --</option>
+                    <option value="On-site">On-site</option>
+                    <option value="Hybrid">Hybrid</option>
+                    <option value="Remote">Remote</option>
                   </select>
                 </FormField>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <FormField label="Required Experience">
-                  <Input value={form.requiredExperience} onChange={(e) => update("requiredExperience", e.target.value)} placeholder="e.g. 5-8 years" />
+                  <Input
+                    value={form.requiredExperience}
+                    onChange={(e) => update("requiredExperience", e.target.value.slice(0, 40))}
+                    maxLength={40}
+                    placeholder="e.g. 4-7 years"
+                  />
                 </FormField>
                 <FormField label="Notice Period Preference">
                   <Input value={form.noticePeriodPref} onChange={(e) => update("noticePeriodPref", e.target.value)} placeholder="e.g. 30 days or less" />
@@ -849,16 +941,115 @@ export default function CreateMandatePage() {
                 💡 Setting an attractive reward amount significantly increases recruiter participation and the quality of referrals you receive.
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <FormField label="Referral Reward Amount" hint="Amount paid to recruiter upon successful hire">
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">{form.currency === "INR" ? "₹" : "$"}</span>
-                    <Input type="number" value={form.referralRewardAmount} onChange={(e) => update("referralRewardAmount", e.target.value)} placeholder="50000" className="pl-7" />
+                <FormField
+                  label={isPercentageReward ? "Referral Reward (% of CTC)" : "Referral Reward (Fixed Bounty)"}
+                  hint={
+                    isPercentageReward
+                      ? "Percentage of candidate's hired annual CTC. Standard industry benchmark is 8.33% (1 month CTC)."
+                      : "Fixed cash bounty paid to recruiter upon candidate hiring & tenure completion."
+                  }
+                >
+                  <div className="space-y-2">
+                    <div className="relative">
+                      {!isPercentageReward && (
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium">
+                          {currSymbol}
+                        </span>
+                      )}
+                      <Input
+                        type="number"
+                        min={isPercentageReward ? "0.5" : "1000"}
+                        max={isPercentageReward ? "100" : undefined}
+                        step={isPercentageReward ? "0.01" : "5000"}
+                        value={form.referralRewardAmount}
+                        onChange={(e) => update("referralRewardAmount", e.target.value)}
+                        placeholder={isPercentageReward ? "e.g. 8.33 or 10" : "50000"}
+                        className={isPercentageReward ? "pr-8 font-medium" : "pl-7 font-medium"}
+                      />
+                      {isPercentageReward && (
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-sm">
+                          %
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Quick Preset Chips */}
+                    <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                      <span className="text-[11px] font-semibold text-slate-400 mr-1">Presets:</span>
+                      {isPercentageReward ? (
+                        [
+                          { label: "8.33% (1 mo)", val: "8.33" },
+                          { label: "10%", val: "10" },
+                          { label: "12.5%", val: "12.5" },
+                          { label: "15%", val: "15" },
+                        ].map((chip) => (
+                          <button
+                            key={chip.val}
+                            type="button"
+                            onClick={() => update("referralRewardAmount", chip.val)}
+                            className={cn(
+                              "text-xs px-2 py-0.5 rounded-md border transition-all font-medium",
+                              form.referralRewardAmount === chip.val
+                                ? "bg-indigo-50 border-indigo-300 text-indigo-700 font-bold shadow-2xs"
+                                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                            )}
+                          >
+                            {chip.label}
+                          </button>
+                        ))
+                      ) : (
+                        (form.currency === "INR"
+                          ? [
+                              { label: "₹25K", val: "25000" },
+                              { label: "₹50K", val: "50000" },
+                              { label: "₹1L", val: "100000" },
+                              { label: "₹1.5L", val: "150000" },
+                            ]
+                          : [
+                              { label: "$1,000", val: "1000" },
+                              { label: "$2,000", val: "2000" },
+                              { label: "$3,000", val: "3000" },
+                              { label: "$5,000", val: "5000" },
+                            ]
+                        ).map((chip) => (
+                          <button
+                            key={chip.val}
+                            type="button"
+                            onClick={() => update("referralRewardAmount", chip.val)}
+                            className={cn(
+                              "text-xs px-2 py-0.5 rounded-md border transition-all font-medium",
+                              form.referralRewardAmount === chip.val
+                                ? "bg-indigo-50 border-indigo-300 text-indigo-700 font-bold shadow-2xs"
+                                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                            )}
+                          >
+                            {chip.label}
+                          </button>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Live Estimated Payout Banner */}
+                    {isPercentageReward && estimatedRewardText && (
+                      <div className="rounded-lg bg-indigo-50/70 border border-indigo-200/80 px-3 py-2 text-xs text-indigo-950 flex items-center justify-between">
+                        <span className="font-medium text-slate-600">Estimated Recruiter Payout:</span>
+                        <span className="font-bold text-indigo-700">
+                          {estimatedRewardText}
+                          <span className="text-slate-400 font-normal ml-1">(based on your CTC band)</span>
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </FormField>
-                <FormField label="Reward Type">
-                  <select value={form.referralRewardType} onChange={(e) => update("referralRewardType", e.target.value)} className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm">
-                    <option value="FIXED">Fixed Amount</option>
-                    <option value="PERCENTAGE">% of CTC</option>
+
+                <FormField label="Reward Type" hint="Choose flat cash bounty or percentage of hired salary">
+                  <select
+                    value={form.referralRewardType}
+                    onChange={(e) => handleRewardTypeChange(e.target.value)}
+                    className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800"
+                  >
+                    <option value="FIXED">Fixed Amount (Flat Cash Bounty)</option>
+                    <option value="PERCENTAGE">% of Hired Annual CTC</option>
                   </select>
                 </FormField>
               </div>
@@ -886,13 +1077,24 @@ export default function CreateMandatePage() {
                   {form.department && <p className="text-sm text-slate-500 mt-0.5">{form.department}</p>}
                 </div>
                 <div className="px-5 py-3 space-y-0">
-                  <ReviewRow label="Location" value={`${form.location || "Not set"} · ${form.workModel}`} />
+                  <ReviewRow label="Location" value={`${form.location || "Not set"} · ${form.workModel || "Not specified"}`} />
                   <ReviewRow label="Experience" value={form.requiredExperience} />
                   <ReviewRow label="Education / Qualification" value={form.educationRequirement} />
                   <ReviewRow label="Employment" value={form.employmentType} />
                   <ReviewRow label="Openings" value={form.numberOfOpenings} />
                   <ReviewRow label="Salary Range" value={form.compensationMin && form.compensationMax ? `${form.currency} ${Number(form.compensationMin).toLocaleString()} – ${Number(form.compensationMax).toLocaleString()}` : undefined} />
-                  <ReviewRow label="Referral Reward" value={form.referralRewardAmount ? `${form.currency === "INR" ? "₹" : "$"}${Number(form.referralRewardAmount).toLocaleString()} (${form.referralRewardType})` : "No reward set"} />
+                  <ReviewRow
+                    label="Referral Reward"
+                    value={
+                      form.referralRewardAmount
+                        ? form.referralRewardType === "PERCENTAGE"
+                          ? `${form.referralRewardAmount}% of candidate's annual CTC${
+                              estimatedRewardText ? ` (≈ ${estimatedRewardText})` : ""
+                            }`
+                          : `${currSymbol}${Number(form.referralRewardAmount).toLocaleString()} (Fixed bounty)`
+                        : "No reward set"
+                    }
+                  />
                   <ReviewRow label="Participation" value={form.participationType.replace("_", " ")} />
                   <ReviewRow label="Ownership Lock" value={`${form.ownershipPeriodDays} days`} />
                 </div>
@@ -941,7 +1143,28 @@ export default function CreateMandatePage() {
               ) : (
                 <Button
                   className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2"
-                  onClick={() => setStep((s) => Math.min(STEPS.length, s + 1))}
+                  onClick={() => {
+                    if (step === 2 && !form.workModel) {
+                      toast.error("Please select a Work Model (On-site, Hybrid, or Remote) before continuing.");
+                      return;
+                    }
+                    if (step === 4 && form.referralRewardAmount) {
+                      if (form.referralRewardType === "PERCENTAGE") {
+                        const pct = Number(form.referralRewardAmount);
+                        if (isNaN(pct) || pct <= 0 || pct > 100) {
+                          toast.error("Percentage referral reward must be between 0.5% and 100%.");
+                          return;
+                        }
+                      } else {
+                        const amt = Number(form.referralRewardAmount);
+                        if (isNaN(amt) || amt < 0) {
+                          toast.error("Referral reward amount must be a positive number.");
+                          return;
+                        }
+                      }
+                    }
+                    setStep((s) => Math.min(STEPS.length, s + 1));
+                  }}
                   disabled={step === 1 && !form.title}
                 >
                   Continue

@@ -2,7 +2,7 @@
 
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { useTheme } from "next-themes";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LogOut,
   User,
@@ -16,6 +16,7 @@ import {
   Briefcase,
   Building2,
   UserCircle,
+  Search,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -40,6 +41,7 @@ export function TopBar() {
   const displayName = IS_MOCK ? "Priya Sharma" : user?.name;
   const displayPicture = IS_MOCK ? undefined : user?.picture || undefined;
   const { theme, setTheme } = useTheme();
+  const router = useRouter();
   const pathname = usePathname();
   const isRecruiter = pathname?.startsWith("/recruiter");
   const isCandidate = pathname === "/candidate" || pathname?.startsWith("/candidate/");
@@ -91,7 +93,27 @@ export function TopBar() {
       className="flex items-center justify-between border-b border-slate-200/60 bg-white px-6"
       style={{ height: "var(--topbar-height)" }}
     >
-      <GlobalSearch />
+      {isCompany ? (
+        <GlobalSearch />
+      ) : isRecruiter ? (
+        <button
+          onClick={() => router.push("/recruiter/discover")}
+          className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-400 hover:border-slate-300 hover:text-slate-600 transition-colors"
+          title="Search mandates to refer candidates"
+        >
+          <Search className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Search jobs to refer...</span>
+        </button>
+      ) : (
+        <button
+          onClick={() => router.push("/candidate/jobs")}
+          className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-400 hover:border-slate-300 hover:text-slate-600 transition-colors"
+          title="Search open opportunities"
+        >
+          <Search className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Search open jobs...</span>
+        </button>
+      )}
 
       <div className="flex items-center gap-3">
         {/* Demo Account Role Switcher segmented pill buttons */}
@@ -211,7 +233,13 @@ export function TopBar() {
             )}
 
             <DropdownMenuSeparator />
-            <DropdownMenuItem 
+            {/* Change Role is disabled in production — role switching via reset-role API
+                can create duplicate accounts when a user's Auth0 identity gets re-provisioned
+                under a new role. The onboarding flow creates a fresh user record each time,
+                so repeated role changes (candidate → recruiter → company → recruiter) lead to
+                orphaned accounts and data loss. Keep this hidden until a proper role-migration
+                backend endpoint is built that updates the existing user record in-place. */}
+            {/* <DropdownMenuItem 
               onClick={async () => {
                 if (IS_MOCK) return window.location.href = "/onboarding";
                 const confirm = window.confirm("Are you sure you want to reset your account role? You will be redirected to onboarding.");
@@ -232,7 +260,7 @@ export function TopBar() {
               }}
             >
               <RefreshCw className="h-4 w-4" /> Change Role
-            </DropdownMenuItem>
+            </DropdownMenuItem> */}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               variant="danger"

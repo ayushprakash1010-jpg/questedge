@@ -254,6 +254,19 @@ function heuristicExtractResume(text: string, fileName: string): Partial<ResumeF
 /**
  * Local heuristic extractor for Job Descriptions
  */
+function formatExperience(raw?: string): string {
+  if (!raw) return "";
+  const cleaned = raw.trim();
+  const rangeMatch = cleaned.match(/(\d+\s*[-–to]+\s*\d+\s*(?:years|yrs)?)/i);
+  if (rangeMatch) {
+    const val = rangeMatch[1].replace(/\s*to\s*/i, "-").replace(/\s*–\s*/, "-").trim();
+    return val.toLowerCase().includes("year") || val.toLowerCase().includes("yr") ? val : `${val} years`;
+  }
+  const plusMatch = cleaned.match(/(\d+\+?\s*(?:years|yrs))/i);
+  if (plusMatch) return plusMatch[1].trim();
+  return cleaned.slice(0, 40);
+}
+
 function heuristicExtractJD(text: string) {
   const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
 
@@ -270,13 +283,13 @@ function heuristicExtractJD(text: string) {
   let workModel = "";
   if (/remote/i.test(text)) workModel = "Remote";
   else if (/hybrid/i.test(text)) workModel = "Hybrid";
-  else if (/onsite|on-site|office/i.test(text)) workModel = "Onsite";
+  else if (/onsite|on-site|office/i.test(text)) workModel = "On-site";
 
   let requiredExperience = "";
   const expMatch = text.match(/(?:Experience Required|Experience|Min Experience):\s*([^\n\r]+)/i) ||
     text.match(/(\d+\s*[-–to]+\s*\d+\s*(?:years|yrs))/i) ||
     text.match(/(\d+\+?\s*(?:years|yrs))/i);
-  if (expMatch) requiredExperience = expMatch[1].trim();
+  if (expMatch) requiredExperience = formatExperience(expMatch[1]);
 
   let educationRequirement = "";
   const eduMatch = text.match(/(?:Education|Degree|Qualification):\s*([^\n\r]+)/i);
@@ -420,7 +433,7 @@ export default function ResumeRankerPage() {
         if (data?.title) setJobTitle(data.title);
         if (data?.department) setDepartment(data.department);
         if (data?.location) setLocation(data.location);
-        if (data?.requiredExperience) setRequiredExperience(data.requiredExperience);
+        if (data?.requiredExperience) setRequiredExperience(formatExperience(data.requiredExperience));
         if (data?.educationRequirement) setEducationRequirement(data.educationRequirement);
         if (Array.isArray(data?.mandatorySkills) && data.mandatorySkills.length > 0) {
           setMandatorySkills(data.mandatorySkills);
@@ -433,7 +446,7 @@ export default function ResumeRankerPage() {
           if (wm.includes("remote")) setWorkModel("Remote");
           else if (wm.includes("hybrid")) setWorkModel("Hybrid");
           else if (wm.includes("onsite") || wm.includes("on-site"))
-            setWorkModel("Onsite");
+            setWorkModel("On-site");
         }
         return;
       }
@@ -645,7 +658,7 @@ export default function ResumeRankerPage() {
     try {
       localStorage.removeItem(getStorageKey());
       localStorage.removeItem("questedge_quick_ranker_session");
-    } catch (e) {}
+    } catch (e) { }
   };
 
   // Restore session from user-scoped localStorage on mount or user change
@@ -709,7 +722,7 @@ export default function ResumeRankerPage() {
           userSub: user?.sub,
         };
         localStorage.setItem(storageKey, JSON.stringify(payload));
-      } catch (e) {}
+      } catch (e) { }
     }
   }, [
     user?.sub,
@@ -824,23 +837,15 @@ export default function ResumeRankerPage() {
       department,
       description: jdText,
       location,
-      workModel: workModel || "Hybrid",
-      requiredExperience,
+      workModel: workModel === "Onsite" ? "On-site" : (workModel || ""),
+      requiredExperience: formatExperience(requiredExperience),
       educationRequirement,
       mandatorySkills,
       preferredSkills,
-      evaluatedCandidates: results?.rankings || results?.candidates || [],
-      resumes: resumes.map((r) => ({
-        id: r.id,
-        name: r.name,
-        fileName: r.fileName,
-        currentRole: r.currentRole,
-        experienceYears: r.experienceYears,
-      })),
     };
     try {
       sessionStorage.setItem("mandate_draft_prefill", JSON.stringify(prefillData));
-    } catch (e) {}
+    } catch (e) { }
     router.push("/mandates/create");
   };
 
@@ -870,7 +875,6 @@ export default function ResumeRankerPage() {
         mandatorySkills: mandatorySkills.length > 0 ? mandatorySkills : undefined,
         preferredSkills: preferredSkills.length > 0 ? preferredSkills : undefined,
         resumes: resumes.map((r) => ({
-          candidateId: r.id,
           resumeText: r.text,
           candidateName: r.name || undefined,
           currentRole: r.currentRole || undefined,
@@ -1087,7 +1091,8 @@ export default function ResumeRankerPage() {
                     type="text"
                     placeholder="e.g., 4–7 years"
                     value={requiredExperience}
-                    onChange={(e) => setRequiredExperience(e.target.value)}
+                    onChange={(e) => setRequiredExperience(e.target.value.slice(0, 40))}
+                    maxLength={40}
                     className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-400 focus:ring-1 focus:ring-blue-400 outline-none"
                   />
                 </div>
@@ -1115,7 +1120,7 @@ export default function ResumeRankerPage() {
                     <option value="">Select Work Model</option>
                     <option value="Remote">Remote</option>
                     <option value="Hybrid">Hybrid</option>
-                    <option value="Onsite">Onsite</option>
+                    <option value="On-site">On-site</option>
                   </select>
                 </div>
               </div>
@@ -1262,11 +1267,10 @@ export default function ResumeRankerPage() {
                 processResumeFileList(e.dataTransfer.files);
               }
             }}
-            className={`bg-white rounded-xl border transition-all shadow-sm ${
-              isDragging
-                ? "border-blue-500 ring-2 ring-blue-300 bg-blue-50/20"
-                : "border-gray-200"
-            }`}
+            className={`bg-white rounded-xl border transition-all shadow-sm ${isDragging
+              ? "border-blue-500 ring-2 ring-blue-300 bg-blue-50/20"
+              : "border-gray-200"
+              }`}
           >
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
@@ -1340,11 +1344,10 @@ export default function ResumeRankerPage() {
                     <button
                       onClick={addPastedResume}
                       disabled={pasteText.trim().length < 30}
-                      className={`text-xs px-3 py-1.5 rounded-lg font-medium ${
-                        pasteText.trim().length >= 30
-                          ? "bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
-                          : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                      }`}
+                      className={`text-xs px-3 py-1.5 rounded-lg font-medium ${pasteText.trim().length >= 30
+                        ? "bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
+                        : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                        }`}
                     >
                       Add Resume
                     </button>
@@ -1541,16 +1544,14 @@ export default function ResumeRankerPage() {
               ) : (
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className={`text-center py-9 px-4 rounded-xl border-2 border-dashed transition-all cursor-pointer ${
-                    isDragging
-                      ? "border-blue-500 bg-blue-50/80 scale-[1.01]"
-                      : "border-gray-300 hover:border-gray-400 bg-gray-50/50 hover:bg-gray-50"
-                  }`}
+                  className={`text-center py-9 px-4 rounded-xl border-2 border-dashed transition-all cursor-pointer ${isDragging
+                    ? "border-blue-500 bg-blue-50/80 scale-[1.01]"
+                    : "border-gray-300 hover:border-gray-400 bg-gray-50/50 hover:bg-gray-50"
+                    }`}
                 >
                   <UploadCloud
-                    className={`w-10 h-10 mx-auto mb-2.5 transition-colors ${
-                      isDragging ? "text-blue-600 animate-bounce" : "text-gray-400"
-                    }`}
+                    className={`w-10 h-10 mx-auto mb-2.5 transition-colors ${isDragging ? "text-blue-600 animate-bounce" : "text-gray-400"
+                      }`}
                   />
                   <p className="text-sm font-semibold text-gray-800">
                     {isDragging
@@ -1593,11 +1594,10 @@ export default function ResumeRankerPage() {
             <button
               onClick={handleRank}
               disabled={!canRank}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                canRank
-                  ? "bg-gradient-to-r from-yellow-500 to-amber-600 text-white hover:from-yellow-600 hover:to-amber-700 shadow-sm cursor-pointer"
-                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
-              }`}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors ${canRank
+                ? "bg-gradient-to-r from-yellow-500 to-amber-600 text-white hover:from-yellow-600 hover:to-amber-700 shadow-sm cursor-pointer"
+                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                }`}
             >
               {loading ? (
                 <>
@@ -1980,11 +1980,10 @@ export default function ResumeRankerPage() {
                         <button
                           type="button"
                           onClick={() => setFitFilter("ALL")}
-                          className={`px-3 py-1 text-xs rounded-full font-medium transition-colors cursor-pointer ${
-                            fitFilter === "ALL"
-                              ? "bg-slate-900 text-white font-semibold shadow-2xs"
-                              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                          }`}
+                          className={`px-3 py-1 text-xs rounded-full font-medium transition-colors cursor-pointer ${fitFilter === "ALL"
+                            ? "bg-slate-900 text-white font-semibold shadow-2xs"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                            }`}
                         >
                           All ({candidateList.length})
                         </button>
@@ -1992,16 +1991,14 @@ export default function ResumeRankerPage() {
                           <button
                             type="button"
                             onClick={() => setFitFilter("TOP")}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-full font-medium transition-colors cursor-pointer border ${
-                              fitFilter === "TOP"
-                                ? "bg-emerald-600 text-white border-emerald-600 font-semibold shadow-2xs"
-                                : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-emerald-200"
-                            }`}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-full font-medium transition-colors cursor-pointer border ${fitFilter === "TOP"
+                              ? "bg-emerald-600 text-white border-emerald-600 font-semibold shadow-2xs"
+                              : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-emerald-200"
+                              }`}
                           >
                             <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                fitFilter === "TOP" ? "bg-white" : "bg-emerald-500"
-                              }`}
+                              className={`w-1.5 h-1.5 rounded-full ${fitFilter === "TOP" ? "bg-white" : "bg-emerald-500"
+                                }`}
                             />
                             Top Fits ({topFitCount})
                           </button>
@@ -2010,16 +2007,14 @@ export default function ResumeRankerPage() {
                           <button
                             type="button"
                             onClick={() => setFitFilter("GOOD")}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-full font-medium transition-colors cursor-pointer border ${
-                              fitFilter === "GOOD"
-                                ? "bg-blue-600 text-white border-blue-600 font-semibold shadow-2xs"
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-full font-medium transition-colors cursor-pointer border ${fitFilter === "GOOD"
+                              ? "bg-blue-600 text-white border-blue-600 font-semibold shadow-2xs"
                               : "bg-blue-50 text-blue-800 hover:bg-blue-100 border-blue-200"
-                            }`}
+                              }`}
                           >
                             <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                fitFilter === "GOOD" ? "bg-white" : "bg-blue-500"
-                              }`}
+                              className={`w-1.5 h-1.5 rounded-full ${fitFilter === "GOOD" ? "bg-white" : "bg-blue-500"
+                                }`}
                             />
                             Good Fit ({goodFitCount})
                           </button>
@@ -2028,16 +2023,14 @@ export default function ResumeRankerPage() {
                           <button
                             type="button"
                             onClick={() => setFitFilter("REVIEW")}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-full font-medium transition-colors cursor-pointer border ${
-                              fitFilter === "REVIEW"
-                                ? "bg-amber-600 text-white border-amber-600 font-semibold shadow-2xs"
-                                : "bg-amber-50 text-amber-800 hover:bg-amber-100 border-amber-200"
-                            }`}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-full font-medium transition-colors cursor-pointer border ${fitFilter === "REVIEW"
+                              ? "bg-amber-600 text-white border-amber-600 font-semibold shadow-2xs"
+                              : "bg-amber-50 text-amber-800 hover:bg-amber-100 border-amber-200"
+                              }`}
                           >
                             <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                fitFilter === "REVIEW" ? "bg-white" : "bg-amber-500"
-                              }`}
+                              className={`w-1.5 h-1.5 rounded-full ${fitFilter === "REVIEW" ? "bg-white" : "bg-amber-500"
+                                }`}
                             />
                             Needs Review ({reviewFitCount})
                           </button>
@@ -2053,7 +2046,7 @@ export default function ResumeRankerPage() {
                             (r) =>
                               r.id === candidate.candidateId ||
                               r.name.toLowerCase() ===
-                                (candidate.candidateName || "").toLowerCase()
+                              (candidate.candidateName || "").toLowerCase()
                           );
                           const candId =
                             candidate.candidateId || candidate.id || `cand-${idx}`;

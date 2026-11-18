@@ -166,7 +166,10 @@ export default function MyReferralsPage() {
                       {ref.mandate?.referralRewardAmount ? (
                         <RewardBadge
                           amount={ref.mandate.referralRewardAmount}
+                          rewardType={ref.mandate.referralRewardType}
                           currency={ref.mandate.currency}
+                          compensationMin={ref.mandate.compensationMin}
+                          compensationMax={ref.mandate.compensationMax}
                         />
                       ) : (
                         <span className="text-xs text-slate-400">—</span>

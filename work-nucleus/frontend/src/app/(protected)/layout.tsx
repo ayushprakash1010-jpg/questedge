@@ -80,7 +80,25 @@ export default function ProtectedLayout({
     // Logged in but explicitly verified as NOT provisioned in database
     if (profile && profile.isProvisioned === false) {
       if (!pathname.includes("/profile") && !pathname.includes("/onboarding")) {
-        router.push("/onboarding");
+        // Pass the intended role based on URL query or path,
+        // so the onboarding page skips role selection directly to that setup form.
+        let intendedRole = "";
+        const roleParam = typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search).get("role")
+          : null;
+
+        if (roleParam === "company" || roleParam === "recruiter" || roleParam === "candidate") {
+          intendedRole = roleParam;
+        } else if (pathname.startsWith("/recruiter")) {
+          intendedRole = "recruiter";
+        } else if (pathname === "/candidate" || pathname.startsWith("/candidate/")) {
+          intendedRole = "candidate";
+        } else if (pathname.startsWith("/company") || pathname.startsWith("/mandates") || pathname === "/dashboard") {
+          intendedRole = "company";
+        }
+
+        const target = intendedRole ? `/onboarding?role=${intendedRole}` : "/onboarding";
+        router.push(target);
         return;
       }
     }
@@ -165,6 +183,16 @@ export default function ProtectedLayout({
 
   if (!user) return null;
 
+  // Profile hasn't loaded yet (gap between auth completing and profile fetch finishing).
+  // Show a spinner to prevent briefly flashing the wrong sidebar/dashboard.
+  if (!profile && !profileError) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+      </div>
+    );
+  }
+
   const isDemo =
     Boolean((profile as any)?.isDemoAccount) ||
     user?.email?.toLowerCase() === "growytvercel@gmail.com" ||
@@ -175,7 +203,7 @@ export default function ProtectedLayout({
     (profile as any)?.userType === "CANDIDATE";
 
   // If the useEffect is about to redirect to onboarding, show a spinner to prevent flashing
-  if (profile && !profile.isProvisioned && !isRecruiterOrCandidate && !isDemo) {
+  if (profile && !profile.isProvisioned && !isDemo) {
     if (!pathname.includes("/profile") && !pathname.includes("/onboarding")) {
       return (
         <div className="flex h-screen items-center justify-center">

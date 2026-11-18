@@ -24,6 +24,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { KpiCard } from "@/components/shared/kpi-card";
 import { AiInsightCard } from "@/components/shared/ai-insight-card";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
+import { useProfile } from "@/hooks/use-profile";
 import {
   DataTable,
   DataTableBody,
@@ -184,6 +185,40 @@ function normaliseSeverity(s: string): "info" | "warning" | "critical" {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const { profile, isLoading: profileLoading } = useProfile();
+
+  // ── Role-based redirect: recruiter/candidate users should never see this page ──
+  // Redirect them immediately to their own dashboard before rendering any company content.
+  const userType = (profile as any)?.userType;
+  const shouldRedirect =
+    !profileLoading &&
+    profile &&
+    (userType === "RECRUITER" || userType === "CANDIDATE");
+
+  useEffect(() => {
+    if (!shouldRedirect) return;
+    if (userType === "RECRUITER") {
+      router.replace("/recruiter/dashboard");
+    } else if (userType === "CANDIDATE") {
+      router.replace("/candidate/dashboard");
+    }
+  }, [shouldRedirect, userType, router]);
+
+  // Show a spinner while profile is loading or while redirect is about to happen.
+  // This prevents the company dashboard from flashing briefly for non-company users.
+  if (profileLoading || shouldRedirect) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  return <CompanyDashboardContent />;
+}
+
+function CompanyDashboardContent() {
   const router = useRouter();
   const [overview, setOverview] = useState<Overview | null>(null);
   const [funnel, setFunnel] = useState<FunnelStage[]>([]);

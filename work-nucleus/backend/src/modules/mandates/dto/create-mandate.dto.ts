@@ -35,6 +35,7 @@ export class CreateMandateDto {
   @ApiPropertyOptional({ example: '5-8 years' })
   @IsOptional()
   @IsString()
+  @MaxLength(50)
   requiredExperience?: string;
 
   @ApiPropertyOptional({

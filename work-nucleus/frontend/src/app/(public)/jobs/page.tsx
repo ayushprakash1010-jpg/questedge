@@ -97,7 +97,9 @@ function MandateCard({ mandate }: { mandate: Mandate }) {
           <div className="flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5">
             <DollarSign className="h-3.5 w-3.5 text-emerald-600" />
             <span className="text-sm font-bold text-emerald-700">
-              ₹{reward.toLocaleString("en-IN")} reward
+              {mandate.referralRewardType === "PERCENTAGE"
+                ? `${reward}% of CTC reward`
+                : `₹${reward.toLocaleString("en-IN")} reward`}
             </span>
           </div>
         ) : (

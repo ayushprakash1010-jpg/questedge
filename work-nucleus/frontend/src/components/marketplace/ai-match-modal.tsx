@@ -15,6 +15,7 @@ import {
   Calendar,
   IndianRupee,
   Loader2,
+  Clock,
 } from "lucide-react";
 import {
   MatchEvaluationResult,
@@ -165,10 +166,25 @@ export function AiMatchModal({
                   {mandate.location} ({mandate.workModel || "Flexible"})
                 </span>
               )}
+              {mandate.requiredExperience && (
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5 text-slate-400" />
+                  {mandate.requiredExperience}
+                </span>
+              )}
               {mandate.referralRewardAmount && (
                 <span className="flex items-center gap-1 text-amber-400 font-semibold">
-                  <IndianRupee className="h-3.5 w-3.5" />
-                  {Number(mandate.referralRewardAmount).toLocaleString("en-IN")} Referral Reward
+                  {mandate.referralRewardType === "PERCENTAGE" ? (
+                    <>
+                      <span>🏆</span>
+                      {mandate.referralRewardAmount}% of CTC Referral Reward
+                    </>
+                  ) : (
+                    <>
+                      <IndianRupee className="h-3.5 w-3.5" />
+                      {Number(mandate.referralRewardAmount).toLocaleString("en-IN")} Referral Reward
+                    </>
+                  )}
                 </span>
               )}
             </div>

@@ -29,6 +29,7 @@ import {
   Users,
   ShieldCheck,
   Zap,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -295,6 +296,12 @@ export default function RecruiterMandateDetail() {
                     {mandate.workModel}
                   </span>
                 )}
+                {mandate.requiredExperience && (
+                  <span className="flex items-center gap-1.5 font-medium text-slate-700">
+                    <Clock className="h-4 w-4 text-indigo-500" />
+                    {mandate.requiredExperience}
+                  </span>
+                )}
                 <MandateStatusBadge status={mandate.status} isDeadlinePassed={isDeadlinePassed} />
                 {mandate.applicationDeadline && (
                   <span className={isDeadlinePassed ? "text-red-600 font-medium" : "text-amber-700 font-medium"}>
@@ -307,7 +314,13 @@ export default function RecruiterMandateDetail() {
 
             <div className="flex flex-col items-end gap-3">
               {mandate.referralRewardAmount && (
-                <RewardBadge amount={mandate.referralRewardAmount} currency={mandate.currency} />
+                <RewardBadge
+                  amount={mandate.referralRewardAmount}
+                  rewardType={mandate.referralRewardType}
+                  currency={mandate.currency}
+                  compensationMin={mandate.compensationMin}
+                  compensationMax={mandate.compensationMax}
+                />
               )}
               <Button
                 disabled={mandate.status !== "ACTIVE" || isDeadlinePassed}
@@ -442,6 +455,16 @@ export default function RecruiterMandateDetail() {
         <div className="space-y-6">
           <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-2xs">
             <h3 className="font-semibold text-slate-900 mb-4">Requirements</h3>
+            {mandate.requiredExperience && (
+              <div className="mb-4">
+                <span className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  Required Experience
+                </span>
+                <p className="text-sm font-semibold text-slate-800">
+                  {mandate.requiredExperience}
+                </p>
+              </div>
+            )}
             {mandate.educationRequirement && (
               <div className="mb-4">
                 <span className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">

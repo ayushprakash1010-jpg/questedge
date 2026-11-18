@@ -325,7 +325,9 @@ export default function CandidateReferralsPage() {
                             {mandate?.referralRewardAmount && (
                               <div className="mt-3 flex items-center gap-2 text-sm">
                                 <span className="text-amber-600 font-medium">
-                                  🏆 ₹{mandate.referralRewardAmount.toLocaleString()} referral reward if hired
+                                  {mandate.referralRewardType === "PERCENTAGE"
+                                    ? `🏆 ${mandate.referralRewardAmount}% of CTC referral reward if hired`
+                                    : `🏆 ₹${mandate.referralRewardAmount.toLocaleString()} referral reward if hired`}
                                 </span>
                               </div>
                             )}

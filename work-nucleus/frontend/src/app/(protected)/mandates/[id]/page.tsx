@@ -17,6 +17,7 @@ import {
   Clock,
   Rocket,
   Trophy,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PipelineKanban } from "./PipelineKanban";
@@ -32,6 +33,15 @@ export default function MandateDetailPage() {
   const [showFillModal, setShowFillModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [actionMsg, setActionMsg] = useState<{ text: string; type: "ok" | "err" } | null>(null);
+  const [hasPendingRankings, setHasPendingRankings] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(`mandate_pending_ranking_${id}`)) {
+        setHasPendingRankings(true);
+      }
+    } catch (e) {}
+  }, [id]);
 
   useEffect(() => {
     (async () => {
@@ -154,7 +164,7 @@ export default function MandateDetailPage() {
               <MandateStatusBadge status={mandate.status} isDeadlinePassed={isDeadlinePassed} />
             </div>
             <p className="text-sm text-slate-500">
-              {mandate.department} · {mandate.location} · {mandate.workModel}
+              {[mandate.department, mandate.location, mandate.workModel, mandate.requiredExperience].filter(Boolean).join(" · ")}
               {mandate.applicationDeadline ? (
                 <span className={isDeadlinePassed ? "ml-2 text-red-600 font-medium" : "ml-2 text-amber-700 font-medium"}>
                   · Deadline: {new Date(mandate.applicationDeadline).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric" })}
@@ -242,6 +252,25 @@ export default function MandateDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Carried-forward AI rankings banner */}
+      {hasPendingRankings && (
+        <div className="bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-indigo-500/10 border-b border-amber-200 px-6 py-3">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2.5 text-sm font-semibold text-amber-900">
+              <Trophy className="h-5 w-5 text-amber-600 shrink-0" />
+              <span>Candidates evaluated from your Resume Ranker session are ready for this mandate!</span>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => router.push(`/mandates/${id}/ranking`)}
+              className="bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs shadow-xs gap-1.5 shrink-0"
+            >
+              View Ranked Candidates <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
 
 {/* Expired Deadline Notice Banner */}
       {isDeadlinePassed && mandate.status === "ACTIVE" && (
@@ -448,6 +477,16 @@ export default function MandateDetailPage() {
 
           <div className="bg-white rounded-xl border border-slate-200 p-5">
             <h3 className="font-semibold text-slate-900 mb-4">Requirements</h3>
+            {mandate.requiredExperience && (
+              <div className="mb-4">
+                <span className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  Required Experience
+                </span>
+                <p className="text-sm font-semibold text-slate-800">
+                  {mandate.requiredExperience}
+                </p>
+              </div>
+            )}
             {mandate.educationRequirement && (
               <div className="mb-4">
                 <span className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
@@ -466,7 +505,10 @@ export default function MandateDetailPage() {
             {mandate.referralRewardAmount && (
               <RewardBadge
                 amount={mandate.referralRewardAmount}
+                rewardType={mandate.referralRewardType}
                 currency={mandate.currency}
+                compensationMin={mandate.compensationMin}
+                compensationMax={mandate.compensationMax}
               />
             )}
           </div>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { motion, AnimatePresence } from "framer-motion";
 import { QuestEdgeLogo } from "@/components/QuestEdgeLogo";
@@ -45,9 +45,10 @@ const CANDIDATE_POPULAR_SKILLS = [
   "Machine Learning",
 ];
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const { user } = useUser();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [step, setStep] = useState<
     "role" | "company-setup" | "recruiter-setup" | "candidate-setup" | "success"
@@ -78,9 +79,26 @@ export default function OnboardingPage() {
   const [candidateSkills, setCandidateSkills] = useState<string[]>([]);
   const [customSkill, setCustomSkill] = useState("");
 
+  const hasAutoAdvancedRef = useRef(false);
+
   useEffect(() => {
     if (user?.name && !name) setName(user.name);
   }, [user, name]);
+
+  // Auto-advance past role selection when a role is pre-selected via URL param
+  // (e.g., user clicked "I'm a Candidate" on the landing page → ?role=candidate)
+  // We use hasAutoAdvancedRef so if the user clicks "Back" to change role, they aren't trapped.
+  useEffect(() => {
+    if (hasAutoAdvancedRef.current) return;
+    const preselectedRole = searchParams.get("role");
+    if (preselectedRole === "company" || preselectedRole === "recruiter" || preselectedRole === "candidate") {
+      hasAutoAdvancedRef.current = true;
+      setSelectedRole(preselectedRole);
+      if (preselectedRole === "company") setStep("company-setup");
+      else if (preselectedRole === "recruiter") setStep("recruiter-setup");
+      else if (preselectedRole === "candidate") setStep("candidate-setup");
+    }
+  }, [searchParams]);
 
   const handleRoleContinue = () => {
     if (!selectedRole) return;
@@ -721,5 +739,19 @@ export default function OnboardingPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-slate-50">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        </div>
+      }
+    >
+      <OnboardingContent />
+    </Suspense>
   );
 }

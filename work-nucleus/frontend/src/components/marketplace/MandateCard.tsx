@@ -27,6 +27,9 @@ interface MandateCardProps {
   workModel?: string;
   mandatorySkills: string[];
   referralRewardAmount?: number;
+  referralRewardType?: "FIXED" | "PERCENTAGE" | string;
+  compensationMin?: number;
+  compensationMax?: number;
   currency?: string;
   status: MandateStatus;
   numberOfOpenings?: number;
@@ -84,11 +87,52 @@ export function MandateStatusBadge({
 
 export function RewardBadge({
   amount,
+  rewardType,
   currency = "INR",
+  compensationMin,
+  compensationMax,
 }: {
   amount: number;
+  rewardType?: "FIXED" | "PERCENTAGE" | string;
   currency?: string;
+  compensationMin?: number;
+  compensationMax?: number;
 }) {
+  const isPercentage = rewardType === "PERCENTAGE";
+
+  if (isPercentage) {
+    let estRange = "";
+    if (compensationMin || compensationMax) {
+      const currSymbol = currency === "INR" ? "₹" : currency === "USD" ? "$" : `${currency} `;
+      const formatLakhsOrK = (val: number) => {
+        if (currency === "INR") {
+          if (val >= 10000000) return `${currSymbol}${(val / 10000000).toFixed(1).replace(/\.0$/, "")}Cr`;
+          if (val >= 100000) return `${currSymbol}${(val / 100000).toFixed(1).replace(/\.0$/, "")}L`;
+          return `${currSymbol}${Math.round(val).toLocaleString("en-IN")}`;
+        }
+        if (val >= 1000) return `${currSymbol}${Math.round(val / 1000)}k`;
+        return `${currSymbol}${Math.round(val)}`;
+      };
+
+      const minPayout = compensationMin ? Math.round((compensationMin * amount) / 100) : null;
+      const maxPayout = compensationMax ? Math.round((compensationMax * amount) / 100) : null;
+      if (minPayout && maxPayout) {
+        estRange = ` (≈ ${formatLakhsOrK(minPayout)} – ${formatLakhsOrK(maxPayout)})`;
+      } else if (minPayout) {
+        estRange = ` (≈ from ${formatLakhsOrK(minPayout)})`;
+      } else if (maxPayout) {
+        estRange = ` (≈ up to ${formatLakhsOrK(maxPayout)})`;
+      }
+    }
+
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 border border-indigo-200 px-3 py-1 text-sm font-bold text-indigo-700 group-hover:bg-indigo-100 transition-colors">
+        <span className="text-indigo-500">🏆</span>
+        {amount}% of CTC{estRange}
+      </span>
+    );
+  }
+
   const formatted = new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency,
@@ -120,6 +164,9 @@ export function MandateCard({
   workModel,
   mandatorySkills,
   referralRewardAmount,
+  referralRewardType,
+  compensationMin,
+  compensationMax,
   currency,
   status,
   numberOfOpenings,
@@ -275,7 +322,13 @@ export function MandateCard({
       <div className="flex items-center justify-between pt-1 border-t border-slate-100">
         <div className="flex items-center gap-3">
           {referralRewardAmount && referralRewardAmount > 0 ? (
-            <RewardBadge amount={referralRewardAmount} currency={currency} />
+            <RewardBadge
+              amount={referralRewardAmount}
+              rewardType={referralRewardType}
+              currency={currency}
+              compensationMin={compensationMin}
+              compensationMax={compensationMax}
+            />
           ) : (
             <span className="text-xs text-slate-400">No referral reward</span>
           )}

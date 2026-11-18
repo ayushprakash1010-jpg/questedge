@@ -82,7 +82,9 @@ function SavedJobCard({ job }: { job: any }) {
         <p className="text-xs text-slate-500 mt-0.5">{mandate.organization?.name}</p>
         {mandate.referralRewardAmount && (
           <p className="text-xs text-emerald-600 font-medium mt-1">
-            🏆 ₹{mandate.referralRewardAmount.toLocaleString()} referral reward
+            {mandate.referralRewardType === "PERCENTAGE"
+              ? `🏆 ${mandate.referralRewardAmount}% of CTC referral reward`
+              : `🏆 ₹${mandate.referralRewardAmount.toLocaleString()} referral reward`}
           </p>
         )}
       </div>
