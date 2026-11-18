@@ -69,6 +69,8 @@ user_inputs.txt
 # Database dumps (may contain PII)
 db-dump.json
 db-dump*.json
+*.sql
+backup*.sql
 
 # Ad-hoc debug and fix scripts that should not run in production
 backend/dump.js
@@ -77,6 +79,8 @@ backend/check-referrals.js
 backend/fix-rewards.ts
 backend/scratch/
 backend/test-prisma-missing-orgId.ts
+**/check-*.js
+check-*.js
 
 # Build info cache
 *.tsbuildinfo
