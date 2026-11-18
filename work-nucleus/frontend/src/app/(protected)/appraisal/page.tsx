@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Spinner } from "@/components/ui/spinner";
+import { BrandLoader } from "@/components/ui/brand-loader";
 import { PageHeader } from "@/components/shared/page-header";
 import {
   DataTable,
@@ -150,11 +150,7 @@ export default function AppraisalHomePage() {
     activeIdx >= 0 ? ((activeIdx + 1) / PHASES.length) * 100 : 0;
 
   if (!data) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Spinner />
-      </div>
-    );
+    return <BrandLoader fullscreen={false} message="Loading appraisal cycles..." />;
   }
 
   return (

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { getCandidateProfile, getPendingConsents, getSavedJobs } from "@/lib/marketplace-api";
 import {
-  Loader2, AlertCircle, FileText, Bookmark, Users, ArrowRight,
+  AlertCircle, FileText, Bookmark, Users, ArrowRight,
   CheckCircle2, XCircle, Clock, MapPin, Building2, Briefcase,
   TrendingUp, UserCircle, ChevronRight, Sparkles, Bell, Eye,
   Zap, Shield, Star, Target
@@ -13,6 +13,7 @@ import Link from "next/link";
 import { toast } from "@/components/ui/toaster";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { BrandLoader } from "@/components/ui/brand-loader";
 
 // ── Consent card ──────────────────────────────────────────────────
 
@@ -163,14 +164,7 @@ export default function CandidateDashboardPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[70vh]">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-emerald-500 mx-auto mb-3" />
-          <p className="text-sm text-slate-500">Loading your dashboard...</p>
-        </div>
-      </div>
-    );
+    return <BrandLoader fullscreen={false} message="Loading your dashboard..." />;
   }
 
   if (error || !profile) {

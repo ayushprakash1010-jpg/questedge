@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Spinner } from "@/components/ui/spinner";
+import { BrandLoader } from "@/components/ui/brand-loader";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "@/components/ui/toaster";
 import { PageHeader } from "@/components/shared/page-header";
@@ -105,11 +105,7 @@ export default function TrainingPage() {
     totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Spinner />
-      </div>
-    );
+    return <BrandLoader fullscreen={false} message="Loading training modules..." />;
   }
 
   return (

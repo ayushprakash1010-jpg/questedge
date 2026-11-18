@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
+import { BrandLoader } from "@/components/ui/brand-loader";
 import {
   Building2,
   Briefcase,
@@ -92,14 +93,7 @@ export default function StatusCheckPage() {
 
   // ── Loading state ──────────────────────────────────────────────
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-indigo-50">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-indigo-600 mx-auto mb-3" />
-          <p className="text-slate-600">Loading...</p>
-        </div>
-      </div>
-    );
+    return <BrandLoader message="Loading verification..." />;
   }
 
   // ── Error state ────────────────────────────────────────────────

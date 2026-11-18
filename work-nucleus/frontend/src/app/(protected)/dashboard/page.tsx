@@ -19,6 +19,7 @@ import {
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { BrandLoader } from "@/components/ui/brand-loader";
 import { toast } from "@/components/ui/toaster";
 import { PageHeader } from "@/components/shared/page-header";
 import { KpiCard } from "@/components/shared/kpi-card";
@@ -208,11 +209,7 @@ export default function DashboardPage() {
   // Show a spinner while profile is loading or while redirect is about to happen.
   // This prevents the company dashboard from flashing briefly for non-company users.
   if (profileLoading || shouldRedirect) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Spinner />
-      </div>
-    );
+    return <BrandLoader fullscreen={false} message="Loading dashboard..." />;
   }
 
   return <CompanyDashboardContent />;
@@ -379,11 +376,7 @@ function CompanyDashboardContent() {
   };
 
   if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Spinner />
-      </div>
-    );
+    return <BrandLoader fullscreen={false} message="Loading metrics & overview..." />;
   }
 
   const avgTtHGood = (overview?.avgTimeToHire ?? 0) < 35;

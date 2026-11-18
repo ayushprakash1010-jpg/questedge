@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Spinner } from "@/components/ui/spinner";
+import { BrandLoader } from "@/components/ui/brand-loader";
 import { toast } from "@/components/ui/toaster";
 import { PageHeader } from "@/components/shared/page-header";
 
@@ -57,11 +57,7 @@ export default function OrgSettingsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Spinner />
-      </div>
-    );
+    return <BrandLoader fullscreen={false} message="Loading workspace settings..." />;
   }
 
   const weights = settings?.scoringWeights || {};

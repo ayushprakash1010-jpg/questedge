@@ -5,7 +5,7 @@ import { apiClient } from "@/lib/api";
 import { useEffect, useState } from "react";
 import { Trophy, Star, TrendingUp, Medal, ShieldCheck } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Spinner } from "@/components/ui/spinner";
+import { BrandLoader } from "@/components/ui/brand-loader";
 import { PageHeader } from "@/components/shared/page-header";
 
 interface LeaderboardEntry {
@@ -92,9 +92,7 @@ export default function LeaderboardPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center p-12">
-          <Spinner />
-        </div>
+        <BrandLoader fullscreen={false} message="Loading recruiter leaderboard..." />
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
           <table className="w-full text-left">

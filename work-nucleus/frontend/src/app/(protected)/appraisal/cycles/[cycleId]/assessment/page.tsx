@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Spinner } from "@/components/ui/spinner";
+import { BrandLoader } from "@/components/ui/brand-loader";
 import { toast } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
 
@@ -90,11 +90,7 @@ export default function SelfAssessmentPage() {
   }
 
   if (!a) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Spinner />
-      </div>
-    );
+    return <BrandLoader fullscreen={false} message="Loading appraisal assessment..." />;
   }
 
   const isLocked = a.status !== "DRAFT" && a.status !== "REOPENED";

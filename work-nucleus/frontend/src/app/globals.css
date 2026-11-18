@@ -492,6 +492,53 @@
    ADVANCED MICRO-ANIMATIONS (PREMIUM POLISH)
    ════════════════════════════════════════════════════════════════ */
 
+/* Brand Splash / Loader Animations (Slido-Style Option 2) */
+@keyframes brand-breathe {
+  0%, 100% {
+    transform: scale(0.95);
+    opacity: 0.88;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+}
+
+@keyframes brand-glow {
+  0%, 100% {
+    opacity: 0.25;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(1.18);
+  }
+}
+
+@keyframes brand-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(35%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+.animate-brand-breathe {
+  animation: brand-breathe 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.animate-brand-glow {
+  animation: brand-glow 2.2s ease-in-out infinite;
+}
+
+.animate-brand-indeterminate {
+  animation: brand-indeterminate 1.5s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
 @keyframes wn-pulse-glow {
   0%, 100% { opacity: 0.5; transform: scale(1); filter: blur(12px); }
   50% { opacity: 0.8; transform: scale(1.05); filter: blur(16px); }

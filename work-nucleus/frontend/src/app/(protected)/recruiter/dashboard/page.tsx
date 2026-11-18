@@ -10,7 +10,6 @@ import {
   CheckCircle2,
   IndianRupee,
   ArrowRight,
-  Loader2,
   AlertCircle,
   ChevronRight,
   Search,
@@ -28,6 +27,7 @@ import {
 import { KpiCard } from "@/components/shared/kpi-card";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { BrandLoader } from "@/components/ui/brand-loader";
 import { Button } from "@/components/ui/button";
 import { TrustProfileCard } from "@/components/recruiter/trust-profile-card";
 
@@ -108,11 +108,7 @@ export default function RecruiterDashboardPage() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-sky-400" />
-      </div>
-    );
+    return <BrandLoader fullscreen={false} message="Loading recruiter dashboard..." />;
   }
 
   if (needsProfile) {

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { respondToConsent } from "@/lib/marketplace-api";
 import { cn } from "@/lib/utils";
+import { BrandLoader } from "@/components/ui/brand-loader";
 import {
   Building2,
   MapPin,
@@ -109,11 +110,7 @@ export default function ConsentPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
-      </div>
-    );
+    return <BrandLoader message="Verifying referral request..." />;
   }
 
   if (error && !consent) {

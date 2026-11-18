@@ -19,7 +19,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Spinner } from "@/components/ui/spinner";
+import { BrandLoader } from "@/components/ui/brand-loader";
 import { Progress } from "@/components/ui/progress";
 
 interface CostByType {
@@ -225,9 +225,7 @@ export default function BgvCostReportPage() {
       </div>
 
       {loading ? (
-        <div className="flex h-64 items-center justify-center">
-          <Spinner />
-        </div>
+        <BrandLoader fullscreen={false} message="Loading BGV cost analytics..." />
       ) : (
         <>
           {/* Top KPI Cards */}

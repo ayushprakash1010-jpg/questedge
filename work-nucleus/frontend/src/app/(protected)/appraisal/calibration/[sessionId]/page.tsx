@@ -6,7 +6,7 @@ import { AlertTriangle, Lock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Spinner } from "@/components/ui/spinner";
+import { BrandLoader } from "@/components/ui/brand-loader";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "@/components/ui/toaster";
 
@@ -88,11 +88,7 @@ export default function CalibrationBoardPage() {
   }
 
   if (!board) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Spinner />
-      </div>
-    );
+    return <BrandLoader fullscreen={false} message="Loading calibration board..." />;
   }
 
   const grouped: Record<number, Board["assessments"]> = { 1: [], 2: [], 3: [], 4: [], 5: [] };

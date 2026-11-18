@@ -18,7 +18,7 @@ import {
   DataTableHeader,
   DataTableRow,
 } from "@/components/shared/data-table";
-import { Spinner } from "@/components/ui/spinner";
+import { BrandLoader } from "@/components/ui/brand-loader";
 
 
 export default function SupportPage() {
@@ -122,9 +122,7 @@ export default function SupportPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex justify-center p-8">
-              <Spinner />
-            </div>
+            <BrandLoader fullscreen={false} message="Loading support tickets..." />
           ) : tickets.length === 0 ? (
             <div className="text-center text-slate-500 py-8">
               No support tickets found. 

@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/sidebar";
 import { TopBar } from "@/components/top-bar";
 import { useProfile } from "@/hooks/use-profile";
 import { registerServiceWorker } from "@/lib/pwa";
+import { BrandLoader } from "@/components/ui/brand-loader";
 
 const IS_MOCK =
   process.env.NODE_ENV !== "production" &&
@@ -142,11 +143,7 @@ export default function ProtectedLayout({
 
   if (IS_MOCK) {
     if (profileLoading) {
-      return (
-        <div className="flex h-screen items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-        </div>
-      );
+      return <BrandLoader message="Loading workspace..." />;
     }
     return (
       <div className="flex h-screen">
@@ -174,23 +171,15 @@ export default function ProtectedLayout({
   }
 
   if (authLoading || profileLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-      </div>
-    );
+    return <BrandLoader message="Preparing your workspace..." />;
   }
 
   if (!user) return null;
 
   // Profile hasn't loaded yet (gap between auth completing and profile fetch finishing).
-  // Show a spinner to prevent briefly flashing the wrong sidebar/dashboard.
+  // Show a branded loader to prevent briefly flashing the wrong sidebar/dashboard.
   if (!profile && !profileError) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-      </div>
-    );
+    return <BrandLoader message="Synchronizing workspace..." />;
   }
 
   const isDemo =
@@ -202,44 +191,28 @@ export default function ProtectedLayout({
     (profile as any)?.userType === "RECRUITER" ||
     (profile as any)?.userType === "CANDIDATE";
 
-  // If the useEffect is about to redirect to onboarding, show a spinner to prevent flashing
+  // If the useEffect is about to redirect to onboarding, show a loader to prevent flashing
   if (profile && !profile.isProvisioned && !isDemo) {
     if (!pathname.includes("/profile") && !pathname.includes("/onboarding")) {
-      return (
-        <div className="flex h-screen items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-        </div>
-      );
+      return <BrandLoader message="Redirecting to onboarding..." />;
     }
   }
 
-  // If the useEffect is about to redirect to a specific role dashboard, show a spinner (skip for demo user)
+  // If the useEffect is about to redirect to a specific role dashboard, show a loader (skip for demo user)
   if (profile && profile.isProvisioned && !isSharedRoute(pathname) && !isDemo) {
     const uType = (profile as any).userType;
     if (uType === "RECRUITER" && !pathname.startsWith("/recruiter")) {
-      return (
-        <div className="flex h-screen items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-        </div>
-      );
+      return <BrandLoader message="Opening Recruiter Workspace..." />;
     }
     if (uType === "CANDIDATE" && !pathname.startsWith("/candidate")) {
-      return (
-        <div className="flex h-screen items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-        </div>
-      );
+      return <BrandLoader message="Opening Candidate Workspace..." />;
     }
     if ((uType === "COMPANY_USER" || uType === "COMPANY_ADMIN") && (
       pathname.startsWith("/recruiter") || 
       pathname === "/candidate" || 
       pathname.startsWith("/candidate/")
     )) {
-      return (
-        <div className="flex h-screen items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-        </div>
-      );
+      return <BrandLoader message="Opening Company Workspace..." />;
     }
   }
 

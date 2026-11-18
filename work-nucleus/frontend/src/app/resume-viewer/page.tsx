@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader2, Download, ExternalLink, X, FileText, AlertCircle } from "lucide-react";
+import { BrandLoader } from "@/components/ui/brand-loader";
 
 function ResumeViewerContent() {
   const searchParams = useSearchParams();
@@ -164,11 +165,11 @@ function ResumeViewerContent() {
       {/* Main Document Viewport */}
       <main className="flex-1 w-full bg-slate-900 relative overflow-hidden">
         {loading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-900/90 z-10">
-            <Loader2 className="h-8 w-8 text-indigo-500 animate-spin" />
-            <p className="text-sm font-medium text-slate-300">
-              Loading {rawName}'s resume securely...
-            </p>
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-900/90 z-10">
+            <BrandLoader
+              fullscreen={false}
+              message={`Loading ${rawName}'s resume securely...`}
+            />
           </div>
         )}
 
@@ -205,13 +206,7 @@ function ResumeViewerContent() {
 
 export default function ResumeViewerPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="h-screen w-screen flex items-center justify-center bg-slate-950 text-slate-300">
-          <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-        </div>
-      }
-    >
+    <Suspense fallback={<BrandLoader message="Loading resume viewer..." />}>
       <ResumeViewerContent />
     </Suspense>
   );

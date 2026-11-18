@@ -6,7 +6,7 @@ import {
   HiringPlanForm,
   type HiringPlanFormProps,
 } from "@/components/hiring-plans/hiring-plan-form";
-import { Spinner } from "@/components/ui/spinner";
+import { BrandLoader } from "@/components/ui/brand-loader";
 
 interface PlanSkillFromApi {
   skill: { id: string; name: string; category: string };
@@ -64,11 +64,7 @@ export default function EditHiringPlanPage() {
   }, [id]);
 
   if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Spinner />
-      </div>
-    );
+    return <BrandLoader fullscreen={false} message="Loading hiring plan..." />;
   }
 
   if (!initialData) {

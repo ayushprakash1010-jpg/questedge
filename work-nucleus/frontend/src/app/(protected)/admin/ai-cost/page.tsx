@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Spinner } from "@/components/ui/spinner";
+import { BrandLoader } from "@/components/ui/brand-loader";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PageHeader } from "@/components/shared/page-header";
 import {
@@ -36,11 +36,7 @@ export default function AiCostPage() {
   }, []);
 
   if (!data) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Spinner />
-      </div>
-    );
+    return <BrandLoader fullscreen={false} message="Loading AI cost metrics..." />;
   }
 
   return (

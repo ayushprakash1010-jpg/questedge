@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Spinner } from "@/components/ui/spinner";
+import { BrandLoader } from "@/components/ui/brand-loader";
 import {
   Briefcase,
   MapPin,
@@ -140,11 +140,7 @@ export default function PublicJobPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-32">
-        <Spinner />
-      </div>
-    );
+    return <BrandLoader fullscreen={false} message="Loading job opening..." />;
   }
 
   if (notFound || !job) {
