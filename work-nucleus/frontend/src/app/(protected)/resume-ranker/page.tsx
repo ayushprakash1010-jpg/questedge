@@ -1726,16 +1726,18 @@ export default function ResumeRankerPage() {
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <button
               onClick={() => setShowWeights(!showWeights)}
-              className="flex items-center gap-2 px-5 py-3 text-xs text-gray-700 font-medium hover:text-gray-900 w-full hover:bg-slate-50 transition-colors cursor-pointer"
+              className={`flex items-center gap-2 px-5 py-3.5 text-xs text-gray-700 font-semibold hover:text-gray-900 w-full hover:bg-slate-50 transition-colors cursor-pointer ${
+                showWeights ? "border-b border-gray-100 bg-slate-50/50" : ""
+              }`}
             >
-              <BarChart3 className="w-3.5 h-3.5 text-indigo-600" />
+              <BarChart3 className="w-4 h-4 text-indigo-600" />
               <span>Customize Scoring Weights & Knockout Rules</span>
               <span className="ml-auto text-gray-400 font-mono text-[11px]">
                 {showWeights ? "▲ Hide" : "▼ Configure"}
               </span>
             </button>
             {showWeights && (
-              <div className="px-5 pb-5 pt-1 space-y-5">
+              <div className="p-5 space-y-6">
                 <WeightCustomizer weights={weights} onChange={setWeights} />
                 <ShortlistingRulesComponent
                   rules={shortlistingRules}

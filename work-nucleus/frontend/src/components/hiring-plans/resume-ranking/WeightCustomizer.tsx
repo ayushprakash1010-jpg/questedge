@@ -125,16 +125,18 @@ export default function WeightCustomizer({ weights, onChange }: WeightCustomizer
     };
   });
 
+  const activeHoveredSlice = hoveredKey ? slices.find((s) => s.key === hoveredKey) : null;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3.5">
       {/* Header with Total status and Reset */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
             Weight Distribution
           </span>
           <span
-            className={`text-xs px-2 py-0.5 rounded-full font-bold font-mono ${
+            className={`text-xs px-2.5 py-0.5 rounded-full font-bold font-mono transition-colors ${
               isValid
                 ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                 : "bg-red-50 text-red-600 border border-red-200"
@@ -149,17 +151,31 @@ export default function WeightCustomizer({ weights, onChange }: WeightCustomizer
         <button
           type="button"
           onClick={handleReset}
-          className="text-xs text-indigo-600 hover:text-indigo-800 font-medium hover:underline cursor-pointer"
+          className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold hover:underline cursor-pointer"
         >
           Reset defaults
         </button>
       </div>
 
       {/* Main Container: Donut Wheel on Left + Sliders on Right */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center bg-slate-50/60 p-4 rounded-xl border border-slate-200/80">
-        {/* Left: Donut Wheel (4 cols) */}
-        <div className="md:col-span-4 flex flex-col items-center justify-center relative">
-          <div className="relative w-44 h-44">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center bg-slate-50/70 p-4.5 rounded-xl border border-slate-200/80 shadow-2xs">
+        {/* Left: Donut Wheel (4 cols on lg, centered) */}
+        <div className="lg:col-span-4 flex flex-col items-center justify-center relative py-2">
+          <div className="relative w-48 h-48 flex items-center justify-center">
+            {/* Hover Tooltip Pill pointing to active slice */}
+            {activeHoveredSlice && (
+              <div className="absolute -top-3 z-20 px-2.5 py-1 rounded-md bg-slate-900 text-white text-[11px] font-semibold shadow-md flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-150">
+                <span
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ backgroundColor: activeHoveredSlice.color }}
+                />
+                <span className="truncate max-w-[110px]">{activeHoveredSlice.label}</span>
+                <span className="font-mono text-indigo-300 font-bold">
+                  {activeHoveredSlice.value}%
+                </span>
+              </div>
+            )}
+
             <svg
               viewBox="0 0 200 200"
               className="w-full h-full transform -rotate-90 filter drop-shadow-xs"
@@ -167,14 +183,21 @@ export default function WeightCustomizer({ weights, onChange }: WeightCustomizer
               {slices.map((slice) => {
                 if (slice.sweepAngle <= 0.1) return null;
                 const isHovered = hoveredKey === slice.key;
-                const path = describeDonutSlice(100, 100, 52, isHovered ? 84 : 80, slice.startAngle, slice.endAngle);
+                const path = describeDonutSlice(
+                  100,
+                  100,
+                  54,
+                  isHovered ? 86 : 80,
+                  slice.startAngle,
+                  slice.endAngle
+                );
 
                 return (
                   <path
                     key={slice.key}
                     d={path}
                     fill={slice.color}
-                    opacity={hoveredKey && !isHovered ? 0.45 : 1}
+                    opacity={hoveredKey && !isHovered ? 0.35 : 1}
                     className="transition-all duration-200 cursor-pointer"
                     onMouseEnter={() => setHoveredKey(slice.key)}
                     onMouseLeave={() => setHoveredKey(null)}
@@ -184,18 +207,22 @@ export default function WeightCustomizer({ weights, onChange }: WeightCustomizer
             </svg>
 
             {/* Center Donut Info */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-2">
               <span
-                className={`text-2xl font-black font-mono leading-none ${
-                  isValid ? "text-slate-800" : "text-red-600"
+                className={`text-2xl font-black font-mono leading-none tracking-tight transition-colors ${
+                  activeHoveredSlice
+                    ? "text-slate-900"
+                    : isValid
+                    ? "text-slate-800"
+                    : "text-red-600"
                 }`}
               >
                 {hoveredKey ? `${weights[hoveredKey]}%` : `${total}%`}
               </span>
               <span
-                className={`text-[11px] font-medium mt-1 uppercase tracking-wider ${
-                  hoveredKey
-                    ? "text-indigo-600 font-semibold"
+                className={`text-[10px] font-bold mt-1 uppercase tracking-wider transition-colors max-w-[85px] truncate ${
+                  activeHoveredSlice
+                    ? "text-indigo-600"
                     : isValid
                     ? "text-emerald-600"
                     : "text-red-500"
@@ -206,13 +233,13 @@ export default function WeightCustomizer({ weights, onChange }: WeightCustomizer
             </div>
           </div>
 
-          <p className="text-[11px] text-slate-400 text-center mt-2">
+          <p className="text-[11px] text-slate-400 text-center mt-2.5">
             Adjust sliders to reallocate criteria weights
           </p>
         </div>
 
-        {/* Right: Sliders (8 cols) */}
-        <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3">
+        {/* Right: Sliders (8 cols on lg, 2 cols clean card layout) */}
+        <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {keys.map((key) => {
             const isHovered = hoveredKey === key;
             const colorMeta = DIMENSION_COLORS[key];
@@ -222,37 +249,49 @@ export default function WeightCustomizer({ weights, onChange }: WeightCustomizer
                 key={key}
                 onMouseEnter={() => setHoveredKey(key)}
                 onMouseLeave={() => setHoveredKey(null)}
-                className={`flex items-center gap-2.5 p-1.5 rounded-lg transition-all ${
-                  isHovered ? "bg-white shadow-xs ring-1 ring-slate-200" : ""
+                className={`p-2.5 rounded-xl border transition-all ${
+                  isHovered
+                    ? "bg-white border-indigo-300 shadow-sm ring-2 ring-indigo-50"
+                    : "bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs"
                 }`}
               >
-                {/* Color Dot */}
-                <span
-                  className={`w-2.5 h-2.5 rounded-full shrink-0 ${colorMeta.dot}`}
-                  style={{ backgroundColor: colorMeta.fill }}
-                />
+                {/* Row 1: Label + Percentage */}
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className={`w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs ${colorMeta.dot}`}
+                      style={{ backgroundColor: colorMeta.fill }}
+                    />
+                    <label className="text-xs font-semibold text-slate-800 truncate cursor-pointer">
+                      {DIMENSION_LABELS[key]}
+                    </label>
+                  </div>
+                  <span
+                    className={`text-xs font-mono font-bold px-2 py-0.5 rounded-md shrink-0 transition-colors ${
+                      isHovered
+                        ? "bg-indigo-600 text-white"
+                        : weights[key] > 0
+                        ? "bg-slate-100 text-slate-800 border border-slate-200/80"
+                        : "bg-slate-50 text-slate-400"
+                    }`}
+                  >
+                    {weights[key]}%
+                  </span>
+                </div>
 
-                {/* Dimension Label */}
-                <label className="text-xs text-gray-700 font-medium w-24 shrink-0 truncate">
-                  {DIMENSION_LABELS[key]}
-                </label>
-
-                {/* Range Slider */}
-                <input
-                  type="range"
-                  min={0}
-                  max={50}
-                  value={weights[key]}
-                  onChange={(e) =>
-                    handleChange(key, parseInt(e.target.value, 10))
-                  }
-                  className="flex-1 h-1.5 accent-indigo-600 cursor-pointer"
-                />
-
-                {/* Value Pill */}
-                <span className="text-xs font-mono font-semibold w-8 text-right text-slate-800 shrink-0">
-                  {weights[key]}%
-                </span>
+                {/* Row 2: Full Width Range Slider */}
+                <div className="relative flex items-center pt-0.5">
+                  <input
+                    type="range"
+                    min={0}
+                    max={50}
+                    value={weights[key]}
+                    onChange={(e) =>
+                      handleChange(key, parseInt(e.target.value, 10))
+                    }
+                    className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600 focus:outline-none"
+                  />
+                </div>
               </div>
             );
           })}

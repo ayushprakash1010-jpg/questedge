@@ -31,12 +31,12 @@ const RULE_CONFIG: Array<{
   {
     key: "locationCompatibility",
     label: "Location compatibility",
-    description: "Location & work model (onsite/hybrid/remote)",
+    description: "Location & work model (onsite, hybrid, or remote)",
   },
   {
     key: "mandatorySkills",
     label: "Mandatory skills",
-    description: "Core must-have technical/functional skills",
+    description: "Core must-have technical and functional skills",
   },
   {
     key: "minimumExperience",
@@ -46,12 +46,12 @@ const RULE_CONFIG: Array<{
   {
     key: "seniorityLevel",
     label: "Seniority level",
-    description: "Career level & title alignment",
+    description: "Career level, scope, and title alignment",
   },
   {
     key: "requiredEducation",
     label: "Required education",
-    description: "Degree, branch, or academic level",
+    description: "Degree, academic branch, or level",
   },
   {
     key: "requiredCertification",
@@ -61,7 +61,7 @@ const RULE_CONFIG: Array<{
   {
     key: "workAuthorization",
     label: "Work authorization",
-    description: "Visa, work permit, or legal eligibility",
+    description: "Work visa, permit, or legal eligibility",
   },
 ];
 
@@ -84,17 +84,17 @@ export default function ShortlistingRulesComponent({
   const requiredCount = Object.values(rules).filter((v) => v === "REQUIRED").length;
 
   return (
-    <div className="space-y-3 pt-2">
+    <div className="space-y-3.5 pt-1">
       {/* Header with Title, Subtitle, and Legend */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-t border-slate-200/80 pt-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 border-t border-slate-200/80 pt-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
             <h4 className="text-xs font-semibold text-gray-800 uppercase tracking-wider">
               Shortlisting Rules (Knockout Criteria)
             </h4>
             {requiredCount > 0 && (
-              <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-300">
+              <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-300">
                 {requiredCount} {requiredCount === 1 ? "knockout gate" : "knockout gates"} active
               </span>
             )}
@@ -105,72 +105,74 @@ export default function ShortlistingRulesComponent({
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-3 text-xs shrink-0 self-start sm:self-auto">
+        <div className="flex items-center gap-3 text-xs shrink-0 self-start sm:self-auto bg-slate-100/70 px-3 py-1.5 rounded-lg border border-slate-200/60">
           <div className="flex items-center gap-1.5">
-            <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-600" />
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-600 shadow-2xs" />
             <span className="text-slate-700 font-medium text-[11px]">
-              <span className="font-semibold text-emerald-700">Required</span> — must match (Knockout)
+              <span className="font-bold text-emerald-700">Required</span> — must match (Knockout)
             </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="inline-block w-2.5 h-2.5 rounded-full bg-indigo-500" />
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-indigo-600 shadow-2xs" />
             <span className="text-slate-700 font-medium text-[11px]">
-              <span className="font-semibold text-indigo-700">Relaxed</span> — ranking preference
+              <span className="font-bold text-indigo-700">Relaxed</span> — ranking preference
             </span>
           </div>
         </div>
       </div>
 
       {/* Grid of Rules */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/80">
-        {RULE_CONFIG.map(({ key, label, description }) => {
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/80 shadow-2xs">
+        {RULE_CONFIG.map(({ key, label, description }, idx) => {
           const isRequired = rules[key] === "REQUIRED";
 
           return (
             <div
               key={key}
-              className={`flex items-center justify-between p-2.5 rounded-lg border transition-all ${
+              className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                idx === 6 ? "sm:col-span-2 sm:max-w-none" : ""
+              } ${
                 isRequired
-                  ? "bg-emerald-50/60 border-emerald-300 shadow-2xs"
-                  : "bg-white border-slate-200 hover:border-slate-300"
+                  ? "bg-emerald-50/70 border-emerald-300 shadow-xs ring-1 ring-emerald-200/60"
+                  : "bg-white border-slate-200/90 hover:border-slate-300 shadow-2xs"
               }`}
             >
               <div className="min-w-0 pr-3">
-                <p className="text-xs font-semibold text-gray-900 truncate">
+                <p className="text-xs font-bold text-gray-900 truncate">
                   {label}
                 </p>
-                <p className="text-[11px] text-gray-500 truncate">
+                <p className="text-[11px] text-gray-500 leading-snug line-clamp-1 sm:line-clamp-2 mt-0.5">
                   {description}
                 </p>
               </div>
 
-              {/* Segmented Pill Toggle */}
-              <div className="inline-flex rounded-lg border border-slate-200 bg-slate-100 p-0.5 shrink-0">
+              {/* Segmented Pill Toggle matching Aditya's mockup */}
+              <div className="inline-flex rounded-lg border border-slate-200 bg-slate-100 p-0.5 shrink-0 shadow-2xs">
                 <button
                   type="button"
                   onClick={() => handleToggle(key, "REQUIRED")}
-                  className={`flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-md transition-all cursor-pointer ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-md transition-all cursor-pointer ${
                     isRequired
                       ? "bg-emerald-600 text-white shadow-xs"
-                      : "text-slate-600 hover:text-slate-900"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
                   }`}
                   title="Candidate is rejected outright if this criteria is not met"
                 >
-                  <Lock className={`w-2.5 h-2.5 ${isRequired ? "text-white" : "text-slate-400"}`} />
-                  Required
+                  <Lock className={`w-3 h-3 ${isRequired ? "text-white" : "text-slate-400"}`} />
+                  <span>Required</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleToggle(key, "RELAXED")}
-                  className={`flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-md transition-all cursor-pointer ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-md transition-all cursor-pointer ${
                     !isRequired
-                      ? "bg-white text-indigo-700 font-semibold shadow-xs border border-slate-200/80"
-                      : "text-slate-500 hover:text-slate-900"
+                      ? "bg-indigo-600 text-white shadow-xs"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
                   }`}
                   title="Soft criteria: factored into score breakdown without disqualifying candidate"
                 >
-                  <SlidersHorizontal className="w-2.5 h-2.5 opacity-60" />
-                  Relaxed
+                  <SlidersHorizontal className={`w-3 h-3 ${!isRequired ? "text-white" : "text-slate-400"}`} />
+                  <span>Relaxed</span>
                 </button>
               </div>
             </div>
@@ -179,10 +181,13 @@ export default function ShortlistingRulesComponent({
       </div>
 
       {requiredCount > 0 && (
-        <div className="bg-amber-50/60 border border-amber-200 rounded-lg p-2.5 text-xs text-amber-800 flex items-center gap-2">
-          <span className="font-bold shrink-0">⚠️ Gatekeeper Active:</span>
+        <div className="bg-amber-50/80 border border-amber-200/90 rounded-xl p-3 text-xs text-amber-900 flex items-center gap-2.5 shadow-2xs">
+          <span className="text-base shrink-0">⚠️</span>
           <span>
-            Candidates failing any <strong>Required</strong> criteria will be tagged as <em>Knocked Out</em> and excluded from the main interview shortlist.
+            <strong>Gatekeeper Active:</strong> {requiredCount}{" "}
+            {requiredCount === 1 ? "rule is" : "rules are"} set to <strong>Required</strong>.
+            Candidates failing {requiredCount === 1 ? "this requirement" : "any of these requirements"} will be tagged as{" "}
+            <em>Knocked Out</em> and partitioned from the main interview shortlist.
           </span>
         </div>
       )}
