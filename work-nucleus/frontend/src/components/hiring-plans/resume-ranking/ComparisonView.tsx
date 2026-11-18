@@ -118,8 +118,12 @@ export default function ComparisonView({
       ];
 
       const selected = rankings.filter((r: any, idx: number) => {
-        const cid = String(r.candidateId || r.id || `cand-${idx}`);
-        return idsToCompare.includes(cid);
+        const cid = String(r.candidateId || r.id || `cand-${r.rank || idx}`);
+        return (
+          idsToCompare.includes(cid) ||
+          idsToCompare.includes(String(r.candidateId)) ||
+          idsToCompare.includes(String(r.id))
+        );
       });
 
       const candidates: ComparisonCandidate[] = selected.map((r: any, idx: number) => {
@@ -131,7 +135,7 @@ export default function ComparisonView({
         else verdict = "WEAK_FIT";
 
         return {
-          candidateId: String(r.candidateId || r.id || `cand-${idx}`),
+          candidateId: String(r.candidateId || r.id || `cand-${r.rank || idx}`),
           candidateName: r.candidateName,
           rank: r.rank,
           totalScore: score,
@@ -204,7 +208,7 @@ export default function ComparisonView({
           <div className="p-6">
             <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
               {rankings.map((r: any, idx: number) => {
-                const cid = String(r.candidateId || r.id || `cand-${idx}`);
+                const cid = String(r.candidateId || r.id || `cand-${r.rank || idx}`);
                 const isSelected = selectedIds.includes(cid);
                 return (
                   <button

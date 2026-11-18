@@ -390,12 +390,13 @@ export default function ResumeRankerPage() {
   }, [results]);
 
   const toggleCompareCandidate = (candId: string) => {
+    const idStr = String(candId);
     setSelectedCandidateIds((prev) => {
-      if (prev.includes(candId)) return prev.filter((id) => id !== candId);
+      if (prev.includes(idStr)) return prev.filter((id) => id !== idStr);
       if (prev.length >= 4) {
         return prev;
       }
-      return [...prev, candId];
+      return [...prev, idStr];
     });
   };
 
@@ -2032,13 +2033,7 @@ export default function ResumeRankerPage() {
                           {candidateList.length >= 2 && (
                             <button
                               type="button"
-                              onClick={() => {
-                                if (selectedCandidateIds.length < 2 && candidateList.length >= 2) {
-                                  const top2Ids = candidateList.slice(0, 2).map((c: any, i: number) => String(c.candidateId || c.id || `cand-${i}`));
-                                  setSelectedCandidateIds(top2Ids);
-                                }
-                                setShowComparison(true);
-                              }}
+                              onClick={() => setShowComparison(true)}
                               className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border font-semibold transition-all cursor-pointer shadow-2xs ${
                                 selectedCandidateIds.length >= 2
                                   ? "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700"
@@ -2179,8 +2174,9 @@ export default function ResumeRankerPage() {
                               r.name.toLowerCase() ===
                               (candidate.candidateName || "").toLowerCase()
                           );
-                          const candId =
-                            candidate.candidateId || candidate.id || `cand-${idx}`;
+                          const candId = String(
+                            candidate.candidateId || candidate.id || `cand-${candidate.rank || idx}`
+                          );
                           return (
                             <RankedCandidateCard
                               key={candId}
@@ -2373,7 +2369,11 @@ export default function ResumeRankerPage() {
               {showComparison && (
                 <ComparisonView
                   rankings={candidateList}
-                  initialSelectedIds={selectedCandidateIds}
+                  initialSelectedIds={
+                    selectedCandidateIds.length >= 2
+                      ? selectedCandidateIds
+                      : candidateList.slice(0, 2).map((c: any, i: number) => String(c.candidateId || c.id || `cand-${c.rank || i}`))
+                  }
                   onClose={() => setShowComparison(false)}
                 />
               )}

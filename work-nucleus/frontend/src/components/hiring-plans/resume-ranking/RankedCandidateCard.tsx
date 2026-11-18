@@ -220,24 +220,24 @@ export default function RankedCandidateCard({
           <div className="flex items-start gap-3 min-w-0 flex-1">
             {/* Compare Checkbox */}
             {onToggleCompare && (
-              <div
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={Boolean(isCompared)}
                 onClick={(e) => {
                   e.stopPropagation();
+                  e.preventDefault();
                   onToggleCompare();
                 }}
-                className="mt-1 shrink-0 flex items-center print:hidden"
-                title="Select to compare"
+                className={`mt-1 shrink-0 flex items-center justify-center w-4.5 h-4.5 rounded border transition-all print:hidden cursor-pointer ${
+                  isCompared
+                    ? "bg-indigo-600 border-indigo-600 text-white shadow-2xs"
+                    : "bg-white border-slate-300 hover:border-indigo-400 hover:bg-indigo-50/50"
+                }`}
+                title={isCompared ? "Deselect candidate" : "Select candidate to compare (up to 4)"}
               >
-                <input
-                  type="checkbox"
-                  checked={Boolean(isCompared)}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    onToggleCompare();
-                  }}
-                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                />
-              </div>
+                {isCompared && <Check className="w-3 h-3 stroke-[3]" />}
+              </button>
             )}
 
             {/* Rank Medal / Number */}
