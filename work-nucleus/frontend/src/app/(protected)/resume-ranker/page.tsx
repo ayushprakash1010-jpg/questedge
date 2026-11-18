@@ -448,8 +448,32 @@ export default function ResumeRankerPage() {
     if (sortedKeys.length === 0) return summaryText;
 
     const escaped = sortedKeys.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    const namesPattern = `(?:${escaped.join("|")})`;
+
+    // Clean AI-generated parentheses and trailing score artifacts before tagification
+    let cleanedText = summaryText;
+
+    // 1. Strip raw score annotations already adjacent to candidate names: "Arjun Mehta (94)", "Arjun Mehta (94/100)"
+    cleanedText = cleanedText.replace(
+      new RegExp(`(${namesPattern})\\s*\\(?\\s*\\d{1,3}(?:\\s*\\/\\s*100)?\\s*%?\\s*\\)?`, "gi"),
+      "$1"
+    );
+
+    // 2. Unwrap wrapping parentheses around candidate names or candidate lists: "(Arjun Mehta and Kavita Patel)"
+    cleanedText = cleanedText.replace(
+      new RegExp(`\\(\\s*(${namesPattern}(?:\\s*(?:,|and|&|or|\\+)\\s*${namesPattern})*)\\s*\\)`, "gi"),
+      "$1"
+    );
+
+    // 3. Remove any remaining lone parentheses touching candidate names: "( Arjun Mehta" or "Arjun Mehta )"
+    cleanedText = cleanedText.replace(new RegExp(`\\(\\s*(${namesPattern})`, "gi"), "$1");
+    cleanedText = cleanedText.replace(new RegExp(`(${namesPattern})\\s*\\)`, "gi"), "$1");
+
+    // 4. Collapse extra whitespace
+    cleanedText = cleanedText.replace(/\s{2,}/g, " ");
+
     const regex = new RegExp(`\\b(${escaped.join("|")})\\b`, "gi");
-    const parts = summaryText.split(regex);
+    const parts = cleanedText.split(regex);
 
     return parts.map((part, index) => {
       const lower = part.toLowerCase();

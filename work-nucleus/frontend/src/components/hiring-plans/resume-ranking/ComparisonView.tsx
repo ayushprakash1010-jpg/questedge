@@ -327,26 +327,62 @@ export default function ComparisonView({
                             );
                             const score = dimScore?.score ?? 0;
                             const maxScore = dimScore?.maxScore ?? 10;
-                            const pct = maxScore > 0 ? (score / maxScore) * 100 : 0;
                             const isLeader = leader?.leader === c.candidateName;
+
+                            const commentLower = (dimScore?.comment || "").toLowerCase().trim();
+                            const isExplicitConflict =
+                              commentLower.includes("conflict") ||
+                              commentLower.includes("mismatch") ||
+                              commentLower.includes("cannot") ||
+                              commentLower.includes("unwilling");
+
+                            const isUnspecified =
+                              score === 0 &&
+                              !isExplicitConflict &&
+                              (commentLower.includes("neutral") ||
+                                commentLower.includes("not specified") ||
+                                commentLower.includes("not mentioned") ||
+                                commentLower.includes("unspecified") ||
+                                commentLower === "neutral." ||
+                                commentLower === "" ||
+                                dim === "logisticsAvailability");
+
+                            const pct = isUnspecified
+                              ? 0
+                              : maxScore > 0
+                              ? (score / maxScore) * 100
+                              : 0;
+
+                            const displayComment =
+                              isUnspecified && (commentLower === "neutral." || commentLower === "neutral" || !dimScore?.comment)
+                                ? "Not specified"
+                                : dimScore?.comment;
 
                             return (
                               <td key={c.candidateId} className="p-3">
                                 <div className="flex flex-col items-center gap-1">
                                   <span
-                                    className={`text-sm font-semibold ${isLeader ? "text-emerald-600" : "text-gray-700"}`}
+                                    className={`text-sm font-semibold ${
+                                      isLeader
+                                        ? "text-emerald-600"
+                                        : isUnspecified
+                                        ? "text-slate-400 font-normal"
+                                        : "text-gray-700"
+                                    }`}
                                   >
-                                    {score}/{maxScore}
+                                    {isUnspecified ? "N/A" : `${score}/${maxScore}`}
                                   </span>
                                   <div className="h-2 w-full max-w-[100px] rounded-full bg-gray-100">
                                     <div
-                                      className={`h-2 rounded-full ${CANDIDATE_COLORS[i]}`}
+                                      className={`h-2 rounded-full ${
+                                        isUnspecified ? "bg-slate-200" : CANDIDATE_COLORS[i]
+                                      }`}
                                       style={{ width: `${pct}%` }}
                                     />
                                   </div>
-                                  {dimScore?.comment && (
+                                  {displayComment && (
                                     <span className="text-xs text-gray-400 text-center line-clamp-1">
-                                      {dimScore.comment}
+                                      {displayComment}
                                     </span>
                                   )}
                                 </div>

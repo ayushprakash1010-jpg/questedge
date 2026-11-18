@@ -60,8 +60,39 @@ export default function ScoreBreakdownChart({
       {DIMENSION_CONFIG.map(({ key, label, icon }) => {
         const dim = scoreBreakdown[key];
         if (!dim) return null;
+
+        const rawComment = (dim.comment || "").trim();
+        const commentLower = rawComment.toLowerCase();
+
+        const isExplicitConflict =
+          commentLower.includes("conflict") ||
+          commentLower.includes("mismatch") ||
+          commentLower.includes("cannot") ||
+          commentLower.includes("unwilling") ||
+          commentLower.includes("refused") ||
+          commentLower.includes("unavailable");
+
+        // Omitted / not mentioned signals (e.g. logistics omitted in resume)
+        const isUnspecified =
+          dim.score === 0 &&
+          !isExplicitConflict &&
+          (commentLower.includes("neutral") ||
+            commentLower.includes("not specified") ||
+            commentLower.includes("not mentioned") ||
+            commentLower.includes("unspecified") ||
+            commentLower.includes("no info") ||
+            commentLower.includes("n/a") ||
+            commentLower === "neutral." ||
+            commentLower === "" ||
+            key === "logisticsAvailability");
+
+        const displayComment =
+          isUnspecified && (commentLower === "neutral." || commentLower === "neutral" || !rawComment)
+            ? "Not specified in resume"
+            : rawComment;
+
         const ratio = dim.maxScore > 0 ? dim.score / dim.maxScore : 0;
-        const pct = Math.round(ratio * 100);
+        const pct = isUnspecified ? 0 : Math.round(ratio * 100);
 
         return (
           <div key={key}>
@@ -80,7 +111,9 @@ export default function ScoreBreakdownChart({
                 } bg-gray-100 print:bg-slate-100 print:border print:border-slate-300 rounded-full overflow-hidden`}
               >
                 <div
-                  className={`h-full rounded-full transition-all duration-500 ${barColor(ratio)}`}
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    isUnspecified ? "bg-slate-200" : barColor(ratio)
+                  }`}
                   style={{
                     width: `${pct}%`,
                     WebkitPrintColorAdjust: "exact",
@@ -91,14 +124,23 @@ export default function ScoreBreakdownChart({
               <span
                 className={`${
                   compact ? "text-[10px]" : "text-xs"
-                } font-mono text-gray-700 w-10 text-right shrink-0`}
+                } ${
+                  isUnspecified
+                    ? "font-medium text-slate-400"
+                    : "font-mono text-gray-700"
+                } w-10 text-right shrink-0`}
+                title={isUnspecified ? "Not specified in resume (neutral)" : undefined}
               >
-                {dim.score}/{dim.maxScore}
+                {isUnspecified ? "N/A" : `${dim.score}/${dim.maxScore}`}
               </span>
             </div>
-            {showEvidence && dim.comment && (
-              <p className="text-[11px] text-gray-500 ml-8 mt-0.5">
-                {dim.comment}
+            {showEvidence && displayComment && (
+              <p
+                className={`text-[11px] ${
+                  isUnspecified ? "text-slate-400 italic" : "text-gray-500"
+                } ml-8 mt-0.5`}
+              >
+                {displayComment}
               </p>
             )}
           </div>
