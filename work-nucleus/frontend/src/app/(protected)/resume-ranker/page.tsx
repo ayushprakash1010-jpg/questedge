@@ -984,17 +984,36 @@ export default function ResumeRankerPage() {
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        const msg = Array.isArray(err.message)
-          ? err.message.join("; ")
-          : err.message || err.error || "Ranking failed";
-        throw new Error(msg);
+        let errorMsg = "Ranking failed. Please try again.";
+        try {
+          const err = await res.json();
+          if (Array.isArray(err.message)) {
+            errorMsg = err.message.join("; ");
+          } else if (typeof err.message === "string" && err.message) {
+            errorMsg = err.message;
+          } else if (typeof err.error === "string" && err.error) {
+            errorMsg = err.error;
+          } else if (err.error?.message && typeof err.error.message === "string") {
+            errorMsg = err.error.message;
+          } else if (err.message && typeof err.message === "object" && err.message.message) {
+            errorMsg = String(err.message.message);
+          } else if (err.statusText) {
+            errorMsg = err.statusText;
+          }
+        } catch (_) { }
+        throw new Error(errorMsg);
       }
 
       const data = await res.json();
       setResults(data);
     } catch (err: any) {
-      setError(err.message || "Failed to rank resumes. Please try again.");
+      const msg =
+        typeof err?.message === "string" &&
+        err.message &&
+        err.message !== "[object Object]"
+          ? err.message
+          : "The AI model is currently busy. Please wait a few moments and click Rank again.";
+      setError(msg);
     } finally {
       setLoading(false);
     }

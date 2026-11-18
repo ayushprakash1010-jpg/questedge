@@ -4,6 +4,7 @@ import {
   NotFoundException,
   BadRequestException,
   InternalServerErrorException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -38,7 +39,7 @@ export class ResumeRankingService {
   ) {
     this.geminiApiKey = this.config.get<string>('GEMINI_API_KEY', '');
     this.modelName =
-      this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-lite-latest';
+      this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
   }
 
   // ── 1. Rank Resumes ──────────────────────────────────────────────
@@ -1171,27 +1172,39 @@ If the document appears to be a scanned image with no selectable text, extract w
     payload: any,
     maxRetries: number,
   ): Promise<RankingResponse> {
+    const fallbackModels = [
+      this.modelName,
+      'gemini-flash-latest',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+    ].filter((m, i, arr) => m && arr.indexOf(m) === i);
+
     let lastError: Error | null = null;
 
     for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+      const currentModel =
+        fallbackModels[(attempt - 1) % fallbackModels.length];
       try {
         this.logger.log(
-          `AI ranking attempt ${attempt}/${maxRetries + 1} for ${payload.candidates.length} candidates`,
+          `AI ranking attempt ${attempt}/${maxRetries + 1} for ${payload.candidates.length} candidates using ${currentModel}`,
         );
-        return await this.callAiRankingService(payload);
+        return await this.callAiRankingService(payload, currentModel);
       } catch (err: any) {
         lastError = err;
+        const errMsg = err?.message || String(err);
         const isRetryable =
-          err.message?.includes('timed out') ||
-          err.message?.includes('429') ||
-          err.message?.includes('500') ||
-          err.message?.includes('503') ||
-          err.message?.includes('RESOURCE_EXHAUSTED');
+          errMsg.includes('timed out') ||
+          errMsg.includes('429') ||
+          errMsg.includes('500') ||
+          errMsg.includes('503') ||
+          errMsg.includes('RESOURCE_EXHAUSTED') ||
+          errMsg.includes('UNAVAILABLE') ||
+          errMsg.includes('high demand');
 
         if (attempt <= maxRetries && isRetryable) {
-          const backoffMs = Math.min(2000 * Math.pow(2, attempt - 1), 10000);
+          const backoffMs = Math.min(1500 * Math.pow(2, attempt - 1), 6000);
           this.logger.warn(
-            `AI ranking attempt ${attempt} failed (${err.message}), retrying in ${backoffMs}ms...`,
+            `AI ranking attempt ${attempt} with ${currentModel} failed (${errMsg}), trying next model in ${backoffMs}ms...`,
           );
           await new Promise((resolve) => setTimeout(resolve, backoffMs));
         } else {
@@ -1200,7 +1213,27 @@ If the document appears to be a scanned image with no selectable text, extract w
       }
     }
 
-    throw lastError || new Error('AI ranking failed after all retries');
+    let userFriendlyMessage =
+      'AI ranking service is temporarily unavailable. Please try again in a few moments.';
+    const rawErrMsg = lastError?.message || String(lastError || '');
+    if (
+      rawErrMsg.includes('503') ||
+      rawErrMsg.includes('high demand') ||
+      rawErrMsg.includes('UNAVAILABLE')
+    ) {
+      userFriendlyMessage =
+        'The AI model is currently experiencing high demand from Google. Please wait a moment and click "Rank Resumes" again.';
+    } else if (
+      rawErrMsg.includes('429') ||
+      rawErrMsg.includes('RESOURCE_EXHAUSTED')
+    ) {
+      userFriendlyMessage =
+        'AI rate limit reached. Please wait a moment before trying again.';
+    } else if (lastError?.message) {
+      userFriendlyMessage = lastError.message;
+    }
+
+    throw new ServiceUnavailableException(userFriendlyMessage);
   }
 
   // ── Feature 5: Result Sanitization ───────────────────────────────
@@ -1338,9 +1371,13 @@ If the document appears to be a scanned image with no selectable text, extract w
 
   // ── Gemini Ranking Call ────────────────────────────────────────────
 
-  private async callAiRankingService(payload: any): Promise<RankingResponse> {
+  private async callAiRankingService(
+    payload: any,
+    overrideModel?: string,
+  ): Promise<RankingResponse> {
+    const modelToUse = overrideModel || this.modelName;
     this.logger.log(
-      `Ranking ${payload.candidates.length} candidates using Gemini (${this.modelName})`,
+      `Ranking ${payload.candidates.length} candidates using Gemini (${modelToUse})`,
     );
 
     const rawKey = this.geminiApiKey?.trim();
@@ -1476,7 +1513,7 @@ Output ONLY valid JSON with this exact schema:
 
     let timer: NodeJS.Timeout;
     const generatePromise = ai.models.generateContent({
-      model: this.modelName,
+      model: modelToUse,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       config: {
         responseMimeType: 'application/json',
