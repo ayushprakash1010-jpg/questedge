@@ -30,26 +30,52 @@ export default function RankingTrigger({
   const [weights, setWeights] = useState<ScoringWeights>({ ...DEFAULT_WEIGHTS });
   const [error, setError] = useState<string | null>(null);
 
+  const MAX_RANKING_BATCH = 50;
   const selectable = candidates.filter((c) => c.hasResume || c.hasProfileData);
-  const allSelected = selectable.length > 0 && selectable.every((c) => selected.has(c.id));
+  const allSelected =
+    selectable.length > 0 &&
+    selectable
+      .slice(0, MAX_RANKING_BATCH)
+      .every((c) => selected.has(c.id));
 
   const toggleAll = () => {
     if (allSelected) {
       setSelected(new Set());
+      setError(null);
     } else {
-      setSelected(new Set(selectable.map((c) => c.id)));
+      const batch = selectable.slice(0, MAX_RANKING_BATCH);
+      setSelected(new Set(batch.map((c) => c.id)));
+      if (selectable.length > MAX_RANKING_BATCH) {
+        setError(
+          `Capped selection to the first ${MAX_RANKING_BATCH} candidates (maximum batch size allowed by the ranking engine).`
+        );
+      } else {
+        setError(null);
+      }
     }
   };
 
   const toggle = (id: string) => {
     const next = new Set(selected);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
+    if (next.has(id)) {
+      next.delete(id);
+      setError(null);
+    } else {
+      if (next.size >= MAX_RANKING_BATCH) {
+        setError(`You can select at most ${MAX_RANKING_BATCH} candidates per ranking batch.`);
+        return;
+      }
+      next.add(id);
+    }
     setSelected(next);
   };
 
   const weightsTotal = Object.values(weights).reduce((s, v) => s + v, 0);
-  const canRank = selected.size >= 1 && !loading && weightsTotal === 100;
+  const canRank =
+    selected.size >= 1 &&
+    selected.size <= MAX_RANKING_BATCH &&
+    !loading &&
+    weightsTotal === 100;
 
   const handleRank = async () => {
     setLoading(true);
@@ -104,11 +130,13 @@ export default function RankingTrigger({
             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
           <span className="text-xs text-gray-600">
-            Select all candidates ({selectable.length})
+            {selectable.length > MAX_RANKING_BATCH
+              ? `Select up to ${MAX_RANKING_BATCH} candidates (${Math.min(selectable.length, MAX_RANKING_BATCH)} of ${selectable.length})`
+              : `Select all candidates (${selectable.length})`}
           </span>
         </label>
         <span className="text-xs text-gray-400">
-          {selected.size} selected
+          {selected.size}/{MAX_RANKING_BATCH} selected
         </span>
       </div>
 

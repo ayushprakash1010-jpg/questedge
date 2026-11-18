@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useUser } from "@auth0/nextjs-auth0/client";
 import {
   Trophy,
   Upload,
@@ -301,7 +302,15 @@ export default function ResumeRankerPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
   const [sessionRestored, setSessionRestored] = useState(false);
-  const STORAGE_KEY = "questedge_quick_ranker_session";
+  const { user } = useUser();
+
+  const getStorageKey = () => {
+    const userIdentifier = user?.sub || user?.email;
+    return userIdentifier
+      ? `questedge_quick_ranker_session_${encodeURIComponent(userIdentifier)}`
+      : "questedge_quick_ranker_session";
+  };
+  const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours retention limit
 
   // JD state
   const [jdText, setJdText] = useState("");
@@ -634,16 +643,28 @@ export default function ResumeRankerPage() {
     setError(null);
     setSessionRestored(false);
     try {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(getStorageKey());
+      localStorage.removeItem("questedge_quick_ranker_session");
     } catch (e) {}
   };
 
-  // Restore session from localStorage on initial mount
+  // Restore session from user-scoped localStorage on mount or user change
   useEffect(() => {
+    if (typeof window === "undefined") return;
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const storageKey = getStorageKey();
+      const raw = localStorage.getItem(storageKey);
       if (raw) {
         const data = JSON.parse(raw);
+        // Expiration check (24 hours retention limit)
+        if (data.savedAt && Date.now() - data.savedAt > SESSION_MAX_AGE_MS) {
+          localStorage.removeItem(storageKey);
+          return;
+        }
+        // Account scoping verification: do not restore if saved under a different user
+        if (data.userSub && user?.sub && data.userSub !== user.sub) {
+          return;
+        }
         if (data.jdText) setJdText(data.jdText);
         if (data.jobTitle) setJobTitle(data.jobTitle);
         if (data.department) setDepartment(data.department);
@@ -663,13 +684,14 @@ export default function ResumeRankerPage() {
     } catch (e) {
       console.warn("Failed to restore session from localStorage", e);
     }
-  }, []);
+  }, [user?.sub]);
 
-  // Auto-save session to localStorage
+  // Auto-save session to user-scoped localStorage
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (jdText || resumes.length > 0 || results) {
       try {
+        const storageKey = getStorageKey();
         const payload = {
           jdText,
           jobTitle,
@@ -684,11 +706,13 @@ export default function ResumeRankerPage() {
           resumes,
           results,
           savedAt: Date.now(),
+          userSub: user?.sub,
         };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        localStorage.setItem(storageKey, JSON.stringify(payload));
       } catch (e) {}
     }
   }, [
+    user?.sub,
     jdText,
     jobTitle,
     department,
@@ -805,6 +829,14 @@ export default function ResumeRankerPage() {
       educationRequirement,
       mandatorySkills,
       preferredSkills,
+      evaluatedCandidates: results?.rankings || results?.candidates || [],
+      resumes: resumes.map((r) => ({
+        id: r.id,
+        name: r.name,
+        fileName: r.fileName,
+        currentRole: r.currentRole,
+        experienceYears: r.experienceYears,
+      })),
     };
     try {
       sessionStorage.setItem("mandate_draft_prefill", JSON.stringify(prefillData));
@@ -838,6 +870,7 @@ export default function ResumeRankerPage() {
         mandatorySkills: mandatorySkills.length > 0 ? mandatorySkills : undefined,
         preferredSkills: preferredSkills.length > 0 ? preferredSkills : undefined,
         resumes: resumes.map((r) => ({
+          candidateId: r.id,
           resumeText: r.text,
           candidateName: r.name || undefined,
           currentRole: r.currentRole || undefined,

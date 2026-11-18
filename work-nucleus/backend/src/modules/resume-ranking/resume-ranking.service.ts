@@ -47,10 +47,11 @@ export class ResumeRankingService {
       );
     }
 
-    // 2. Gather candidate data from both Candidate and CandidateProfile tables
+    // 2. Gather candidate data from Candidate, CandidateProfile, and Referral tables with strict org/mandate tenant scoping
     const candidateData = await this.gatherCandidateData(
       orgId,
       dto.candidateIds,
+      mandate.id,
     );
 
     if (candidateData.length === 0) {
@@ -433,9 +434,9 @@ export class ResumeRankingService {
       throw new BadRequestException('At least one resume is required.');
     }
 
-    // Build candidates from provided resume texts
+    // Build candidates from provided resume texts, preserving client-side candidateId
     const candidates = dto.resumes.map((r: any, i: number) => ({
-      candidateId: `quick-${i + 1}`,
+      candidateId: r.candidateId || `quick-${i + 1}`,
       candidateName: r.candidateName || `Candidate ${i + 1}`,
       resumeText: r.resumeText,
       currentCompany: r.currentCompany || null,
@@ -531,9 +532,9 @@ export class ResumeRankingService {
 
   // ── Private Helpers ──────────────────────────────────────────────
 
-  private async gatherCandidateData(orgId: string, candidateIds: string[]) {
-    // Try both Candidate table and CandidateProfile table
-    const [directCandidates, profileCandidates] = await Promise.all([
+  private async gatherCandidateData(orgId: string, candidateIds: string[], mandateId?: string) {
+    // Try Candidate, CandidateProfile, and Referral tables with strict org/mandate tenant scoping
+    const [directCandidates, profileCandidates, referralCandidates] = await Promise.all([
       this.prisma.candidate.findMany({
         where: {
           id: { in: candidateIds },
@@ -553,6 +554,22 @@ export class ResumeRankingService {
       this.prisma.candidateProfile.findMany({
         where: {
           id: { in: candidateIds },
+          OR: [
+            {
+              applications: {
+                some: mandateId
+                  ? { OR: [{ mandateId }, { hiringPlan: { orgId } }] }
+                  : { hiringPlan: { orgId } },
+              },
+            },
+            {
+              referrals: {
+                some: mandateId
+                  ? { mandate: { id: mandateId, orgId } }
+                  : { mandate: { orgId } },
+              },
+            },
+          ],
         },
         select: {
           id: true,
@@ -572,35 +589,36 @@ export class ResumeRankingService {
           workModel: true,
         },
       }),
-    ]);
-
-    // Also check referrals for candidates linked by ID
-    const referralCandidates = await this.prisma.referral.findMany({
-      where: {
-        id: { in: candidateIds },
-      },
-      include: {
-        candidateProfile: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            resumeUrl: true,
-            currentCompany: true,
-            currentDesignation: true,
-            experienceYears: true,
-            education: true,
-            skills: true,
-            headline: true,
-            certifications: true,
-            projects: true,
-            currentLocation: true,
-            noticePeriodDays: true,
-            workModel: true,
+      this.prisma.referral.findMany({
+        where: {
+          id: { in: candidateIds },
+          mandate: mandateId
+            ? { id: mandateId, orgId }
+            : { orgId },
+        },
+        include: {
+          candidateProfile: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              resumeUrl: true,
+              currentCompany: true,
+              currentDesignation: true,
+              experienceYears: true,
+              education: true,
+              skills: true,
+              headline: true,
+              certifications: true,
+              projects: true,
+              currentLocation: true,
+              noticePeriodDays: true,
+              workModel: true,
+            },
           },
         },
-      },
-    });
+      }),
+    ]);
 
     const candidates: Array<{
       id: string;
@@ -1133,27 +1151,51 @@ If the document appears to be a scanned image with no selectable text, extract w
   // ── Feature 5: Result Sanitization ───────────────────────────────
 
   private sanitizeRankingResults(aiResult: RankingResponse, sessionId: string) {
-    return (aiResult.rankings || []).map((r: any) => {
-      // Clamp score to 0-100
-      const totalScore = Math.max(0, Math.min(100, Number(r.totalScore) || 0));
+    const rawList = aiResult.rankings || [];
 
-      // Validate verdict
-      const validVerdicts = [
-        'EXCELLENT_FIT',
-        'STRONG_FIT',
-        'GOOD_FIT',
-        'PARTIAL_FIT',
-        'WEAK_FIT',
-      ];
-      const verdict = validVerdicts.includes(r.verdict)
-        ? r.verdict
-        : totalScore >= 80
+    const mapped = rawList.map((r: any) => {
+      // Recalculate totalScore from validated dimension breakdown if present
+      let dimensionSum = 0;
+      let hasValidDimensions = false;
+
+      if (r.scoreBreakdown && typeof r.scoreBreakdown === 'object') {
+        const dimensions = [
+          'skillsMatch',
+          'experienceRelevance',
+          'projectRelevance',
+          'educationCertifications',
+          'domainIndustryFit',
+          'roleSeniorityFit',
+          'culturalSoftSignals',
+          'logisticsAvailability',
+        ];
+
+        for (const dimKey of dimensions) {
+          const dim = r.scoreBreakdown[dimKey];
+          if (dim && typeof dim === 'object' && dim.score !== undefined) {
+            const num = Number(dim.score);
+            if (!isNaN(num) && num >= 0) {
+              dimensionSum += num;
+              hasValidDimensions = true;
+            }
+          }
+        }
+      }
+
+      // If breakdown has valid scores, use exact mathematical sum; otherwise fallback to clamped AI totalScore
+      const totalScore = hasValidDimensions
+        ? Math.max(0, Math.min(100, Math.round(dimensionSum)))
+        : Math.max(0, Math.min(100, Math.round(Number(r.totalScore) || 0)));
+
+      // Derive verdict consistently from totalScore
+      const verdict =
+        totalScore >= 85
           ? 'EXCELLENT_FIT'
-          : totalScore >= 65
+          : totalScore >= 70
             ? 'STRONG_FIT'
-            : totalScore >= 50
+            : totalScore >= 55
               ? 'GOOD_FIT'
-              : totalScore >= 35
+              : totalScore >= 40
                 ? 'PARTIAL_FIT'
                 : 'WEAK_FIT';
 
@@ -1169,7 +1211,7 @@ If the document appears to be a scanned image with no selectable text, extract w
         sessionId,
         candidateId: r.candidateId || null,
         candidateName: r.candidateName || 'Unknown',
-        rank: Math.max(1, Number(r.rank) || 999),
+        totalScoreNumber: totalScore,
         totalScore: new Prisma.Decimal(totalScore),
         verdict,
         scoreBreakdown: (r.scoreBreakdown || {}) as unknown as Prisma.InputJsonValue,
@@ -1178,6 +1220,17 @@ If the document appears to be a scanned image with no selectable text, extract w
         standoutFactors: sanitizeArray(r.standoutFactors) as unknown as Prisma.InputJsonValue,
         comparisonNote: typeof r.comparisonNote === 'string' ? r.comparisonNote.substring(0, 1000) : null,
         recommendation: typeof r.recommendation === 'string' ? r.recommendation.substring(0, 1000) : null,
+      };
+    });
+
+    // Re-rank strictly descending by totalScore
+    const sorted = mapped.sort((a, b) => b.totalScoreNumber - a.totalScoreNumber);
+
+    return sorted.map((item, idx) => {
+      const { totalScoreNumber, ...rest } = item;
+      return {
+        ...rest,
+        rank: idx + 1,
       };
     });
   }

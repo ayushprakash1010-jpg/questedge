@@ -96,6 +96,11 @@ export class ReRankDto {
 }
 
 export class QuickRankResumeDto {
+  @ApiPropertyOptional({ description: 'Stable unique ID from client' })
+  @IsOptional()
+  @IsString()
+  candidateId?: string;
+
   @ApiProperty({ description: 'Resume text content (from uploaded file or pasted)' })
   @IsString()
   @IsNotEmpty()

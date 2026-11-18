@@ -13,6 +13,8 @@ import {
   BarChart3,
   Download,
   GitCompare,
+  ChevronsDownUp,
+  ChevronsUpDown,
 } from "lucide-react";
 import RankingTrigger, { type CandidateOption } from "@/components/hiring-plans/resume-ranking/RankingTrigger";
 import RankedCandidateCard from "@/components/hiring-plans/resume-ranking/RankedCandidateCard";
@@ -48,6 +50,36 @@ export default function RankingPage() {
   const [results, setResults] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showCompare, setShowCompare] = useState(false);
+  const [expandedCardIds, setExpandedCardIds] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (results?.rankings && Array.isArray(results.rankings)) {
+      const initialMap: Record<string, boolean> = {};
+      results.rankings.forEach((r: any, idx: number) => {
+        const id = r.candidateId || `cand-${idx}`;
+        initialMap[id] = idx === 0;
+      });
+      setExpandedCardIds(initialMap);
+    }
+  }, [results]);
+
+  const allExpanded =
+    results?.rankings?.length > 0 &&
+    results.rankings.every((r: any, idx: number) => {
+      const id = r.candidateId || `cand-${idx}`;
+      return Boolean(expandedCardIds[id]);
+    });
+
+  const toggleExpandAll = () => {
+    if (!results?.rankings) return;
+    const nextVal = !allExpanded;
+    const newMap: Record<string, boolean> = {};
+    results.rankings.forEach((r: any, idx: number) => {
+      const id = r.candidateId || `cand-${idx}`;
+      newMap[id] = nextVal;
+    });
+    setExpandedCardIds(newMap);
+  };
 
   // Fetch mandate info and candidates
   const fetchData = useCallback(async () => {
@@ -248,7 +280,27 @@ export default function RankingPage() {
             >
               <RefreshCw className="w-3 h-3" /> New Ranking
             </button>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              {results.rankings && results.rankings.length > 0 && (
+                <button
+                  type="button"
+                  onClick={toggleExpandAll}
+                  className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                  title={allExpanded ? "Collapse all candidate cards" : "Expand all candidate cards"}
+                >
+                  {allExpanded ? (
+                    <>
+                      <ChevronsDownUp className="w-3.5 h-3.5 text-gray-500" />
+                      <span>Collapse All</span>
+                    </>
+                  ) : (
+                    <>
+                      <ChevronsUpDown className="w-3.5 h-3.5 text-gray-500" />
+                      <span>Expand All</span>
+                    </>
+                  )}
+                </button>
+              )}
               {results.session?.id && (
                 <>
                   <button
@@ -275,13 +327,41 @@ export default function RankingPage() {
 
           {/* Ranked Cards */}
           <div className="space-y-3">
-            {(results.rankings || []).map((r: any, i: number) => (
-              <RankedCandidateCard
-                key={r.candidateId || i}
-                candidate={r}
-                defaultExpanded={i === 0}
-              />
-            ))}
+            {(results.rankings || []).map((r: any, i: number) => {
+              const candId = r.candidateId || `cand-${i}`;
+              const matchedCandidate = candidates.find(
+                (c) =>
+                  c.id === r.candidateId ||
+                  c.name.toLowerCase() === (r.candidateName || "").toLowerCase()
+              );
+              return (
+                <RankedCandidateCard
+                  key={candId}
+                  candidate={r}
+                  expanded={Boolean(expandedCardIds[candId])}
+                  onToggleExpand={() =>
+                    setExpandedCardIds((prev) => ({
+                      ...prev,
+                      [candId]: !prev[candId],
+                    }))
+                  }
+                  onViewResume={
+                    matchedCandidate?.hasResume || r.candidateId
+                      ? () => {
+                          const targetId = matchedCandidate?.id || r.candidateId;
+                          const nameParam = encodeURIComponent(
+                            r.candidateName || "Candidate"
+                          );
+                          window.open(
+                            `/resume-viewer?candidateId=${targetId}&name=${nameParam}`,
+                            "_blank"
+                          );
+                        }
+                      : undefined
+                  }
+                />
+              );
+            })}
           </div>
         </div>
       )}
