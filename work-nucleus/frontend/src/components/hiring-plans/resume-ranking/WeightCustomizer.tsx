@@ -62,15 +62,15 @@ export default function WeightCustomizer({ weights, onChange }: WeightCustomizer
                 : "text-red-600"
             }`}
           >
-            {total}/100
+            {total}% / 100%
           </span>
           {!isValid && (
-            <span className="text-xs text-red-500">Must equal 100</span>
+            <span className="text-xs text-red-500 font-medium">Must equal 100%</span>
           )}
         </div>
         <button
           onClick={handleReset}
-          className="text-xs text-blue-600 hover:text-blue-800 underline"
+          className="text-xs text-blue-600 hover:text-blue-800 underline cursor-pointer"
         >
           Reset defaults
         </button>
@@ -91,10 +91,10 @@ export default function WeightCustomizer({ weights, onChange }: WeightCustomizer
                 onChange={(e) =>
                   handleChange(key, parseInt(e.target.value, 10))
                 }
-                className="flex-1 h-1.5 accent-blue-600"
+                className="flex-1 h-1.5 accent-blue-600 cursor-pointer"
               />
-              <span className="text-xs font-mono w-6 text-right text-gray-700">
-                {weights[key]}
+              <span className="text-xs font-mono font-medium w-9 text-right text-gray-700">
+                {weights[key]}%
               </span>
             </div>
           )
