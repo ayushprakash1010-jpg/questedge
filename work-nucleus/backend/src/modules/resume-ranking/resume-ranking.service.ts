@@ -39,7 +39,7 @@ export class ResumeRankingService {
   ) {
     this.geminiApiKey = this.config.get<string>('GEMINI_API_KEY', '');
     this.modelName =
-      this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
+      this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-lite-latest';
   }
 
   // ── 1. Rank Resumes ──────────────────────────────────────────────
@@ -1174,9 +1174,10 @@ If the document appears to be a scanned image with no selectable text, extract w
   ): Promise<RankingResponse> {
     const fallbackModels = [
       this.modelName,
+      'gemini-3.1-flash-lite',
+      'gemini-3.5-flash-lite',
+      'gemini-3-flash-preview',
       'gemini-flash-latest',
-      'gemini-2.0-flash',
-      'gemini-1.5-flash',
     ].filter((m, i, arr) => m && arr.indexOf(m) === i);
 
     let lastError: Error | null = null;

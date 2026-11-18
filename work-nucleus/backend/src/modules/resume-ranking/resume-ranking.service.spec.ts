@@ -339,4 +339,73 @@ describe('ResumeRankingService', () => {
       expect(result.rankings[0].totalScore).toBe(88);
     });
   });
+
+  describe('Multi-Model Fallback & Resilience', () => {
+    it('should fall back to next model when attempt 1 hits a 503 high demand error', async () => {
+      const modelsAttempted: string[] = [];
+
+      jest
+        .spyOn(service as any, 'callAiRankingService')
+        .mockImplementation(async (payload: any, overrideModel?: string) => {
+          modelsAttempted.push(overrideModel || 'default');
+          if (modelsAttempted.length === 1) {
+            throw new Error(
+              '{"error":{"code":503,"message":"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.","status":"UNAVAILABLE"}}',
+            );
+          }
+          return {
+            summary: 'Pool evaluated successfully via fallback',
+            rankings: [
+              {
+                candidateId: 'cand-1',
+                candidateName: 'Alice',
+                totalScore: 90,
+                verdict: 'EXCELLENT_FIT',
+                scoreBreakdown: {
+                  skillsMatch: { score: 25, maxScore: 25 },
+                  experienceRelevance: { score: 20, maxScore: 20 },
+                  projectRelevance: { score: 15, maxScore: 15 },
+                  educationCertifications: { score: 10, maxScore: 10 },
+                  domainIndustryFit: { score: 10, maxScore: 10 },
+                  roleSeniorityFit: { score: 10, maxScore: 10 },
+                  culturalSoftSignals: { score: 5, maxScore: 5 },
+                  logisticsAvailability: { score: 5, maxScore: 5 },
+                },
+                strengths: ['Expert in React'],
+                gaps: [],
+                standoutFactors: ['Proven track record'],
+                comparisonNote: 'Top candidate',
+                recommendation: 'Fast track',
+              },
+            ],
+            jdCoverage: {
+              poolStrength: 'EXCELLENT',
+              strongFitCount: 1,
+              avgMustHaveCoverage: 1.0,
+            },
+          };
+        });
+
+      const dto = {
+        jdText: 'Looking for a Senior React Engineer.',
+        jobTitle: 'Senior React Engineer',
+        resumes: [
+          {
+            candidateId: 'cand-1',
+            candidateName: 'Alice',
+            resumeText:
+              'Alice Smith, 8 years Senior React and Full Stack engineer with scalable cloud architectures.',
+          },
+        ],
+      };
+
+      const result = await service.quickRank('org-123', dto);
+
+      expect(result).toBeDefined();
+      expect(result.rankings[0].candidateName).toBe('Alice');
+      expect(modelsAttempted.length).toBe(2);
+      expect(modelsAttempted[0]).toBe('gemini-flash-lite-latest');
+      expect(modelsAttempted[1]).toBe('gemini-3.1-flash-lite');
+    });
+  });
 });
