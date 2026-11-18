@@ -2037,12 +2037,26 @@ export default function ResumeRankerPage() {
                               className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border font-semibold transition-all cursor-pointer shadow-2xs ${
                                 selectedCandidateIds.length >= 2
                                   ? "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700"
+                                  : selectedCandidateIds.length === 1
+                                  ? "bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-300 ring-1 ring-indigo-400/20"
                                   : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200"
                               }`}
-                              title="Compare candidates side-by-side"
+                              title={
+                                selectedCandidateIds.length >= 2
+                                  ? `Compare ${selectedCandidateIds.length} candidates side-by-side`
+                                  : selectedCandidateIds.length === 1
+                                  ? "Select at least 1 more candidate to compare (or click to compare with top match)"
+                                  : "Compare candidates side-by-side"
+                              }
                             >
                               <BarChart3 className="w-3.5 h-3.5" />
-                              <span>Compare{selectedCandidateIds.length >= 2 ? ` (${selectedCandidateIds.length})` : ""}</span>
+                              <span>
+                                {selectedCandidateIds.length >= 2
+                                  ? `Compare (${selectedCandidateIds.length})`
+                                  : selectedCandidateIds.length === 1
+                                  ? "Compare (1/2)"
+                                  : "Compare"}
+                              </span>
                             </button>
                           )}
 
@@ -2372,6 +2386,18 @@ export default function ResumeRankerPage() {
                   initialSelectedIds={
                     selectedCandidateIds.length >= 2
                       ? selectedCandidateIds
+                      : selectedCandidateIds.length === 1
+                      ? [
+                          selectedCandidateIds[0],
+                          String(
+                            candidateList.find(
+                              (c: any, i: number) =>
+                                String(c.candidateId || c.id || `cand-${c.rank || i}`) !== selectedCandidateIds[0]
+                            )?.candidateId ||
+                              candidateList[0]?.candidateId ||
+                              "quick-1"
+                          ),
+                        ]
                       : candidateList.slice(0, 2).map((c: any, i: number) => String(c.candidateId || c.id || `cand-${c.rank || i}`))
                   }
                   onClose={() => setShowComparison(false)}

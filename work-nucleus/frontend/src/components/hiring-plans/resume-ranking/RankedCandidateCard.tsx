@@ -209,7 +209,7 @@ export default function RankedCandidateCard({
   const topStrength = c.strengths && c.strengths.length > 0 ? c.strengths[0] : null;
   const tier = getCardTierClasses(c.totalScore);
 
-  let borderStateClass = `border-gray-200 shadow-xs hover:shadow-md hover:border-gray-300 ${
+  let borderStateClass = `border-gray-200 shadow-xs hover:shadow-md hover:border-gray-300 hover:-translate-y-0.5 ${
     c.rank === 1 ? "bg-gradient-to-r from-emerald-50/15 via-white to-white" : "bg-white"
   }`;
 
@@ -218,13 +218,13 @@ export default function RankedCandidateCard({
       "border-indigo-500 ring-4 ring-indigo-400/30 shadow-lg shadow-indigo-500/10 scale-[1.008] bg-white";
   } else if (isCompared) {
     borderStateClass =
-      "border-indigo-300 bg-indigo-50/25 ring-2 ring-indigo-500/20 shadow-xs";
+      "border-indigo-300 bg-indigo-50/25 ring-2 ring-indigo-500/20 shadow-xs hover:shadow-md hover:-translate-y-0.5";
   }
 
   return (
     <div
       id={`candidate-card-${c.candidateId}`}
-      className={`rounded-xl border border-l-4 ${tier.leftBorder} ${borderStateClass} transition-all duration-300 print:shadow-none print:border-slate-300 print:bg-white break-inside-avoid print:mb-5`}
+      className={`rounded-xl border border-l-4 ${tier.leftBorder} ${borderStateClass} transition-all duration-200 ease-out print:shadow-none print:border-slate-300 print:bg-white print:transform-none break-inside-avoid print:mb-5`}
     >
       {/* Primary Card Bar (clickable to toggle expand) */}
       <div
