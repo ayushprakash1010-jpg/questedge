@@ -8,11 +8,21 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RankResumesDto, ScoringWeightsDto } from './dto/rank-resumes.dto';
-import { RankingResponse, RankedCandidate } from './interfaces/ranking-result.interface';
+import { RankingResponse } from './interfaces/ranking-result.interface';
 import { Prisma } from '@prisma/client';
 
-/** Maximum candidates for synchronous ranking; above this we queue async. */
-const SYNC_THRESHOLD = 10;
+/** Default scoring dimensions and weights */
+const DEFAULT_DIMENSION_WEIGHTS: Record<string, number> = {
+  skillsMatch: 25,
+  experienceRelevance: 20,
+  projectRelevance: 15,
+  educationCertifications: 10,
+  domainIndustryFit: 10,
+  roleSeniorityFit: 10,
+  culturalSoftSignals: 5,
+  logisticsAvailability: 5,
+};
+
 /** Cache TTL for extracted resume text: 7 days. */
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -442,7 +452,9 @@ export class ResumeRankingService {
       currentCompany: r.currentCompany || null,
       currentRole: r.currentRole || null,
       experienceYears:
-        r.experienceYears !== undefined && r.experienceYears !== null && !isNaN(Number(r.experienceYears))
+        r.experienceYears !== undefined &&
+        r.experienceYears !== null &&
+        !isNaN(Number(r.experienceYears))
           ? Number(r.experienceYears)
           : null,
       education: Array.isArray(r.education)
@@ -532,93 +544,105 @@ export class ResumeRankingService {
 
   // ── Private Helpers ──────────────────────────────────────────────
 
-  private async gatherCandidateData(orgId: string, candidateIds: string[], mandateId?: string) {
+  private async gatherCandidateData(
+    orgId: string,
+    candidateIds: string[],
+    mandateId?: string,
+  ) {
     // Try Candidate, CandidateProfile, and Referral tables with strict org/mandate tenant scoping
-    const [directCandidates, profileCandidates, referralCandidates] = await Promise.all([
-      this.prisma.candidate.findMany({
-        where: {
-          id: { in: candidateIds },
-          orgId,
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          resumeUrl: true,
-          currentCompany: true,
-          currentRole: true,
-          experienceYears: true,
-          notes: true,
-        },
-      }),
-      this.prisma.candidateProfile.findMany({
-        where: {
-          id: { in: candidateIds },
-          OR: [
-            {
-              applications: {
-                some: mandateId
-                  ? { OR: [{ mandateId }, { hiringPlan: { orgId } }] }
-                  : { hiringPlan: { orgId } },
+    const [directCandidates, profileCandidates, referralCandidates] =
+      await Promise.all([
+        this.prisma.candidate.findMany({
+          where: {
+            id: { in: candidateIds },
+            orgId,
+            ...(mandateId
+              ? {
+                  applications: {
+                    some: {
+                      OR: [{ mandateId }, { hiringPlanId: mandateId }],
+                    },
+                  },
+                }
+              : {}),
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            resumeUrl: true,
+            currentCompany: true,
+            currentRole: true,
+            experienceYears: true,
+            notes: true,
+          },
+        }),
+        this.prisma.candidateProfile.findMany({
+          where: {
+            id: { in: candidateIds },
+            OR: [
+              {
+                applications: {
+                  some: mandateId
+                    ? { OR: [{ mandateId }, { hiringPlanId: mandateId }] }
+                    : { hiringPlan: { orgId } },
+                },
               },
-            },
-            {
-              referrals: {
-                some: mandateId
-                  ? { mandate: { id: mandateId, orgId } }
-                  : { mandate: { orgId } },
+              {
+                referrals: {
+                  some: mandateId
+                    ? { mandate: { id: mandateId, orgId } }
+                    : { mandate: { orgId } },
+                },
               },
-            },
-          ],
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          resumeUrl: true,
-          currentCompany: true,
-          currentDesignation: true,
-          experienceYears: true,
-          education: true,
-          skills: true,
-          headline: true,
-          certifications: true,
-          projects: true,
-          currentLocation: true,
-          noticePeriodDays: true,
-          workModel: true,
-        },
-      }),
-      this.prisma.referral.findMany({
-        where: {
-          id: { in: candidateIds },
-          mandate: mandateId
-            ? { id: mandateId, orgId }
-            : { orgId },
-        },
-        include: {
-          candidateProfile: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              resumeUrl: true,
-              currentCompany: true,
-              currentDesignation: true,
-              experienceYears: true,
-              education: true,
-              skills: true,
-              headline: true,
-              certifications: true,
-              projects: true,
-              currentLocation: true,
-              noticePeriodDays: true,
-              workModel: true,
+            ],
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            resumeUrl: true,
+            currentCompany: true,
+            currentDesignation: true,
+            experienceYears: true,
+            education: true,
+            skills: true,
+            headline: true,
+            certifications: true,
+            projects: true,
+            currentLocation: true,
+            noticePeriodDays: true,
+            workModel: true,
+          },
+        }),
+        this.prisma.referral.findMany({
+          where: {
+            id: { in: candidateIds },
+            mandate: mandateId ? { id: mandateId, orgId } : { orgId },
+          },
+          include: {
+            candidateProfile: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                resumeUrl: true,
+                currentCompany: true,
+                currentDesignation: true,
+                experienceYears: true,
+                education: true,
+                skills: true,
+                headline: true,
+                certifications: true,
+                projects: true,
+                currentLocation: true,
+                noticePeriodDays: true,
+                workModel: true,
+              },
             },
           },
-        },
-      }),
-    ]);
+        }),
+      ]);
 
     const candidates: Array<{
       id: string;
@@ -644,9 +668,7 @@ export class ResumeRankingService {
           resumeUrl: c.resumeUrl,
           currentCompany: c.currentCompany,
           currentRole: c.currentRole,
-          experienceYears: c.experienceYears
-            ? Number(c.experienceYears)
-            : null,
+          experienceYears: c.experienceYears ? Number(c.experienceYears) : null,
           education: null,
           profileText: null,
         });
@@ -663,9 +685,7 @@ export class ResumeRankingService {
           resumeUrl: c.resumeUrl,
           currentCompany: c.currentCompany,
           currentRole: c.currentDesignation,
-          experienceYears: c.experienceYears
-            ? Number(c.experienceYears)
-            : null,
+          experienceYears: c.experienceYears ? Number(c.experienceYears) : null,
           education: c.education as string | null,
           profileText: this.buildProfileText(c),
         });
@@ -683,9 +703,7 @@ export class ResumeRankingService {
           resumeUrl: c.resumeUrl,
           currentCompany: c.currentCompany,
           currentRole: c.currentDesignation,
-          experienceYears: c.experienceYears
-            ? Number(c.experienceYears)
-            : null,
+          experienceYears: c.experienceYears ? Number(c.experienceYears) : null,
           education: c.education as string | null,
           profileText: this.buildProfileText(c),
         });
@@ -765,7 +783,10 @@ export class ResumeRankingService {
         }
 
         // Fallback: use profile-based text if no resume URL or extraction failed
-        if ((!resumeText || resumeText.trim().length <= 50) && candidate.profileText) {
+        if (
+          (!resumeText || resumeText.trim().length <= 50) &&
+          candidate.profileText
+        ) {
           this.logger.log(
             `Using profile-based text for candidate ${candidate.name} (no resume file)`,
           );
@@ -809,16 +830,18 @@ export class ResumeRankingService {
     try {
       // Look for recent ranking results for this candidate that contain resume text
       // We store a cache marker in the result's scoreBreakdown to avoid re-extraction
-      const existing = await (this.prisma as any).resumeRankingResult.findFirst({
-        where: {
-          candidateId,
-          createdAt: {
-            gte: new Date(Date.now() - CACHE_TTL_MS),
+      const existing = await (this.prisma as any).resumeRankingResult.findFirst(
+        {
+          where: {
+            candidateId,
+            createdAt: {
+              gte: new Date(Date.now() - CACHE_TTL_MS),
+            },
           },
+          select: { scoreBreakdown: true },
+          orderBy: { createdAt: 'desc' },
         },
-        select: { scoreBreakdown: true },
-        orderBy: { createdAt: 'desc' },
-      });
+      );
 
       if (existing?.scoreBreakdown?._cachedResumeText) {
         return existing.scoreBreakdown._cachedResumeText;
@@ -863,7 +886,8 @@ export class ResumeRankingService {
 
     if (profile.name) parts.push(profile.name.toUpperCase());
     if (profile.headline) parts.push(profile.headline);
-    if (profile.currentLocation) parts.push(`Location: ${profile.currentLocation}`);
+    if (profile.currentLocation)
+      parts.push(`Location: ${profile.currentLocation}`);
     if (profile.workModel) parts.push(`Work Model: ${profile.workModel}`);
 
     parts.push('');
@@ -871,7 +895,9 @@ export class ResumeRankingService {
     if (profile.currentCompany || profile.currentDesignation) {
       parts.push('CURRENT POSITION');
       if (profile.currentDesignation && profile.currentCompany) {
-        parts.push(`${profile.currentDesignation} at ${profile.currentCompany}`);
+        parts.push(
+          `${profile.currentDesignation} at ${profile.currentCompany}`,
+        );
       } else if (profile.currentCompany) {
         parts.push(`Company: ${profile.currentCompany}`);
       } else if (profile.currentDesignation) {
@@ -899,7 +925,9 @@ export class ResumeRankingService {
         if (typeof edu === 'string') {
           parts.push(edu);
         } else if (edu && typeof edu === 'object') {
-          const line = [edu.degree, edu.university, edu.year].filter(Boolean).join(' - ');
+          const line = [edu.degree, edu.university, edu.year]
+            .filter(Boolean)
+            .join(' - ');
           if (line) parts.push(line);
         }
       }
@@ -907,11 +935,15 @@ export class ResumeRankingService {
     }
 
     // Certifications
-    const certs = Array.isArray(profile.certifications) ? profile.certifications : [];
+    const certs = Array.isArray(profile.certifications)
+      ? profile.certifications
+      : [];
     if (certs.length > 0) {
       parts.push('CERTIFICATIONS');
       for (const cert of certs) {
-        parts.push(typeof cert === 'string' ? `- ${cert}` : `- ${JSON.stringify(cert)}`);
+        parts.push(
+          typeof cert === 'string' ? `- ${cert}` : `- ${JSON.stringify(cert)}`,
+        );
       }
       parts.push('');
     }
@@ -942,7 +974,10 @@ export class ResumeRankingService {
 
   private async extractSingleResume(resumeUrl: string): Promise<string> {
     // Feature 5: Validate URL before downloading
-    if (!resumeUrl || (!resumeUrl.startsWith('http') && !resumeUrl.startsWith('/'))) {
+    if (
+      !resumeUrl ||
+      (!resumeUrl.startsWith('http') && !resumeUrl.startsWith('/'))
+    ) {
       throw new Error(`Invalid resume URL: ${resumeUrl}`);
     }
 
@@ -1016,13 +1051,18 @@ If the document appears to be a scanned image with no selectable text, extract w
         },
       }),
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Resume extraction timed out after 30s')), 30_000),
+        setTimeout(
+          () => reject(new Error('Resume extraction timed out after 30s')),
+          30_000,
+        ),
       ),
     ]);
 
     const text = response?.text || '';
     if (!text || text.trim().length < 20) {
-      throw new Error('Could not extract meaningful text from resume (possibly scanned image without OCR)');
+      throw new Error(
+        'Could not extract meaningful text from resume (possibly scanned image without OCR)',
+      );
     }
     return text.trim();
   }
@@ -1068,7 +1108,8 @@ If the document appears to be a scanned image with no selectable text, extract w
     // Parse mandatory skills
     const mandatorySkills = this.parseJsonField(mandate.mandatorySkills);
     for (const skill of mandatorySkills) {
-      const name = typeof skill === 'string' ? skill : skill?.name || skill?.skill;
+      const name =
+        typeof skill === 'string' ? skill : skill?.name || skill?.skill;
       if (name) {
         skills.push({
           name,
@@ -1081,7 +1122,8 @@ If the document appears to be a scanned image with no selectable text, extract w
     // Parse preferred skills
     const preferredSkills = this.parseJsonField(mandate.preferredSkills);
     for (const skill of preferredSkills) {
-      const name = typeof skill === 'string' ? skill : skill?.name || skill?.skill;
+      const name =
+        typeof skill === 'string' ? skill : skill?.name || skill?.skill;
       if (name) {
         skills.push({
           name,
@@ -1154,32 +1196,52 @@ If the document appears to be a scanned image with no selectable text, extract w
     const rawList = aiResult.rankings || [];
 
     const mapped = rawList.map((r: any) => {
-      // Recalculate totalScore from validated dimension breakdown if present
+      // Validate and clamp each dimension against its maxScore
       let dimensionSum = 0;
       let hasValidDimensions = false;
+      const sanitizedBreakdown: Record<string, any> = {};
 
-      if (r.scoreBreakdown && typeof r.scoreBreakdown === 'object') {
-        const dimensions = [
-          'skillsMatch',
-          'experienceRelevance',
-          'projectRelevance',
-          'educationCertifications',
-          'domainIndustryFit',
-          'roleSeniorityFit',
-          'culturalSoftSignals',
-          'logisticsAvailability',
-        ];
+      const dimensions = Object.keys(DEFAULT_DIMENSION_WEIGHTS);
 
-        for (const dimKey of dimensions) {
-          const dim = r.scoreBreakdown[dimKey];
-          if (dim && typeof dim === 'object' && dim.score !== undefined) {
-            const num = Number(dim.score);
-            if (!isNaN(num) && num >= 0) {
-              dimensionSum += num;
-              hasValidDimensions = true;
-            }
+      for (const dimKey of dimensions) {
+        const defaultMax = DEFAULT_DIMENSION_WEIGHTS[dimKey];
+        const rawDim = r.scoreBreakdown?.[dimKey];
+        const maxScore =
+          rawDim && typeof rawDim === 'object' && rawDim.maxScore !== undefined
+            ? Math.max(1, Number(rawDim.maxScore) || defaultMax)
+            : defaultMax;
+
+        let score = 0;
+        let evidence: string[] = [];
+        let comment = '';
+
+        if (
+          rawDim &&
+          typeof rawDim === 'object' &&
+          rawDim.score !== undefined
+        ) {
+          const num = Number(rawDim.score);
+          if (!isNaN(num) && num >= 0) {
+            score = Math.max(0, Math.min(maxScore, Math.round(num)));
+            dimensionSum += score;
+            hasValidDimensions = true;
+          }
+          if (Array.isArray(rawDim.evidence)) {
+            evidence = rawDim.evidence
+              .filter((e: any) => typeof e === 'string')
+              .slice(0, 5);
+          }
+          if (typeof rawDim.comment === 'string') {
+            comment = rawDim.comment.substring(0, 500);
           }
         }
+
+        sanitizedBreakdown[dimKey] = {
+          score,
+          maxScore,
+          evidence,
+          comment,
+        };
       }
 
       // If breakdown has valid scores, use exact mathematical sum; otherwise fallback to clamped AI totalScore
@@ -1187,24 +1249,23 @@ If the document appears to be a scanned image with no selectable text, extract w
         ? Math.max(0, Math.min(100, Math.round(dimensionSum)))
         : Math.max(0, Math.min(100, Math.round(Number(r.totalScore) || 0)));
 
-      // Derive verdict consistently from totalScore
+      // Derive verdict consistently with prompt:
+      // EXCELLENT_FIT (80+), STRONG_FIT (65-79), GOOD_FIT (50-64), PARTIAL_FIT (35-49), WEAK_FIT (<35)
       const verdict =
-        totalScore >= 85
+        totalScore >= 80
           ? 'EXCELLENT_FIT'
-          : totalScore >= 70
+          : totalScore >= 65
             ? 'STRONG_FIT'
-            : totalScore >= 55
+            : totalScore >= 50
               ? 'GOOD_FIT'
-              : totalScore >= 40
+              : totalScore >= 35
                 ? 'PARTIAL_FIT'
                 : 'WEAK_FIT';
 
       // Sanitize arrays
       const sanitizeArray = (arr: any): string[] => {
         if (!Array.isArray(arr)) return [];
-        return arr
-          .filter((item: any) => typeof item === 'string')
-          .slice(0, 10);
+        return arr.filter((item: any) => typeof item === 'string').slice(0, 10);
       };
 
       return {
@@ -1214,25 +1275,44 @@ If the document appears to be a scanned image with no selectable text, extract w
         totalScoreNumber: totalScore,
         totalScore: new Prisma.Decimal(totalScore),
         verdict,
-        scoreBreakdown: (r.scoreBreakdown || {}) as unknown as Prisma.InputJsonValue,
-        strengths: sanitizeArray(r.strengths) as unknown as Prisma.InputJsonValue,
+        scoreBreakdown: sanitizedBreakdown as unknown as Prisma.InputJsonValue,
+        strengths: sanitizeArray(
+          r.strengths,
+        ) as unknown as Prisma.InputJsonValue,
         gaps: sanitizeArray(r.gaps) as unknown as Prisma.InputJsonValue,
-        standoutFactors: sanitizeArray(r.standoutFactors) as unknown as Prisma.InputJsonValue,
-        comparisonNote: typeof r.comparisonNote === 'string' ? r.comparisonNote.substring(0, 1000) : null,
-        recommendation: typeof r.recommendation === 'string' ? r.recommendation.substring(0, 1000) : null,
+        standoutFactors: sanitizeArray(
+          r.standoutFactors,
+        ) as unknown as Prisma.InputJsonValue,
+        comparisonNote:
+          typeof r.comparisonNote === 'string'
+            ? r.comparisonNote.substring(0, 1000)
+            : null,
+        recommendation:
+          typeof r.recommendation === 'string'
+            ? r.recommendation.substring(0, 1000)
+            : null,
       };
     });
 
     // Re-rank strictly descending by totalScore
-    const sorted = mapped.sort((a, b) => b.totalScoreNumber - a.totalScoreNumber);
+    const sorted = mapped.sort(
+      (a, b) => b.totalScoreNumber - a.totalScoreNumber,
+    );
 
-    return sorted.map((item, idx) => {
-      const { totalScoreNumber, ...rest } = item;
-      return {
-        ...rest,
-        rank: idx + 1,
-      };
-    });
+    return sorted.map((item, idx) => ({
+      sessionId: item.sessionId,
+      candidateId: item.candidateId,
+      candidateName: item.candidateName,
+      totalScore: item.totalScore,
+      verdict: item.verdict,
+      scoreBreakdown: item.scoreBreakdown,
+      strengths: item.strengths,
+      gaps: item.gaps,
+      standoutFactors: item.standoutFactors,
+      comparisonNote: item.comparisonNote,
+      recommendation: item.recommendation,
+      rank: idx + 1,
+    }));
   }
 
   // ── CSV Helper ────────────────────────────────────────────────────
@@ -1254,7 +1334,9 @@ If the document appears to be a scanned image with no selectable text, extract w
 
     const rawKey = this.geminiApiKey?.trim();
     if (!rawKey) {
-      throw new Error('GEMINI_API_KEY not configured. Resume ranking requires a valid API key.');
+      throw new Error(
+        'GEMINI_API_KEY not configured. Resume ranking requires a valid API key.',
+      );
     }
 
     const { GoogleGenAI } = require('@google/genai');
@@ -1399,7 +1481,10 @@ Output ONLY valid JSON with this exact schema:
     });
 
     try {
-      const response: any = await Promise.race([generatePromise, timeoutPromise]);
+      const response: any = await Promise.race([
+        generatePromise,
+        timeoutPromise,
+      ]);
       clearTimeout(timer!);
 
       const rawText = response?.text || '{}';
@@ -1413,9 +1498,15 @@ Output ONLY valid JSON with this exact schema:
         parsed = JSON.parse(cleanJson) as RankingResponse;
       } catch (parseErr: any) {
         // Feature 5: Try to salvage partial JSON
-        this.logger.error(`Failed to parse AI response JSON: ${parseErr.message}`);
-        this.logger.debug(`Raw response (first 500 chars): ${cleanJson.substring(0, 500)}`);
-        throw new Error('AI returned malformed JSON response. Please try again.');
+        this.logger.error(
+          `Failed to parse AI response JSON: ${parseErr.message}`,
+        );
+        this.logger.debug(
+          `Raw response (first 500 chars): ${cleanJson.substring(0, 500)}`,
+        );
+        throw new Error(
+          'AI returned malformed JSON response. Please try again.',
+        );
       }
 
       // Validate the response structure
@@ -1428,7 +1519,9 @@ Output ONLY valid JSON with this exact schema:
       }
 
       // Ensure rankings are sorted by rank
-      parsed.rankings.sort((a: any, b: any) => (a.rank || 999) - (b.rank || 999));
+      parsed.rankings.sort(
+        (a: any, b: any) => (a.rank || 999) - (b.rank || 999),
+      );
 
       this.logger.log(
         `Gemini ranked ${parsed.rankings.length} candidates successfully`,

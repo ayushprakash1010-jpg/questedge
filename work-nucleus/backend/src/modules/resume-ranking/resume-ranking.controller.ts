@@ -19,7 +19,11 @@ import { Response } from 'express';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { ResumeRankingService } from './resume-ranking.service';
-import { RankResumesDto, ReRankDto, QuickRankDto } from './dto/rank-resumes.dto';
+import {
+  RankResumesDto,
+  ReRankDto,
+  QuickRankDto,
+} from './dto/rank-resumes.dto';
 
 @ApiTags('Resume Ranking')
 @ApiBearerAuth()
@@ -32,10 +36,7 @@ export class ResumeRankingController {
   @ApiOperation({
     summary: 'Rank multiple candidate resumes against a mandate JD',
   })
-  async rankResumes(
-    @CurrentUser() user: any,
-    @Body() dto: RankResumesDto,
-  ) {
+  async rankResumes(@CurrentUser() user: any, @Body() dto: RankResumesDto) {
     const orgId = user.orgId;
     const userId = user.id || user.sub;
     return this.rankingService.rankResumes(orgId, userId, dto);
@@ -86,7 +87,12 @@ export class ResumeRankingController {
   ) {
     const orgId = user.orgId;
     const userId = user.id || user.sub;
-    return this.rankingService.reRank(orgId, userId, sessionId, dto.customWeights);
+    return this.rankingService.reRank(
+      orgId,
+      userId,
+      sessionId,
+      dto.customWeights,
+    );
   }
 
   // ── Feature 4: CSV Export ───────────────────────────────────────
@@ -137,12 +143,10 @@ export class ResumeRankingController {
 
   @Post('quick-rank')
   @ApiOperation({
-    summary: 'Quick rank: upload JD text + resume texts for instant ranking (no mandate needed)',
+    summary:
+      'Quick rank: upload JD text + resume texts for instant ranking (no mandate needed)',
   })
-  async quickRank(
-    @CurrentUser() user: any,
-    @Body() dto: QuickRankDto,
-  ) {
+  async quickRank(@CurrentUser() user: any, @Body() dto: QuickRankDto) {
     return this.rankingService.quickRank(user.orgId, dto);
   }
 }

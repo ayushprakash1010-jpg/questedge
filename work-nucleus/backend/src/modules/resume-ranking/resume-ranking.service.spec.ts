@@ -38,7 +38,11 @@ describe('ResumeRankingService', () => {
         findMany: jest.fn(),
       },
       rankingSession: {
-        create: jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'session-123', ...data })),
+        create: jest
+          .fn()
+          .mockImplementation(({ data }) =>
+            Promise.resolve({ id: 'session-123', ...data }),
+          ),
         findFirst: jest.fn(),
         findMany: jest.fn(),
       },
@@ -98,12 +102,20 @@ describe('ResumeRankingService', () => {
         }),
       ).rejects.toThrow(BadRequestException);
 
-      // Verify Candidate lookup includes orgId
+      // Verify Candidate lookup includes orgId and mandate scoping
       expect(prisma.candidate.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
             id: { in: ['cand-foreign-1'] },
             orgId: 'org-123',
+            applications: {
+              some: {
+                OR: [
+                  { mandateId: 'mandate-123' },
+                  { hiringPlanId: 'mandate-123' },
+                ],
+              },
+            },
           },
         }),
       );
@@ -119,7 +131,7 @@ describe('ResumeRankingService', () => {
                   some: {
                     OR: [
                       { mandateId: 'mandate-123' },
-                      { hiringPlan: { orgId: 'org-123' } },
+                      { hiringPlanId: 'mandate-123' },
                     ],
                   },
                 }),
@@ -193,7 +205,10 @@ describe('ResumeRankingService', () => {
         ],
       };
 
-      const sanitized = (service as any).sanitizeRankingResults(rawAiResponse, 'test-session-123');
+      const sanitized = (service as any).sanitizeRankingResults(
+        rawAiResponse,
+        'test-session-123',
+      );
 
       expect(Array.isArray(sanitized)).toBe(true);
       expect(sanitized).toHaveLength(2);
@@ -217,48 +232,100 @@ describe('ResumeRankingService', () => {
       expect(sanitized[0].candidateId).toBe('cand-1');
       expect(sanitized[1].candidateId).toBe('cand-2');
     });
+
+    it('clamps dimension scores exceeding their maxScore and populates missing dimensions', () => {
+      const rawAiResponse = {
+        rankings: [
+          {
+            candidateId: 'cand-overflow',
+            candidateName: 'Test Overflow',
+            totalScore: 120, // Erroneous total
+            verdict: 'EXCELLENT_FIT',
+            scoreBreakdown: {
+              skillsMatch: { score: 35, maxScore: 25 }, // Exceeds max 25
+              experienceRelevance: { score: 25, maxScore: 20 }, // Exceeds max 20
+              // Other 6 dimensions omitted by LLM
+            },
+            strengths: ['Great skills'],
+            gaps: [],
+          },
+        ],
+      };
+
+      const sanitized = (service as any).sanitizeRankingResults(
+        rawAiResponse,
+        'test-session-clamped',
+      );
+
+      expect(sanitized).toHaveLength(1);
+      const cand = sanitized[0];
+      const breakdown = cand.scoreBreakdown as any;
+
+      // skillsMatch must be clamped to 25
+      expect(breakdown.skillsMatch.score).toBe(25);
+      expect(breakdown.skillsMatch.maxScore).toBe(25);
+
+      // experienceRelevance must be clamped to 20
+      expect(breakdown.experienceRelevance.score).toBe(20);
+      expect(breakdown.experienceRelevance.maxScore).toBe(20);
+
+      // Missing dimensions must default cleanly with score 0
+      expect(breakdown.projectRelevance.score).toBe(0);
+      expect(breakdown.projectRelevance.maxScore).toBe(15);
+      expect(breakdown.logisticsAvailability.score).toBe(0);
+      expect(breakdown.logisticsAvailability.maxScore).toBe(5);
+
+      // Total must equal the clamped sum: 25 + 20 + 0 + ... = 45
+      expect(Number(cand.totalScore)).toBe(45);
+      // With score 45, verdict is PARTIAL_FIT (35-49)
+      expect(cand.verdict).toBe('PARTIAL_FIT');
+    });
   });
 
   describe('Quick Rank Candidate ID Preservation', () => {
     it('preserves client-provided candidateId throughout ranking', async () => {
-      jest.spyOn(service as any, 'callAiWithRetry').mockImplementation(async (payload: any) => ({
-        summary: 'Strong candidate pool',
-        rankings: payload.candidates.map((c: any) => ({
-          candidateId: c.candidateId,
-          candidateName: c.candidateName,
-          totalScore: 88,
-          verdict: 'EXCELLENT_FIT',
-          scoreBreakdown: {
-            skillsMatch: { score: 22, maxScore: 25 },
-            experienceRelevance: { score: 18, maxScore: 20 },
-            projectRelevance: { score: 13, maxScore: 15 },
-            educationCertifications: { score: 9, maxScore: 10 },
-            domainIndustryFit: { score: 9, maxScore: 10 },
-            roleSeniorityFit: { score: 8, maxScore: 10 },
-            culturalSoftSignals: { score: 4, maxScore: 5 },
-            logisticsAvailability: { score: 5, maxScore: 5 },
+      jest
+        .spyOn(service as any, 'callAiWithRetry')
+        .mockImplementation(async (payload: any) => ({
+          summary: 'Strong candidate pool',
+          rankings: payload.candidates.map((c: any) => ({
+            candidateId: c.candidateId,
+            candidateName: c.candidateName,
+            totalScore: 88,
+            verdict: 'EXCELLENT_FIT',
+            scoreBreakdown: {
+              skillsMatch: { score: 22, maxScore: 25 },
+              experienceRelevance: { score: 18, maxScore: 20 },
+              projectRelevance: { score: 13, maxScore: 15 },
+              educationCertifications: { score: 9, maxScore: 10 },
+              domainIndustryFit: { score: 9, maxScore: 10 },
+              roleSeniorityFit: { score: 8, maxScore: 10 },
+              culturalSoftSignals: { score: 4, maxScore: 5 },
+              logisticsAvailability: { score: 5, maxScore: 5 },
+            },
+            strengths: ['Great skills'],
+            gaps: [],
+            standoutFactors: ['Solid background'],
+            comparisonNote: 'Best match',
+            recommendation: 'Interview immediately',
+          })),
+          jdCoverage: {
+            poolStrength: 'EXCELLENT',
+            strongFitCount: 1,
+            avgMustHaveCoverage: 0.9,
           },
-          strengths: ['Great skills'],
-          gaps: [],
-          standoutFactors: ['Solid background'],
-          comparisonNote: 'Best match',
-          recommendation: 'Interview immediately',
-        })),
-        jdCoverage: {
-          poolStrength: 'EXCELLENT',
-          strongFitCount: 1,
-          avgMustHaveCoverage: 0.9,
-        },
-      }));
+        }));
 
       const dto = {
-        jdText: 'Looking for a Senior Full Stack Engineer with React and Node.js experience.',
+        jdText:
+          'Looking for a Senior Full Stack Engineer with React and Node.js experience.',
         jobTitle: 'Senior Full Stack Engineer',
         resumes: [
           {
             candidateId: 'custom-client-id-abc',
             candidateName: 'John Doe',
-            resumeText: 'John Doe, 6 years experience in React, Node.js, TypeScript.',
+            resumeText:
+              'John Doe, 6 years experience in React, Node.js, TypeScript.',
           },
         ],
       };

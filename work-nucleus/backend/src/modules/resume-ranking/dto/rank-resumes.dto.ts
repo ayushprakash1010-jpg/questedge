@@ -72,7 +72,8 @@ export class RankResumesDto {
   mandateId: string;
 
   @ApiProperty({
-    description: 'Array of candidate IDs (from Candidate or CandidateProfile table)',
+    description:
+      'Array of candidate IDs (from Candidate or CandidateProfile table)',
     type: [String],
   })
   @IsArray()
@@ -81,7 +82,9 @@ export class RankResumesDto {
   @IsUUID('4', { each: true })
   candidateIds: string[];
 
-  @ApiPropertyOptional({ description: 'Custom scoring weights (must sum to 100)' })
+  @ApiPropertyOptional({
+    description: 'Custom scoring weights (must sum to 100)',
+  })
   @IsOptional()
   @IsObject()
   @Type(() => ScoringWeightsDto)
@@ -101,7 +104,9 @@ export class QuickRankResumeDto {
   @IsString()
   candidateId?: string;
 
-  @ApiProperty({ description: 'Resume text content (from uploaded file or pasted)' })
+  @ApiProperty({
+    description: 'Resume text content (from uploaded file or pasted)',
+  })
   @IsString()
   @IsNotEmpty()
   resumeText: string;
@@ -202,7 +207,9 @@ export class QuickRankDto {
   @Type(() => QuickRankResumeDto)
   resumes: QuickRankResumeDto[];
 
-  @ApiPropertyOptional({ description: 'Custom scoring weights (must sum to 100)' })
+  @ApiPropertyOptional({
+    description: 'Custom scoring weights (must sum to 100)',
+  })
   @IsOptional()
   @IsObject()
   @ValidateNested()

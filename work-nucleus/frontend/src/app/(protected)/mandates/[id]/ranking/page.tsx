@@ -129,6 +129,19 @@ export default function RankingPage() {
     fetchData();
   }, [fetchData]);
 
+  // Check for carried-forward ranking from Quick Rank session
+  useEffect(() => {
+    try {
+      const pendingKey = `mandate_pending_ranking_${mandateId}`;
+      const pending = sessionStorage.getItem(pendingKey);
+      if (pending) {
+        const parsed = JSON.parse(pending);
+        sessionStorage.removeItem(pendingKey);
+        setResults(parsed);
+      }
+    } catch (e) {}
+  }, [mandateId]);
+
   const handleRankingComplete = (data: any) => {
     setResults(data);
     setTab("new");
@@ -346,9 +359,9 @@ export default function RankingPage() {
                     }))
                   }
                   onViewResume={
-                    matchedCandidate?.hasResume || r.candidateId
+                    matchedCandidate?.hasResume
                       ? () => {
-                          const targetId = matchedCandidate?.id || r.candidateId;
+                          const targetId = matchedCandidate.id;
                           const nameParam = encodeURIComponent(
                             r.candidateName || "Candidate"
                           );

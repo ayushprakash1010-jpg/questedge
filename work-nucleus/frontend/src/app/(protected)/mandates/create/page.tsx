@@ -237,12 +237,23 @@ export default function CreateMandatePage() {
 
   const update = (key: string, value: any) => setForm((f) => ({ ...f, [key]: value }));
 
+  const [importedRankingData, setImportedRankingData] = useState<{
+    evaluatedCandidates?: any[];
+    resumes?: any[];
+  } | null>(null);
+
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem("mandate_draft_prefill");
       if (saved) {
         const parsed = JSON.parse(saved);
         sessionStorage.removeItem("mandate_draft_prefill");
+        if (parsed.evaluatedCandidates?.length || parsed.resumes?.length) {
+          setImportedRankingData({
+            evaluatedCandidates: parsed.evaluatedCandidates || [],
+            resumes: parsed.resumes || [],
+          });
+        }
         setForm((prev) => ({
           ...prev,
           title: parsed.title || prev.title,
@@ -260,7 +271,7 @@ export default function CreateMandatePage() {
             : prev.preferredSkills,
         }));
         setJobDescriptionFileName("Imported from Resume Ranker");
-        toast.success("Job description details imported from Resume Ranker!");
+        toast.success("Job description and candidate evaluation imported from Resume Ranker!");
       }
     } catch (e) {
       console.warn("Failed to read mandate_draft_prefill from sessionStorage", e);
@@ -434,6 +445,20 @@ export default function CreateMandatePage() {
       
       const mandate = await createMandate(token, payload);
       setSavedId(mandate.id);
+      if (importedRankingData?.evaluatedCandidates?.length) {
+        try {
+          sessionStorage.setItem(
+            `mandate_pending_ranking_${mandate.id}`,
+            JSON.stringify({
+              rankings: importedRankingData.evaluatedCandidates,
+              candidates: importedRankingData.evaluatedCandidates,
+              candidateCount: importedRankingData.evaluatedCandidates.length,
+              jobTitle: mandate.title,
+              isQuickRank: false,
+            })
+          );
+        } catch (e) {}
+      }
       router.push(`/mandates/${mandate.id}`);
     } catch (err) {
       console.error(err);
@@ -465,6 +490,20 @@ export default function CreateMandatePage() {
         };
         const mandate = await createMandate(token, payload);
         id = mandate.id;
+      }
+      if (importedRankingData?.evaluatedCandidates?.length) {
+        try {
+          sessionStorage.setItem(
+            `mandate_pending_ranking_${id}`,
+            JSON.stringify({
+              rankings: importedRankingData.evaluatedCandidates,
+              candidates: importedRankingData.evaluatedCandidates,
+              candidateCount: importedRankingData.evaluatedCandidates.length,
+              jobTitle: form.title,
+              isQuickRank: false,
+            })
+          );
+        } catch (e) {}
       }
       await publishMandate(token, id);
       router.push(`/mandates/${id}`);
@@ -529,6 +568,26 @@ export default function CreateMandatePage() {
             );
           })}
         </div>
+
+        {/* Quick Rank Continuity Banner */}
+        {importedRankingData?.evaluatedCandidates && importedRankingData.evaluatedCandidates.length > 0 && (
+          <div className="mb-6 rounded-xl border border-indigo-200 bg-indigo-50/80 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Sparkles className="w-5 h-5 text-indigo-600 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-indigo-900">
+                  Carrying forward {importedRankingData.evaluatedCandidates.length} evaluated candidate{importedRankingData.evaluatedCandidates.length > 1 ? "s" : ""} from Resume Ranker
+                </p>
+                <p className="text-xs text-indigo-700 mt-0.5">
+                  AI ranking scores, fit verdicts, and detailed breakdowns will be immediately viewable in this mandate&apos;s AI Ranking dashboard upon creation.
+                </p>
+              </div>
+            </div>
+            <span className="inline-flex items-center text-xs font-semibold text-indigo-700 bg-indigo-100 border border-indigo-200 px-3 py-1 rounded-full shrink-0">
+              {importedRankingData.evaluatedCandidates.length} Candidates Linked
+            </span>
+          </div>
+        )}
 
         {/* Step content */}
         <div className="bg-white rounded-xl border border-slate-200 p-8 space-y-6">
