@@ -78,7 +78,8 @@ function verdictBadge(verdict: string, score?: number, isDisqualified?: boolean)
   );
 }
 
-function scoreBadgeColor(score: number): string {
+function scoreBadgeColor(score: number, isDisqualified?: boolean): string {
+  if (isDisqualified) return "text-rose-700 bg-rose-50 border-rose-300";
   if (score >= 85) return "text-emerald-700 bg-emerald-50 border-emerald-200";
   if (score >= 70) return "text-blue-700 bg-blue-50 border-blue-200";
   if (score >= 55) return "text-amber-700 bg-amber-50 border-amber-200";
@@ -216,13 +217,21 @@ export default function RankedCandidateCard({
     }
   };
 
+  const isDisqualified = Boolean(
+    c.isDisqualified || (c.scoreBreakdown as any)?.isDisqualified
+  );
+  const disqualificationReason =
+    c.disqualificationReason ||
+    (c.scoreBreakdown as any)?.disqualificationReason ||
+    "Did not meet required criteria";
+
   const subtitle = getSubtitle(c);
   const topSkills = getTopSkills(c);
   const topStrength = c.strengths && c.strengths.length > 0 ? c.strengths[0] : null;
-  const tier = getCardTierClasses(c.totalScore, c.isDisqualified);
+  const tier = getCardTierClasses(c.totalScore, isDisqualified);
 
   let borderStateClass = `border-gray-200 shadow-xs hover:shadow-md hover:border-gray-300 hover:-translate-y-0.5 ${
-    c.isDisqualified
+    isDisqualified
       ? "bg-rose-50/25 border-rose-200"
       : c.rank === 1
       ? "bg-gradient-to-r from-emerald-50/15 via-white to-white"
@@ -276,12 +285,12 @@ export default function RankedCandidateCard({
             <div className="flex flex-col items-center justify-center shrink-0 w-8 pt-0.5">
               <span
                 className={`leading-none font-bold ${
-                  c.isDisqualified
+                  isDisqualified
                     ? "text-xs font-mono text-rose-700 bg-rose-100 px-1.5 py-0.5 rounded border border-rose-300"
                     : "text-xl sm:text-2xl text-slate-800"
                 }`}
               >
-                {c.isDisqualified ? "KO" : (MEDAL[c.rank] || `#${c.rank}`)}
+                {isDisqualified ? "KO" : (MEDAL[c.rank] || `#${c.rank}`)}
               </span>
             </div>
 
@@ -291,13 +300,13 @@ export default function RankedCandidateCard({
                 <h3 className="text-sm sm:text-base font-bold text-gray-900 truncate">
                   {displayName}
                 </h3>
-                {verdictBadge(c.verdict, c.totalScore, c.isDisqualified)}
+                {verdictBadge(c.verdict, c.totalScore, isDisqualified)}
               </div>
 
-              {c.isDisqualified && (
+              {isDisqualified && (
                 <div className="mt-1 inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-rose-50 border border-rose-200 text-xs text-rose-800">
                   <span className="font-semibold text-rose-700">Failed Required:</span>
-                  <span className="truncate">{c.disqualificationReason || "Did not meet required criteria"}</span>
+                  <span className="truncate">{disqualificationReason}</span>
                 </div>
               )}
 
@@ -350,7 +359,8 @@ export default function RankedCandidateCard({
 
             <span
               className={`inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold border ${scoreBadgeColor(
-                c.totalScore
+                c.totalScore,
+                isDisqualified
               )}`}
             >
               {Math.round(c.totalScore)}/100
