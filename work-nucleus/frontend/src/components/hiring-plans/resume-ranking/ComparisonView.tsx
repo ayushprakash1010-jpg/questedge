@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X, Trophy, AlertTriangle, TrendingUp } from "lucide-react";
 
 interface ComparisonCandidate {
@@ -30,6 +30,7 @@ interface ComparisonViewProps {
   sessionId?: string;
   rankings: any[];
   onClose: () => void;
+  initialSelectedIds?: string[];
 }
 
 const DIMENSION_LABELS: Record<string, string> = {
@@ -47,6 +48,7 @@ const VERDICT_COLORS: Record<string, string> = {
   EXCELLENT_FIT: "text-emerald-600 bg-emerald-50",
   STRONG_FIT: "text-blue-600 bg-blue-50",
   GOOD_FIT: "text-cyan-600 bg-cyan-50",
+  MODERATE_FIT: "text-amber-600 bg-amber-50",
   PARTIAL_FIT: "text-amber-600 bg-amber-50",
   WEAK_FIT: "text-red-600 bg-red-50",
 };
@@ -62,8 +64,9 @@ export default function ComparisonView({
   sessionId,
   rankings,
   onClose,
+  initialSelectedIds,
 }: ComparisonViewProps) {
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds || []);
   const [comparisonData, setComparisonData] = useState<{
     candidates: ComparisonCandidate[];
     dimensionLeaders: DimensionLeader[];
@@ -80,8 +83,9 @@ export default function ComparisonView({
     setComparisonData(null);
   };
 
-  const runComparison = async () => {
-    if (selectedIds.length < 2) return;
+  const runComparison = async (overrideIds?: string[]) => {
+    const idsToCompare = overrideIds || selectedIds;
+    if (idsToCompare.length < 2) return;
     setLoading(true);
     setError(null);
     try {
@@ -91,7 +95,7 @@ export default function ComparisonView({
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ candidateIds: selectedIds }),
+            body: JSON.stringify({ candidateIds: idsToCompare }),
           }
         );
         if (res.ok) {
@@ -113,26 +117,36 @@ export default function ComparisonView({
         "logisticsAvailability",
       ];
 
-      const selected = rankings.filter((r: any) =>
-        selectedIds.includes(String(r.candidateId || r.id))
-      );
+      const selected = rankings.filter((r: any, idx: number) => {
+        const cid = String(r.candidateId || r.id || `cand-${idx}`);
+        return idsToCompare.includes(cid);
+      });
 
-      const candidates: ComparisonCandidate[] = selected.map((r: any) => ({
-        candidateId: String(r.candidateId || r.id),
-        candidateName: r.candidateName,
-        rank: r.rank,
-        totalScore: Number(r.totalScore) || 0,
-        verdict: r.verdict || "GOOD_FIT",
-        scores: dims.map((dim) => ({
-          dimension: dim,
-          score: Number(r.scoreBreakdown?.[dim]?.score) || 0,
-          maxScore: Number(r.scoreBreakdown?.[dim]?.maxScore) || 10,
-          comment: r.scoreBreakdown?.[dim]?.comment || "",
-        })),
-        strengths: Array.isArray(r.strengths) ? r.strengths : [],
-        gaps: Array.isArray(r.gaps) ? r.gaps : [],
-        recommendation: r.recommendation || "",
-      }));
+      const candidates: ComparisonCandidate[] = selected.map((r: any, idx: number) => {
+        const score = Number(r.totalScore) || 0;
+        let verdict = r.verdict || "GOOD_FIT";
+        if (score >= 85) verdict = "EXCELLENT_FIT";
+        else if (score >= 70) verdict = "STRONG_FIT";
+        else if (score >= 55) verdict = "MODERATE_FIT";
+        else verdict = "WEAK_FIT";
+
+        return {
+          candidateId: String(r.candidateId || r.id || `cand-${idx}`),
+          candidateName: r.candidateName,
+          rank: r.rank,
+          totalScore: score,
+          verdict,
+          scores: dims.map((dim) => ({
+            dimension: dim,
+            score: Number(r.scoreBreakdown?.[dim]?.score) || 0,
+            maxScore: Number(r.scoreBreakdown?.[dim]?.maxScore) || 10,
+            comment: r.scoreBreakdown?.[dim]?.comment || "",
+          })),
+          strengths: Array.isArray(r.strengths) ? r.strengths : [],
+          gaps: Array.isArray(r.gaps) ? r.gaps : [],
+          recommendation: r.recommendation || "",
+        };
+      });
 
       const dimensionLeaders: DimensionLeader[] = dims.map((dim) => {
         const scores = candidates.map((c) => ({
@@ -154,6 +168,13 @@ export default function ComparisonView({
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (initialSelectedIds && initialSelectedIds.length >= 2) {
+      setSelectedIds(initialSelectedIds);
+      runComparison(initialSelectedIds);
+    }
+  }, [initialSelectedIds]);
 
   const dimensions = Object.keys(DIMENSION_LABELS);
 
@@ -182,16 +203,13 @@ export default function ComparisonView({
         {!comparisonData && (
           <div className="p-6">
             <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-              {rankings.map((r: any) => {
-                const isSelected = selectedIds.includes(
-                  r.candidateId || r.id
-                );
+              {rankings.map((r: any, idx: number) => {
+                const cid = String(r.candidateId || r.id || `cand-${idx}`);
+                const isSelected = selectedIds.includes(cid);
                 return (
                   <button
-                    key={r.candidateId || r.id}
-                    onClick={() =>
-                      toggleCandidate(r.candidateId || r.id)
-                    }
+                    key={cid}
+                    onClick={() => toggleCandidate(cid)}
                     className={`flex items-center gap-2 rounded-lg border-2 p-3 text-left transition-all ${
                       isSelected
                         ? "border-indigo-500 bg-indigo-50"
@@ -220,7 +238,7 @@ export default function ComparisonView({
 
             <div className="flex items-center gap-3">
               <button
-                onClick={runComparison}
+                onClick={() => runComparison()}
                 disabled={selectedIds.length < 2 || loading}
                 className="rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:bg-gray-300"
               >

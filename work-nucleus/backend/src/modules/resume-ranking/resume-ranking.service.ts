@@ -525,10 +525,23 @@ export class ResumeRankingService {
 
     const processingTimeMs = Date.now() - startTime;
 
-    const mappedRankings = sanitized.map((r: any) => ({
-      ...r,
-      totalScore: Number(r.totalScore) || 0,
-    }));
+    const mappedRankings = sanitized.map((r: any) => {
+      const orig = validCandidates.find(
+        (c: any) => c.candidateId === r.candidateId,
+      );
+      return {
+        ...r,
+        totalScore: Number(r.totalScore) || 0,
+        currentRole: orig?.currentRole || null,
+        currentCompany: orig?.currentCompany || null,
+        experienceYears:
+          orig?.experienceYears !== undefined && orig?.experienceYears !== null
+            ? orig.experienceYears
+            : null,
+        education: orig?.education || null,
+        skills: Array.isArray(orig?.skills) ? orig.skills : [],
+      };
+    });
 
     return {
       rankings: mappedRankings,
@@ -1249,18 +1262,16 @@ If the document appears to be a scanned image with no selectable text, extract w
         ? Math.max(0, Math.min(100, Math.round(dimensionSum)))
         : Math.max(0, Math.min(100, Math.round(Number(r.totalScore) || 0)));
 
-      // Derive verdict consistently with prompt:
-      // EXCELLENT_FIT (80+), STRONG_FIT (65-79), GOOD_FIT (50-64), PARTIAL_FIT (35-49), WEAK_FIT (<35)
+      // Derive verdict consistently with calibrated thresholds:
+      // EXCELLENT_FIT (85+), STRONG_FIT (70-84), PARTIAL_FIT (55-69), WEAK_FIT (<55)
       const verdict =
-        totalScore >= 80
+        totalScore >= 85
           ? 'EXCELLENT_FIT'
-          : totalScore >= 65
+          : totalScore >= 70
             ? 'STRONG_FIT'
-            : totalScore >= 50
-              ? 'GOOD_FIT'
-              : totalScore >= 35
-                ? 'PARTIAL_FIT'
-                : 'WEAK_FIT';
+            : totalScore >= 55
+              ? 'PARTIAL_FIT'
+              : 'WEAK_FIT';
 
       // Sanitize arrays
       const sanitizeArray = (arr: any): string[] => {
@@ -1423,7 +1434,7 @@ EVALUATE each candidate across these 8 dimensions, scoring each from 0 to its ma
 
 Then RANK all candidates by total score (sum of all 8 dimensions, max 100).
 
-Assign a verdict: EXCELLENT_FIT (80+), STRONG_FIT (65-79), GOOD_FIT (50-64), PARTIAL_FIT (35-49), WEAK_FIT (<35)
+Assign a verdict: EXCELLENT_FIT (85+), STRONG_FIT (70-84), PARTIAL_FIT (55-69), WEAK_FIT (<55)
 
 Output ONLY valid JSON with this exact schema:
 {

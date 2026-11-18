@@ -277,8 +277,8 @@ describe('ResumeRankingService', () => {
 
       // Total must equal the clamped sum: 25 + 20 + 0 + ... = 45
       expect(Number(cand.totalScore)).toBe(45);
-      // With score 45, verdict is PARTIAL_FIT (35-49)
-      expect(cand.verdict).toBe('PARTIAL_FIT');
+      // Under calibrated thresholds (85+, 70-84, 55-69, <55), score 45 is WEAK_FIT (<55)
+      expect(cand.verdict).toBe('WEAK_FIT');
     });
   });
 

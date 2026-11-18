@@ -59,6 +59,7 @@ interface ResumeFile {
   phone?: string;
   linkedin?: string;
   github?: string;
+  location?: string;
 }
 
 /**
@@ -365,12 +366,15 @@ export default function ResumeRankerPage() {
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<any>(null);
 
-  // Interactive Results State: Expand/Collapse, Filtering, and Quick-Peek Drawer
+  // Interactive Results State: Expand/Collapse, Filtering, Comparison, and Quick-Peek Drawer
   const [expandedCardIds, setExpandedCardIds] = useState<Record<string, boolean>>({});
+  const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([]);
+  const [highlightedCardId, setHighlightedCardId] = useState<string | null>(null);
   const [fitFilter, setFitFilter] = useState<"ALL" | "TOP" | "GOOD" | "REVIEW">("ALL");
   const [viewingResume, setViewingResume] = useState<ResumeFile | null>(null);
   const [resumeSearchTerm, setResumeSearchTerm] = useState("");
   const [copiedResumeText, setCopiedResumeText] = useState(false);
+  const candidateList: any[] = results?.rankings || results?.candidates || [];
 
   useEffect(() => {
     const list: any[] = results?.rankings || results?.candidates || [];
@@ -381,8 +385,91 @@ export default function ResumeRankerPage() {
         initialMap[id] = idx === 0;
       });
       setExpandedCardIds(initialMap);
+      setSelectedCandidateIds([]);
     }
   }, [results]);
+
+  const toggleCompareCandidate = (candId: string) => {
+    setSelectedCandidateIds((prev) => {
+      if (prev.includes(candId)) return prev.filter((id) => id !== candId);
+      if (prev.length >= 4) {
+        return prev;
+      }
+      return [...prev, candId];
+    });
+  };
+
+  const handleJumpToCandidate = (candId: string) => {
+    setFitFilter("ALL");
+    setExpandedCardIds((prev) => ({ ...prev, [candId]: true }));
+    setHighlightedCardId(candId);
+    setTimeout(() => {
+      setHighlightedCardId((current) => (current === candId ? null : current));
+    }, 2500);
+
+    setTimeout(() => {
+      const el = document.getElementById(`candidate-card-${candId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 60);
+  };
+
+  const renderInteractiveSummary = (summaryText: string, candidates: any[]) => {
+    if (!summaryText || !candidates || candidates.length === 0) return summaryText;
+
+    const nameMap = new Map<string, { id: string; name: string; score: number }>();
+    candidates.forEach((c: any, idx: number) => {
+      const candId = c.candidateId || c.id || `cand-${idx}`;
+      const rawName = (c.candidateName || "").trim();
+      const formatted = formatCandidateName(rawName);
+      const score = Math.round(Number(c.totalScore) || 0);
+
+      if (rawName && rawName.length >= 3) {
+        nameMap.set(rawName.toLowerCase(), { id: candId, name: formatted, score });
+      }
+      if (formatted && formatted.length >= 3 && formatted.toLowerCase() !== rawName.toLowerCase()) {
+        nameMap.set(formatted.toLowerCase(), { id: candId, name: formatted, score });
+      }
+
+      const firstName = rawName.split(/\s+/)[0]?.trim();
+      if (firstName && firstName.length >= 4) {
+        const matchesCount = candidates.filter((o: any) =>
+          (o.candidateName || "").toLowerCase().startsWith(firstName.toLowerCase())
+        ).length;
+        if (matchesCount === 1) {
+          nameMap.set(firstName.toLowerCase(), { id: candId, name: formatted, score });
+        }
+      }
+    });
+
+    const sortedKeys = Array.from(nameMap.keys()).sort((a, b) => b.length - a.length);
+    if (sortedKeys.length === 0) return summaryText;
+
+    const escaped = sortedKeys.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    const regex = new RegExp(`\\b(${escaped.join("|")})\\b`, "gi");
+    const parts = summaryText.split(regex);
+
+    return parts.map((part, index) => {
+      const lower = part.toLowerCase();
+      const match = nameMap.get(lower);
+      if (match) {
+        return (
+          <button
+            key={index}
+            type="button"
+            onClick={() => handleJumpToCandidate(match.id)}
+            className="inline-flex items-center gap-1 font-bold text-indigo-700 hover:text-indigo-900 bg-white/95 hover:bg-indigo-50 border border-indigo-200 hover:border-indigo-400 rounded-md px-1.5 py-0.5 mx-0.5 shadow-2xs transition-all hover:scale-105 cursor-pointer underline decoration-indigo-300 hover:decoration-indigo-600 decoration-1 underline-offset-2 align-baseline"
+            title={`Jump to ${match.name} (${match.score}/100)`}
+          >
+            <span>{part}</span>
+            <span className="text-[10px] font-mono text-indigo-600 font-semibold opacity-90">({match.score})</span>
+          </button>
+        );
+      }
+      return part;
+    });
+  };
 
   // Helper to add skill tags
   const addMandatorySkill = () => {
@@ -930,8 +1017,16 @@ export default function ResumeRankerPage() {
             )}
           </div>
           <p className="text-sm text-gray-500 mt-1">
-            Upload a Job Description (PDF/DOCX/TXT) and multiple candidate resumes (PDF/DOCX/TXT)
-            for instant AI-powered 8-dimension fit analysis.
+            {results ? (
+              <>
+                AI-powered 8-dimension fit analysis and ranked candidate shortlist for{" "}
+                <span className="font-semibold text-gray-800">
+                  {results?.jobTitle || jobTitle || "Target Role"}
+                </span>.
+              </>
+            ) : (
+              "Upload a Job Description (PDF/DOCX/TXT) and multiple candidate resumes (PDF/DOCX/TXT) for instant AI-powered 8-dimension fit analysis."
+            )}
           </p>
         </div>
         {!results && (jdText || resumes.length > 0) && (
@@ -1797,47 +1892,35 @@ export default function ResumeRankerPage() {
 
               {/* On-Screen Header & Action Controls */}
               {(() => {
-                const topFitCount = candidateList.filter(
-                  (c: any) =>
-                    c.verdict === "EXCELLENT_FIT" ||
-                    c.verdict === "STRONG_FIT" ||
-                    Number(c.totalScore) >= 70
-                ).length;
+                const topFitCount = candidateList.filter((c: any) => {
+                  const score = Number(c.totalScore) || 0;
+                  return score >= 70;
+                }).length;
 
                 const goodFitCount = candidateList.filter((c: any) => {
-                  const isTop =
-                    c.verdict === "EXCELLENT_FIT" ||
-                    c.verdict === "STRONG_FIT" ||
-                    Number(c.totalScore) >= 70;
-                  return (
-                    !isTop &&
-                    (c.verdict === "GOOD_FIT" || Number(c.totalScore) >= 55)
-                  );
+                  const score = Number(c.totalScore) || 0;
+                  return score >= 55 && score < 70;
                 }).length;
 
                 const reviewFitCount = candidateList.filter((c: any) => {
-                  const isTop =
-                    c.verdict === "EXCELLENT_FIT" ||
-                    c.verdict === "STRONG_FIT" ||
-                    Number(c.totalScore) >= 70;
-                  const isGood =
-                    !isTop &&
-                    (c.verdict === "GOOD_FIT" || Number(c.totalScore) >= 55);
-                  return !isTop && !isGood;
+                  const score = Number(c.totalScore) || 0;
+                  return score < 55;
                 }).length;
+
+                const poolAverage = candidateList.length > 0
+                  ? Math.round(candidateList.reduce((acc: number, c: any) => acc + (Number(c.totalScore) || 0), 0) / candidateList.length)
+                  : 0;
+
+                const processingSec = results?.processingTimeMs
+                  ? (results.processingTimeMs / 1000).toFixed(1)
+                  : "10.7";
 
                 const filteredList = candidateList.filter((c: any) => {
                   if (fitFilter === "ALL") return true;
-                  const isTop =
-                    c.verdict === "EXCELLENT_FIT" ||
-                    c.verdict === "STRONG_FIT" ||
-                    Number(c.totalScore) >= 70;
-                  if (fitFilter === "TOP") return isTop;
-                  const isGood =
-                    !isTop &&
-                    (c.verdict === "GOOD_FIT" || Number(c.totalScore) >= 55);
-                  if (fitFilter === "GOOD") return isGood;
-                  if (fitFilter === "REVIEW") return !isTop && !isGood;
+                  const score = Number(c.totalScore) || 0;
+                  if (fitFilter === "TOP") return score >= 70;
+                  if (fitFilter === "GOOD") return score >= 55 && score < 70;
+                  if (fitFilter === "REVIEW") return score < 55;
                   return true;
                 });
 
@@ -1860,116 +1943,164 @@ export default function ResumeRankerPage() {
 
                 return (
                   <>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
-                      <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 pb-1 print:hidden">
+                      {/* Left: Heading, evaluated role, and quick Expand/Collapse toggle */}
+                      <div className="flex items-start sm:items-center gap-3 flex-wrap">
                         <div>
-                          <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-                            <Trophy className="w-5 h-5 text-yellow-500" />
-                            Ranking Results
-                          </h2>
+                          <div className="flex items-center gap-2.5">
+                            <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                              <Trophy className="w-5 h-5 text-amber-500" />
+                              Ranking Results
+                            </h2>
+                            {/* Compact Expand / Collapse Pill */}
+                            <button
+                              type="button"
+                              onClick={handleToggleExpandAll}
+                              className="inline-flex items-center gap-1 text-[11px] text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 px-2 py-0.5 rounded-md font-medium border border-slate-200 transition-colors cursor-pointer"
+                              title={allExpanded ? "Collapse all candidate cards" : "Expand all candidate cards"}
+                            >
+                              {allExpanded ? (
+                                <>
+                                  <ChevronUp className="w-3 h-3 text-slate-500" />
+                                  <span>Collapse All</span>
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronDown className="w-3 h-3 text-slate-500" />
+                                  <span>Expand All</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
                           <p className="text-xs text-gray-500 mt-0.5">
-                            {candidateList.length} candidate
-                            {candidateList.length !== 1 ? "s" : ""} evaluated against{" "}
+                            {candidateList.length} candidate{candidateList.length !== 1 ? "s" : ""} evaluated against{" "}
                             <span className="font-semibold text-gray-800">
                               {results?.jobTitle || jobTitle || "Job Description"}
                             </span>
                             {results?.processingTimeMs && (
                               <span className="text-gray-400">
-                                {" "}
-                                • {(results.processingTimeMs / 1000).toFixed(1)}s
+                                {" "}• {(results.processingTimeMs / 1000).toFixed(1)}s
                               </span>
                             )}
                           </p>
                         </div>
-                        {/* Expand / Collapse All Toggle Button */}
-                        <button
-                          type="button"
-                          onClick={handleToggleExpandAll}
-                          className="inline-flex items-center gap-1.5 text-xs text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 px-2.5 py-1.5 rounded-lg font-medium border border-slate-200 transition-colors cursor-pointer"
-                          title={allExpanded ? "Collapse all candidate cards" : "Expand all candidate cards"}
-                        >
-                          {allExpanded ? (
-                            <>
-                              <ChevronUp className="w-3.5 h-3.5 text-slate-600" />
-                              <span>Collapse All</span>
-                            </>
-                          ) : (
-                            <>
-                              <ChevronDown className="w-3.5 h-3.5 text-slate-600" />
-                              <span>Expand All</span>
-                            </>
-                          )}
-                        </button>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        {/* Compare Candidates */}
-                        {candidateList.length >= 2 && (
+
+                      {/* Right: Streamlined Action Hierarchy */}
+                      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                        {/* Secondary Utility Group: Re-rank, Export CSV, Print */}
+                        <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200/80 shadow-2xs">
                           <button
                             type="button"
-                            onClick={() => setShowComparison(true)}
-                            className="flex items-center gap-1.5 text-xs text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg border border-indigo-200 font-medium transition-colors cursor-pointer"
-                            title="Compare candidates side-by-side"
+                            onClick={() => setResults(null)}
+                            className="flex items-center gap-1 text-xs text-slate-600 hover:text-slate-900 px-2.5 py-1 rounded-lg hover:bg-white transition-colors cursor-pointer"
+                            title="Modify inputs and re-rank candidates"
                           >
-                            <BarChart3 className="w-3.5 h-3.5" />
-                            Compare Candidates
+                            <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+                            <span className="hidden sm:inline">Modify</span>
+                            <span className="sm:hidden">Edit</span>
                           </button>
-                        )}
 
-                        {/* Export CSV */}
-                        <button
-                          type="button"
-                          onClick={handleExportCSV}
-                          className="flex items-center gap-1.5 text-xs text-slate-700 bg-white hover:bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 font-medium shadow-2xs transition-colors cursor-pointer"
-                          title="Export ranking table to CSV file"
-                        >
-                          <Download className="w-3.5 h-3.5 text-emerald-600" />
-                          Export CSV
-                        </button>
+                          <div className="h-3.5 w-px bg-slate-200" />
 
-                        {/* Print / Save PDF */}
-                        <button
-                          type="button"
-                          onClick={handlePrint}
-                          className="flex items-center gap-1.5 text-xs text-slate-700 bg-white hover:bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 font-medium shadow-2xs transition-colors cursor-pointer"
-                          title="Print or save as PDF report"
-                        >
-                          <Printer className="w-3.5 h-3.5 text-slate-600" />
-                          Print / PDF
-                        </button>
+                          <button
+                            type="button"
+                            onClick={handleExportCSV}
+                            className="flex items-center gap-1 text-xs text-slate-600 hover:text-slate-900 px-2.5 py-1 rounded-lg hover:bg-white transition-colors cursor-pointer"
+                            title="Export ranking table to CSV file"
+                          >
+                            <Download className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Export</span>
+                          </button>
 
-                        {/* Create Mandate from this JD */}
-                        <button
-                          type="button"
-                          onClick={handleCreateMandate}
-                          className="flex items-center gap-1.5 text-xs text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg border border-purple-200 font-medium transition-colors cursor-pointer"
-                          title="Convert this JD into a live QuestEdge mandate"
-                        >
-                          <Briefcase className="w-3.5 h-3.5 text-purple-600" />
-                          Save as Mandate
-                        </button>
+                          <div className="h-3.5 w-px bg-slate-200" />
 
-                        {/* Re-rank / Modify */}
-                        <button
-                          type="button"
-                          onClick={() => setResults(null)}
-                          className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer"
-                        >
-                          <RefreshCw className="w-3.5 h-3.5" />
-                          Re-rank / Modify
-                        </button>
+                          <button
+                            type="button"
+                            onClick={handlePrint}
+                            className="flex items-center gap-1 text-xs text-slate-600 hover:text-slate-900 px-2.5 py-1 rounded-lg hover:bg-white transition-colors cursor-pointer"
+                            title="Print or save as PDF report"
+                          >
+                            <Printer className="w-3.5 h-3.5 text-slate-500" />
+                            <span>Print</span>
+                          </button>
+                        </div>
+
+                        {/* Primary Decision Group: Compare Candidates & Hero 'Save as Mandate' */}
+                        <div className="flex items-center gap-2">
+                          {/* Compare Candidates */}
+                          {candidateList.length >= 2 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (selectedCandidateIds.length < 2 && candidateList.length >= 2) {
+                                  const top2Ids = candidateList.slice(0, 2).map((c: any, i: number) => String(c.candidateId || c.id || `cand-${i}`));
+                                  setSelectedCandidateIds(top2Ids);
+                                }
+                                setShowComparison(true);
+                              }}
+                              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border font-semibold transition-all cursor-pointer shadow-2xs ${
+                                selectedCandidateIds.length >= 2
+                                  ? "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700"
+                                  : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200"
+                              }`}
+                              title="Compare candidates side-by-side"
+                            >
+                              <BarChart3 className="w-3.5 h-3.5" />
+                              <span>Compare{selectedCandidateIds.length >= 2 ? ` (${selectedCandidateIds.length})` : ""}</span>
+                            </button>
+                          )}
+
+                          {/* Hero Action: Save as Mandate */}
+                          <button
+                            type="button"
+                            onClick={handleCreateMandate}
+                            className="flex items-center gap-1.5 text-xs font-semibold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 px-3.5 py-1.5 rounded-lg shadow-xs hover:shadow transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                            title="Convert this JD and ranking into a live QuestEdge hiring mandate"
+                          >
+                            <Briefcase className="w-3.5 h-3.5 text-purple-200" />
+                            <span>Save as Mandate</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
 
                     {/* AI Pool Summary Banner if available (Screen Only) */}
                     {(results?.summary || results?.poolSummary) && (
-                      <div className="bg-blue-50/80 border border-blue-200 rounded-xl p-4 text-xs text-blue-900 leading-relaxed shadow-xs space-y-1 print:hidden">
-                        <span className="font-bold text-blue-950 flex items-center gap-1.5">
-                          <Sparkles className="w-4 h-4 text-blue-600" />
-                          AI Candidate Pool Assessment
-                        </span>
-                        <p className="text-blue-900/90 whitespace-pre-line">
-                          {results.summary || results.poolSummary}
-                        </p>
+                      <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-slate-50/80 border border-blue-200/90 rounded-2xl p-4.5 text-xs text-blue-950 leading-relaxed shadow-xs space-y-3 print:hidden">
+                        {/* Header & KPI Metric Strip */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-blue-100">
+                          <span className="font-bold text-blue-950 flex items-center gap-1.5 text-xs tracking-tight">
+                            <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
+                            AI Candidate Pool Assessment
+                          </span>
+
+                          {/* 3-Stat KPI Strip */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/95 border border-blue-200/80 shadow-2xs text-[11px] font-semibold text-slate-800">
+                              <span className="text-emerald-600">🎯</span>
+                              <span className="text-slate-500 font-medium">Top Contenders:</span>
+                              <span className="text-emerald-700 font-bold">{topFitCount} Candidate{topFitCount === 1 ? "" : "s"}</span>
+                            </div>
+
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/95 border border-blue-200/80 shadow-2xs text-[11px] font-semibold text-slate-800">
+                              <span className="text-blue-600">📊</span>
+                              <span className="text-slate-500 font-medium">Pool Average:</span>
+                              <span className="text-blue-700 font-bold">{poolAverage}/100</span>
+                            </div>
+
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/95 border border-blue-200/80 shadow-2xs text-[11px] font-semibold text-slate-800">
+                              <span className="text-amber-500">⚡</span>
+                              <span className="text-slate-500 font-medium">Analysis Speed:</span>
+                              <span className="text-slate-700 font-bold">{candidateList.length} resumes in {processingSec}s</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Interactive Summary with clickable candidate tags */}
+                        <div className="text-slate-700 text-xs leading-relaxed font-normal">
+                          {renderInteractiveSummary(results.summary || results.poolSummary, candidateList)}
+                        </div>
                       </div>
                     )}
 
@@ -2008,15 +2139,15 @@ export default function ResumeRankerPage() {
                             type="button"
                             onClick={() => setFitFilter("GOOD")}
                             className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-full font-medium transition-colors cursor-pointer border ${fitFilter === "GOOD"
-                              ? "bg-blue-600 text-white border-blue-600 font-semibold shadow-2xs"
-                              : "bg-blue-50 text-blue-800 hover:bg-blue-100 border-blue-200"
+                              ? "bg-amber-600 text-white border-amber-600 font-semibold shadow-2xs"
+                              : "bg-amber-50 text-amber-800 hover:bg-amber-100 border-amber-200"
                               }`}
                           >
                             <span
-                              className={`w-1.5 h-1.5 rounded-full ${fitFilter === "GOOD" ? "bg-white" : "bg-blue-500"
+                              className={`w-1.5 h-1.5 rounded-full ${fitFilter === "GOOD" ? "bg-white" : "bg-amber-500"
                                 }`}
                             />
-                            Good Fit ({goodFitCount})
+                            Moderate Fit ({goodFitCount})
                           </button>
                         )}
                         {reviewFitCount > 0 && (
@@ -2024,12 +2155,12 @@ export default function ResumeRankerPage() {
                             type="button"
                             onClick={() => setFitFilter("REVIEW")}
                             className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-full font-medium transition-colors cursor-pointer border ${fitFilter === "REVIEW"
-                              ? "bg-amber-600 text-white border-amber-600 font-semibold shadow-2xs"
-                              : "bg-amber-50 text-amber-800 hover:bg-amber-100 border-amber-200"
+                              ? "bg-rose-600 text-white border-rose-600 font-semibold shadow-2xs"
+                              : "bg-rose-50 text-rose-800 hover:bg-rose-100 border-rose-200"
                               }`}
                           >
                             <span
-                              className={`w-1.5 h-1.5 rounded-full ${fitFilter === "REVIEW" ? "bg-white" : "bg-amber-500"
+                              className={`w-1.5 h-1.5 rounded-full ${fitFilter === "REVIEW" ? "bg-white" : "bg-rose-500"
                                 }`}
                             />
                             Needs Review ({reviewFitCount})
@@ -2055,12 +2186,21 @@ export default function ResumeRankerPage() {
                               key={candId}
                               candidate={{
                                 ...candidate,
+                                candidateId: candId,
                                 rank: candidate.rank || idx + 1,
                                 totalScore: Number(candidate.totalScore) || 0,
                                 email: candidate.email || matched?.email,
                                 phone: candidate.phone || matched?.phone,
                                 linkedin: candidate.linkedin || matched?.linkedin,
                                 github: candidate.github || matched?.github,
+                                currentRole: candidate.currentRole || matched?.currentRole,
+                                currentCompany: candidate.currentCompany || matched?.currentCompany,
+                                experienceYears: candidate.experienceYears ?? matched?.experienceYears,
+                                location: candidate.location || matched?.location,
+                                skills:
+                                  Array.isArray(candidate.skills) && candidate.skills.length > 0
+                                    ? candidate.skills
+                                    : matched?.skills || [],
                                 strengths: Array.isArray(candidate.strengths)
                                   ? candidate.strengths
                                   : [],
@@ -2082,6 +2222,9 @@ export default function ResumeRankerPage() {
                               onViewResume={
                                 matched ? () => setViewingResume(matched) : undefined
                               }
+                              isCompared={selectedCandidateIds.includes(candId)}
+                              onToggleCompare={() => toggleCompareCandidate(candId)}
+                              isHighlighted={highlightedCardId === candId}
                             />
                           );
                         })}
@@ -2230,8 +2373,37 @@ export default function ResumeRankerPage() {
               {showComparison && (
                 <ComparisonView
                   rankings={candidateList}
+                  initialSelectedIds={selectedCandidateIds}
                   onClose={() => setShowComparison(false)}
                 />
+              )}
+
+              {/* Floating Bottom Comparison Action Bar */}
+              {selectedCandidateIds.length >= 2 && !showComparison && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-4 backdrop-blur-md animate-in slide-in-from-bottom-4 print:hidden">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500 text-xs font-bold">
+                      {selectedCandidateIds.length}
+                    </span>
+                    <span className="text-xs font-medium">candidates selected</span>
+                  </div>
+                  <div className="h-4 w-px bg-slate-700" />
+                  <button
+                    type="button"
+                    onClick={() => setShowComparison(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white shadow-sm transition-colors cursor-pointer"
+                  >
+                    <BarChart3 className="w-3.5 h-3.5" />
+                    Compare Side-by-Side →
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCandidateIds([])}
+                    className="text-xs text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                </div>
               )}
 
               {/* New Ranking buttons */}
