@@ -39,7 +39,7 @@ export class ResumeRankingService {
   ) {
     this.geminiApiKey = this.config.get<string>('GEMINI_API_KEY', '');
     this.modelName =
-      this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-lite-latest';
+      this.config.get<string>('GEMINI_MODEL') || 'gemini-3.1-flash-lite';
   }
 
   // ── 1. Rank Resumes ──────────────────────────────────────────────
@@ -1172,22 +1172,26 @@ If the document appears to be a scanned image with no selectable text, extract w
     payload: any,
     maxRetries: number,
   ): Promise<RankingResponse> {
+    // Alternate between Lite cluster and Full Flash cluster to bypass single-cluster outages
     const fallbackModels = [
       this.modelName,
       'gemini-3.1-flash-lite',
-      'gemini-3.5-flash-lite',
       'gemini-3-flash-preview',
+      'gemini-3.5-flash-lite',
+      'gemini-flash-lite-latest',
       'gemini-flash-latest',
     ].filter((m, i, arr) => m && arr.indexOf(m) === i);
 
     let lastError: Error | null = null;
+    // Ensure all configured fallback models are tried
+    const totalAttempts = Math.max(maxRetries + 1, fallbackModels.length);
 
-    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+    for (let attempt = 1; attempt <= totalAttempts; attempt++) {
       const currentModel =
         fallbackModels[(attempt - 1) % fallbackModels.length];
       try {
         this.logger.log(
-          `AI ranking attempt ${attempt}/${maxRetries + 1} for ${payload.candidates.length} candidates using ${currentModel}`,
+          `AI ranking attempt ${attempt}/${totalAttempts} for ${payload.candidates.length} candidates using ${currentModel}`,
         );
         return await this.callAiRankingService(payload, currentModel);
       } catch (err: any) {
@@ -1202,10 +1206,10 @@ If the document appears to be a scanned image with no selectable text, extract w
           errMsg.includes('UNAVAILABLE') ||
           errMsg.includes('high demand');
 
-        if (attempt <= maxRetries && isRetryable) {
-          const backoffMs = Math.min(1500 * Math.pow(2, attempt - 1), 6000);
+        if (attempt < totalAttempts && isRetryable) {
+          const backoffMs = Math.min(1000 * attempt, 4000);
           this.logger.warn(
-            `AI ranking attempt ${attempt} with ${currentModel} failed (${errMsg}), trying next model in ${backoffMs}ms...`,
+            `AI ranking attempt ${attempt} with ${currentModel} failed (${errMsg}), switching to next model in ${backoffMs}ms...`,
           );
           await new Promise((resolve) => setTimeout(resolve, backoffMs));
         } else {
