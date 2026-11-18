@@ -74,6 +74,13 @@ function scoreBadgeColor(score: number): string {
   return "text-rose-700 bg-rose-50 border-rose-200";
 }
 
+function getCardTierClasses(score: number): { leftBorder: string } {
+  if (score >= 85) return { leftBorder: "border-l-emerald-500" };
+  if (score >= 70) return { leftBorder: "border-l-blue-500" };
+  if (score >= 55) return { leftBorder: "border-l-amber-500" };
+  return { leftBorder: "border-l-rose-500" };
+}
+
 export function formatCandidateName(name?: string): string {
   if (!name) return "Candidate";
   const trimmed = name.trim();
@@ -200,15 +207,24 @@ export default function RankedCandidateCard({
   const subtitle = getSubtitle(c);
   const topSkills = getTopSkills(c);
   const topStrength = c.strengths && c.strengths.length > 0 ? c.strengths[0] : null;
+  const tier = getCardTierClasses(c.totalScore);
+
+  let borderStateClass = `border-gray-200 shadow-xs hover:shadow-md hover:border-gray-300 ${
+    c.rank === 1 ? "bg-gradient-to-r from-emerald-50/15 via-white to-white" : "bg-white"
+  }`;
+
+  if (isHighlighted) {
+    borderStateClass =
+      "border-indigo-500 ring-4 ring-indigo-400/30 shadow-lg shadow-indigo-500/10 scale-[1.008] bg-white";
+  } else if (isCompared) {
+    borderStateClass =
+      "border-indigo-300 bg-indigo-50/25 ring-2 ring-indigo-500/20 shadow-xs";
+  }
 
   return (
     <div
       id={`candidate-card-${c.candidateId}`}
-      className={`bg-white rounded-xl border transition-all duration-300 print:shadow-none print:border-slate-300 break-inside-avoid print:mb-5 ${
-        isHighlighted
-          ? "border-indigo-500 ring-4 ring-indigo-400/30 shadow-lg shadow-indigo-500/10 scale-[1.008]"
-          : "border-gray-200 shadow-xs hover:shadow-md"
-      }`}
+      className={`rounded-xl border border-l-4 ${tier.leftBorder} ${borderStateClass} transition-all duration-300 print:shadow-none print:border-slate-300 print:bg-white break-inside-avoid print:mb-5`}
     >
       {/* Primary Card Bar (clickable to toggle expand) */}
       <div
