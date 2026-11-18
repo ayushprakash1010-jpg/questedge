@@ -66,6 +66,43 @@ export class ScoringWeightsDto {
   logisticsAvailability?: number;
 }
 
+export class ShortlistingRulesDto {
+  @ApiPropertyOptional({ enum: ['REQUIRED', 'RELAXED'], default: 'RELAXED' })
+  @IsOptional()
+  @IsString()
+  locationCompatibility?: string;
+
+  @ApiPropertyOptional({ enum: ['REQUIRED', 'RELAXED'], default: 'RELAXED' })
+  @IsOptional()
+  @IsString()
+  mandatorySkills?: string;
+
+  @ApiPropertyOptional({ enum: ['REQUIRED', 'RELAXED'], default: 'RELAXED' })
+  @IsOptional()
+  @IsString()
+  minimumExperience?: string;
+
+  @ApiPropertyOptional({ enum: ['REQUIRED', 'RELAXED'], default: 'RELAXED' })
+  @IsOptional()
+  @IsString()
+  seniorityLevel?: string;
+
+  @ApiPropertyOptional({ enum: ['REQUIRED', 'RELAXED'], default: 'RELAXED' })
+  @IsOptional()
+  @IsString()
+  requiredEducation?: string;
+
+  @ApiPropertyOptional({ enum: ['REQUIRED', 'RELAXED'], default: 'RELAXED' })
+  @IsOptional()
+  @IsString()
+  requiredCertification?: string;
+
+  @ApiPropertyOptional({ enum: ['REQUIRED', 'RELAXED'], default: 'RELAXED' })
+  @IsOptional()
+  @IsString()
+  workAuthorization?: string;
+}
+
 export class RankResumesDto {
   @ApiProperty({ description: 'Mandate UUID to rank candidates against' })
   @IsUUID()
@@ -89,6 +126,15 @@ export class RankResumesDto {
   @IsObject()
   @Type(() => ScoringWeightsDto)
   customWeights?: ScoringWeightsDto;
+
+  @ApiPropertyOptional({
+    description: 'Shortlisting knockout rules (Required vs Relaxed)',
+  })
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => ShortlistingRulesDto)
+  shortlistingRules?: ShortlistingRulesDto;
 }
 
 export class ReRankDto {
@@ -215,4 +261,13 @@ export class QuickRankDto {
   @ValidateNested()
   @Type(() => ScoringWeightsDto)
   customWeights?: ScoringWeightsDto;
+
+  @ApiPropertyOptional({
+    description: 'Shortlisting knockout rules (Required vs Relaxed)',
+  })
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => ShortlistingRulesDto)
+  shortlistingRules?: ShortlistingRulesDto;
 }

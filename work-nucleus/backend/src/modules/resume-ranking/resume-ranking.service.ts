@@ -115,6 +115,7 @@ export class ResumeRankingService {
         education: c.education || null,
       })),
       weights: dto.customWeights || undefined,
+      shortlistingRules: dto.shortlistingRules || undefined,
     };
 
     // 8. Call AI with retry logic (Feature 5: Error handling)
@@ -515,6 +516,7 @@ export class ResumeRankingService {
         skills: c.skills,
       })),
       weights: dto.customWeights || undefined,
+      shortlistingRules: dto.shortlistingRules || undefined,
     };
 
     // Call AI with retry
@@ -1311,6 +1313,16 @@ If the document appears to be a scanned image with no selectable text, extract w
               ? 'PARTIAL_FIT'
               : 'WEAK_FIT';
 
+      const isDisqualified = Boolean(r.isDisqualified);
+      const disqualificationReason =
+        typeof r.disqualificationReason === 'string' && r.disqualificationReason.trim()
+          ? r.disqualificationReason.trim().substring(0, 500)
+          : null;
+
+      // Persist knockout flags in breakdown JSON for auditability
+      sanitizedBreakdown.isDisqualified = isDisqualified;
+      sanitizedBreakdown.disqualificationReason = disqualificationReason;
+
       // Sanitize arrays
       const sanitizeArray = (arr: any): string[] => {
         if (!Array.isArray(arr)) return [];
@@ -1323,7 +1335,9 @@ If the document appears to be a scanned image with no selectable text, extract w
         candidateName: r.candidateName || 'Unknown',
         totalScoreNumber: totalScore,
         totalScore: new Prisma.Decimal(totalScore),
-        verdict,
+        verdict: isDisqualified ? 'DISQUALIFIED' : verdict,
+        isDisqualified,
+        disqualificationReason,
         scoreBreakdown: sanitizedBreakdown as unknown as Prisma.InputJsonValue,
         strengths: sanitizeArray(
           r.strengths,
@@ -1343,24 +1357,30 @@ If the document appears to be a scanned image with no selectable text, extract w
       };
     });
 
-    // Re-rank strictly descending by totalScore
-    const sorted = mapped.sort(
-      (a, b) => b.totalScoreNumber - a.totalScoreNumber,
-    );
+    // Qualified candidates first (sorted descending by totalScore), then disqualified candidates
+    const sorted = mapped.sort((a, b) => {
+      if (a.isDisqualified !== b.isDisqualified) {
+        return a.isDisqualified ? 1 : -1;
+      }
+      return b.totalScoreNumber - a.totalScoreNumber;
+    });
 
+    let qualifiedRank = 1;
     return sorted.map((item, idx) => ({
       sessionId: item.sessionId,
       candidateId: item.candidateId,
       candidateName: item.candidateName,
       totalScore: item.totalScore,
       verdict: item.verdict,
+      isDisqualified: item.isDisqualified,
+      disqualificationReason: item.disqualificationReason,
       scoreBreakdown: item.scoreBreakdown,
       strengths: item.strengths,
       gaps: item.gaps,
       standoutFactors: item.standoutFactors,
       comparisonNote: item.comparisonNote,
       recommendation: item.recommendation,
-      rank: idx + 1,
+      rank: item.isDisqualified ? idx + 1 : qualifiedRank++,
     }));
   }
 
@@ -1459,7 +1479,20 @@ Required Skills: ${skillsList || 'N/A'}
 <scoring_weights>
 ${weightsDesc}
 </scoring_weights>
+${(() => {
+  const rules = payload.shortlistingRules || {};
+  const requiredRules: string[] = [];
+  if (rules.locationCompatibility === 'REQUIRED') requiredRules.push('Location Compatibility (Candidate location & work model must match JD)');
+  if (rules.mandatorySkills === 'REQUIRED') requiredRules.push('Mandatory Skills (Candidate must have direct hands-on experience in mandatory skills specified)');
+  if (rules.minimumExperience === 'REQUIRED') requiredRules.push('Minimum Experience (Candidate total years of experience must satisfy the required minimum)');
+  if (rules.seniorityLevel === 'REQUIRED') requiredRules.push('Seniority Level (Candidate must match the role seniority level and not be mismatched)');
+  if (rules.requiredEducation === 'REQUIRED') requiredRules.push('Required Education (Candidate must hold the required academic qualification)');
+  if (rules.requiredCertification === 'REQUIRED') requiredRules.push('Required Certification (Candidate must hold mandatory certifications)');
+  if (rules.workAuthorization === 'REQUIRED') requiredRules.push('Work Authorization (Candidate must be legally authorized without visa barriers)');
 
+  if (requiredRules.length === 0) return '';
+  return `\n<shortlisting_rules>\nThe recruiter has configured these HARD KNOCKOUT RULES (REQUIRED - MUST MATCH):\n${requiredRules.map((r, i) => `${i + 1}. ${r}`).join('\n')}\n\nKNOCKOUT INSTRUCTION:\n- If a candidate FAILS any REQUIRED condition, set "isDisqualified": true and provide a clear, concise "disqualificationReason" (e.g. "Failed mandatory skills: missing core React stack", "Experience 3 yrs below required 5+ yrs").\n- If a candidate MEETS all REQUIRED conditions, set "isDisqualified": false and "disqualificationReason": null.\n</shortlisting_rules>\n`;
+})()}
 <candidates>
 ${candidatesSummary}
 </candidates>
@@ -1487,6 +1520,8 @@ Output ONLY valid JSON with this exact schema:
       "candidateName": "name from input",
       "totalScore": 85,
       "verdict": "EXCELLENT_FIT",
+      "isDisqualified": false,
+      "disqualificationReason": null,
       "scoreBreakdown": {
         "skillsMatch": { "score": 22, "maxScore": 25, "evidence": ["React expertise", "5yr Node.js"], "comment": "Strong technical match" },
         "experienceRelevance": { "score": 18, "maxScore": 20, "evidence": ["8 years relevant"], "comment": "Extensive experience" },

@@ -408,4 +408,71 @@ describe('ResumeRankingService', () => {
       expect(modelsAttempted[1]).toBe('gemini-3.1-flash-lite');
     });
   });
+
+  describe('Shortlisting Knockout Rules & Disqualification Handling', () => {
+    it('correctly tags disqualified candidates, sets verdict to DISQUALIFIED, and places qualified candidates first', () => {
+      const candidates = [
+        {
+          candidateId: 'cand-failed',
+          candidateName: 'Vikram Sharma',
+          totalScore: 88,
+          verdict: 'STRONG_FIT',
+          isDisqualified: true,
+          disqualificationReason: 'Failed mandatory skills: missing React experience',
+          scoreBreakdown: {
+            skillsMatch: { score: 10, maxScore: 25 },
+            experienceRelevance: { score: 20, maxScore: 20 },
+            projectRelevance: { score: 15, maxScore: 15 },
+            educationCertifications: { score: 10, maxScore: 10 },
+            domainIndustryFit: { score: 10, maxScore: 10 },
+            roleSeniorityFit: { score: 10, maxScore: 10 },
+            culturalSoftSignals: { score: 4, maxScore: 5 },
+            logisticsAvailability: { score: 4, maxScore: 5 },
+          },
+        },
+        {
+          candidateId: 'cand-passed',
+          candidateName: 'Arjun Mehta',
+          totalScore: 85,
+          verdict: 'STRONG_FIT',
+          isDisqualified: false,
+          disqualificationReason: null,
+          scoreBreakdown: {
+            skillsMatch: { score: 24, maxScore: 25 },
+            experienceRelevance: { score: 18, maxScore: 20 },
+            projectRelevance: { score: 14, maxScore: 15 },
+            educationCertifications: { score: 9, maxScore: 10 },
+            domainIndustryFit: { score: 9, maxScore: 10 },
+            roleSeniorityFit: { score: 9, maxScore: 10 },
+            culturalSoftSignals: { score: 4, maxScore: 5 },
+            logisticsAvailability: { score: 4, maxScore: 5 },
+          },
+        },
+      ];
+
+      const sanitized = (service as any).sanitizeRankingResults(
+        { rankings: candidates },
+        'test-session-knockouts',
+      );
+
+      // Qualified candidate must be sorted first (rank 1) despite candidate-failed having higher raw points
+      expect(sanitized[0].candidateId).toBe('cand-passed');
+      expect(sanitized[0].rank).toBe(1);
+      expect(sanitized[0].isDisqualified).toBe(false);
+      expect(sanitized[0].verdict).toBe('EXCELLENT_FIT');
+
+      // Disqualified candidate must be sorted second (rank 2) with DISQUALIFIED verdict
+      expect(sanitized[1].candidateId).toBe('cand-failed');
+      expect(sanitized[1].rank).toBe(2);
+      expect(sanitized[1].isDisqualified).toBe(true);
+      expect(sanitized[1].verdict).toBe('DISQUALIFIED');
+      expect(sanitized[1].disqualificationReason).toBe(
+        'Failed mandatory skills: missing React experience',
+      );
+      expect(sanitized[1].scoreBreakdown.isDisqualified).toBe(true);
+      expect(sanitized[1].scoreBreakdown.disqualificationReason).toBe(
+        'Failed mandatory skills: missing React experience',
+      );
+    });
+  });
 });

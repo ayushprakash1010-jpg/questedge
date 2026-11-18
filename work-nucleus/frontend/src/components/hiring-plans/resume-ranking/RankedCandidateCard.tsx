@@ -39,11 +39,22 @@ interface RankedCandidateData {
   experienceYears?: number | string;
   location?: string;
   skills?: string[];
+  isDisqualified?: boolean;
+  disqualificationReason?: string;
 }
 
 const MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
-function verdictBadge(verdict: string, score?: number) {
+function verdictBadge(verdict: string, score?: number, isDisqualified?: boolean) {
+  if (isDisqualified) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border bg-rose-50 border-rose-300 text-rose-700">
+        <span className="w-1.5 h-1.5 rounded-full bg-rose-600" />
+        Knocked Out
+      </span>
+    );
+  }
+
   let effectiveVerdict = verdict;
   if (typeof score === "number" && !isNaN(score)) {
     if (score >= 85) effectiveVerdict = "EXCELLENT_FIT";
@@ -74,7 +85,8 @@ function scoreBadgeColor(score: number): string {
   return "text-rose-700 bg-rose-50 border-rose-200";
 }
 
-function getCardTierClasses(score: number): { leftBorder: string } {
+function getCardTierClasses(score: number, isDisqualified?: boolean): { leftBorder: string } {
+  if (isDisqualified) return { leftBorder: "border-l-rose-500" };
   if (score >= 85) return { leftBorder: "border-l-emerald-500" };
   if (score >= 70) return { leftBorder: "border-l-blue-500" };
   if (score >= 55) return { leftBorder: "border-l-amber-500" };
@@ -207,10 +219,14 @@ export default function RankedCandidateCard({
   const subtitle = getSubtitle(c);
   const topSkills = getTopSkills(c);
   const topStrength = c.strengths && c.strengths.length > 0 ? c.strengths[0] : null;
-  const tier = getCardTierClasses(c.totalScore);
+  const tier = getCardTierClasses(c.totalScore, c.isDisqualified);
 
   let borderStateClass = `border-gray-200 shadow-xs hover:shadow-md hover:border-gray-300 hover:-translate-y-0.5 ${
-    c.rank === 1 ? "bg-gradient-to-r from-emerald-50/15 via-white to-white" : "bg-white"
+    c.isDisqualified
+      ? "bg-rose-50/25 border-rose-200"
+      : c.rank === 1
+      ? "bg-gradient-to-r from-emerald-50/15 via-white to-white"
+      : "bg-white"
   }`;
 
   if (isHighlighted) {
@@ -258,8 +274,14 @@ export default function RankedCandidateCard({
 
             {/* Rank Medal / Number */}
             <div className="flex flex-col items-center justify-center shrink-0 w-8 pt-0.5">
-              <span className="text-xl sm:text-2xl leading-none font-bold text-slate-800">
-                {MEDAL[c.rank] || `#${c.rank}`}
+              <span
+                className={`leading-none font-bold ${
+                  c.isDisqualified
+                    ? "text-xs font-mono text-rose-700 bg-rose-100 px-1.5 py-0.5 rounded border border-rose-300"
+                    : "text-xl sm:text-2xl text-slate-800"
+                }`}
+              >
+                {c.isDisqualified ? "KO" : (MEDAL[c.rank] || `#${c.rank}`)}
               </span>
             </div>
 
@@ -269,8 +291,15 @@ export default function RankedCandidateCard({
                 <h3 className="text-sm sm:text-base font-bold text-gray-900 truncate">
                   {displayName}
                 </h3>
-                {verdictBadge(c.verdict, c.totalScore)}
+                {verdictBadge(c.verdict, c.totalScore, c.isDisqualified)}
               </div>
+
+              {c.isDisqualified && (
+                <div className="mt-1 inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-rose-50 border border-rose-200 text-xs text-rose-800">
+                  <span className="font-semibold text-rose-700">Failed Required:</span>
+                  <span className="truncate">{c.disqualificationReason || "Did not meet required criteria"}</span>
+                </div>
+              )}
 
               {subtitle ? (
                 <p className="text-xs text-gray-500 flex items-center gap-1.5 truncate mt-0.5">

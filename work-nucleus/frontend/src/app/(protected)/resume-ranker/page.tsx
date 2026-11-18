@@ -43,6 +43,10 @@ import WeightCustomizer, {
   DEFAULT_WEIGHTS,
   type ScoringWeights,
 } from "@/components/hiring-plans/resume-ranking/WeightCustomizer";
+import ShortlistingRulesComponent, {
+  DEFAULT_SHORTLISTING_RULES,
+  type ShortlistingRules,
+} from "@/components/hiring-plans/resume-ranking/ShortlistingRules";
 
 interface ResumeFile {
   id: string;
@@ -355,10 +359,13 @@ export default function ResumeRankerPage() {
   const [expandedResumeId, setExpandedResumeId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Weights
+  // Weights & Shortlisting Knockout Rules
   const [showWeights, setShowWeights] = useState(false);
   const [weights, setWeights] = useState<ScoringWeights>({
     ...DEFAULT_WEIGHTS,
+  });
+  const [shortlistingRules, setShortlistingRules] = useState<ShortlistingRules>({
+    ...DEFAULT_SHORTLISTING_RULES,
   });
 
   // Results
@@ -370,7 +377,7 @@ export default function ResumeRankerPage() {
   const [expandedCardIds, setExpandedCardIds] = useState<Record<string, boolean>>({});
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([]);
   const [highlightedCardId, setHighlightedCardId] = useState<string | null>(null);
-  const [fitFilter, setFitFilter] = useState<"ALL" | "TOP" | "GOOD" | "REVIEW">("ALL");
+  const [fitFilter, setFitFilter] = useState<"ALL" | "TOP" | "GOOD" | "REVIEW" | "KNOCKED_OUT">("ALL");
   const [viewingResume, setViewingResume] = useState<ResumeFile | null>(null);
   const [resumeSearchTerm, setResumeSearchTerm] = useState("");
   const [copiedResumeText, setCopiedResumeText] = useState(false);
@@ -1000,6 +1007,12 @@ export default function ResumeRankerPage() {
         })),
       };
       if (isCustom) body.customWeights = weights;
+      const hasRequiredRules = Object.values(shortlistingRules).some(
+        (v) => v === "REQUIRED"
+      );
+      if (hasRequiredRules) {
+        body.shortlistingRules = shortlistingRules;
+      }
 
       const res = await fetch("/api/resume-ranking/quick-rank", {
         method: "POST",
@@ -1709,21 +1722,25 @@ export default function ResumeRankerPage() {
             </div>
           </div>
 
-          {/* Weights */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+          {/* Scoring Weights & Knockout Rules */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <button
               onClick={() => setShowWeights(!showWeights)}
-              className="flex items-center gap-2 px-5 py-3 text-xs text-gray-600 hover:text-gray-900 w-full"
+              className="flex items-center gap-2 px-5 py-3 text-xs text-gray-700 font-medium hover:text-gray-900 w-full hover:bg-slate-50 transition-colors cursor-pointer"
             >
-              <BarChart3 className="w-3.5 h-3.5" />
-              Customize Scoring Weights
-              <span className="ml-auto text-gray-400">
-                {showWeights ? "▲" : "▼"}
+              <BarChart3 className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Customize Scoring Weights & Knockout Rules</span>
+              <span className="ml-auto text-gray-400 font-mono text-[11px]">
+                {showWeights ? "▲ Hide" : "▼ Configure"}
               </span>
             </button>
             {showWeights && (
-              <div className="px-5 pb-4">
+              <div className="px-5 pb-5 pt-1 space-y-5">
                 <WeightCustomizer weights={weights} onChange={setWeights} />
+                <ShortlistingRulesComponent
+                  rules={shortlistingRules}
+                  onChange={setShortlistingRules}
+                />
               </div>
             )}
           </div>
@@ -1936,23 +1953,26 @@ export default function ResumeRankerPage() {
 
               {/* On-Screen Header & Action Controls */}
               {(() => {
-                const topFitCount = candidateList.filter((c: any) => {
+                const qualifiedList = candidateList.filter((c: any) => !c.isDisqualified);
+                const disqualifiedCount = candidateList.filter((c: any) => c.isDisqualified).length;
+
+                const topFitCount = qualifiedList.filter((c: any) => {
                   const score = Number(c.totalScore) || 0;
                   return score >= 70;
                 }).length;
 
-                const goodFitCount = candidateList.filter((c: any) => {
+                const goodFitCount = qualifiedList.filter((c: any) => {
                   const score = Number(c.totalScore) || 0;
                   return score >= 55 && score < 70;
                 }).length;
 
-                const reviewFitCount = candidateList.filter((c: any) => {
+                const reviewFitCount = qualifiedList.filter((c: any) => {
                   const score = Number(c.totalScore) || 0;
                   return score < 55;
                 }).length;
 
-                const poolAverage = candidateList.length > 0
-                  ? Math.round(candidateList.reduce((acc: number, c: any) => acc + (Number(c.totalScore) || 0), 0) / candidateList.length)
+                const poolAverage = qualifiedList.length > 0
+                  ? Math.round(qualifiedList.reduce((acc: number, c: any) => acc + (Number(c.totalScore) || 0), 0) / qualifiedList.length)
                   : 0;
 
                 const processingSec = results?.processingTimeMs
@@ -1960,7 +1980,9 @@ export default function ResumeRankerPage() {
                   : "10.7";
 
                 const filteredList = candidateList.filter((c: any) => {
+                  if (fitFilter === "KNOCKED_OUT") return Boolean(c.isDisqualified);
                   if (fitFilter === "ALL") return true;
+                  if (c.isDisqualified) return false;
                   const score = Number(c.totalScore) || 0;
                   if (fitFilter === "TOP") return score >= 70;
                   if (fitFilter === "GOOD") return score >= 55 && score < 70;
@@ -2146,6 +2168,14 @@ export default function ResumeRankerPage() {
                               <span className="text-slate-500 font-medium">Analysis Speed:</span>
                               <span className="text-slate-700 font-bold">{candidateList.length} resumes in {processingSec}s</span>
                             </div>
+
+                            {disqualifiedCount > 0 && (
+                              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 border border-rose-200 shadow-2xs text-[11px] font-semibold text-rose-900">
+                                <span>⛔</span>
+                                <span className="text-rose-600 font-medium">Knocked Out:</span>
+                                <span className="text-rose-700 font-bold">{disqualifiedCount} Candidate{disqualifiedCount === 1 ? "" : "s"}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -2218,6 +2248,22 @@ export default function ResumeRankerPage() {
                             Needs Review ({reviewFitCount})
                           </button>
                         )}
+                        {disqualifiedCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setFitFilter("KNOCKED_OUT")}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-full font-medium transition-colors cursor-pointer border ${fitFilter === "KNOCKED_OUT"
+                              ? "bg-rose-600 text-white border-rose-600 font-semibold shadow-2xs"
+                              : "bg-rose-50 text-rose-800 hover:bg-rose-100 border-rose-200"
+                              }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${fitFilter === "KNOCKED_OUT" ? "bg-white" : "bg-rose-500"
+                                }`}
+                            />
+                            Knocked Out ({disqualifiedCount})
+                          </button>
+                        )}
                       </div>
                     )}
 
@@ -2242,6 +2288,14 @@ export default function ResumeRankerPage() {
                                 candidateId: candId,
                                 rank: candidate.rank || idx + 1,
                                 totalScore: Number(candidate.totalScore) || 0,
+                                isDisqualified: Boolean(
+                                  candidate.isDisqualified ||
+                                    candidate.scoreBreakdown?.isDisqualified
+                                ),
+                                disqualificationReason:
+                                  candidate.disqualificationReason ||
+                                  candidate.scoreBreakdown?.disqualificationReason ||
+                                  undefined,
                                 email: candidate.email || matched?.email,
                                 phone: candidate.phone || matched?.phone,
                                 linkedin: candidate.linkedin || matched?.linkedin,
