@@ -22,6 +22,7 @@ import {
   Bell,
   Code2,
   Globe,
+  Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -216,19 +217,90 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
         ))}
       </nav>
 
-      {/* Role badge */}
-      <div className="p-3 border-t border-slate-100">
-        <div
-          className={`rounded-lg px-3 py-2 text-xs font-medium capitalize ${
+      {/* Role Workspace Card */}
+      <div className="p-3 border-t border-slate-200/70 bg-slate-50/40">
+        <Link
+          href={
             userType === "recruiter"
-              ? "bg-sky-50 text-sky-600"
+              ? "/recruiter/profile"
               : userType === "candidate"
-              ? "bg-emerald-50 text-emerald-600"
-              : "bg-indigo-50 text-indigo-600"
-          }`}
+              ? "/candidate/profile"
+              : "/admin/settings"
+          }
+          className={cn(
+            "group flex items-center justify-between rounded-xl border p-2.5 transition-all duration-200 shadow-2xs hover:shadow-xs",
+            userType === "recruiter"
+              ? "border-sky-200/90 bg-gradient-to-r from-sky-50/90 via-sky-50/60 to-cyan-50/40 hover:border-sky-300"
+              : userType === "candidate"
+              ? "border-emerald-200/90 bg-gradient-to-r from-emerald-50/90 via-emerald-50/60 to-teal-50/40 hover:border-emerald-300"
+              : "border-indigo-200/90 bg-gradient-to-r from-indigo-50/90 via-indigo-50/60 to-purple-50/40 hover:border-indigo-300"
+          )}
+          title={`View ${userType} profile and settings`}
         >
-          {userType} view
-        </div>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div
+              className={cn(
+                "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white shadow-xs transition-transform group-hover:scale-105",
+                userType === "recruiter"
+                  ? "bg-gradient-to-br from-sky-500 to-cyan-600"
+                  : userType === "candidate"
+                  ? "bg-gradient-to-br from-emerald-500 to-teal-600"
+                  : "bg-gradient-to-br from-indigo-500 to-purple-600"
+              )}
+            >
+              {userType === "recruiter" ? (
+                <Compass className="h-4 w-4" />
+              ) : userType === "candidate" ? (
+                <UserCircle className="h-4 w-4" />
+              ) : (
+                <Building2 className="h-4 w-4" />
+              )}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="truncate text-xs font-bold uppercase tracking-wide text-slate-900">
+                  {userType === "recruiter"
+                    ? "Recruiter Portal"
+                    : userType === "candidate"
+                    ? "Candidate Portal"
+                    : "Company Portal"}
+                </span>
+              </div>
+              <p className="truncate text-[10px] font-medium text-slate-500">
+                {userType === "recruiter"
+                  ? "Sourcing & Direct Apply"
+                  : userType === "candidate"
+                  ? "Applications & Matches"
+                  : "Hiring & Talent Pipeline"}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center pl-1 shrink-0" title="Active workspace">
+            <span className="relative flex h-2 w-2">
+              <span
+                className={cn(
+                  "absolute inline-flex h-full w-full animate-ping rounded-full opacity-75",
+                  userType === "recruiter"
+                    ? "bg-sky-400"
+                    : userType === "candidate"
+                    ? "bg-emerald-400"
+                    : "bg-indigo-400"
+                )}
+              />
+              <span
+                className={cn(
+                  "relative inline-flex h-2 w-2 rounded-full",
+                  userType === "recruiter"
+                    ? "bg-sky-500"
+                    : userType === "candidate"
+                    ? "bg-emerald-500"
+                    : "bg-indigo-500"
+                )}
+              />
+            </span>
+          </div>
+        </Link>
       </div>
     </aside>
   );
