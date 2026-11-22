@@ -66,6 +66,21 @@ async function extractTextFromPDF(file: File): Promise<string> {
       lastY = item.transform[5];
     }
     text += pageText + "\n\n";
+
+    // Extract hidden hyperlinks from the PDF (e.g., behind text like "LinkedIn", "GitHub", "LeetCode")
+    try {
+      const annotations = await page.getAnnotations();
+      const links = annotations
+        .filter((anno: any) => anno.subtype === "Link" && (anno.url || anno.unsafeUrl))
+        .map((anno: any) => anno.url || anno.unsafeUrl)
+        .filter(Boolean)
+        .join(" ");
+      if (links) {
+        text += "\n[Links / Social Profiles in PDF: " + links + "]\n";
+      }
+    } catch (e) {
+      console.warn("Failed to parse annotations", e);
+    }
   }
   return text.trim();
 }
