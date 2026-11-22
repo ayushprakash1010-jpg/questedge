@@ -885,7 +885,7 @@ export class AiScreeningService {
       count = 5,
       difficulty = 'MEDIUM',
       questionType = 'MCQ',
-      pointsPerQuestion = 5,
+      pointsPerQuestion = 10,
       context = '',
     } = params;
 
@@ -996,7 +996,7 @@ Return ONLY a valid JSON array of question objects with this exact structure:
                   type: q.type || questionType,
                   difficulty: q.difficulty || difficulty,
                   category: String(q.category || topic.split(',')[0].trim() || 'Technical'),
-                  points: Number(q.points || pointsPerQuestion || 5),
+                  points: Number(q.points || pointsPerQuestion || 10),
                   explanation: String(q.explanation || ''),
                   options,
                 };
@@ -1029,7 +1029,7 @@ Return ONLY a valid JSON array of question objects with this exact structure:
         type: questionType || 'MCQ',
         difficulty: difficulty || 'MEDIUM',
         category: cleanTopic,
-        points: points || 5,
+        points: points || 10,
         explanation: `In ${cleanTopic}, enforcing modularity, comprehensive error boundaries, and defensive validation ensures resilience and maintainability.`,
         options: [
           {

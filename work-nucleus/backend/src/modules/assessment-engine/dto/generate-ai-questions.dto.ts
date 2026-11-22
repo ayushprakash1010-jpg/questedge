@@ -51,15 +51,15 @@ export class GenerateAiQuestionsDto {
   questionType?: QuestionType = QuestionType.MCQ;
 
   @ApiPropertyOptional({
-    example: 5,
-    default: 5,
+    example: 10,
+    default: 10,
     description: 'Default points awarded per question',
   })
   @IsInt()
   @Min(1)
   @Max(100)
   @IsOptional()
-  pointsPerQuestion?: number = 5;
+  pointsPerQuestion?: number = 10;
 
   @ApiPropertyOptional({
     example: 'Focus on real-world debugging, common anti-patterns, and architecture',

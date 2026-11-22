@@ -53,7 +53,7 @@ export default function AssessmentDetailPage() {
     { id: "opt_4", text: "", isCorrect: false },
   ]);
   const [explanation, setExplanation] = useState("");
-  const [points, setPoints] = useState(5);
+  const [points, setPoints] = useState(10);
 
   // New Challenge Form state
   const [showChallengeModal, setShowChallengeModal] = useState(false);
