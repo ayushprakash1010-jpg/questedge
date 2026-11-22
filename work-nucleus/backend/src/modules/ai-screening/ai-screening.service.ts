@@ -858,4 +858,203 @@ export class AiScreeningService {
       portfolio: portfolioMatch ? portfolioMatch[0] : '',
     };
   }
+
+  /**
+   * Generates tailored assessment questions using Gemini AI
+   */
+  async generateAssessmentQuestions(params: {
+    topic: string;
+    count: number;
+    difficulty?: string;
+    questionType?: string;
+    pointsPerQuestion?: number;
+    context?: string;
+  }): Promise<
+    Array<{
+      text: string;
+      type: string;
+      difficulty: string;
+      points: number;
+      category: string;
+      explanation: string;
+      options: Array<{ id: string; text: string; isCorrect: boolean }>;
+    }>
+  > {
+    const {
+      topic,
+      count = 5,
+      difficulty = 'MEDIUM',
+      questionType = 'MCQ',
+      pointsPerQuestion = 5,
+      context = '',
+    } = params;
+
+    this.logger.log(
+      `Generating ${count} AI assessment questions for topic: "${topic}" (Difficulty: ${difficulty}, Type: ${questionType})`,
+    );
+
+    const systemPrompt = `
+You are an expert technical assessor and exam author for top technology and product organizations.
+Generate exactly ${count} professional, realistic, high-quality assessment questions based on the provided inputs.
+
+INPUT PARAMETERS:
+- Topic / Domain: ${topic}
+- Target Question Count: ${count}
+- Target Difficulty: ${difficulty} (EASY, MEDIUM, HARD)
+- Primary Question Type: ${questionType} (MCQ, MULTI_SELECT, TRUE_FALSE)
+- Context / Focus: ${context || 'Practical real-world challenges, syntax accuracy, edge cases, and best practices'}
+
+CRITICAL RULES:
+1. Each question must be clear, professional, unambiguous, and test practical domain comprehension.
+2. For MCQ (Single Choice):
+   - Exactly 4 options per question.
+   - Exactly ONE option MUST have isCorrect: true.
+   - Exactly THREE options MUST have isCorrect: false.
+   - Crucial: Randomize the correct answer across options 1, 2, 3, and 4 (do NOT always make the first option correct!).
+   - Distractors must be realistic, reflecting common developer bugs, common misconceptions, or plausible alternate syntax.
+3. For MULTI_SELECT:
+   - Provide 4 to 5 options.
+   - Provide 2 or more options with isCorrect: true.
+4. For TRUE_FALSE:
+   - Exactly 2 options ("True" and "False"), with exactly one isCorrect: true.
+5. Provide a clear, educational 1-2 sentence explanation of why the correct option is right.
+
+OUTPUT SCHEMA:
+Return ONLY a valid JSON array of question objects with this exact structure:
+[
+  {
+    "text": "Detailed question text...",
+    "type": "${questionType}",
+    "difficulty": "${difficulty}",
+    "category": "${topic.split(',')[0].trim() || 'General'}",
+    "points": ${pointsPerQuestion},
+    "explanation": "Clear explanation of why this answer is correct.",
+    "options": [
+      { "id": "opt_1", "text": "First option text", "isCorrect": false },
+      { "id": "opt_2", "text": "Second option text", "isCorrect": true },
+      { "id": "opt_3", "text": "Third option text", "isCorrect": false },
+      { "id": "opt_4", "text": "Fourth option text", "isCorrect": false }
+    ]
+  }
+]
+`;
+
+    const userPrompt = `Generate ${count} questions for topic "${topic}". Seniority: ${difficulty}. Additional context: ${context || 'None'}.`;
+
+    const modelsToTry = [
+      'gemini-flash-lite-latest',
+      'gemini-3.5-flash-lite',
+      'gemini-flash-latest',
+      this.model,
+    ].filter((m, i, arr) => m && arr.indexOf(m) === i);
+
+    if (this.hasApiKey) {
+      for (const modelName of modelsToTry) {
+        try {
+          this.logger.log(`Attempting generateAssessmentQuestions with model: ${modelName}`);
+          const response = await this.generateWithTimeout({
+            model: modelName,
+            contents: userPrompt,
+            config: {
+              systemInstruction: systemPrompt,
+              responseMimeType: 'application/json',
+            },
+          });
+
+          const content = response.text;
+          if (content) {
+            const parsed = this.parseAiResponse(content);
+            const questionsArray = Array.isArray(parsed)
+              ? parsed
+              : parsed?.questions && Array.isArray(parsed.questions)
+              ? parsed.questions
+              : null;
+
+            if (questionsArray && questionsArray.length > 0) {
+              this.logger.log(
+                `Successfully generated ${questionsArray.length} questions using model: ${modelName}`,
+              );
+
+              return questionsArray.map((q: any, qIdx: number) => {
+                const options = Array.isArray(q.options)
+                  ? q.options.map((opt: any, oIdx: number) => ({
+                      id: opt.id || `opt_${qIdx + 1}_${oIdx + 1}`,
+                      text: String(opt.text || `Option ${String.fromCharCode(65 + oIdx)}`),
+                      isCorrect: Boolean(opt.isCorrect),
+                    }))
+                  : [
+                      { id: `opt_${qIdx + 1}_1`, text: 'True', isCorrect: true },
+                      { id: `opt_${qIdx + 1}_2`, text: 'False', isCorrect: false },
+                    ];
+
+                if (!options.some((o: any) => o.isCorrect)) {
+                  options[0].isCorrect = true;
+                }
+
+                return {
+                  text: String(q.text || `Question on ${topic}`),
+                  type: q.type || questionType,
+                  difficulty: q.difficulty || difficulty,
+                  category: String(q.category || topic.split(',')[0].trim() || 'Technical'),
+                  points: Number(q.points || pointsPerQuestion || 5),
+                  explanation: String(q.explanation || ''),
+                  options,
+                };
+              });
+            }
+          }
+        } catch (err: any) {
+          const msg = this.extractErrorMessage(err);
+          this.logger.warn(`Model ${modelName} failed in generateAssessmentQuestions: ${msg}`);
+        }
+      }
+    }
+
+    this.logger.warn('AI models unavailable; falling back to template question generator.');
+    return this.generateFallbackQuestions(topic, count, difficulty, questionType, pointsPerQuestion);
+  }
+
+  private generateFallbackQuestions(
+    topic: string,
+    count: number,
+    difficulty: string,
+    questionType: string,
+    points: number,
+  ) {
+    const list = [];
+    const cleanTopic = topic.split(',')[0].trim() || 'Core Engineering';
+    for (let i = 1; i <= count; i++) {
+      list.push({
+        text: `Which of the following is considered a primary best practice when designing ${cleanTopic} solutions?`,
+        type: questionType || 'MCQ',
+        difficulty: difficulty || 'MEDIUM',
+        category: cleanTopic,
+        points: points || 5,
+        explanation: `In ${cleanTopic}, enforcing modularity, comprehensive error boundaries, and defensive validation ensures resilience and maintainability.`,
+        options: [
+          {
+            id: `opt_${i}_1`,
+            text: `Enforcing modular isolation, strict validation, and idempotent operations`,
+            isCorrect: true,
+          },
+          {
+            id: `opt_${i}_2`,
+            text: `Tight coupling of business rules with presentation layers for faster invocation`,
+            isCorrect: false,
+          },
+          {
+            id: `opt_${i}_3`,
+            text: `Bypassing validation layers to maximize throughput on high-load endpoints`,
+            isCorrect: false,
+          },
+          {
+            id: `opt_${i}_4`,
+            text: `Relying exclusively on client-side state caching without server-side verification`,
+            isCorrect: false,
+          },
+        ],
+      });
+    }
+    return list;
+  }
 }

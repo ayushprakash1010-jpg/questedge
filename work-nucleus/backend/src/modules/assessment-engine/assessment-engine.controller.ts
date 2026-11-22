@@ -26,6 +26,8 @@ import {
   CreateAssessmentDto,
   UpdateAssessmentDto,
   CreateQuestionDto,
+  GenerateAiQuestionsDto,
+  BatchCreateQuestionsDto,
   CreateCodingChallengeDto,
   SubmitQuizDto,
   RunCodeDto,
@@ -244,6 +246,26 @@ export class AssessmentEngineController {
     @CurrentUser('orgId') orgId: string,
   ) {
     return this.quizService.removeQuestion(assessmentId, questionId, orgId);
+  }
+
+  @Post(':id/questions/generate-ai')
+  @ApiOperation({ summary: 'Draft questions using Gemini AI for recruiter review' })
+  generateAiQuestions(
+    @Param('id', ParseUUIDPipe) assessmentId: string,
+    @Body() dto: GenerateAiQuestionsDto,
+    @CurrentUser('orgId') orgId: string,
+  ) {
+    return this.quizService.generateAiQuestions(assessmentId, dto, orgId);
+  }
+
+  @Post(':id/questions/batch')
+  @ApiOperation({ summary: 'Batch add reviewed questions to assessment' })
+  batchAddQuestions(
+    @Param('id', ParseUUIDPipe) assessmentId: string,
+    @Body() dto: BatchCreateQuestionsDto,
+    @CurrentUser('orgId') orgId: string,
+  ) {
+    return this.quizService.batchAddQuestions(assessmentId, dto, orgId);
   }
 
   // ── Coding Challenges ─────────────────────────────────────────

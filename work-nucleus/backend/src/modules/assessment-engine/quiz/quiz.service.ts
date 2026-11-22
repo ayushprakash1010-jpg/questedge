@@ -4,12 +4,20 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { CreateQuestionDto } from '../dto';
-import { SubmitQuizDto } from '../dto';
+import {
+  CreateQuestionDto,
+  GenerateAiQuestionsDto,
+  BatchCreateQuestionsDto,
+  SubmitQuizDto,
+} from '../dto';
+import { AiScreeningService } from '../../ai-screening/ai-screening.service';
 
 @Injectable()
 export class QuizService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly aiScreening: AiScreeningService,
+  ) {}
 
   // ── Question CRUD ─────────────────────────────────────────────
 
@@ -37,6 +45,84 @@ export class QuizService {
 
     await this.syncAssessmentTotalPoints(assessmentId);
     return created;
+  }
+
+  async generateAiQuestions(
+    assessmentId: string,
+    dto: GenerateAiQuestionsDto,
+    orgId: string,
+  ) {
+    const assessment = await this.prisma.hiringAssessment.findFirst({
+      where: { id: assessmentId, orgId, type: 'QUIZ' },
+    });
+    if (!assessment) throw new NotFoundException('Quiz assessment not found');
+
+    const generated = await this.aiScreening.generateAssessmentQuestions({
+      topic: dto.topic,
+      count: dto.count ?? 5,
+      difficulty: dto.difficulty,
+      questionType: dto.questionType,
+      pointsPerQuestion: dto.pointsPerQuestion ?? 5,
+      context: dto.context,
+    });
+
+    return {
+      assessmentId,
+      topic: dto.topic,
+      totalGenerated: generated.length,
+      questions: generated,
+    };
+  }
+
+  async batchAddQuestions(
+    assessmentId: string,
+    dto: BatchCreateQuestionsDto,
+    orgId: string,
+  ) {
+    const assessment = await this.prisma.hiringAssessment.findFirst({
+      where: { id: assessmentId, orgId, type: 'QUIZ' },
+    });
+    if (!assessment) throw new NotFoundException('Quiz assessment not found');
+
+    if (!dto.questions || dto.questions.length === 0) {
+      throw new BadRequestException('At least one question must be provided');
+    }
+
+    // Find current highest orderIndex
+    const lastQuestion = await this.prisma.assessmentQuestion.findFirst({
+      where: { assessmentId },
+      orderBy: { orderIndex: 'desc' },
+      select: { orderIndex: true },
+    });
+    let startingIndex = (lastQuestion?.orderIndex ?? -1) + 1;
+
+    const createdQuestions = [];
+    for (const q of dto.questions) {
+      const created = await this.prisma.assessmentQuestion.create({
+        data: {
+          assessmentId,
+          orgId,
+          text: q.text,
+          options: q.options,
+          type: q.type,
+          category: q.category ?? 'General',
+          difficulty: q.difficulty ?? 'MEDIUM',
+          explanation: q.explanation,
+          points: q.points ?? 5,
+          tags: q.tags ?? [],
+          orderIndex: q.orderIndex !== undefined ? q.orderIndex : startingIndex++,
+        },
+      });
+      createdQuestions.push(created);
+    }
+
+    await this.syncAssessmentTotalPoints(assessmentId);
+
+    return {
+      success: true,
+      count: createdQuestions.length,
+      questions: createdQuestions,
+    };
   }
 
   async updateQuestion(
