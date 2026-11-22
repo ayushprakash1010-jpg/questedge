@@ -466,3 +466,56 @@ export async function fetchCandidateVideoRoom(token: string): Promise<{
   return handleResponse(res);
 }
 
+// ── AI Question Generator ─────────────────────────────────────────
+
+export interface GenerateAiQuestionsParams {
+  topic: string;
+  count?: number;
+  difficulty?: Difficulty;
+  questionType?: QuestionType;
+  pointsPerQuestion?: number;
+  context?: string;
+}
+
+export interface GeneratedQuestionItem {
+  text: string;
+  type: QuestionType;
+  difficulty: Difficulty;
+  points: number;
+  category: string;
+  explanation: string;
+  options: Array<{ id: string; text: string; isCorrect: boolean }>;
+}
+
+export interface GenerateAiQuestionsResponse {
+  assessmentId: string;
+  topic: string;
+  totalGenerated: number;
+  questions: GeneratedQuestionItem[];
+}
+
+export async function generateAiAssessmentQuestions(
+  assessmentId: string,
+  data: GenerateAiQuestionsParams
+): Promise<GenerateAiQuestionsResponse> {
+  const res = await fetch(`/api/v2/assessments/${assessmentId}/questions/generate-ai`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  return handleResponse<GenerateAiQuestionsResponse>(res);
+}
+
+export async function batchAddAssessmentQuestions(
+  assessmentId: string,
+  questions: Partial<AssessmentQuestion>[]
+): Promise<{ success: boolean; count: number; questions: AssessmentQuestion[] }> {
+  const res = await fetch(`/api/v2/assessments/${assessmentId}/questions/batch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ questions }),
+  });
+  return handleResponse<{ success: boolean; count: number; questions: AssessmentQuestion[] }>(res);
+}
+
+

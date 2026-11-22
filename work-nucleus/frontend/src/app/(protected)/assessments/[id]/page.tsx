@@ -17,6 +17,7 @@ import {
   Award,
   Loader2,
   HelpCircle,
+  Sparkles,
 } from "lucide-react";
 import {
   fetchAssessment,
@@ -29,6 +30,7 @@ import {
   CodingChallenge,
 } from "@/lib/assessment-api";
 import { InviteModal } from "@/components/assessments/invite-modal";
+import { AiQuestionGeneratorModal } from "@/components/assessments/ai-question-generator-modal";
 
 export default function AssessmentDetailPage() {
   const params = useParams();
@@ -38,6 +40,7 @@ export default function AssessmentDetailPage() {
   const [assessment, setAssessment] = useState<HiringAssessment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [showAiModal, setShowAiModal] = useState(false);
 
   // New Question Form state
   const [showQuestionModal, setShowQuestionModal] = useState(false);
@@ -264,28 +267,46 @@ export default function AssessmentDetailPage() {
                 {assessment.questions?.length || 0} questions configured for this assessment
               </p>
             </div>
-            <button
-              onClick={() => setShowQuestionModal(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-amber-500 hover:bg-amber-600 text-white shadow-sm transition-colors"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Add Question
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowAiModal(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-sm transition-all hover:shadow"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-purple-200" />
+                Generate with AI
+              </button>
+              <button
+                onClick={() => setShowQuestionModal(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-amber-500 hover:bg-amber-600 text-white shadow-sm transition-colors"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add Question
+              </button>
+            </div>
           </div>
 
           {assessment.questions?.length === 0 ? (
             <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
               <FileQuestion className="h-8 w-8 text-amber-500 mx-auto mb-2" />
               <p className="text-sm font-semibold text-slate-700">No questions added yet</p>
-              <p className="text-xs text-slate-400 mt-1 mb-4">
-                Add multiple choice or situational questions to evaluate candidates.
+              <p className="text-xs text-slate-400 mt-1 mb-5">
+                Draft questions instantly with Gemini AI or create multiple choice questions manually.
               </p>
-              <button
-                onClick={() => setShowQuestionModal(true)}
-                className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-colors"
-              >
-                Add First Question
-              </button>
+              <div className="flex items-center justify-center gap-3">
+                <button
+                  onClick={() => setShowAiModal(true)}
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition-all"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-purple-200" />
+                  Draft Questions with AI
+                </button>
+                <button
+                  onClick={() => setShowQuestionModal(true)}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors"
+                >
+                  Add Manually
+                </button>
+              </div>
             </div>
           ) : (
             <div className="space-y-3">
@@ -689,6 +710,18 @@ export default function AssessmentDetailPage() {
           assessment={assessment}
           isOpen={isInviteOpen}
           onClose={() => setIsInviteOpen(false)}
+        />
+      )}
+
+      {/* AI Question Generator Modal */}
+      {showAiModal && assessment && (
+        <AiQuestionGeneratorModal
+          assessment={assessment}
+          isOpen={showAiModal}
+          onClose={() => setShowAiModal(false)}
+          onQuestionsAdded={() => {
+            loadAssessment();
+          }}
         />
       )}
     </div>
