@@ -54,8 +54,7 @@ export class UpsertCandidateProfileDto {
   })
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
-  skills?: string[];
+  skills?: any[];
 
   @ApiPropertyOptional({ description: 'Education history as JSON array' })
   @IsOptional()

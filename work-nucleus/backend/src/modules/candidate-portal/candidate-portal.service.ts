@@ -67,16 +67,7 @@ export class CandidatePortalService {
           );
         }
       }
-      if (this.prisma.recruiterProfile) {
-        const existingRecruiter = await this.prisma.recruiterProfile.findUnique({
-          where: { auth0Sub },
-        });
-        if (existingRecruiter) {
-          throw new ConflictException(
-            'User is already registered as a recruiter',
-          );
-        }
-      }
+      // Note: Recruiter users are permitted to hold a candidate profile to support recruiter self-apply.
     }
 
     let existingByHash = await this.prisma.candidateProfile.findUnique({
@@ -89,6 +80,15 @@ export class CandidatePortalService {
       });
     }
 
+    const rawSkills = dto.skills ?? [];
+    const normalizedSkills = Array.isArray(rawSkills)
+      ? rawSkills
+          .map((s: any) =>
+            typeof s === 'string' ? s.trim() : s?.name?.trim() || '',
+          )
+          .filter(Boolean)
+      : [];
+
     const data = {
       name: dto.name,
       phone: cleanPhone,
@@ -96,7 +96,7 @@ export class CandidatePortalService {
       currentCompany: dto.currentCompany,
       currentDesignation: dto.currentDesignation,
       experienceYears: dto.experienceYears ?? undefined,
-      skills: dto.skills ?? [],
+      skills: normalizedSkills,
       education: dto.education ?? [],
       certifications: dto.certifications ?? [],
       projects: dto.projects ?? [],

@@ -202,7 +202,7 @@ export default function RecruiterProfilePage() {
             parsedData.experienceYears !== undefined && parsedData.experienceYears !== null
               ? Number(parsedData.experienceYears)
               : form.experienceYears ? Number(form.experienceYears) : undefined,
-          skills: skills.map((s) => (typeof s === "string" ? { name: s } : s)),
+          skills: skills.map((s) => (typeof s === "string" ? s : (s as any)?.name || "")).filter(Boolean),
           headline: parsedData.headline || form.headline || undefined,
         });
 
@@ -281,7 +281,7 @@ export default function RecruiterProfilePage() {
           phone: form.phone.trim() || undefined,
           headline: form.headline.trim() || undefined,
           currentDesignation: currentDesignation || undefined,
-          skills: candidateSkills.map((s) => ({ name: s })),
+          skills: candidateSkills.map((s) => (typeof s === "string" ? s : (s as any)?.name || "")).filter(Boolean),
           experienceYears: form.experienceYears
             ? Number(form.experienceYears)
             : undefined,

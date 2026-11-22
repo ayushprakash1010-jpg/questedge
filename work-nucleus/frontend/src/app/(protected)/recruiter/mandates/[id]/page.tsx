@@ -350,7 +350,7 @@ export default function RecruiterMandateDetail() {
           experienceYears: parsedData.experienceYears
             ? Number(parsedData.experienceYears)
             : undefined,
-          skills: skills.map((s: string) => ({ name: s })),
+          skills: skills.map((s: any) => (typeof s === "string" ? s : s?.name || "")).filter(Boolean),
           headline: parsedData.headline || undefined,
         });
         setMyProfileCandidate((prev: any) => ({
