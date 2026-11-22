@@ -166,10 +166,12 @@ export default function RankingTrigger({
               className={`text-[10px] px-1.5 py-0.5 rounded border ${
                 c.source === "REFERRAL"
                   ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                  : c.source === "RECRUITER_DIRECT"
+                  ? "bg-indigo-50 text-indigo-700 border-indigo-200"
                   : "bg-blue-50 text-blue-700 border-blue-200"
               }`}
             >
-              {c.source}
+              {c.source === "RECRUITER_DIRECT" ? "Recruiter" : c.source}
             </span>
             {c.hasResume ? (
               <FileText className="w-3.5 h-3.5 text-emerald-500" />

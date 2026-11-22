@@ -60,6 +60,7 @@ enum CandidateSource {
   DIRECT
   AGENCY
   INTERNAL
+  RECRUITER_DIRECT
 }
 
 enum ApplicationStatus {
@@ -456,6 +457,7 @@ enum SourceType {
   EMPLOYEE_REFERRAL
   PLATFORM_SOURCING
   INTERNAL_SOURCING
+  RECRUITER_SELF_APPLY
 }
 
 enum RewardStatus {

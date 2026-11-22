@@ -310,6 +310,25 @@ export class CandidatePortalService {
     return profile;
   }
 
+  async getOrCreateProfile(
+    auth0Sub: string,
+    email?: string,
+    name?: string,
+  ): Promise<CandidateProfile> {
+    try {
+      return await this.getMyProfile(auth0Sub, email);
+    } catch {
+      const cleanEmail =
+        email && !email.includes('@placeholder.com')
+          ? email.toLowerCase().trim()
+          : `${(auth0Sub || 'user').replace(/[^a-zA-Z0-9]/g, '_')}@questedge.user`;
+      const fallbackName = name || cleanEmail.split('@')[0] || 'User';
+      return await this.upsertProfile(auth0Sub, cleanEmail, {
+        name: fallbackName,
+      } as any);
+    }
+  }
+
   async consolidateCandidateProfiles(canonicalId: string): Promise<string[]> {
     const canonical = await this.prisma.candidateProfile.findUnique({
       where: { id: canonicalId },
@@ -642,6 +661,7 @@ export class CandidatePortalService {
     candidateProfileId: string,
     mandateId: string,
     dto: DirectApplyDto,
+    isRecruiter: boolean = false,
   ) {
     const [mandate, candidateProfile, existingApp] = await Promise.all([
       this.prisma.mandate.findUnique({
@@ -684,12 +704,17 @@ export class CandidatePortalService {
           name: candidateProfile.name,
           email: candidateProfile.email,
           phone: candidateProfile.phone ?? undefined,
-          source: 'DIRECT',
+          source: isRecruiter ? ('RECRUITER_DIRECT' as any) : 'DIRECT',
           currentRole: candidateProfile.currentDesignation ?? undefined,
           currentCompany: candidateProfile.currentCompany ?? undefined,
           experienceYears: candidateProfile.experienceYears ?? undefined,
           expectedCtc: candidateProfile.expectedCtc ?? undefined,
         },
+      });
+    } else if (isRecruiter && legacyCandidate.source === 'DIRECT') {
+      legacyCandidate = await this.prisma.candidate.update({
+        where: { id: legacyCandidate.id },
+        data: { source: 'RECRUITER_DIRECT' as any },
       });
     }
 
@@ -751,7 +776,9 @@ export class CandidatePortalService {
         hiringPlanId: hiringPlan.id,
         mandateId,
         candidateProfileId,
-        sourceType: 'DIRECT_APPLICATION',
+        sourceType: isRecruiter
+          ? ('RECRUITER_SELF_APPLY' as any)
+          : 'DIRECT_APPLICATION',
         coverLetter: dto.coverLetter,
         status: 'ACTIVE',
       },

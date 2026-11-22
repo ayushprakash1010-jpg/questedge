@@ -26,7 +26,7 @@ export class ExternalJobsController {
   }
 
   @Get()
-  @UserTypes('CANDIDATE')
+  @UserTypes('CANDIDATE', 'RECRUITER')
   async searchJobs(
     @Query() dto: SearchExternalJobsDto,
     @CurrentUser() user: any,
@@ -36,7 +36,7 @@ export class ExternalJobsController {
   }
 
   @Get('recommended')
-  @UserTypes('CANDIDATE')
+  @UserTypes('CANDIDATE', 'RECRUITER')
   async getRecommended(@CurrentUser() user: any) {
     const candidateId = await this.getCandidateId(user);
     if (!candidateId) {
@@ -47,7 +47,7 @@ export class ExternalJobsController {
   }
 
   @Get('saved')
-  @UserTypes('CANDIDATE')
+  @UserTypes('CANDIDATE', 'RECRUITER')
   async getSavedJobs(
     @CurrentUser() user: any,
     @Query('page') page?: string,
@@ -68,7 +68,7 @@ export class ExternalJobsController {
   }
 
   @Get('history')
-  @UserTypes('CANDIDATE')
+  @UserTypes('CANDIDATE', 'RECRUITER')
   async getClickHistory(
     @CurrentUser() user: any,
     @Query('page') page?: string,
@@ -95,19 +95,19 @@ export class ExternalJobsController {
   }
 
   @Post('sync')
-  @UserTypes('CANDIDATE', 'PLATFORM_ADMIN')
+  @UserTypes('CANDIDATE', 'RECRUITER', 'PLATFORM_ADMIN')
   async triggerSync() {
     return this.service.triggerManualSync();
   }
 
   @Get('sync/status')
-  @UserTypes('CANDIDATE', 'PLATFORM_ADMIN')
+  @UserTypes('CANDIDATE', 'RECRUITER', 'PLATFORM_ADMIN')
   getSyncStatus() {
     return this.service.getManualSyncStatus();
   }
 
   @Get(':id')
-  @UserTypes('CANDIDATE')
+  @UserTypes('CANDIDATE', 'RECRUITER')
   async getJobById(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: any,
@@ -117,7 +117,7 @@ export class ExternalJobsController {
   }
 
   @Post(':id/save')
-  @UserTypes('CANDIDATE')
+  @UserTypes('CANDIDATE', 'RECRUITER')
   async toggleSave(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: any,
@@ -130,7 +130,7 @@ export class ExternalJobsController {
   }
 
   @Post(':id/click')
-  @UserTypes('CANDIDATE')
+  @UserTypes('CANDIDATE', 'RECRUITER')
   async recordClick(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: any,
@@ -143,7 +143,7 @@ export class ExternalJobsController {
   }
 
   @Patch(':id/applied')
-  @UserTypes('CANDIDATE')
+  @UserTypes('CANDIDATE', 'RECRUITER')
   async reportApplied(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: any,
@@ -156,7 +156,7 @@ export class ExternalJobsController {
   }
 
   @Post(':id/report-inactive')
-  @UserTypes('CANDIDATE')
+  @UserTypes('CANDIDATE', 'RECRUITER')
   async reportInactive(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: any,

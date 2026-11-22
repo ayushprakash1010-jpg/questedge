@@ -10,6 +10,9 @@ import {
   runPreflightMatchCheck,
   submitReferral,
   parseResumeText,
+  applyDirectly,
+  getCandidateProfile,
+  upsertCandidateProfile,
   Mandate,
   CandidateMatchItem,
   MatchEvaluationResult,
@@ -30,6 +33,9 @@ import {
   ShieldCheck,
   Zap,
   Clock,
+  FileText,
+  Send,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -95,6 +101,18 @@ export default function RecruiterMandateDetail() {
   const [isParsingResume, setIsParsingResume] = useState(false);
   const [resumeFileName, setResumeFileName] = useState<string>("");
 
+  // Self-apply state
+  const [isSelfApplyModalOpen, setIsSelfApplyModalOpen] = useState(false);
+  const [selfApplyCoverLetter, setSelfApplyCoverLetter] = useState("");
+  const [selfApplySubmitting, setSelfApplySubmitting] = useState(false);
+  const [selfApplySuccess, setSelfApplySuccess] = useState(false);
+  const [selfApplyError, setSelfApplyError] = useState("");
+  const [myProfileCandidate, setMyProfileCandidate] = useState<any>(null);
+  const [myCandidateSkills, setMyCandidateSkills] = useState<string[]>([]);
+  const [selfPreflightResult, setSelfPreflightResult] = useState<MatchEvaluationResult | null>(null);
+  const [selfPreflightLoading, setSelfPreflightLoading] = useState(false);
+  const [isParsingSelfResume, setIsParsingSelfResume] = useState(false);
+
   useEffect(() => {
     let isMounted = true;
     (async () => {
@@ -120,6 +138,20 @@ export default function RecruiterMandateDetail() {
           console.error("Failed to load talent pool matches:", e);
         } finally {
           if (isMounted) setTalentLoading(false);
+        }
+
+        // 3. Load recruiter's own candidate profile if available
+        try {
+          const cand = await getCandidateProfile(accessToken);
+          if (isMounted && cand) {
+            setMyProfileCandidate(cand);
+            const skills: string[] = Array.isArray(cand.skills)
+              ? cand.skills.map((s: any) => (typeof s === "string" ? s : s.name || ""))
+              : [];
+            setMyCandidateSkills(skills);
+          }
+        } catch {
+          // No candidate profile yet
         }
       } catch (err) {
         console.error(err);
@@ -249,6 +281,125 @@ export default function RecruiterMandateDetail() {
     }
   };
 
+  const handleOpenSelfApply = async () => {
+    setIsSelfApplyModalOpen(true);
+    setSelfApplySuccess(false);
+    setSelfApplyError("");
+    try {
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+      const cand = await getCandidateProfile(accessToken);
+      if (cand) {
+        setMyProfileCandidate(cand);
+        const skills: string[] = Array.isArray(cand.skills)
+          ? cand.skills.map((s: any) => (typeof s === "string" ? s : s.name || ""))
+          : [];
+        setMyCandidateSkills(skills);
+        if (skills.length > 0) {
+          setSelfPreflightLoading(true);
+          const matchRes = await runPreflightMatchCheck(accessToken, {
+            mandateId: id,
+            candidateName: cand.name || "Me",
+            skills,
+            experienceYears: cand.experienceYears ? Number(cand.experienceYears) : undefined,
+            headline: cand.headline || cand.currentDesignation || undefined,
+          });
+          setSelfPreflightResult(matchRes);
+        }
+      }
+    } catch {
+      // Prompt upload in modal
+    } finally {
+      setSelfPreflightLoading(false);
+    }
+  };
+
+  const handleSelfResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsParsingSelfResume(true);
+    try {
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+
+      const formDataUpload = new FormData();
+      formDataUpload.append("resume", file);
+      const uploadRes = await fetch(
+        `${API_URL}/api/v1/candidate/profile/upload-resume`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${accessToken}` },
+          body: formDataUpload,
+        }
+      );
+      if (!uploadRes.ok) throw new Error(await uploadRes.text());
+      const uploadData = await uploadRes.json();
+
+      const text = await extractTextFromPDF(file);
+      const parsedData = await parseResumeText(accessToken, text);
+
+      if (parsedData) {
+        const skills = parsedData.skills || [];
+        setMyCandidateSkills(skills);
+        await upsertCandidateProfile(accessToken, {
+          name: parsedData.name || "Me",
+          phone: parsedData.phone || undefined,
+          currentDesignation: parsedData.currentDesignation || undefined,
+          currentCompany: parsedData.currentCompany || undefined,
+          experienceYears: parsedData.experienceYears
+            ? Number(parsedData.experienceYears)
+            : undefined,
+          skills: skills.map((s: string) => ({ name: s })),
+          headline: parsedData.headline || undefined,
+        });
+        setMyProfileCandidate((prev: any) => ({
+          ...prev,
+          resumeUrl: uploadData.resumeUrl,
+          name: parsedData.name || prev?.name || "Me",
+          phone: parsedData.phone || prev?.phone,
+        }));
+        toast.success(`Resume uploaded! Extracted ${skills.length} skills.`);
+
+        setSelfPreflightLoading(true);
+        const matchRes = await runPreflightMatchCheck(accessToken, {
+          mandateId: id,
+          candidateName: parsedData.name || "Me",
+          skills,
+          experienceYears: parsedData.experienceYears
+            ? Number(parsedData.experienceYears)
+            : undefined,
+          headline: parsedData.headline || parsedData.currentDesignation || undefined,
+        });
+        setSelfPreflightResult(matchRes);
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Failed to upload and parse resume.");
+    } finally {
+      setIsParsingSelfResume(false);
+      setSelfPreflightLoading(false);
+    }
+  };
+
+  const handleSelfApplySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSelfApplySubmitting(true);
+    setSelfApplyError("");
+    try {
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+      await applyDirectly(id, accessToken, selfApplyCoverLetter);
+      setSelfApplySuccess(true);
+      toast.success("Application submitted successfully!");
+    } catch (err: any) {
+      setSelfApplyError(err.message || "Failed to submit application.");
+      toast.error(err.message || "Failed to submit application.");
+    } finally {
+      setSelfApplySubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -322,18 +473,35 @@ export default function RecruiterMandateDetail() {
                   compensationMax={mandate.compensationMax}
                 />
               )}
-              <Button
-                disabled={mandate.status !== "ACTIVE" || isDeadlinePassed}
-                onClick={() => {
-                  setPreflightResult(null);
-                  setIsModalOpen(true);
-                }}
-                size="lg"
-                className="bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white shadow-md gap-2 w-full sm:w-auto"
-              >
-                <UserPlus className="h-4 w-4" />
-                {isDeadlinePassed ? "Deadline Passed" : mandate.status !== "ACTIVE" ? "Mandate Closed" : "Refer a Candidate"}
-              </Button>
+              <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  disabled={mandate.status !== "ACTIVE" || isDeadlinePassed || !mandate.acceptsDirectApply}
+                  onClick={handleOpenSelfApply}
+                  size="lg"
+                  className="border-indigo-200 text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100 hover:border-indigo-300 font-semibold shadow-xs gap-2 w-full sm:w-auto cursor-pointer"
+                  title={
+                    !mandate.acceptsDirectApply
+                      ? "Company only accepts recruiter referrals for this role"
+                      : "Apply for this mandate yourself"
+                  }
+                >
+                  <Briefcase className="h-4 w-4 text-indigo-600" />
+                  Apply for Myself
+                </Button>
+                <Button
+                  disabled={mandate.status !== "ACTIVE" || isDeadlinePassed}
+                  onClick={() => {
+                    setPreflightResult(null);
+                    setIsModalOpen(true);
+                  }}
+                  size="lg"
+                  className="bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white shadow-md gap-2 w-full sm:w-auto font-semibold cursor-pointer"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  {isDeadlinePassed ? "Deadline Passed" : mandate.status !== "ACTIVE" ? "Mandate Closed" : "Refer a Candidate"}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -507,21 +675,37 @@ export default function RecruiterMandateDetail() {
             </div>
           )}
 
-          <div className="bg-slate-100/70 rounded-xl border border-slate-200 p-6 text-center shadow-2xs">
-            <h3 className="font-semibold text-slate-800 mb-2">Referral Actions</h3>
-            <p className="text-sm text-slate-500 mb-4">
-              Submit qualified candidates to initiate the candidate consent process and lock 48h ownership.
-            </p>
-            <Button
-              onClick={() => {
-                setPreflightResult(null);
-                setIsModalOpen(true);
-              }}
-              variant="outline"
-              className="w-full bg-white border-sky-200 text-sky-700 hover:bg-sky-50"
-            >
-              Submit Candidate Referral
-            </Button>
+          <div className="bg-slate-100/70 rounded-xl border border-slate-200 p-6 text-center shadow-2xs space-y-3">
+            <div>
+              <h3 className="font-semibold text-slate-800 mb-1">Mandate Actions</h3>
+              <p className="text-xs text-slate-500">
+                Submit candidate referrals from your network, or apply for this role yourself.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={() => {
+                  setPreflightResult(null);
+                  setIsModalOpen(true);
+                }}
+                disabled={mandate.status !== "ACTIVE" || isDeadlinePassed}
+                className="w-full bg-sky-600 hover:bg-sky-700 text-white font-semibold cursor-pointer"
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                Submit Candidate Referral
+              </Button>
+              {mandate.acceptsDirectApply && (
+                <Button
+                  onClick={handleOpenSelfApply}
+                  disabled={mandate.status !== "ACTIVE" || isDeadlinePassed}
+                  variant="outline"
+                  className="w-full bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-semibold cursor-pointer"
+                >
+                  <Briefcase className="h-4 w-4 mr-2 text-indigo-600" />
+                  Apply for Myself
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -710,6 +894,176 @@ export default function RecruiterMandateDetail() {
                       <UserPlus className="h-4 w-4 mr-2" />
                     )}
                     {submitting ? "Submitting..." : "Send Consent Request"}
+                  </Button>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Recruiter Self-Apply Modal ──────────────────────────────── */}
+      {isSelfApplyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[92vh]">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/50">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-indigo-600 text-white">
+                  <Briefcase className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">Apply for Myself</h3>
+                  <p className="text-xs text-slate-500">For {mandate.title}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsSelfApplyModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-4">
+              {selfApplySuccess ? (
+                <div className="py-8 text-center flex flex-col items-center">
+                  <div className="h-16 w-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4">
+                    <CheckCircle2 className="h-8 w-8" />
+                  </div>
+                  <h4 className="text-lg font-bold text-slate-900 mb-1">Application Submitted!</h4>
+                  <p className="text-sm text-slate-500 text-center max-w-sm mb-5">
+                    Your application has been received by {mandate.organization.name}. You can track interview progress and updates in My Applications.
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      onClick={() => router.push("/recruiter/applications")}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold cursor-pointer"
+                    >
+                      View in My Applications &rarr;
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsSelfApplyModalOpen(false)}
+                      className="text-xs font-semibold cursor-pointer"
+                    >
+                      Done
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleSelfApplySubmit} className="space-y-4">
+                  {/* Resume status or upload */}
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                        <FileText className="h-3.5 w-3.5 text-indigo-600" />
+                        My Resume
+                      </span>
+                      {myProfileCandidate?.resumeUrl && (
+                        <span className="text-[11px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                          <Check className="h-3 w-3" /> Attached from Profile
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="border border-dashed border-slate-300 hover:border-indigo-400 rounded-lg p-3 bg-white text-center transition-colors">
+                      <input
+                        type="file"
+                        id="self-apply-resume-upload"
+                        accept=".pdf"
+                        onChange={handleSelfResumeUpload}
+                        disabled={isParsingSelfResume}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="self-apply-resume-upload"
+                        className="cursor-pointer flex flex-col items-center justify-center gap-1"
+                      >
+                        {isParsingSelfResume ? (
+                          <div className="flex items-center gap-1.5 text-xs text-indigo-600 font-medium py-1">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            Extracting resume text & calculating AI fit...
+                          </div>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4 text-indigo-600" />
+                            <span className="text-xs font-medium text-slate-700">
+                              {myProfileCandidate?.resumeUrl
+                                ? "Click to upload a different resume PDF"
+                                : "Upload your resume PDF for this application"}
+                            </span>
+                          </>
+                        )}
+                      </label>
+                    </div>
+
+                    {myCandidateSkills.length > 0 && !isParsingSelfResume && (
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {myCandidateSkills.slice(0, 6).map((skill, idx) => (
+                          <span
+                            key={idx}
+                            className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-100 px-1.5 py-0.5 rounded font-medium"
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                        {myCandidateSkills.length > 6 && (
+                          <span className="text-[10px] text-slate-400">
+                            +{myCandidateSkills.length - 6} more
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* AI Preflight Match Score for recruiter self-apply */}
+                  {selfPreflightResult && (
+                    <div className="p-4 rounded-xl border border-indigo-200 bg-indigo-50/50 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-indigo-900 flex items-center gap-1">
+                          <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
+                          AI Match Fit: {selfPreflightResult.matchScore}%
+                        </span>
+                        <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-white text-indigo-700 border border-indigo-100">
+                          {selfPreflightResult.verdict.replace("_", " ")}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 leading-relaxed">
+                        {selfPreflightResult.aiSummary}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Note / Cover Letter */}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                      Cover Note to Hiring Manager <span className="text-slate-400 font-normal">(Optional)</span>
+                    </label>
+                    <textarea
+                      className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-2xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 min-h-[90px]"
+                      placeholder="Highlight your engineering/professional experience, availability, or reason for applying..."
+                      value={selfApplyCoverLetter}
+                      onChange={(e) => setSelfApplyCoverLetter(e.target.value)}
+                    />
+                  </div>
+
+                  {selfApplyError && (
+                    <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">
+                      {selfApplyError}
+                    </div>
+                  )}
+
+                  <Button
+                    type="submit"
+                    disabled={selfApplySubmitting || isParsingSelfResume}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white mt-2 font-semibold cursor-pointer"
+                  >
+                    {selfApplySubmitting ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Send className="h-4 w-4 mr-2" />
+                    )}
+                    {selfApplySubmitting ? "Submitting Application..." : "Submit My Application"}
                   </Button>
                 </form>
               )}

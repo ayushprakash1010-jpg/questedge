@@ -37,6 +37,7 @@ interface MandateCardProps {
   referralCount?: number;
   publishedAt?: string;
   applicationDeadline?: string;
+  acceptsDirectApply?: boolean;
   isJoined?: boolean;
   isSaved?: boolean;
   isApplied?: boolean;
@@ -174,6 +175,7 @@ export function MandateCard({
   referralCount,
   publishedAt,
   applicationDeadline,
+  acceptsDirectApply = true,
   isJoined = false,
   isSaved = false,
   isApplied = false,
@@ -349,25 +351,43 @@ export function MandateCard({
         {/* Action buttons based on viewAs */}
         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
           {viewAs === "recruiter" && (
-            <Button
-              size="sm"
-              variant={isJoined ? "outline" : "default"}
-              className={cn(
-                "h-7 px-3 text-xs font-semibold transition-all",
-                isJoined
-                  ? "border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
-                  : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm hover:shadow"
+            <div className="flex items-center gap-1.5">
+              {acceptsDirectApply && onApply && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={isApplied || isDeadlinePassed}
+                  className={cn(
+                    "h-7 px-2.5 text-xs font-semibold transition-all",
+                    isApplied
+                      ? "bg-slate-100 border border-slate-200 text-slate-500 cursor-default"
+                      : "border-indigo-200 text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100 hover:border-indigo-300"
+                  )}
+                  onClick={() => onApply?.(id)}
+                >
+                  {isApplied ? "Applied ✓" : "Apply"}
+                </Button>
               )}
-              onClick={() => onJoin?.(id)}
-            >
-              {isJoined ? (
-                <span className="flex items-center gap-1">
-                  <CheckCircle2 className="h-3 w-3" /> Joined
-                </span>
-              ) : (
-                "Join & Refer"
-              )}
-            </Button>
+              <Button
+                size="sm"
+                variant={isJoined ? "outline" : "default"}
+                className={cn(
+                  "h-7 px-3 text-xs font-semibold transition-all",
+                  isJoined
+                    ? "border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
+                    : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm hover:shadow"
+                )}
+                onClick={() => onJoin?.(id)}
+              >
+                {isJoined ? (
+                  <span className="flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" /> Joined
+                  </span>
+                ) : (
+                  "Join & Refer"
+                )}
+              </Button>
+            </div>
           )}
 
           {viewAs === "candidate" && (
