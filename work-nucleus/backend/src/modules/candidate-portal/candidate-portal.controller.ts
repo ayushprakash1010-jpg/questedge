@@ -61,14 +61,14 @@ export class CandidatePortalController {
     @CurrentUser() user: any,
     @Body() dto: UpsertCandidateProfileDto,
   ) {
-    const emailToUse =
-      user.email && !user.email.includes('@placeholder.com')
-        ? user.email
-        : dto.fallbackEmail;
+    const isTokenEmail = !!(user.email && !user.email.includes('@placeholder.com'));
+    const emailToUse = isTokenEmail ? user.email : dto.fallbackEmail;
+    const isEmailVerified = user.emailVerified === true || isTokenEmail;
     return this.candidatePortalService.upsertProfile(
       user.auth0Sub,
       emailToUse,
       dto,
+      isEmailVerified,
     );
   }
 

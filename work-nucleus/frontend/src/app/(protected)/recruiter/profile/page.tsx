@@ -204,6 +204,8 @@ export default function RecruiterProfilePage() {
               : form.experienceYears ? Number(form.experienceYears) : undefined,
           skills: skills.map((s) => (typeof s === "string" ? s : (s as any)?.name || "")).filter(Boolean),
           headline: parsedData.headline || form.headline || undefined,
+        }).catch((err) => {
+          console.warn("Failed to sync candidate profile from recruiter:", err);
         });
 
         // Pre-fill empty recruiter form fields

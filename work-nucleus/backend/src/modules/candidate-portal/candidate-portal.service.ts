@@ -168,15 +168,26 @@ export class CandidatePortalService {
     if (canonical) {
       // ── P0-06: Never overwrite a non-null auth0Sub with a different value ──
       // If the profile already has an auth0Sub that differs from the caller,
-      // the caller does NOT own this profile. Refuse the takeover.
+      // allow takeover ONLY IF the caller has a verified email matching the canonical email.
       if (
         canonical.auth0Sub &&
         canonical.auth0Sub !== auth0Sub
       ) {
-        throw new ConflictException(
-          'This email is associated with a different account. ' +
-          'Please log in with the original account or contact support.',
-        );
+        const isVerifiedOwner =
+          emailVerified &&
+          cleanEmail &&
+          canonical.email.toLowerCase() === cleanEmail.toLowerCase();
+
+        if (isVerifiedOwner) {
+          this.logger.log(
+            `Relinking verified account email ${cleanEmail}: ${canonical.auth0Sub} -> ${auth0Sub}`,
+          );
+        } else {
+          throw new ConflictException(
+            'This email is associated with a different account. ' +
+            'Please log in with the original account or contact support.',
+          );
+        }
       }
 
       return this.prisma.candidateProfile.update({
