@@ -38,8 +38,8 @@ export default function RecruiterFinancialsPage() {
   const pipelinePotential = data?.pipelinePotential || 0;
 
   // Aggregate stats
-  const totalPaid = rewards.filter((r) => r.status === "PAID").reduce((sum, r) => sum + r.rewardAmount, 0);
-  const totalPending = rewards.filter((r) => r.status !== "PAID" && r.status !== "REJECTED").reduce((sum, r) => sum + r.rewardAmount, 0);
+  const totalPaid = rewards.filter((r) => r.status === "PAID").reduce((sum, r) => sum + Number(r.rewardAmount || 0), 0);
+  const totalPending = rewards.filter((r) => r.status !== "PAID" && r.status !== "REJECTED").reduce((sum, r) => sum + Number(r.rewardAmount || 0), 0);
 
   const getStatusBadge = (status: string) => {
     switch (status) {

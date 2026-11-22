@@ -120,14 +120,14 @@ export default function LeaderboardPage() {
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center overflow-hidden">
                         {leader.avatarUrl ? (
-                          <img src={leader.avatarUrl} alt={leader.name} className="h-full w-full object-cover" />
+                          <img src={leader.avatarUrl} alt={leader.name || "Recruiter"} className="h-full w-full object-cover" />
                         ) : (
-                          leader.name.charAt(0)
+                          leader.name?.charAt(0) || "R"
                         )}
                       </div>
                       <div>
                         <div className="font-semibold text-slate-900 flex items-center gap-1.5">
-                          {leader.name}
+                          {leader.name || "Anonymous Recruiter"}
                           {leader.isVerified && <ShieldCheck className="h-3.5 w-3.5 text-blue-500" />}
                         </div>
                       </div>

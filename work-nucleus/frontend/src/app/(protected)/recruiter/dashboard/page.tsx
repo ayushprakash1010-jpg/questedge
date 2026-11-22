@@ -118,7 +118,7 @@ export default function RecruiterDashboardPage() {
           <AlertCircle className="h-8 w-8 text-sky-500" />
         </div>
         <div className="text-center">
-          <h2 className="text-xl font-bold text-slate-900">Welcome to ReferralHire!</h2>
+          <h2 className="text-xl font-bold text-slate-900">Welcome to QuestEdge!</h2>
           <p className="text-slate-500 mt-1 text-sm">Set up your recruiter profile to start discovering jobs and earning rewards.</p>
         </div>
         <Button onClick={() => router.push("/recruiter/profile")}>
@@ -143,8 +143,8 @@ export default function RecruiterDashboardPage() {
   return (
     <>
       <PageHeader 
-        title={`Welcome back, ${profile.name} 👋`} 
-        subtitle={profile.headline || "Recruiter Dashboard"} 
+        title={`Welcome back, ${profile?.name || "Partner"} 👋`} 
+        subtitle={profile?.headline || "Recruiter Dashboard"} 
       />
 
       <div className="space-y-8 pb-8">
@@ -329,7 +329,7 @@ export default function RecruiterDashboardPage() {
           <Card className="lg:col-span-2">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle>Recent Referrals</CardTitle>
-              <Button variant="ghost" size="sm" className="h-8 text-xs text-sky-600">
+              <Button variant="ghost" size="sm" onClick={() => router.push("/recruiter/referrals")} className="h-8 text-xs text-sky-600">
                 View all <ArrowRight className="ml-1 h-3 w-3" />
               </Button>
             </CardHeader>
