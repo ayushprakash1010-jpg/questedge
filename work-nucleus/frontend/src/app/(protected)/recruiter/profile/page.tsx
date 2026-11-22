@@ -208,20 +208,26 @@ export default function RecruiterProfilePage() {
           console.warn("Failed to sync candidate profile from recruiter:", err);
         });
 
-        // Pre-fill empty recruiter form fields
+        // Auto-fill recruiter form fields from the parsed resume (preferring extracted resume data)
         setForm((prev) => ({
           ...prev,
-          name: prev.name || parsedData.name || "",
-          phone: prev.phone || parsedData.phone || "",
-          headline: prev.headline || parsedData.headline || parsedData.currentDesignation || "",
+          name: parsedData.name || prev.name,
+          phone: parsedData.phone || prev.phone,
+          headline:
+            parsedData.headline ||
+            (parsedData.currentDesignation
+              ? `${parsedData.currentDesignation}${parsedData.currentCompany ? ` at ${parsedData.currentCompany}` : ""}`
+              : prev.headline),
+          bio: parsedData.summary || parsedData.bio || prev.bio,
           experienceYears:
-            prev.experienceYears ||
-            (parsedData.experienceYears !== undefined && parsedData.experienceYears !== null
+            parsedData.experienceYears !== undefined && parsedData.experienceYears !== null
               ? String(parsedData.experienceYears)
-              : ""),
+              : prev.experienceYears,
+          linkedinUrl: parsedData.linkedin || prev.linkedinUrl,
+          portfolioUrl: parsedData.portfolio || parsedData.github || prev.portfolioUrl,
         }));
 
-        toast.success(`Resume uploaded and parsed! Found ${skills.length} skills.`);
+        toast.success(`Resume uploaded and parsed! Auto-filled profile and found ${skills.length} skills.`);
       } else {
         toast.success("Resume uploaded successfully!");
       }

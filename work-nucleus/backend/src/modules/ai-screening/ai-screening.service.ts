@@ -588,6 +588,7 @@ export class AiScreeningService {
         "email": "Candidate Email (or empty string if not found)",
         "phone": "Candidate Phone Number (or empty string if not found)",
         "headline": "A professional 1-line headline summarizing their role/background (e.g. 'CS Undergrad @ VIT | Full Stack & AI Developer' or 'Senior Frontend Engineer')",
+        "summary": "Professional summary or bio from the resume (2-4 sentences summarizing background, skills, and experience)",
         "currentDesignation": "Their current or most recent job title (or 'Student' or 'Software Engineer')",
         "currentCompany": "Their current or most recent company or institution",
         "experienceYears": integer representing total years of experience (estimate if necessary, use 0 for freshers/students),
@@ -825,9 +826,11 @@ export class AiScreeningService {
     }
 
     let headline = '';
+    let summary = '';
     const summaryIdx = lines.findIndex((l) => /^(?:Professional )?Summary/i.test(l));
     if (summaryIdx !== -1 && lines[summaryIdx + 1]) {
       headline = lines[summaryIdx + 1];
+      summary = lines.slice(summaryIdx + 1, summaryIdx + 5).join(' ');
     }
 
     return {
@@ -835,6 +838,7 @@ export class AiScreeningService {
       email: emailMatch ? emailMatch[0] : '',
       phone: phoneMatch ? phoneMatch[0] : '',
       headline,
+      summary,
       currentDesignation: '',
       currentCompany: '',
       experienceYears: 0,
