@@ -24,13 +24,15 @@ export class ReferralsService {
   ) {}
 
   private async findRecruiter(recruiterIdOrAuth0Sub: string) {
+    if (!recruiterIdOrAuth0Sub) return null;
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        recruiterIdOrAuth0Sub,
+      );
     let recruiter = await this.prisma.recruiterProfile.findFirst({
-      where: {
-        OR: [
-          { id: recruiterIdOrAuth0Sub },
-          { auth0Sub: recruiterIdOrAuth0Sub },
-        ],
-      },
+      where: isUuid
+        ? { OR: [{ id: recruiterIdOrAuth0Sub }, { auth0Sub: recruiterIdOrAuth0Sub }] }
+        : { auth0Sub: recruiterIdOrAuth0Sub },
     });
 
     if (!recruiter) {
@@ -45,10 +47,14 @@ export class ReferralsService {
       });
 
       if (recruiter && recruiterIdOrAuth0Sub) {
-        recruiter = await this.prisma.recruiterProfile.update({
-          where: { id: recruiter.id },
-          data: { auth0Sub: recruiterIdOrAuth0Sub, isDemoAccount: true },
-        });
+        try {
+          recruiter = await this.prisma.recruiterProfile.update({
+            where: { id: recruiter.id },
+            data: { auth0Sub: recruiterIdOrAuth0Sub, isDemoAccount: true },
+          });
+        } catch {
+          // Ignore unique constraint violation
+        }
       }
     }
 

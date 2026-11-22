@@ -72,7 +72,7 @@ export class RewardsController {
     @Query('offset') offset?: string,
   ) {
     return this.rewardsService.getRecruiterRewards(
-      user.auth0Sub,
+      user.id || user.auth0Sub,
       limit ? parseInt(limit, 10) : 50,
       offset ? parseInt(offset, 10) : 0,
     );
@@ -85,7 +85,7 @@ export class RewardsController {
     @CurrentUser() user: any,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.rewardsService.withdrawReward(user.auth0Sub, id);
+    return this.rewardsService.withdrawReward(user.id || user.auth0Sub, id);
   }
 
   // ── P4-05: Reward Disputes & Immutable Audit Trail ──────────────

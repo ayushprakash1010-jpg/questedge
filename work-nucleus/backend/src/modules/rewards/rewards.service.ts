@@ -62,13 +62,15 @@ export function calculateReferralReward(
 @Injectable()
 export class RewardsService {
   private async findRecruiter(auth0SubOrId: string) {
+    if (!auth0SubOrId) return null;
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        auth0SubOrId,
+      );
     let recruiter = await this.prisma.recruiterProfile.findFirst({
-      where: {
-        OR: [
-          { auth0Sub: auth0SubOrId },
-          { id: auth0SubOrId },
-        ],
-      },
+      where: isUuid
+        ? { OR: [{ id: auth0SubOrId }, { auth0Sub: auth0SubOrId }] }
+        : { auth0Sub: auth0SubOrId },
     });
 
     if (!recruiter) {
@@ -83,10 +85,14 @@ export class RewardsService {
       });
 
       if (recruiter && auth0SubOrId) {
-        recruiter = await this.prisma.recruiterProfile.update({
-          where: { id: recruiter.id },
-          data: { auth0Sub: auth0SubOrId, isDemoAccount: true },
-        });
+        try {
+          recruiter = await this.prisma.recruiterProfile.update({
+            where: { id: recruiter.id },
+            data: { auth0Sub: auth0SubOrId, isDemoAccount: true },
+          });
+        } catch {
+          // Ignore unique constraint violation if auth0Sub is already linked
+        }
       }
     }
 
@@ -237,7 +243,7 @@ export class RewardsService {
     return {
       rewards,
       pipelinePotential: pipeline.reduce(
-        (sum, ref) => sum + Number(ref.mandate.referralRewardAmount || 0),
+        (sum, ref) => sum + Number(ref.mandate?.referralRewardAmount || 0),
         0,
       ),
     };

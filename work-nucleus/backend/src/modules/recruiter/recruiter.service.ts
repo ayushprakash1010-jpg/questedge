@@ -482,13 +482,15 @@ export class RecruiterService {
   }
 
   private async findById(idOrAuth0Sub: string): Promise<RecruiterProfile> {
+    if (!idOrAuth0Sub) throw new NotFoundException('Recruiter profile not found.');
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        idOrAuth0Sub,
+      );
     let profile = await this.prisma.recruiterProfile.findFirst({
-      where: {
-        OR: [
-          { id: idOrAuth0Sub },
-          { auth0Sub: idOrAuth0Sub },
-        ],
-      },
+      where: isUuid
+        ? { OR: [{ id: idOrAuth0Sub }, { auth0Sub: idOrAuth0Sub }] }
+        : { auth0Sub: idOrAuth0Sub },
     });
 
     if (!profile) {
@@ -503,10 +505,14 @@ export class RecruiterService {
       });
 
       if (profile && idOrAuth0Sub) {
-        profile = await this.prisma.recruiterProfile.update({
-          where: { id: profile.id },
-          data: { auth0Sub: idOrAuth0Sub, isDemoAccount: true },
-        });
+        try {
+          profile = await this.prisma.recruiterProfile.update({
+            where: { id: profile.id },
+            data: { auth0Sub: idOrAuth0Sub, isDemoAccount: true },
+          });
+        } catch {
+          // Ignore unique constraint violation
+        }
       }
     }
 
