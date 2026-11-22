@@ -32,15 +32,6 @@ interface AiQuestionGeneratorModalProps {
   onQuestionsAdded: () => void;
 }
 
-const TOPIC_SUGGESTIONS = [
-  "React Hooks, Server Components & State Management",
-  "Node.js, Express & REST API Architecture",
-  "PostgreSQL Query Optimization & Indexing",
-  "TypeScript Generics, Type Narrowing & Utility Types",
-  "Cloud Security, Docker & Microservices Basics",
-  "System Design, Caching & Distributed Concurrency",
-];
-
 export function AiQuestionGeneratorModal({
   assessment,
   isOpen,
@@ -52,7 +43,9 @@ export function AiQuestionGeneratorModal({
 
   // Config form state
   const [topic, setTopic] = useState(
-    assessment.title ? `${assessment.title}` : ""
+    assessment.title && assessment.title.length > 4 && !assessment.title.toLowerCase().includes("sdfas")
+      ? assessment.title
+      : ""
   );
   const [count, setCount] = useState<number>(5);
   const [difficulty, setDifficulty] = useState<Difficulty>("MEDIUM");
@@ -218,8 +211,8 @@ export function AiQuestionGeneratorModal({
                 <h3 className="font-bold text-slate-900 text-base">
                   Generate Assessment Questions with AI
                 </h3>
-                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 tracking-wide">
-                  Gemini Powered
+                <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200/60 tracking-wider">
+                  QuestEdge AI
                 </span>
               </div>
               <p className="text-xs text-slate-500">
@@ -258,25 +251,10 @@ export function AiQuestionGeneratorModal({
                   type="text"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
-                  placeholder="e.g. Next.js 14 App Router, Server Actions, React Hooks, and Auth0"
-                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                  placeholder="e.g. PostgreSQL Query Optimization, Microservices Architecture, React State Management"
+                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-white"
                   required
                 />
-                <div className="pt-2">
-                  <span className="text-[11px] font-semibold text-slate-400">Quick suggestions:</span>
-                  <div className="flex flex-wrap gap-1.5 mt-1.5">
-                    {TOPIC_SUGGESTIONS.map((sug) => (
-                      <button
-                        key={sug}
-                        type="button"
-                        onClick={() => setTopic(sug)}
-                        className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 font-medium transition-colors border border-slate-200/60"
-                      >
-                        + {sug}
-                      </button>
-                    ))}
-                  </div>
-                </div>
               </div>
 
               {/* Grid: Count, Difficulty, Question Type, Points */}
@@ -347,29 +325,18 @@ export function AiQuestionGeneratorModal({
                 </div>
               </div>
 
-              {/* Special Context / Prompt refinement */}
+              {/* Custom Instructions */}
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold text-slate-700">
-                    Special Focus & Requirements (Optional)
-                  </label>
-                  <span className="text-[11px] text-slate-400">Context for Gemini</span>
-                </div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Custom Focus & Instructions (Optional)
+                </label>
                 <textarea
                   value={context}
                   onChange={(e) => setContext(e.target.value)}
-                  placeholder="e.g. Focus on practical debugging scenarios, common production pitfalls, performance edge-cases, and avoid pure textbook definitions."
+                  placeholder="e.g. Emphasize real-world debugging scenarios, architecture trade-offs, and practical edge-cases. Avoid purely academic definitions."
                   rows={3}
-                  className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 resize-none"
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 resize-none bg-white"
                 />
-              </div>
-
-              {/* Notice */}
-              <div className="bg-indigo-50/70 border border-indigo-100 rounded-xl p-3.5 flex items-start gap-2.5">
-                <Sparkles className="h-4 w-4 text-indigo-600 shrink-0 mt-0.5" />
-                <div className="text-xs text-indigo-900 leading-relaxed">
-                  <strong className="font-semibold">Review-First Guarantee:</strong> Questions are drafted into an interactive preview drawer. You can inspect answers, tweak questions or distractors, and choose exactly which ones to add.
-                </div>
               </div>
             </form>
           )}
@@ -548,7 +515,7 @@ export function AiQuestionGeneratorModal({
                 {isGenerating ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Synthesizing Questions with Gemini...</span>
+                    <span>Generating Questions with AI...</span>
                   </>
                 ) : (
                   <>
