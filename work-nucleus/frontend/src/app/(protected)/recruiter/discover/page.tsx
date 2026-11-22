@@ -328,6 +328,7 @@ export default function RecruiterDiscoverPage() {
                     viewAs="recruiter"
                     isJoined={mandate.isJoined}
                     onJoin={handleJoin}
+                    onApply={(id) => router.push(`/recruiter/mandates/${id}`)}
                     onClick={(id) => router.push(`/recruiter/mandates/${id}`)}
                   />
                 ))}

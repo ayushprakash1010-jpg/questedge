@@ -173,9 +173,10 @@ export class CandidatePortalController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     if (!file) throw new BadRequestException('No file uploaded');
-    const profile = await this.candidatePortalService.getMyProfile(
+    const profile = await this.candidatePortalService.getOrCreateProfile(
       user.auth0Sub,
       user.email,
+      user.name,
     );
     const resumeKey = await this.fileUploadService.uploadResume(
       file,
@@ -235,14 +236,17 @@ export class CandidatePortalController {
     @Param('mandateId') mandateId: string,
     @Body() dto: DirectApplyDto,
   ) {
-    const profile = await this.candidatePortalService.getMyProfile(
+    const profile = await this.candidatePortalService.getOrCreateProfile(
       user.auth0Sub,
       user.email,
+      user.name,
     );
+    const isRecruiter = user.userType === 'RECRUITER';
     return this.candidatePortalService.applyDirectly(
       profile.id,
       mandateId,
       dto,
+      isRecruiter,
     );
   }
 
@@ -251,10 +255,15 @@ export class CandidatePortalController {
     summary: 'Get all applications and active referrals for candidate',
   })
   async getMyApplications(@CurrentUser() user: any) {
-    const profile = await this.candidatePortalService.getMyProfile(
-      user.auth0Sub,
-      user.email,
-    );
+    let profile;
+    try {
+      profile = await this.candidatePortalService.getMyProfile(
+        user.auth0Sub,
+        user.email,
+      );
+    } catch {
+      return { applications: [], referrals: [] };
+    }
     return this.candidatePortalService.getMyApplications(profile.id);
   }
 

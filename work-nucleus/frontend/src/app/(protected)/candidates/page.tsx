@@ -79,6 +79,7 @@ const sourceColors: Record<string, string> = {
   AGENCY: "bg-purple-50 text-purple-700 border-purple-200",
   DIRECT: "bg-amber-50 text-amber-700 border-amber-200",
   LINKEDIN: "bg-sky-50 text-sky-700 border-sky-200",
+  RECRUITER_DIRECT: "bg-indigo-50 text-indigo-700 border-indigo-200",
 };
 
 const VALID_CANDIDATE_STATUSES: CandidateStatus[] = [
@@ -187,6 +188,7 @@ export default function CandidatesPage() {
   const [page, setPage] = useState(1);
   const [topN, setTopN] = useState<number | null>(null);
   const [hiringPlanId, setHiringPlanId] = useState<string>("");
+  const [sourceFilter, setSourceFilter] = useState<string>("");
   const [hiringPlans, setHiringPlans] = useState<HiringPlanLite[]>([]);
   const [triggeringScoring, setTriggeringScoring] = useState(false);
   const [expandedCandidate, setExpandedCandidate] = useState<string | null>(null);
@@ -296,6 +298,7 @@ export default function CandidatesPage() {
     const params = new URLSearchParams();
     if (search) params.set("q", search);
     if (hiringPlanId) params.set("hiringPlanId", hiringPlanId);
+    if (sourceFilter) params.set("source", sourceFilter);
     if (topN) params.set("topN", String(topN));
     if (!topN) {
       params.set("page", String(page));
@@ -319,7 +322,7 @@ export default function CandidatesPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, page, topN, hiringPlanId]);
+  }, [search, page, topN, hiringPlanId, sourceFilter]);
 
   useEffect(() => {
     const timer = setTimeout(fetchCandidates, 300);
@@ -433,6 +436,24 @@ export default function CandidatesPage() {
                     {p.title}
                   </option>
                 ))}
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Select
+                value={sourceFilter}
+                onChange={(e) => {
+                  setSourceFilter(e.target.value);
+                  setPage(1);
+                }}
+                className="w-48"
+              >
+                <option value="">All Sources</option>
+                <option value="DIRECT">Direct Application</option>
+                <option value="RECRUITER_DIRECT">Recruiter (Self-Applied)</option>
+                <option value="REFERRAL">Referral</option>
+                <option value="JOB_BOARD">Job Board</option>
+                <option value="AGENCY">Agency</option>
               </Select>
             </div>
 
@@ -661,9 +682,11 @@ export default function CandidatesPage() {
                     <DataTableCell>
                       <Badge
                         variant="outline"
-                        className={cn("text-xs", sourceColors[c.source] ?? "")}
+                        className={cn("text-xs font-semibold", sourceColors[c.source] ?? "")}
                       >
-                        {c.source.replace("_", " ")}
+                        {c.source === "RECRUITER_DIRECT"
+                          ? "Recruiter (Self)"
+                          : c.source.replace("_", " ")}
                       </Badge>
                     </DataTableCell>
                     <DataTableCell>

@@ -96,6 +96,7 @@ const sourceLabel: Record<string, string> = {
   DIRECT: "Direct",
   AGENCY: "Agency",
   INTERNAL: "Internal",
+  RECRUITER_DIRECT: "Recruiter (Self-Applied)",
 };
 
 const statusPillClass: Record<string, string> = {

@@ -75,8 +75,15 @@ const recruiterNavSections: NavSection[] = [
     items: [
       { label: "Dashboard", href: "/recruiter/dashboard", icon: LayoutDashboard },
       { label: "Discover Jobs", href: "/recruiter/discover", icon: Compass },
+      { label: "Explore Market", href: "/recruiter/external-jobs", icon: Globe },
       { label: "My Referrals", href: "/recruiter/referrals", icon: Users },
       { label: "Leaderboard", href: "/recruiter/leaderboard", icon: Trophy },
+    ],
+  },
+  {
+    title: "Applications",
+    items: [
+      { label: "My Applications", href: "/recruiter/applications", icon: Briefcase },
     ],
   },
   {
@@ -84,7 +91,7 @@ const recruiterNavSections: NavSection[] = [
     items: [
       { label: "Notifications", href: "/notifications", icon: Bell },
       { label: "Earnings", href: "/recruiter/earnings", icon: IndianRupee },
-      { label: "Profile", href: "/recruiter/profile", icon: UserCircle },
+      { label: "Profile & Resume", href: "/recruiter/profile", icon: UserCircle },
       { label: "Support", href: "/support", icon: LifeBuoy },
     ],
   },
