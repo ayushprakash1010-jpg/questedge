@@ -107,29 +107,17 @@ export function NativeWebRtcRoom({
   const lastSeqRef = useRef<number>(0);
   const pendingCandidatesRef = useRef<any[]>([]);
   const isInitiatorRef = useRef<boolean>(isAdmin);
-  const hasOfferedRef = useRef<boolean>(false);
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteStreamRef = useRef<MediaStream | null>(null);
+  // Use refs for state that signal handlers need to read without stale closures
+  const connectionStatusRef = useRef(connectionStatus);
+  const isChatOpenRef = useRef(isChatOpen);
+  const negotiatingRef = useRef(false);
 
-  // Helper to attach local stream tracks to PC without duplicating
-  const attachTracksToPc = useCallback((pc: RTCPeerConnection, stream: MediaStream) => {
-    const senders = pc.getSenders();
-    stream.getTracks().forEach((track) => {
-      const existingSender = senders.find((s) => s.track?.id === track.id || s.track?.kind === track.kind);
-      if (existingSender) {
-        if (existingSender.track !== track) {
-          existingSender.replaceTrack(track).catch(() => {});
-        }
-      } else {
-        try {
-          pc.addTrack(track, stream);
-        } catch (e) {
-          // Track already added
-        }
-      }
-    });
-  }, []);
+  // Keep refs in sync with state
+  useEffect(() => { connectionStatusRef.current = connectionStatus; }, [connectionStatus]);
+  useEffect(() => { isChatOpenRef.current = isChatOpen; }, [isChatOpen]);
 
   // Ensure remote video element plays whenever remoteStream updates
   useEffect(() => {
@@ -180,11 +168,24 @@ export function NativeWebRtcRoom({
     [cleanRoom, senderRole]
   );
 
-  // 2. Initialize PeerConnection
+  // 2. Create a fresh PeerConnection (called once per negotiation cycle)
   const createPeerConnection = useCallback(() => {
-    if (pcRef.current) {
+    // If PC already exists and is usable, just return it
+    if (pcRef.current && pcRef.current.signalingState !== "closed") {
+      // Ensure tracks are attached
       if (localStreamRef.current) {
-        attachTracksToPc(pcRef.current, localStreamRef.current);
+        const senders = pcRef.current.getSenders();
+        localStreamRef.current.getTracks().forEach((track) => {
+          const hasSender = senders.some((s) => s.track === track);
+          if (!hasSender) {
+            const kindSender = senders.find((s) => s.track?.kind === track.kind);
+            if (kindSender) {
+              kindSender.replaceTrack(track).catch(() => {});
+            } else {
+              try { pcRef.current!.addTrack(track, localStreamRef.current!); } catch (e) {}
+            }
+          }
+        });
       }
       return pcRef.current;
     }
@@ -192,21 +193,17 @@ export function NativeWebRtcRoom({
     const pc = new RTCPeerConnection(ICE_SERVERS);
     pcRef.current = pc;
 
-    // Explicitly add transceivers to ensure bidirectional media negotiation
-    try {
-      pc.addTransceiver("video", { direction: "sendrecv" });
-      pc.addTransceiver("audio", { direction: "sendrecv" });
-    } catch (e) {
-      // Fallback on browsers that handle transceivers via addTrack
-    }
-
-    // Attach local stream tracks
+    // DO NOT use addTransceiver - let addTrack create transceivers naturally
+    // Attach local tracks if already available
     if (localStreamRef.current) {
-      attachTracksToPc(pc, localStreamRef.current);
+      localStreamRef.current.getTracks().forEach((track) => {
+        pc.addTrack(track, localStreamRef.current!);
+      });
     }
 
     // Remote track listener
     pc.ontrack = (event) => {
+      console.log("[WebRTC] ontrack fired:", event.track.kind, event.track.readyState);
       let stream = event.streams && event.streams[0];
       if (!stream) {
         if (!remoteStreamRef.current) {
@@ -245,7 +242,7 @@ export function NativeWebRtcRoom({
       };
     };
 
-    // ICE Candidate batching
+    // ICE Candidate batching (120ms debounce)
     const candidateQueue: any[] = [];
     let candidateTimer: NodeJS.Timeout | null = null;
 
@@ -266,6 +263,7 @@ export function NativeWebRtcRoom({
     // Connection state listeners
     pc.onconnectionstatechange = () => {
       const state = pc.connectionState;
+      console.log("[WebRTC] connectionState:", state);
       if (state === "connected") {
         setConnectionStatus("connected");
       } else if (state === "connecting") {
@@ -279,6 +277,7 @@ export function NativeWebRtcRoom({
 
     pc.oniceconnectionstatechange = () => {
       const iceState = pc.iceConnectionState;
+      console.log("[WebRTC] iceConnectionState:", iceState);
       if (iceState === "connected" || iceState === "completed") {
         setConnectionStatus("connected");
       } else if (iceState === "failed") {
@@ -286,64 +285,68 @@ export function NativeWebRtcRoom({
       }
     };
 
+    pc.onsignalingstatechange = () => {
+      console.log("[WebRTC] signalingState:", pc.signalingState);
+    };
+
     return pc;
-  }, [attachTracksToPc, sendSignal]);
+  }, [sendSignal]);
 
-  // 3. Initiate Offer (Caller)
-  const makeOffer = useCallback(
-    async (force = false) => {
-      const pc = createPeerConnection();
-      if (!pc) return;
-
-      // Prevent duplicate offers if an offer is already pending or already connected
-      if (!force) {
-        if (pc.signalingState === "have-local-offer") {
-          console.log("[WebRTC] Offer already in flight, skipping duplicate offer");
-          return;
-        }
-        if (pc.connectionState === "connected" || pc.iceConnectionState === "connected") {
-          console.log("[WebRTC] Already connected, skipping offer");
-          return;
-        }
-      }
-
-      try {
-        hasOfferedRef.current = true;
-        setConnectionStatus("connecting");
-
-        // Ensure tracks are bound before creating offer
-        if (localStreamRef.current) {
-          attachTracksToPc(pc, localStreamRef.current);
-        }
-
-        const offer = await pc.createOffer({
-          offerToReceiveAudio: true,
-          offerToReceiveVideo: true,
-        });
-        await pc.setLocalDescription(offer);
-        await sendSignal("offer", { sdp: offer.sdp, type: offer.type, name: myName });
-      } catch (err: any) {
-        console.error("[WebRTC] Failed to create offer:", err);
-        hasOfferedRef.current = false;
-      }
-    },
-    [attachTracksToPc, createPeerConnection, myName, sendSignal]
-  );
-
-  // 4. Handle Received Signals
+  // 3. Handle incoming signaling messages
+  // This is intentionally defined with minimal deps — it reads refs, not state
   const handleSignalMessage = useCallback(
     async (msg: { type: string; payload: any; sender: string }) => {
+      console.log("[WebRTC] Signal received:", msg.type, "from", msg.sender);
+
       switch (msg.type) {
         case "ready": {
           if (msg.payload?.name) {
             setRemoteParticipantName(msg.payload.name);
           }
           if (isInitiatorRef.current) {
-            // Fresh offer for the newly connected peer
-            await makeOffer();
+            // Interviewer: create offer when candidate announces ready
+            const pc = createPeerConnection();
+            // Skip if already negotiating or connected
+            if (negotiatingRef.current) {
+              console.log("[WebRTC] Already negotiating, skip duplicate offer");
+              return;
+            }
+            if (pc.connectionState === "connected" || pc.iceConnectionState === "connected") {
+              console.log("[WebRTC] Already connected, skip offer");
+              return;
+            }
+            negotiatingRef.current = true;
+            setConnectionStatus("connecting");
+            try {
+              // Ensure tracks are attached
+              if (localStreamRef.current) {
+                const senders = pc.getSenders();
+                localStreamRef.current.getTracks().forEach((track) => {
+                  if (!senders.some((s) => s.track === track)) {
+                    const kindSender = senders.find((s) => s.track?.kind === track.kind);
+                    if (kindSender) {
+                      kindSender.replaceTrack(track).catch(() => {});
+                    } else {
+                      try { pc.addTrack(track, localStreamRef.current!); } catch (e) {}
+                    }
+                  }
+                });
+              }
+              const offer = await pc.createOffer({
+                offerToReceiveAudio: true,
+                offerToReceiveVideo: true,
+              });
+              await pc.setLocalDescription(offer);
+              await sendSignal("offer", { sdp: offer.sdp, type: offer.type, name: myName });
+              console.log("[WebRTC] Offer sent, signalingState:", pc.signalingState);
+            } catch (err) {
+              console.error("[WebRTC] Failed to create offer:", err);
+              negotiatingRef.current = false;
+            }
           } else {
-            // Echo ready back only if candidate is not yet connected
-            if (connectionStatus !== "connected") {
+            // Candidate: echo ready back so interviewer knows we're here
+            // Only echo if we haven't started negotiating
+            if (!negotiatingRef.current) {
               sendSignal("ready", { name: myName });
             }
           }
@@ -351,12 +354,13 @@ export function NativeWebRtcRoom({
         }
 
         case "offer": {
-          if (isInitiatorRef.current) return; // Only candidate processes offer
+          if (isInitiatorRef.current) return; // Only candidate processes offers
           try {
             if (msg.payload?.name) setRemoteParticipantName(msg.payload.name);
+            negotiatingRef.current = true;
             setConnectionStatus("connecting");
 
-            // Wait up to 2 seconds for local camera/mic to initialize so Answer includes local tracks
+            // Wait up to 2 seconds for local camera/mic to initialize
             let waited = 0;
             while (!localStreamRef.current && waited < 20) {
               await new Promise((r) => setTimeout(r, 100));
@@ -364,27 +368,37 @@ export function NativeWebRtcRoom({
             }
 
             const pc = createPeerConnection();
-            if (localStreamRef.current) {
-              attachTracksToPc(pc, localStreamRef.current);
+
+            // If we're not in stable state, we need to rollback first
+            if (pc.signalingState !== "stable") {
+              console.log("[WebRTC] Resetting PC for new offer, was:", pc.signalingState);
+              // Close old PC and create fresh one
+              pc.close();
+              pcRef.current = null;
             }
 
-            await pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
+            const freshPc = createPeerConnection();
+
+            console.log("[WebRTC] Setting remote description (offer), signalingState:", freshPc.signalingState);
+            await freshPc.setRemoteDescription(new RTCSessionDescription(msg.payload));
 
             // Drain any pending ICE candidates
             while (pendingCandidatesRef.current.length > 0) {
               const cand = pendingCandidatesRef.current.shift();
               if (cand) {
                 try {
-                  await pc.addIceCandidate(new RTCIceCandidate(cand));
+                  await freshPc.addIceCandidate(new RTCIceCandidate(cand));
                 } catch (e) {}
               }
             }
 
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
+            const answer = await freshPc.createAnswer();
+            await freshPc.setLocalDescription(answer);
             await sendSignal("answer", { sdp: answer.sdp, type: answer.type, name: myName });
+            console.log("[WebRTC] Answer sent, signalingState:", freshPc.signalingState);
           } catch (err) {
             console.error("[WebRTC] Failed to handle offer:", err);
+            negotiatingRef.current = false;
           }
           break;
         }
@@ -393,9 +407,15 @@ export function NativeWebRtcRoom({
           if (!isInitiatorRef.current) return;
           try {
             if (msg.payload?.name) setRemoteParticipantName(msg.payload.name);
-            const pc = createPeerConnection();
+            const pc = pcRef.current;
+            if (!pc) {
+              console.warn("[WebRTC] No PC when answer arrived");
+              return;
+            }
+            console.log("[WebRTC] Processing answer, signalingState:", pc.signalingState);
             if (pc.signalingState === "have-local-offer") {
               await pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
+              // Drain pending ICE candidates
               while (pendingCandidatesRef.current.length > 0) {
                 const cand = pendingCandidatesRef.current.shift();
                 if (cand) {
@@ -404,6 +424,9 @@ export function NativeWebRtcRoom({
                   } catch (e) {}
                 }
               }
+              console.log("[WebRTC] Answer applied, signalingState:", pc.signalingState);
+            } else {
+              console.warn("[WebRTC] Ignoring answer - signalingState is", pc.signalingState);
             }
           } catch (err) {
             console.error("[WebRTC] Failed to handle answer:", err);
@@ -442,7 +465,7 @@ export function NativeWebRtcRoom({
               isMe: false,
             },
           ]);
-          if (!isChatOpen) {
+          if (!isChatOpenRef.current) {
             setUnreadCount((c) => c + 1);
           }
           break;
@@ -453,18 +476,18 @@ export function NativeWebRtcRoom({
           setRemoteStream(null);
           setHasRemoteVideo(false);
           remoteStreamRef.current = null;
+          negotiatingRef.current = false;
           if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = null;
           }
-          hasOfferedRef.current = false;
           break;
         }
       }
     },
-    [attachTracksToPc, createPeerConnection, isChatOpen, makeOffer, myName, sendSignal]
+    [createPeerConnection, myName, sendSignal]
   );
 
-  // 5. Polling signaling server with 429 backoff protection
+  // 4. Polling signaling server with 429 backoff protection
   useEffect(() => {
     let isCancelled = false;
     let backoffCount = 0;
@@ -499,7 +522,7 @@ export function NativeWebRtcRoom({
       }
     };
 
-    const intervalMs = connectionStatus === "connected" ? 3500 : 1200;
+    const intervalMs = connectionStatusRef.current === "connected" ? 3500 : 1200;
     pollingTimerRef.current = setInterval(pollSignals, intervalMs);
 
     return () => {
@@ -508,7 +531,7 @@ export function NativeWebRtcRoom({
     };
   }, [cleanRoom, connectionStatus, handleSignalMessage, senderRole]);
 
-  // 6. Acquire Local Camera and Mic
+  // 5. Acquire Local Camera and Mic
   useEffect(() => {
     let stream: MediaStream | null = null;
 
@@ -536,8 +559,7 @@ export function NativeWebRtcRoom({
         }
 
         // Initialize PeerConnection and attach tracks immediately
-        const pc = createPeerConnection();
-        attachTracksToPc(pc, stream);
+        createPeerConnection();
 
         // Announce presence
         setConnectionStatus("waiting");
@@ -565,7 +587,8 @@ export function NativeWebRtcRoom({
         pcRef.current = null;
       }
     };
-  }, [attachTracksToPc, createPeerConnection, makeOffer, myName, sendSignal]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Toggle Mute Audio
   const toggleMute = () => {
@@ -917,21 +940,21 @@ export function NativeWebRtcRoom({
             title={isMuted ? "Unmute Microphone" : "Mute Microphone"}
             className={`p-3 rounded-2xl transition-all shadow-md ${
               isMuted
-                ? "bg-rose-500/20 text-rose-400 border border-rose-500/40 hover:bg-rose-500/30"
-                : "bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700/60"
+                ? "bg-rose-600 hover:bg-rose-700 text-white"
+                : "bg-slate-800 hover:bg-slate-700 text-slate-200"
             }`}
           >
             {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
           </button>
 
-          {/* Video Toggle */}
+          {/* Toggle Camera */}
           <button
             onClick={toggleVideo}
             title={isVideoOff ? "Turn Camera On" : "Turn Camera Off"}
             className={`p-3 rounded-2xl transition-all shadow-md ${
               isVideoOff
-                ? "bg-rose-500/20 text-rose-400 border border-rose-500/40 hover:bg-rose-500/30"
-                : "bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700/60"
+                ? "bg-rose-600 hover:bg-rose-700 text-white"
+                : "bg-slate-800 hover:bg-slate-700 text-slate-200"
             }`}
           >
             {isVideoOff ? <VideoOff className="h-5 w-5" /> : <VideoIcon className="h-5 w-5" />}
@@ -940,11 +963,11 @@ export function NativeWebRtcRoom({
           {/* Screen Share */}
           <button
             onClick={toggleScreenShare}
-            title={isScreenSharing ? "Stop Sharing Screen" : "Share Screen"}
+            title={isScreenSharing ? "Stop Sharing" : "Share Screen"}
             className={`p-3 rounded-2xl transition-all shadow-md ${
               isScreenSharing
-                ? "bg-sky-500 text-white shadow-sky-500/30 hover:bg-sky-600"
-                : "bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700/60"
+                ? "bg-sky-600 hover:bg-sky-700 text-white"
+                : "bg-slate-800 hover:bg-slate-700 text-slate-200"
             }`}
           >
             {isScreenSharing ? <MonitorOff className="h-5 w-5" /> : <Monitor className="h-5 w-5" />}
@@ -954,14 +977,14 @@ export function NativeWebRtcRoom({
           <button
             onClick={() => {
               setIsChatOpen(!isChatOpen);
-              setUnreadCount(0);
+              if (!isChatOpen) setUnreadCount(0);
             }}
-            title="Meeting Chat"
-            className="relative p-3 rounded-2xl bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700/60 transition-all shadow-md"
+            title="Toggle Chat"
+            className="relative p-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 transition-all shadow-md"
           >
             <MessageSquare className="h-5 w-5" />
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-sky-500 text-white font-bold text-[10px] flex items-center justify-center animate-pulse">
+              <span className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 bg-sky-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                 {unreadCount}
               </span>
             )}
@@ -970,8 +993,8 @@ export function NativeWebRtcRoom({
           {/* Fullscreen */}
           <button
             onClick={toggleFullscreen}
-            title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-            className="p-3 rounded-2xl bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700/60 transition-all shadow-md hidden sm:block"
+            title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+            className="p-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 transition-all shadow-md"
           >
             {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
           </button>
@@ -980,20 +1003,35 @@ export function NativeWebRtcRoom({
           <button
             onClick={() => {
               sendSignal("bye", {});
-              if (onLeave) onLeave();
+              if (localStream) {
+                localStream.getTracks().forEach((t) => t.stop());
+              }
+              if (pcRef.current) {
+                pcRef.current.close();
+                pcRef.current = null;
+              }
+              setConnectionStatus("disconnected");
+              onLeave?.();
             }}
-            title="Leave Interview"
-            className="p-3 px-4 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white transition-all shadow-lg shadow-rose-600/30 flex items-center gap-2"
+            title="Leave Call"
+            className="p-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white transition-all shadow-md ml-2"
           >
             <PhoneOff className="h-5 w-5" />
-            <span className="text-xs font-bold hidden sm:inline">Leave</span>
           </button>
         </div>
 
-        {/* Right: Security Indicator */}
-        <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-slate-500">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-          <span>Peer-to-Peer</span>
+        {/* Right: Connection Status Badge */}
+        <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500">
+          <span
+            className={`h-2 w-2 rounded-full ${
+              connectionStatus === "connected"
+                ? "bg-emerald-400"
+                : connectionStatus === "connecting"
+                ? "bg-sky-400 animate-pulse"
+                : "bg-amber-400"
+            }`}
+          />
+          Peer-to-Peer
         </div>
       </div>
     </div>
