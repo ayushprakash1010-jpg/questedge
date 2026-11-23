@@ -14,6 +14,7 @@ export default function CandidateInterviewJoinPage() {
   const [roomInfo, setRoomInfo] = useState<{
     id: string;
     roomName: string;
+    roomUrl?: string;
     scheduledAt: string;
     status: VideoInterviewStatus;
     candidateProfile?: { name: string };
@@ -117,6 +118,7 @@ export default function CandidateInterviewJoinPage() {
           <div className="flex-1 w-full h-full rounded-2xl overflow-hidden border border-slate-800 shadow-2xl min-h-0 flex flex-col">
             <JitsiMeetRoom
               roomName={roomInfo.roomName}
+              roomUrl={roomInfo.roomUrl}
               displayName={candidateName}
               isAdmin={false}
               onLeave={() => setJoined(false)}

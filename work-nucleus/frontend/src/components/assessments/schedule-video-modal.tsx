@@ -75,7 +75,7 @@ export function ScheduleVideoModal({
             </div>
             <div>
               <h3 className="font-bold text-slate-900 text-base">Schedule Video Interview</h3>
-              <p className="text-xs text-slate-500">Embedded Jitsi Meet room with live scorecard</p>
+              <p className="text-xs text-slate-500">Embedded HD Video room with live scorecard</p>
             </div>
           </div>
           <button

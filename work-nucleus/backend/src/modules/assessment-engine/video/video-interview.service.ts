@@ -2,13 +2,72 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { randomUUID, createHash } from 'crypto';
 
 @Injectable()
 export class VideoInterviewService {
+  private readonly logger = new Logger(VideoInterviewService.name);
+
   constructor(private readonly prisma: PrismaService) {}
+
+  async ensureDailyRoom(rawName: string, scheduledAt?: Date): Promise<string> {
+    const dailyApiKey = process.env.DAILY_API_KEY;
+    const dailyDomain = process.env.DAILY_DOMAIN || 'questedge.daily.co';
+    const cleanName = rawName.toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+    const defaultUrl = `https://${dailyDomain}/${cleanName}`;
+
+    if (!dailyApiKey) {
+      return defaultUrl;
+    }
+
+    try {
+      const getRes = await fetch(`https://api.daily.co/v1/rooms/${cleanName}`, {
+        headers: { Authorization: `Bearer ${dailyApiKey}` },
+      });
+      if (getRes.ok) {
+        const data = await getRes.json();
+        return data.url || defaultUrl;
+      }
+
+      const expTimestamp = scheduledAt
+        ? Math.floor(new Date(scheduledAt).getTime() / 1000) + 86400 * 7
+        : Math.floor(Date.now() / 1000) + 86400 * 7;
+
+      const createRes = await fetch('https://api.daily.co/v1/rooms', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${dailyApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: cleanName,
+          properties: {
+            enable_chat: true,
+            enable_screenshare: true,
+            start_video_off: false,
+            start_audio_off: false,
+            exp: expTimestamp,
+          },
+        }),
+      });
+
+      if (createRes.ok) {
+        const data = await createRes.json();
+        this.logger.log(`Created Daily room: ${data.url}`);
+        return data.url || defaultUrl;
+      } else {
+        const errText = await createRes.text();
+        this.logger.warn(`Daily room creation status ${createRes.status}: ${errText}`);
+      }
+    } catch (err: any) {
+      this.logger.warn(`Failed to ensure Daily room: ${err.message}`);
+    }
+
+    return defaultUrl;
+  }
 
   async schedule(
     orgId: string,
@@ -40,10 +99,13 @@ export class VideoInterviewService {
       candidateId = candidate.id;
     }
 
-    const roomName = `QE_${randomUUID().slice(0, 8)}_${Date.now()}`;
+    const roomName = `qe_${randomUUID().slice(0, 8)}_${Date.now()}`.toLowerCase();
     const candidateAccessToken = randomUUID();
 
-    return this.prisma.videoInterview.create({
+    // Ensure Daily room is provisioned
+    const roomUrl = await this.ensureDailyRoom(roomName, new Date(data.scheduledAt));
+
+    const interview = await this.prisma.videoInterview.create({
       data: {
         orgId,
         roomName,
@@ -62,6 +124,11 @@ export class VideoInterviewService {
         mandate: { select: { id: true, title: true } },
       },
     });
+
+    return {
+      ...interview,
+      roomUrl,
+    };
   }
 
   async findAll(orgId: string, filters?: { mandateId?: string; status?: string }) {
@@ -94,7 +161,13 @@ export class VideoInterviewService {
       },
     });
     if (!interview) throw new NotFoundException('Video interview not found');
-    return interview;
+
+    const roomUrl = await this.ensureDailyRoom(interview.roomName, interview.scheduledAt);
+
+    return {
+      ...interview,
+      roomUrl,
+    };
   }
 
   async getByToken(token: string) {
@@ -112,7 +185,13 @@ export class VideoInterviewService {
     if (interview.status === 'COMPLETED' || interview.status === 'CANCELLED') {
       throw new BadRequestException('Interview is no longer active');
     }
-    return interview;
+
+    const roomUrl = await this.ensureDailyRoom(interview.roomName, interview.scheduledAt);
+
+    return {
+      ...interview,
+      roomUrl,
+    };
   }
 
   async start(id: string, orgId: string) {

@@ -159,7 +159,7 @@ export default function CreateAssessmentPage() {
               <div>
                 <h4 className="font-bold text-slate-900 text-sm">Video Interview</h4>
                 <p className="text-[11px] text-slate-500 mt-1">
-                  Embedded 1-on-1 Jitsi call with real-time scorecard and resume viewer.
+                  Embedded 1-on-1 HD video call with real-time scorecard and resume viewer.
                 </p>
               </div>
             </div>

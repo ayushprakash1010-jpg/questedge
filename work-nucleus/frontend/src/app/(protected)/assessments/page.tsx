@@ -170,7 +170,7 @@ export default function AssessmentsPage() {
             </div>
           </div>
           <div className="text-2xl font-bold text-slate-900 mt-2">{interviews.length}</div>
-          <div className="text-xs text-slate-400 mt-1">Embedded Jitsi Meet rooms</div>
+          <div className="text-xs text-slate-400 mt-1">Embedded HD Video Interview rooms</div>
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">

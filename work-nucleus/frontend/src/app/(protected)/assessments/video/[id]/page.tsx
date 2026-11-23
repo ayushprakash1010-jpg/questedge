@@ -170,10 +170,11 @@ export default function InterviewerVideoRoomPage() {
 
       {/* Split Body */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden">
-        {/* Left: Jitsi Meet Room (7 cols) */}
+        {/* Left: HD Video Room (7 cols) */}
         <div className="lg:col-span-7 h-full rounded-2xl overflow-hidden border border-slate-800 shadow-md">
           <JitsiMeetRoom
             roomName={interview.roomName}
+            roomUrl={interview.roomUrl}
             displayName={interview.interviewer?.name || "QuestEdge Interviewer"}
             isAdmin={true}
           />

@@ -95,6 +95,7 @@ export interface VideoInterview {
   id: string;
   orgId: string;
   roomName: string;
+  roomUrl?: string;
   candidateId?: string;
   candidateProfile?: { id: string; name: string; email: string; resumeUrl?: string };
   applicationId?: string;
@@ -458,6 +459,7 @@ export async function updateCandidateAntiCheat(
 export async function fetchCandidateVideoRoom(token: string): Promise<{
   id: string;
   roomName: string;
+  roomUrl?: string;
   scheduledAt: string;
   status: VideoInterviewStatus;
   candidateProfile?: { name: string };
