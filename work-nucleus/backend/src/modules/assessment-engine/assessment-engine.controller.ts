@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
+import { SkipThrottle } from '@nestjs/throttler';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Public } from '../../auth/decorators/public.decorator';
@@ -343,6 +344,7 @@ export class AssessmentTakeController {
   ) {}
 
   // ── WebRTC Signaling (Direct Peer-to-Peer) ────────────────────
+  @SkipThrottle()
   @Post('video/:roomId/signal')
   @Public()
   @ApiOperation({ summary: 'Send WebRTC signaling message' })
@@ -353,6 +355,7 @@ export class AssessmentTakeController {
     return this.signalingService.sendSignal(roomId, body.sender, body.type, body.payload);
   }
 
+  @SkipThrottle()
   @Get('video/:roomId/signal')
   @Public()
   @ApiOperation({ summary: 'Receive WebRTC signaling messages' })

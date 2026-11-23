@@ -179,10 +179,21 @@ export function NativeWebRtcRoom({
       }
     };
 
-    // ICE Candidate handler
+    // ICE Candidate handler with batching to avoid request flooding
+    const candidateQueue: any[] = [];
+    let candidateTimer: NodeJS.Timeout | null = null;
+
     pc.onicecandidate = (event) => {
       if (event.candidate && event.candidate.candidate) {
-        sendSignal("candidate", event.candidate.toJSON());
+        candidateQueue.push(event.candidate.toJSON());
+        if (candidateTimer) clearTimeout(candidateTimer);
+        candidateTimer = setTimeout(() => {
+          if (candidateQueue.length > 0) {
+            const batch = [...candidateQueue];
+            candidateQueue.length = 0;
+            sendSignal("candidates", batch);
+          }
+        }, 120);
       }
     };
 
@@ -297,17 +308,21 @@ export function NativeWebRtcRoom({
           break;
         }
 
+        case "candidates":
         case "candidate": {
-          if (!msg.payload || !msg.payload.candidate) return;
-          try {
-            const cand = new RTCIceCandidate(msg.payload);
-            if (pc.remoteDescription && pc.remoteDescription.type) {
-              await pc.addIceCandidate(cand);
-            } else {
-              pendingCandidatesRef.current.push(msg.payload);
+          const list = Array.isArray(msg.payload) ? msg.payload : [msg.payload];
+          for (const item of list) {
+            if (!item || !item.candidate) continue;
+            try {
+              const cand = new RTCIceCandidate(item);
+              if (pc.remoteDescription && pc.remoteDescription.type) {
+                await pc.addIceCandidate(cand);
+              } else {
+                pendingCandidatesRef.current.push(item);
+              }
+            } catch (err) {
+              // Silently skip duplicate or invalid candidates
             }
-          } catch (err) {
-            console.warn("[WebRTC] Error adding ICE candidate:", err);
           }
           break;
         }
@@ -348,13 +363,23 @@ export function NativeWebRtcRoom({
   // 5. Polling signaling server
   useEffect(() => {
     let isCancelled = false;
+    let backoffCount = 0;
 
     const pollSignals = async () => {
       if (isCancelled) return;
+      if (backoffCount > 0) {
+        backoffCount--;
+        return;
+      }
       try {
         const res = await fetch(
           `/api/v2/assessment-take/video/${cleanRoom}/signal?sender=${senderRole}&since=${lastSeqRef.current}`
         );
+        if (res.status === 429) {
+          // If server throttled, back off for 2 ticks to cool down
+          backoffCount = 2;
+          return;
+        }
         if (res.ok) {
           const data = await res.json();
           if (data.messages && Array.isArray(data.messages)) {
@@ -371,7 +396,7 @@ export function NativeWebRtcRoom({
       }
     };
 
-    const intervalMs = connectionStatus === "connected" ? 2500 : 800;
+    const intervalMs = connectionStatus === "connected" ? 3500 : 1200;
     pollingTimerRef.current = setInterval(pollSignals, intervalMs);
 
     return () => {
