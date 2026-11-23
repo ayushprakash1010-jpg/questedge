@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   AlertCircle,
   Users,
+  Volume2,
 } from "lucide-react";
 
 interface NativeWebRtcRoomProps {
@@ -77,9 +78,11 @@ export function NativeWebRtcRoom({
   // Media state
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [hasRemoteVideo, setHasRemoteVideo] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
 
   // Connection state
   const [connectionStatus, setConnectionStatus] = useState<
@@ -102,18 +105,50 @@ export function NativeWebRtcRoom({
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const lastSeqRef = useRef<number>(0);
-  const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
+  const pendingCandidatesRef = useRef<any[]>([]);
   const isInitiatorRef = useRef<boolean>(isAdmin);
   const hasOfferedRef = useRef<boolean>(false);
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteStreamRef = useRef<MediaStream | null>(null);
 
+  // Helper to attach local stream tracks to PC without duplicating
+  const attachTracksToPc = useCallback((pc: RTCPeerConnection, stream: MediaStream) => {
+    const senders = pc.getSenders();
+    stream.getTracks().forEach((track) => {
+      const existingSender = senders.find((s) => s.track?.id === track.id || s.track?.kind === track.kind);
+      if (existingSender) {
+        if (existingSender.track !== track) {
+          existingSender.replaceTrack(track).catch(() => {});
+        }
+      } else {
+        try {
+          pc.addTrack(track, stream);
+        } catch (e) {
+          // Track already added
+        }
+      }
+    });
+  }, []);
+
   // Ensure remote video element plays whenever remoteStream updates
   useEffect(() => {
-    if (remoteVideoRef.current && remoteStream) {
-      remoteVideoRef.current.srcObject = remoteStream;
-      remoteVideoRef.current.play().catch(() => {});
+    const videoEl = remoteVideoRef.current;
+    if (videoEl && remoteStream) {
+      if (videoEl.srcObject !== remoteStream) {
+        videoEl.srcObject = remoteStream;
+      }
+      videoEl
+        .play()
+        .then(() => setAutoplayBlocked(false))
+        .catch((err) => {
+          if (err.name === "NotAllowedError") {
+            setAutoplayBlocked(true);
+          }
+        });
+      if (remoteStream.getVideoTracks().length > 0) {
+        setHasRemoteVideo(true);
+      }
     }
   }, [remoteStream]);
 
@@ -139,7 +174,7 @@ export function NativeWebRtcRoom({
           }),
         });
       } catch (err) {
-        console.warn("[WebRTC] Signal send error:", err);
+        // Silently retry
       }
     },
     [cleanRoom, senderRole]
@@ -147,19 +182,30 @@ export function NativeWebRtcRoom({
 
   // 2. Initialize PeerConnection
   const createPeerConnection = useCallback(() => {
-    if (pcRef.current) return pcRef.current;
+    if (pcRef.current) {
+      if (localStreamRef.current) {
+        attachTracksToPc(pcRef.current, localStreamRef.current);
+      }
+      return pcRef.current;
+    }
 
     const pc = new RTCPeerConnection(ICE_SERVERS);
     pcRef.current = pc;
 
-    // Attach local stream tracks
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => {
-        pc.addTrack(track, localStreamRef.current!);
-      });
+    // Explicitly add transceivers to ensure bidirectional media negotiation
+    try {
+      pc.addTransceiver("video", { direction: "sendrecv" });
+      pc.addTransceiver("audio", { direction: "sendrecv" });
+    } catch (e) {
+      // Fallback on browsers that handle transceivers via addTrack
     }
 
-    // Remote track listener - robust unified plan handling
+    // Attach local stream tracks
+    if (localStreamRef.current) {
+      attachTracksToPc(pc, localStreamRef.current);
+    }
+
+    // Remote track listener
     pc.ontrack = (event) => {
       let stream = event.streams && event.streams[0];
       if (!stream) {
@@ -171,15 +217,35 @@ export function NativeWebRtcRoom({
       } else {
         remoteStreamRef.current = stream;
       }
+
       setRemoteStream(stream);
       setConnectionStatus("connected");
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = stream;
-        remoteVideoRef.current.play().catch(() => {});
+
+      if (event.track.kind === "video") {
+        setHasRemoteVideo(true);
       }
+
+      if (remoteVideoRef.current) {
+        if (remoteVideoRef.current.srcObject !== stream) {
+          remoteVideoRef.current.srcObject = stream;
+        }
+        remoteVideoRef.current
+          .play()
+          .then(() => setAutoplayBlocked(false))
+          .catch((err) => {
+            if (err.name === "NotAllowedError") setAutoplayBlocked(true);
+          });
+      }
+
+      event.track.onunmute = () => {
+        setConnectionStatus("connected");
+        if (event.track.kind === "video") {
+          setHasRemoteVideo(true);
+        }
+      };
     };
 
-    // ICE Candidate handler with batching to avoid request flooding
+    // ICE Candidate batching
     const candidateQueue: any[] = [];
     let candidateTimer: NodeJS.Timeout | null = null;
 
@@ -221,17 +287,35 @@ export function NativeWebRtcRoom({
     };
 
     return pc;
-  }, [sendSignal]);
+  }, [attachTracksToPc, sendSignal]);
 
   // 3. Initiate Offer (Caller)
   const makeOffer = useCallback(
     async (force = false) => {
-      const pc = pcRef.current;
+      const pc = createPeerConnection();
       if (!pc) return;
-      if (hasOfferedRef.current && !force) return;
+
+      // Prevent duplicate offers if an offer is already pending or already connected
+      if (!force) {
+        if (pc.signalingState === "have-local-offer") {
+          console.log("[WebRTC] Offer already in flight, skipping duplicate offer");
+          return;
+        }
+        if (pc.connectionState === "connected" || pc.iceConnectionState === "connected") {
+          console.log("[WebRTC] Already connected, skipping offer");
+          return;
+        }
+      }
+
       try {
         hasOfferedRef.current = true;
         setConnectionStatus("connecting");
+
+        // Ensure tracks are bound before creating offer
+        if (localStreamRef.current) {
+          attachTracksToPc(pc, localStreamRef.current);
+        }
+
         const offer = await pc.createOffer({
           offerToReceiveAudio: true,
           offerToReceiveVideo: true,
@@ -243,17 +327,12 @@ export function NativeWebRtcRoom({
         hasOfferedRef.current = false;
       }
     },
-    [sendSignal, myName]
+    [attachTracksToPc, createPeerConnection, myName, sendSignal]
   );
 
   // 4. Handle Received Signals
   const handleSignalMessage = useCallback(
     async (msg: { type: string; payload: any; sender: string }) => {
-      let pc = pcRef.current;
-      if (!pc) {
-        pc = createPeerConnection();
-      }
-
       switch (msg.type) {
         case "ready": {
           if (msg.payload?.name) {
@@ -261,10 +340,12 @@ export function NativeWebRtcRoom({
           }
           if (isInitiatorRef.current) {
             // Fresh offer for the newly connected peer
-            await makeOffer(true);
+            await makeOffer();
           } else {
-            // Echo ready back
-            sendSignal("ready", { name: myName });
+            // Echo ready back only if candidate is not yet connected
+            if (connectionStatus !== "connected") {
+              sendSignal("ready", { name: myName });
+            }
           }
           break;
         }
@@ -274,12 +355,29 @@ export function NativeWebRtcRoom({
           try {
             if (msg.payload?.name) setRemoteParticipantName(msg.payload.name);
             setConnectionStatus("connecting");
+
+            // Wait up to 2 seconds for local camera/mic to initialize so Answer includes local tracks
+            let waited = 0;
+            while (!localStreamRef.current && waited < 20) {
+              await new Promise((r) => setTimeout(r, 100));
+              waited++;
+            }
+
+            const pc = createPeerConnection();
+            if (localStreamRef.current) {
+              attachTracksToPc(pc, localStreamRef.current);
+            }
+
             await pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
 
             // Drain any pending ICE candidates
             while (pendingCandidatesRef.current.length > 0) {
               const cand = pendingCandidatesRef.current.shift();
-              if (cand) await pc.addIceCandidate(new RTCIceCandidate(cand));
+              if (cand) {
+                try {
+                  await pc.addIceCandidate(new RTCIceCandidate(cand));
+                } catch (e) {}
+              }
             }
 
             const answer = await pc.createAnswer();
@@ -295,11 +393,16 @@ export function NativeWebRtcRoom({
           if (!isInitiatorRef.current) return;
           try {
             if (msg.payload?.name) setRemoteParticipantName(msg.payload.name);
+            const pc = createPeerConnection();
             if (pc.signalingState === "have-local-offer") {
               await pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
               while (pendingCandidatesRef.current.length > 0) {
                 const cand = pendingCandidatesRef.current.shift();
-                if (cand) await pc.addIceCandidate(new RTCIceCandidate(cand));
+                if (cand) {
+                  try {
+                    await pc.addIceCandidate(new RTCIceCandidate(cand));
+                  } catch (e) {}
+                }
               }
             }
           } catch (err) {
@@ -310,18 +413,18 @@ export function NativeWebRtcRoom({
 
         case "candidates":
         case "candidate": {
+          const pc = pcRef.current;
           const list = Array.isArray(msg.payload) ? msg.payload : [msg.payload];
           for (const item of list) {
             if (!item || !item.candidate) continue;
             try {
-              const cand = new RTCIceCandidate(item);
-              if (pc.remoteDescription && pc.remoteDescription.type) {
-                await pc.addIceCandidate(cand);
+              if (pc && pc.remoteDescription && pc.remoteDescription.type) {
+                await pc.addIceCandidate(new RTCIceCandidate(item));
               } else {
                 pendingCandidatesRef.current.push(item);
               }
             } catch (err) {
-              // Silently skip duplicate or invalid candidates
+              // Silently ignore duplicate/invalid candidates
             }
           }
           break;
@@ -348,6 +451,7 @@ export function NativeWebRtcRoom({
         case "bye": {
           setConnectionStatus("disconnected");
           setRemoteStream(null);
+          setHasRemoteVideo(false);
           remoteStreamRef.current = null;
           if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = null;
@@ -357,10 +461,10 @@ export function NativeWebRtcRoom({
         }
       }
     },
-    [createPeerConnection, isChatOpen, makeOffer, myName, sendSignal]
+    [attachTracksToPc, createPeerConnection, isChatOpen, makeOffer, myName, sendSignal]
   );
 
-  // 5. Polling signaling server
+  // 5. Polling signaling server with 429 backoff protection
   useEffect(() => {
     let isCancelled = false;
     let backoffCount = 0;
@@ -376,7 +480,6 @@ export function NativeWebRtcRoom({
           `/api/v2/assessment-take/video/${cleanRoom}/signal?sender=${senderRole}&since=${lastSeqRef.current}`
         );
         if (res.status === 429) {
-          // If server throttled, back off for 2 ticks to cool down
           backoffCount = 2;
           return;
         }
@@ -432,19 +535,13 @@ export function NativeWebRtcRoom({
           localVideoRef.current.play().catch(() => {});
         }
 
-        // Initialize PeerConnection with local tracks
-        createPeerConnection();
+        // Initialize PeerConnection and attach tracks immediately
+        const pc = createPeerConnection();
+        attachTracksToPc(pc, stream);
 
         // Announce presence
         setConnectionStatus("waiting");
         sendSignal("ready", { name: myName });
-
-        // If interviewer, wait 800ms then make initial offer
-        if (isInitiatorRef.current) {
-          setTimeout(() => {
-            makeOffer();
-          }, 800);
-        }
       } catch (err: any) {
         console.error("[WebRTC] Media access error:", err);
         setErrorMessage(
@@ -468,7 +565,7 @@ export function NativeWebRtcRoom({
         pcRef.current = null;
       }
     };
-  }, [createPeerConnection, makeOffer, myName, sendSignal]);
+  }, [attachTracksToPc, createPeerConnection, makeOffer, myName, sendSignal]);
 
   // Toggle Mute Audio
   const toggleMute = () => {
@@ -623,6 +720,22 @@ export function NativeWebRtcRoom({
         )}
       </div>
 
+      {/* ── Autoplay Blocked Banner ────────────────────────────── */}
+      {autoplayBlocked && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-2xl cursor-pointer transition-all animate-bounce">
+          <Volume2 className="h-4 w-4" />
+          <button
+            onClick={() => {
+              if (remoteVideoRef.current) {
+                remoteVideoRef.current.play().then(() => setAutoplayBlocked(false));
+              }
+            }}
+          >
+            Click anywhere to enable live audio & video
+          </button>
+        </div>
+      )}
+
       {/* ── Main Video Area (Remote or Waiting Radar) ──────────── */}
       <div className="relative flex-1 w-full h-full bg-slate-950 flex items-center justify-center overflow-hidden">
         {/* Remote Video element */}
@@ -631,9 +744,24 @@ export function NativeWebRtcRoom({
           autoPlay
           playsInline
           className={`w-full h-full object-cover transition-opacity duration-300 ${
-            connectionStatus === "connected" ? "opacity-100" : "opacity-0 absolute pointer-events-none"
+            connectionStatus === "connected"
+              ? "opacity-100"
+              : "opacity-0 absolute pointer-events-none"
           }`}
         />
+
+        {/* Connected but waiting for incoming camera track */}
+        {connectionStatus === "connected" && !hasRemoteVideo && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center max-w-sm mx-auto space-y-4 z-10 pointer-events-none">
+            <div className="h-16 w-16 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+              <Users className="h-8 w-8" />
+            </div>
+            <div>
+              <h3 className="text-white font-bold text-base">{remoteParticipantName || "Peer"} Connected</h3>
+              <p className="text-slate-400 text-xs mt-1">Starting incoming video stream...</p>
+            </div>
+          </div>
+        )}
 
         {/* Waiting / Radar Screen */}
         {connectionStatus !== "connected" && connectionStatus !== "error" && (

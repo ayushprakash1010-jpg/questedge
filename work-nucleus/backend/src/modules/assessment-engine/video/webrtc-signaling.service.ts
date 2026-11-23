@@ -60,9 +60,12 @@ export class WebRtcSignalingService {
     if (!room) return [];
 
     room.lastActive = Date.now();
+    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
 
-    // Filter messages where sender is NOT the requester, and message id > sinceId
-    return room.messages.filter((m) => m.id > sinceId && m.sender !== sender);
+    // Filter messages where sender is NOT the requester, message id > sinceId, and not expired (> 5 min)
+    return room.messages.filter(
+      (m) => m.id > sinceId && m.sender !== sender && m.timestamp > fiveMinutesAgo
+    );
   }
 
   clearRoom(roomId: string) {
