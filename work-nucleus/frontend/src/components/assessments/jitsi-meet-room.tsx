@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { DailyVideoRoom } from "./daily-video-room";
+import { NativeWebRtcRoom } from "./native-webrtc-room";
 
 interface JitsiMeetRoomProps {
   roomName?: string;
@@ -12,8 +12,16 @@ interface JitsiMeetRoomProps {
 }
 
 /**
- * Backwards-compatible export mapping to DailyVideoRoom
+ * Backwards-compatible export mapping to NativeWebRtcRoom
  */
 export function JitsiMeetRoom(props: JitsiMeetRoomProps) {
-  return <DailyVideoRoom {...props} />;
+  return (
+    <NativeWebRtcRoom
+      roomName={props.roomName || "questedge-room"}
+      roomUrl={props.roomUrl}
+      displayName={props.displayName}
+      onLeave={props.onLeave}
+      isAdmin={props.isAdmin}
+    />
+  );
 }

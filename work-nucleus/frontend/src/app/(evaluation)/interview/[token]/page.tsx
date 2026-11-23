@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Video, User, AlertTriangle, Loader2, CheckCircle2 } from "lucide-react";
 import { fetchCandidateVideoRoom, VideoInterviewStatus } from "@/lib/assessment-api";
-import { JitsiMeetRoom } from "@/components/assessments/jitsi-meet-room";
+import { NativeWebRtcRoom } from "@/components/assessments/native-webrtc-room";
 
 export default function CandidateInterviewJoinPage() {
   const params = useParams();
@@ -116,7 +116,7 @@ export default function CandidateInterviewJoinPage() {
           </div>
         ) : (
           <div className="flex-1 w-full h-full rounded-2xl overflow-hidden border border-slate-800 shadow-2xl min-h-0 flex flex-col">
-            <JitsiMeetRoom
+            <NativeWebRtcRoom
               roomName={roomInfo.roomName}
               roomUrl={roomInfo.roomUrl}
               displayName={candidateName}

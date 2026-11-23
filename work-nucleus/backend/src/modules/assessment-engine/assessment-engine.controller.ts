@@ -22,6 +22,7 @@ import { AssessmentEngineService } from './assessment-engine.service';
 import { QuizService } from './quiz/quiz.service';
 import { CodingService } from './coding/coding.service';
 import { VideoInterviewService } from './video/video-interview.service';
+import { WebRtcSignalingService } from './video/webrtc-signaling.service';
 import {
   CreateAssessmentDto,
   UpdateAssessmentDto,
@@ -338,7 +339,33 @@ export class AssessmentTakeController {
     private readonly quizService: QuizService,
     private readonly codingService: CodingService,
     private readonly videoService: VideoInterviewService,
+    private readonly signalingService: WebRtcSignalingService,
   ) {}
+
+  // ── WebRTC Signaling (Direct Peer-to-Peer) ────────────────────
+  @Post('video/:roomId/signal')
+  @Public()
+  @ApiOperation({ summary: 'Send WebRTC signaling message' })
+  sendSignal(
+    @Param('roomId') roomId: string,
+    @Body() body: { sender: string; type: string; payload: any },
+  ) {
+    return this.signalingService.sendSignal(roomId, body.sender, body.type, body.payload);
+  }
+
+  @Get('video/:roomId/signal')
+  @Public()
+  @ApiOperation({ summary: 'Receive WebRTC signaling messages' })
+  getSignals(
+    @Param('roomId') roomId: string,
+    @Query('sender') sender: string,
+    @Query('since') since?: string,
+  ) {
+    const sinceNum = since ? parseInt(since, 10) : 0;
+    return {
+      messages: this.signalingService.getSignals(roomId, sender, isNaN(sinceNum) ? 0 : sinceNum),
+    };
+  }
 
   // ── Public Shareable Assessment Link ──────────────────────────
   @Get('public/:assessmentId')

@@ -24,7 +24,7 @@ import {
   submitVideoInterviewFeedback,
   VideoInterview,
 } from "@/lib/assessment-api";
-import { JitsiMeetRoom } from "@/components/assessments/jitsi-meet-room";
+import { NativeWebRtcRoom } from "@/components/assessments/native-webrtc-room";
 
 export default function InterviewerVideoRoomPage() {
   const params = useParams();
@@ -172,7 +172,7 @@ export default function InterviewerVideoRoomPage() {
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden">
         {/* Left: HD Video Room (7 cols) */}
         <div className="lg:col-span-7 h-full rounded-2xl overflow-hidden border border-slate-800 shadow-md">
-          <JitsiMeetRoom
+          <NativeWebRtcRoom
             roomName={interview.roomName}
             roomUrl={interview.roomUrl}
             displayName={interview.interviewer?.name || "QuestEdge Interviewer"}
