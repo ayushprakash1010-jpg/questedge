@@ -107,6 +107,23 @@ export function NativeWebRtcRoom({
   const hasOfferedRef = useRef<boolean>(false);
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteStreamRef = useRef<MediaStream | null>(null);
+
+  // Ensure remote video element plays whenever remoteStream updates
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteStream) {
+      remoteVideoRef.current.srcObject = remoteStream;
+      remoteVideoRef.current.play().catch(() => {});
+    }
+  }, [remoteStream]);
+
+  // Ensure local video element plays whenever localStream updates
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+      localVideoRef.current.play().catch(() => {});
+    }
+  }, [localStream]);
 
   // 1. Send signal helper
   const sendSignal = useCallback(
@@ -142,37 +159,52 @@ export function NativeWebRtcRoom({
       });
     }
 
-    // Remote track listener
+    // Remote track listener - robust unified plan handling
     pc.ontrack = (event) => {
-      if (event.streams && event.streams[0]) {
-        const stream = event.streams[0];
-        setRemoteStream(stream);
-        if (remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = stream;
+      let stream = event.streams && event.streams[0];
+      if (!stream) {
+        if (!remoteStreamRef.current) {
+          remoteStreamRef.current = new MediaStream();
         }
-        setConnectionStatus("connected");
+        remoteStreamRef.current.addTrack(event.track);
+        stream = remoteStreamRef.current;
+      } else {
+        remoteStreamRef.current = stream;
+      }
+      setRemoteStream(stream);
+      setConnectionStatus("connected");
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = stream;
+        remoteVideoRef.current.play().catch(() => {});
       }
     };
 
     // ICE Candidate handler
     pc.onicecandidate = (event) => {
-      if (event.candidate) {
+      if (event.candidate && event.candidate.candidate) {
         sendSignal("candidate", event.candidate.toJSON());
       }
     };
 
-    // Connection state handler
+    // Connection state listeners
     pc.onconnectionstatechange = () => {
       const state = pc.connectionState;
       if (state === "connected") {
         setConnectionStatus("connected");
       } else if (state === "connecting") {
-        setConnectionStatus("connecting");
+        setConnectionStatus((curr) => (curr === "connected" ? "connected" : "connecting"));
       } else if (state === "disconnected" || state === "closed") {
         setConnectionStatus("disconnected");
       } else if (state === "failed") {
-        setConnectionStatus("disconnected");
-        // Try to restart ICE on failure
+        pc.restartIce();
+      }
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      const iceState = pc.iceConnectionState;
+      if (iceState === "connected" || iceState === "completed") {
+        setConnectionStatus("connected");
+      } else if (iceState === "failed") {
         pc.restartIce();
       }
     };
@@ -181,53 +213,59 @@ export function NativeWebRtcRoom({
   }, [sendSignal]);
 
   // 3. Initiate Offer (Caller)
-  const makeOffer = useCallback(async () => {
-    const pc = pcRef.current;
-    if (!pc || hasOfferedRef.current) return;
-    try {
-      hasOfferedRef.current = true;
-      setConnectionStatus("connecting");
-      const offer = await pc.createOffer({
-        offerToReceiveAudio: true,
-        offerToReceiveVideo: true,
-      });
-      await pc.setLocalDescription(offer);
-      await sendSignal("offer", { sdp: offer.sdp, type: offer.type, name: myName });
-    } catch (err: any) {
-      console.error("[WebRTC] Failed to create offer:", err);
-      hasOfferedRef.current = false;
-    }
-  }, [sendSignal, myName]);
+  const makeOffer = useCallback(
+    async (force = false) => {
+      const pc = pcRef.current;
+      if (!pc) return;
+      if (hasOfferedRef.current && !force) return;
+      try {
+        hasOfferedRef.current = true;
+        setConnectionStatus("connecting");
+        const offer = await pc.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: true,
+        });
+        await pc.setLocalDescription(offer);
+        await sendSignal("offer", { sdp: offer.sdp, type: offer.type, name: myName });
+      } catch (err: any) {
+        console.error("[WebRTC] Failed to create offer:", err);
+        hasOfferedRef.current = false;
+      }
+    },
+    [sendSignal, myName]
+  );
 
   // 4. Handle Received Signals
   const handleSignalMessage = useCallback(
     async (msg: { type: string; payload: any; sender: string }) => {
-      const pc = pcRef.current;
-      if (!pc) return;
+      let pc = pcRef.current;
+      if (!pc) {
+        pc = createPeerConnection();
+      }
 
       switch (msg.type) {
         case "ready": {
           if (msg.payload?.name) {
             setRemoteParticipantName(msg.payload.name);
           }
-          // If we are initiator and haven't created offer yet, create one now!
-          if (isInitiatorRef.current && !hasOfferedRef.current) {
-            await makeOffer();
-          } else if (!isInitiatorRef.current) {
-            // Echo ready back so initiator knows
+          if (isInitiatorRef.current) {
+            // Fresh offer for the newly connected peer
+            await makeOffer(true);
+          } else {
+            // Echo ready back
             sendSignal("ready", { name: myName });
           }
           break;
         }
 
         case "offer": {
-          if (isInitiatorRef.current) return; // Ignore offer if we are initiator
+          if (isInitiatorRef.current) return; // Only candidate processes offer
           try {
             if (msg.payload?.name) setRemoteParticipantName(msg.payload.name);
             setConnectionStatus("connecting");
             await pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
 
-            // Drain any pending candidates
+            // Drain any pending ICE candidates
             while (pendingCandidatesRef.current.length > 0) {
               const cand = pendingCandidatesRef.current.shift();
               if (cand) await pc.addIceCandidate(new RTCIceCandidate(cand));
@@ -260,6 +298,7 @@ export function NativeWebRtcRoom({
         }
 
         case "candidate": {
+          if (!msg.payload || !msg.payload.candidate) return;
           try {
             const cand = new RTCIceCandidate(msg.payload);
             if (pc.remoteDescription && pc.remoteDescription.type) {
@@ -294,6 +333,7 @@ export function NativeWebRtcRoom({
         case "bye": {
           setConnectionStatus("disconnected");
           setRemoteStream(null);
+          remoteStreamRef.current = null;
           if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = null;
           }
@@ -302,7 +342,7 @@ export function NativeWebRtcRoom({
         }
       }
     },
-    [isChatOpen, makeOffer, myName, sendSignal]
+    [createPeerConnection, isChatOpen, makeOffer, myName, sendSignal]
   );
 
   // 5. Polling signaling server
@@ -364,6 +404,7 @@ export function NativeWebRtcRoom({
 
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
+          localVideoRef.current.play().catch(() => {});
         }
 
         // Initialize PeerConnection with local tracks
@@ -373,11 +414,11 @@ export function NativeWebRtcRoom({
         setConnectionStatus("waiting");
         sendSignal("ready", { name: myName });
 
-        // If interviewer, wait 1s then make offer
+        // If interviewer, wait 800ms then make initial offer
         if (isInitiatorRef.current) {
           setTimeout(() => {
             makeOffer();
-          }, 1200);
+          }, 800);
         }
       } catch (err: any) {
         console.error("[WebRTC] Media access error:", err);
@@ -393,7 +434,6 @@ export function NativeWebRtcRoom({
     startMedia();
 
     return () => {
-      // Send bye signal on unmount
       sendSignal("bye", {});
       if (stream) {
         stream.getTracks().forEach((t) => t.stop());
@@ -443,9 +483,9 @@ export function NativeWebRtcRoom({
           await videoSender.replaceTrack(screenTrack);
         }
 
-        // Update local preview
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = screenStream;
+          localVideoRef.current.play().catch(() => {});
         }
 
         screenTrack.onended = () => {
@@ -472,6 +512,7 @@ export function NativeWebRtcRoom({
     }
     if (localVideoRef.current) {
       localVideoRef.current.srcObject = localStream;
+      localVideoRef.current.play().catch(() => {});
     }
     setIsScreenSharing(false);
   };
@@ -518,8 +559,7 @@ export function NativeWebRtcRoom({
 
   const copyCandidateLink = () => {
     if (typeof window === "undefined") return;
-    const url = `${window.location.origin}/interview/${cleanRoom}`;
-    navigator.clipboard.writeText(url);
+    navigator.clipboard.writeText(window.location.href);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -565,8 +605,8 @@ export function NativeWebRtcRoom({
           ref={remoteVideoRef}
           autoPlay
           playsInline
-          className={`w-full h-full object-cover transition-opacity duration-500 ${
-            connectionStatus === "connected" ? "opacity-100" : "opacity-0 absolute"
+          className={`w-full h-full object-cover transition-opacity duration-300 ${
+            connectionStatus === "connected" ? "opacity-100" : "opacity-0 absolute pointer-events-none"
           }`}
         />
 
