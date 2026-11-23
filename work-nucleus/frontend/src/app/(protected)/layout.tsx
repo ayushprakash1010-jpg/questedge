@@ -94,7 +94,7 @@ export default function ProtectedLayout({
           intendedRole = "recruiter";
         } else if (pathname === "/candidate" || pathname.startsWith("/candidate/")) {
           intendedRole = "candidate";
-        } else if (pathname.startsWith("/company") || pathname.startsWith("/mandates") || pathname === "/dashboard") {
+        } else if (pathname.startsWith("/company")) {
           intendedRole = "company";
         }
 

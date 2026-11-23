@@ -86,18 +86,15 @@ function OnboardingContent() {
     if (user?.name && !name) setName(user.name);
   }, [user, name]);
 
-  // Auto-advance past role selection when a role is pre-selected via URL param
-  // (e.g., user clicked "I'm a Candidate" on the landing page → ?role=candidate)
-  // We use hasAutoAdvancedRef so if the user clicks "Back" to change role, they aren't trapped.
+  // Pre-select role card when a role is provided via URL param,
+  // but keep step as "role" so every user lands on the Role Selection screen (Image 2)
+  // and can choose or confirm their role before continuing setup.
   useEffect(() => {
     if (hasAutoAdvancedRef.current) return;
     const preselectedRole = searchParams.get("role");
     if (preselectedRole === "company" || preselectedRole === "recruiter" || preselectedRole === "candidate") {
       hasAutoAdvancedRef.current = true;
       setSelectedRole(preselectedRole);
-      if (preselectedRole === "company") setStep("company-setup");
-      else if (preselectedRole === "recruiter") setStep("recruiter-setup");
-      else if (preselectedRole === "candidate") setStep("candidate-setup");
     }
   }, [searchParams]);
 
