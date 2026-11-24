@@ -7,6 +7,7 @@ import {
   Query,
   Res,
   UseGuards,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -19,10 +20,13 @@ import { Response } from 'express';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { ResumeRankingService } from './resume-ranking.service';
+import { QuickRankingRunsService } from './quick-ranking-runs.service';
 import {
   RankResumesDto,
   ReRankDto,
   QuickRankDto,
+  DraftScorecardDto,
+  RankingCorrectionDto,
 } from './dto/rank-resumes.dto';
 
 @ApiTags('Resume Ranking')
@@ -30,7 +34,47 @@ import {
 @UseGuards(JwtAuthGuard)
 @Controller('api/v1/resume-ranking')
 export class ResumeRankingController {
-  constructor(private readonly rankingService: ResumeRankingService) {}
+  constructor(
+    private readonly rankingService: ResumeRankingService,
+    private readonly quickRuns: QuickRankingRunsService,
+  ) {}
+
+  @Post('scorecard')
+  async draftScorecard(
+    @CurrentUser() user: any,
+    @Body() dto: DraftScorecardDto,
+  ) {
+    return this.rankingService.draftScorecard(user.orgId, dto);
+  }
+
+  @Post('corrections')
+  async saveCorrection(
+    @CurrentUser() user: any,
+    @Body() dto: RankingCorrectionDto,
+  ) {
+    return this.quickRuns.recordCorrection(user.orgId, user.id, dto);
+  }
+
+  @Get('pool/:mandateId/:scorecardId')
+  async getScorecardPool(
+    @CurrentUser() user: any,
+    @Param('mandateId', ParseUUIDPipe) mandateId: string,
+    @Param('scorecardId', ParseUUIDPipe) scorecardId: string,
+  ) {
+    return this.rankingService.getScorecardPool(
+      user.orgId,
+      mandateId,
+      scorecardId,
+    );
+  }
+
+  @Get('quick-runs/:id')
+  async quickRunStatus(
+    @CurrentUser() user: any,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.quickRuns.status(user.orgId, user.id, id);
+  }
 
   @Post('rank')
   @ApiOperation({
@@ -92,6 +136,7 @@ export class ResumeRankingController {
       userId,
       sessionId,
       dto.customWeights,
+      dto.confirmedScorecardId,
     );
   }
 
@@ -147,6 +192,6 @@ export class ResumeRankingController {
       'Quick rank: upload JD text + resume texts for instant ranking (no mandate needed)',
   })
   async quickRank(@CurrentUser() user: any, @Body() dto: QuickRankDto) {
-    return this.rankingService.quickRank(user.orgId, dto);
+    return this.quickRuns.rank(user.orgId, user.id, dto);
   }
 }

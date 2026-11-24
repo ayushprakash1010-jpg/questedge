@@ -12,9 +12,16 @@ import {
   IsNotEmpty,
   ValidateNested,
   IsNumber,
+  IsIn,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { EVIDENCE_CREDIT } from '../ranking-policy';
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+  OmitType,
+  PartialType,
+} from '@nestjs/swagger';
 
 export class ScoringWeightsDto {
   @IsOptional()
@@ -63,47 +70,50 @@ export class ScoringWeightsDto {
   @IsInt()
   @Min(0)
   @Max(50)
-  logisticsAvailability?: number;
+  logisticsAvailability?: number; // Legacy input accepted. Location rules carry zero scoring points.
 }
 
 export class ShortlistingRulesDto {
   @ApiPropertyOptional({ enum: ['REQUIRED', 'RELAXED'], default: 'RELAXED' })
   @IsOptional()
-  @IsString()
+  @IsIn(['REQUIRED', 'RELAXED'])
   locationCompatibility?: string;
 
   @ApiPropertyOptional({ enum: ['REQUIRED', 'RELAXED'], default: 'RELAXED' })
   @IsOptional()
-  @IsString()
+  @IsIn(['REQUIRED', 'RELAXED'])
   mandatorySkills?: string;
 
   @ApiPropertyOptional({ enum: ['REQUIRED', 'RELAXED'], default: 'RELAXED' })
   @IsOptional()
-  @IsString()
+  @IsIn(['REQUIRED', 'RELAXED'])
   minimumExperience?: string;
 
   @ApiPropertyOptional({ enum: ['REQUIRED', 'RELAXED'], default: 'RELAXED' })
   @IsOptional()
-  @IsString()
+  @IsIn(['REQUIRED', 'RELAXED'])
   seniorityLevel?: string;
 
   @ApiPropertyOptional({ enum: ['REQUIRED', 'RELAXED'], default: 'RELAXED' })
   @IsOptional()
-  @IsString()
+  @IsIn(['REQUIRED', 'RELAXED'])
   requiredEducation?: string;
 
   @ApiPropertyOptional({ enum: ['REQUIRED', 'RELAXED'], default: 'RELAXED' })
   @IsOptional()
-  @IsString()
+  @IsIn(['REQUIRED', 'RELAXED'])
   requiredCertification?: string;
 
   @ApiPropertyOptional({ enum: ['REQUIRED', 'RELAXED'], default: 'RELAXED' })
   @IsOptional()
-  @IsString()
+  @IsIn(['REQUIRED', 'RELAXED'])
   workAuthorization?: string;
 }
 
 export class RankResumesDto {
+  @IsUUID()
+  confirmedScorecardId?: string;
+
   @ApiProperty({ description: 'Mandate UUID to rank candidates against' })
   @IsUUID()
   mandateId: string;
@@ -124,6 +134,7 @@ export class RankResumesDto {
   })
   @IsOptional()
   @IsObject()
+  @ValidateNested()
   @Type(() => ScoringWeightsDto)
   customWeights?: ScoringWeightsDto;
 
@@ -138,10 +149,28 @@ export class RankResumesDto {
 }
 
 export class ReRankDto {
+  @IsUUID()
+  confirmedScorecardId?: string;
   @ApiProperty({ description: 'Custom scoring weights for re-ranking' })
   @IsObject()
+  @ValidateNested()
   @Type(() => ScoringWeightsDto)
   customWeights: ScoringWeightsDto;
+}
+
+export class RankingCorrectionDto {
+  @IsIn(['QUICK', 'MANDATE'])
+  source: 'QUICK' | 'MANDATE';
+  @IsUUID()
+  recordId: string;
+  @IsString()
+  @IsNotEmpty()
+  candidateId: string;
+  @IsString()
+  @IsNotEmpty()
+  requirementId: string;
+  @IsIn(Object.keys(EVIDENCE_CREDIT))
+  finding: string;
 }
 
 export class QuickRankResumeDto {
@@ -190,6 +219,13 @@ export class QuickRankResumeDto {
 }
 
 export class QuickRankDto {
+  @IsUUID()
+  confirmedScorecardId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  clientRunId?: string;
+
   @ApiProperty({ description: 'Job description text' })
   @IsString()
   @IsNotEmpty()
@@ -270,4 +306,16 @@ export class QuickRankDto {
   @ValidateNested()
   @Type(() => ShortlistingRulesDto)
   shortlistingRules?: ShortlistingRulesDto;
+}
+
+export class DraftScorecardDto extends PartialType(
+  OmitType(QuickRankDto, [
+    'resumes',
+    'clientRunId',
+    'confirmedScorecardId',
+  ] as const),
+) {
+  @IsOptional()
+  @IsUUID()
+  mandateId?: string;
 }

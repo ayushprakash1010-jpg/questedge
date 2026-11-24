@@ -1,303 +1,342 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
+import {
+  DEFAULT_WEIGHTS,
+  MAX_WEIGHT,
+  WEIGHT_DIMENSIONS,
+  moveBoundary,
+  setWeight,
+  type ScoringWeights,
+  type WeightKey,
+} from "./weight-distribution";
+import styles from "./RankingControls.module.css";
 
-interface ScoringWeights {
-  skillsMatch: number;
-  experienceRelevance: number;
-  projectRelevance: number;
-  educationCertifications: number;
-  domainIndustryFit: number;
-  roleSeniorityFit: number;
-  culturalSoftSignals: number;
-  logisticsAvailability: number;
-}
-
-const DIMENSION_LABELS: Record<keyof ScoringWeights, string> = {
-  skillsMatch: "Skills Match",
-  experienceRelevance: "Experience",
-  projectRelevance: "Projects",
-  educationCertifications: "Education",
-  domainIndustryFit: "Domain Fit",
-  roleSeniorityFit: "Seniority Fit",
-  culturalSoftSignals: "Cultural Signals",
-  logisticsAvailability: "Logistics",
-};
-
-const DIMENSION_COLORS: Record<
-  keyof ScoringWeights,
-  { fill: string; dot: string; activeStroke: string }
-> = {
-  skillsMatch: { fill: "#10B981", dot: "bg-emerald-500", activeStroke: "#059669" },
-  experienceRelevance: { fill: "#3B82F6", dot: "bg-blue-500", activeStroke: "#2563EB" },
-  projectRelevance: { fill: "#6366F1", dot: "bg-indigo-500", activeStroke: "#4F46E5" },
-  educationCertifications: { fill: "#8B5CF6", dot: "bg-purple-500", activeStroke: "#7C3AED" },
-  domainIndustryFit: { fill: "#F59E0B", dot: "bg-amber-500", activeStroke: "#D97706" },
-  roleSeniorityFit: { fill: "#06B6D4", dot: "bg-cyan-500", activeStroke: "#0891B2" },
-  culturalSoftSignals: { fill: "#F43F5E", dot: "bg-rose-500", activeStroke: "#E11D48" },
-  logisticsAvailability: { fill: "#14B8A6", dot: "bg-teal-500", activeStroke: "#0D9488" },
-};
-
-const DEFAULT_WEIGHTS: ScoringWeights = {
-  skillsMatch: 25,
-  experienceRelevance: 20,
-  projectRelevance: 15,
-  educationCertifications: 10,
-  domainIndustryFit: 10,
-  roleSeniorityFit: 8,
-  culturalSoftSignals: 7,
-  logisticsAvailability: 5,
-};
-
-function polarToCartesian(cx: number, cy: number, r: number, angleInDegrees: number) {
-  const rad = ((angleInDegrees - 90) * Math.PI) / 180.0;
+const point = (radius: number, degrees: number) => {
+  const angle = ((degrees - 90) * Math.PI) / 180;
   return {
-    x: cx + r * Math.cos(rad),
-    y: cy + r * Math.sin(rad),
+    x: 160 + radius * Math.cos(angle),
+    y: 160 + radius * Math.sin(angle),
   };
-}
-
-function describeDonutSlice(
-  cx: number,
-  cy: number,
-  rInner: number,
-  rOuter: number,
-  startAngle: number,
-  endAngle: number
-) {
-  if (endAngle - startAngle >= 359.99) {
-    endAngle = startAngle + 359.99;
-  }
-  const outerStart = polarToCartesian(cx, cy, rOuter, startAngle);
-  const outerEnd = polarToCartesian(cx, cy, rOuter, endAngle);
-  const innerStart = polarToCartesian(cx, cy, rInner, startAngle);
-  const innerEnd = polarToCartesian(cx, cy, rInner, endAngle);
-
-  const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
-
-  return [
-    `M ${outerStart.x.toFixed(2)} ${outerStart.y.toFixed(2)}`,
-    `A ${rOuter} ${rOuter} 0 ${largeArcFlag} 1 ${outerEnd.x.toFixed(2)} ${outerEnd.y.toFixed(2)}`,
-    `L ${innerEnd.x.toFixed(2)} ${innerEnd.y.toFixed(2)}`,
-    `A ${rInner} ${rInner} 0 ${largeArcFlag} 0 ${innerStart.x.toFixed(2)} ${innerStart.y.toFixed(2)}`,
-    "Z",
-  ].join(" ");
-}
+};
+const slicePath = (start: number, end: number) => {
+  const a = point(130, start),
+    b = point(130, end);
+  const c = point(74, end),
+    d = point(74, start);
+  const large = end - start > 180 ? 1 : 0;
+  return `M ${a.x} ${a.y} A 130 130 0 ${large} 1 ${b.x} ${b.y} L ${c.x} ${c.y} A 74 74 0 ${large} 0 ${d.x} ${d.y} Z`;
+};
+const equal = (a: ScoringWeights, b: ScoringWeights) =>
+  Object.keys(DEFAULT_WEIGHTS).every(
+    (key) => a[key as keyof ScoringWeights] === b[key as keyof ScoringWeights],
+  );
 
 interface WeightCustomizerProps {
   weights: ScoringWeights;
   onChange: (weights: ScoringWeights) => void;
 }
 
-export default function WeightCustomizer({ weights, onChange }: WeightCustomizerProps) {
-  const [hoveredKey, setHoveredKey] = useState<keyof ScoringWeights | null>(null);
-
-  const total = Object.values(weights).reduce((s, v) => s + v, 0);
-  const isValid = total === 100;
-
-  const handleChange = (key: keyof ScoringWeights, value: number) => {
-    onChange({ ...weights, [key]: value });
+export default function WeightCustomizer({
+  weights,
+  onChange,
+}: WeightCustomizerProps) {
+  const id = useId();
+  const wheel = useRef<SVGSVGElement>(null);
+  const drag = useRef<{
+    pointer: number;
+    index: number;
+    angle: number;
+    delta: number;
+    initial: ScoringWeights;
+  } | null>(null);
+  const [active, setActive] = useState<WeightKey | null>(null);
+  const [history, setHistory] = useState<ScoringWeights[]>([]);
+  const emitted = useRef(weights);
+  const total = Object.values(weights).reduce((sum, value) => sum + value, 0);
+  // Older saved settings may still assign points to qualifications.
+  useEffect(() => {
+    if (weights.educationCertifications !== 0 || weights.logisticsAvailability !== 0 || total !== 100)
+      onChange(setWeight(weights, "skillsMatch", weights.skillsMatch + weights.logisticsAvailability));
+  }, [weights, total, onChange]);
+  useEffect(() => {
+    if (!equal(weights, emitted.current)) setHistory([]);
+    emitted.current = weights;
+  }, [weights]);
+  const emit = (next: ScoringWeights) => {
+    emitted.current = next;
+    onChange(next);
   };
-
-  const handleReset = () => onChange({ ...DEFAULT_WEIGHTS });
-
-  // Calculate slice angles for the Donut Chart
-  const keys = Object.keys(DIMENSION_LABELS) as Array<keyof ScoringWeights>;
-  const divisor = total > 0 ? total : 100;
-
-  let currentAngle = 0;
-  const slices = keys.map((key) => {
-    const val = Math.max(0, weights[key]);
-    const sweepAngle = (val / divisor) * 360;
-    const startAngle = currentAngle;
-    const endAngle = currentAngle + sweepAngle;
-    currentAngle = endAngle;
-
-    return {
-      key,
-      label: DIMENSION_LABELS[key],
-      value: val,
-      color: DIMENSION_COLORS[key].fill,
-      activeColor: DIMENSION_COLORS[key].activeStroke,
-      startAngle,
-      endAngle,
-      sweepAngle,
+  const remember = () =>
+    setHistory((previous) => [...previous.slice(-29), { ...weights }]);
+  const commit = (next: ScoringWeights) => {
+    if (!equal(next, weights)) {
+      remember();
+      emit(next);
+    }
+  };
+  const angleAt = (x: number, y: number) => {
+    const rect = wheel.current!.getBoundingClientRect();
+    return (
+      (Math.atan2(
+        x - rect.left - rect.width / 2,
+        -(y - rect.top - rect.height / 2),
+      ) *
+        180) /
+      Math.PI
+    );
+  };
+  const startDrag = (
+    event: React.PointerEvent<SVGCircleElement>,
+    index: number,
+  ) => {
+    event.preventDefault();
+    event.currentTarget.focus();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    drag.current = {
+      pointer: event.pointerId,
+      index,
+      initial: { ...weights },
+      angle: angleAt(event.clientX, event.clientY),
+      delta: 0,
     };
+    remember();
+    setActive(WEIGHT_DIMENSIONS[index].key);
+  };
+  const move = (event: React.PointerEvent<SVGCircleElement>) => {
+    const state = drag.current;
+    if (!state || state.pointer !== event.pointerId) return;
+    const angle = angleAt(event.clientX, event.clientY);
+    // Unwrap movement across twelve o'clock to avoid jumping by 100 points.
+    state.delta += ((angle - state.angle + 540) % 360) - 180;
+    state.angle = angle;
+    emit(moveBoundary(state.initial, state.index, state.delta / 3.6));
+  };
+  const finish = (event: React.PointerEvent<SVGCircleElement>) => {
+    if (drag.current?.pointer !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId))
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    drag.current = null;
+  };
+  let end = 0;
+  const slices = WEIGHT_DIMENSIONS.map((dimension) => {
+    const start = end;
+    end += weights[dimension.key] * 3.6;
+    return { ...dimension, start, end, value: weights[dimension.key] };
   });
 
-  const activeHoveredSlice = hoveredKey ? slices.find((s) => s.key === hoveredKey) : null;
-
   return (
-    <div className="space-y-3.5">
-      {/* Header with Total status and Reset */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Weight Distribution
-          </span>
-          <span
-            className={`text-xs px-2.5 py-0.5 rounded-full font-bold font-mono transition-colors ${
-              isValid
-                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                : "bg-red-50 text-red-600 border border-red-200"
-            }`}
+    <section className={styles.card + " " + styles.weightCard} aria-labelledby={id + "-title"}>
+      <div className={styles.headingRow}>
+        <h3 id={id + "-title"} className={styles.title}>
+          Ranking weights
+        </h3>
+        <div className={styles.actions}>
+          <button
+            type="button"
+            disabled={!history.length}
+            onClick={() => {
+              const previous = history[history.length - 1];
+              if (previous) {
+                setHistory(history.slice(0, -1));
+                emit(previous);
+              }
+            }}
           >
-            {total}% allocated
-          </span>
-          {!isValid && (
-            <span className="text-xs text-red-500 font-medium">Must equal 100%</span>
-          )}
+            Undo
+          </button>
+          <span aria-hidden="true">|</span>
+          <button
+            type="button"
+            disabled={equal(weights, DEFAULT_WEIGHTS)}
+            onClick={() => commit({ ...DEFAULT_WEIGHTS })}
+          >
+            Reset defaults
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={handleReset}
-          className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold hover:underline cursor-pointer"
-        >
-          Reset defaults
-        </button>
       </div>
-
-      {/* Main Container: Donut Wheel on Left + Sliders on Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center bg-slate-50/70 p-4.5 rounded-xl border border-slate-200/80 shadow-2xs">
-        {/* Left: Donut Wheel (4 cols on lg, centered) */}
-        <div className="lg:col-span-4 flex flex-col items-center justify-center relative py-2">
-          <div className="relative w-48 h-48 flex items-center justify-center">
-            {/* Hover Tooltip Pill pointing to active slice */}
-            {activeHoveredSlice && (
-              <div className="absolute -top-3 z-20 px-2.5 py-1 rounded-md bg-slate-900 text-white text-[11px] font-semibold shadow-md flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-150">
-                <span
-                  className="w-2 h-2 rounded-full shrink-0"
-                  style={{ backgroundColor: activeHoveredSlice.color }}
-                />
-                <span className="truncate max-w-[110px]">{activeHoveredSlice.label}</span>
-                <span className="font-mono text-indigo-300 font-bold">
-                  {activeHoveredSlice.value}%
-                </span>
-              </div>
-            )}
-
-            <svg
-              viewBox="0 0 200 200"
-              className="w-full h-full transform -rotate-90 filter drop-shadow-xs"
-            >
-              {slices.map((slice) => {
-                if (slice.sweepAngle <= 0.1) return null;
-                const isHovered = hoveredKey === slice.key;
-                const path = describeDonutSlice(
-                  100,
-                  100,
-                  54,
-                  isHovered ? 86 : 80,
-                  slice.startAngle,
-                  slice.endAngle
-                );
-
-                return (
+      <p className={styles.subtitle}>
+        Drag a boundary to rebalance the weights.
+      </p>
+      <div className={styles.weightBody}>
+        <svg
+          ref={wheel}
+          viewBox="0 0 320 320"
+          className={styles.wheel}
+          role="group"
+          aria-label="Ranking weight boundaries"
+          aria-describedby={id + "-help"}
+        >
+          {slices
+            .filter((s) => s.value > 0)
+            .map((slice) => {
+              const label = point(103, (slice.start + slice.end) / 2);
+              return (
+                <g
+                  key={slice.key}
+                  onPointerEnter={() => setActive(slice.key)}
+                  onPointerLeave={() => {
+                    if (!drag.current) setActive(null);
+                  }}
+                >
                   <path
-                    key={slice.key}
-                    d={path}
+                    d={slicePath(slice.start, slice.end)}
                     fill={slice.color}
-                    opacity={hoveredKey && !isHovered ? 0.35 : 1}
-                    className="transition-all duration-200 cursor-pointer"
-                    onMouseEnter={() => setHoveredKey(slice.key)}
-                    onMouseLeave={() => setHoveredKey(null)}
                   />
-                );
-              })}
-            </svg>
-
-            {/* Center Donut Info */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-2">
-              <span
-                className={`text-2xl font-black font-mono leading-none tracking-tight transition-colors ${
-                  activeHoveredSlice
-                    ? "text-slate-900"
-                    : isValid
-                    ? "text-slate-800"
-                    : "text-red-600"
-                }`}
-              >
-                {hoveredKey ? `${weights[hoveredKey]}%` : `${total}%`}
-              </span>
-              <span
-                className={`text-[10px] font-bold mt-1 uppercase tracking-wider transition-colors max-w-[85px] truncate ${
-                  activeHoveredSlice
-                    ? "text-indigo-600"
-                    : isValid
-                    ? "text-emerald-600"
-                    : "text-red-500"
-                }`}
-              >
-                {hoveredKey ? DIMENSION_LABELS[hoveredKey] : "Allocated"}
-              </span>
-            </div>
-          </div>
-
-          <p className="text-[11px] text-slate-400 text-center mt-2.5">
-            Adjust sliders to reallocate criteria weights
-          </p>
-        </div>
-
-        {/* Right: Sliders (8 cols on lg, 2 cols clean card layout) */}
-        <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          {keys.map((key) => {
-            const isHovered = hoveredKey === key;
-            const colorMeta = DIMENSION_COLORS[key];
-
+                  {slice.value >= 5 && (
+                    <text
+                      x={label.x}
+                      y={label.y}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      fill="white"
+                      fontSize={slice.value < 8 ? 12 : 17}
+                      fontWeight="650"
+                      pointerEvents="none"
+                    >
+                      {slice.value}%
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+          <text x="160" y="153" textAnchor="middle" className={styles.total}>
+            {total}%
+          </text>
+          <text
+            x="160"
+            y="178"
+            textAnchor="middle"
+            className={styles.allocated}
+          >
+            Allocated
+          </text>
+          {slices.map((slice, index) => {
+            const next = slices[(index + 1) % slices.length];
+            const position = point(130, slice.end);
+            const minimum = Math.max(0, slice.value + next.value - MAX_WEIGHT);
+            const maximum = Math.min(MAX_WEIGHT, slice.value + next.value);
             return (
-              <div
-                key={key}
-                onMouseEnter={() => setHoveredKey(key)}
-                onMouseLeave={() => setHoveredKey(null)}
-                className={`p-2.5 rounded-xl border transition-all ${
-                  isHovered
-                    ? "bg-white border-indigo-300 shadow-sm ring-2 ring-indigo-50"
-                    : "bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs"
-                }`}
-              >
-                {/* Row 1: Label + Percentage */}
-                <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span
-                      className={`w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs ${colorMeta.dot}`}
-                      style={{ backgroundColor: colorMeta.fill }}
-                    />
-                    <label className="text-xs font-semibold text-slate-800 truncate cursor-pointer">
-                      {DIMENSION_LABELS[key]}
-                    </label>
-                  </div>
-                  <span
-                    className={`text-xs font-mono font-bold px-2 py-0.5 rounded-md shrink-0 transition-colors ${
-                      isHovered
-                        ? "bg-indigo-600 text-white"
-                        : weights[key] > 0
-                        ? "bg-slate-100 text-slate-800 border border-slate-200/80"
-                        : "bg-slate-50 text-slate-400"
-                    }`}
-                  >
-                    {weights[key]}%
-                  </span>
-                </div>
-
-                {/* Row 2: Full Width Range Slider */}
-                <div className="relative flex items-center pt-0.5">
-                  <input
-                    type="range"
-                    min={0}
-                    max={50}
-                    value={weights[key]}
-                    onChange={(e) =>
-                      handleChange(key, parseInt(e.target.value, 10))
+              <g key={slice.key + "-boundary"}>
+                <circle
+                  cx={position.x}
+                  cy={position.y}
+                  r="8"
+                  className={styles.knob}
+                />
+                <circle
+                  cx={position.x}
+                  cy={position.y}
+                  r="17"
+                  className={styles.handle}
+                  role="slider"
+                  tabIndex={0}
+                  aria-label={slice.label + " / " + next.label + " boundary"}
+                  aria-orientation="horizontal"
+                  aria-valuemin={minimum}
+                  aria-valuemax={maximum}
+                  aria-valuenow={slice.value}
+                  aria-valuetext={
+                    slice.label +
+                    " " +
+                    slice.value +
+                    "%, " +
+                    next.label +
+                    " " +
+                    next.value +
+                    "%"
+                  }
+                  onPointerDown={(e) => startDrag(e, index)}
+                  onPointerMove={move}
+                  onPointerUp={finish}
+                  onPointerCancel={finish}
+                  onLostPointerCapture={() => {
+                    drag.current = null;
+                  }}
+                  onFocus={() => setActive(slice.key)}
+                  onBlur={() => {
+                    if (!drag.current) setActive(null);
+                  }}
+                  onKeyDown={(e) => {
+                    const step = e.shiftKey ? 5 : 1;
+                    const delta = {
+                      ArrowRight: step,
+                      ArrowUp: step,
+                      ArrowLeft: -step,
+                      ArrowDown: -step,
+                      Home: minimum - slice.value,
+                      End: maximum - slice.value,
+                    }[e.key];
+                    if (delta !== undefined) {
+                      e.preventDefault();
+                      commit(moveBoundary(weights, index, delta));
                     }
-                    className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600 focus:outline-none"
-                  />
-                </div>
-              </div>
+                  }}
+                >
+                  <title>
+                    {slice.label + " / " + next.label + " — drag to rebalance"}
+                  </title>
+                </circle>
+              </g>
             );
           })}
+        </svg>
+        <div className={styles.legend}>
+          {slices.map((slice) => (
+            <label
+              key={slice.key}
+              className={
+                styles.legendRow +
+                (active === slice.key ? " " + styles.highlight : "")
+              }
+              onPointerEnter={() => setActive(slice.key)}
+              onPointerLeave={() => {
+                if (!drag.current) setActive(null);
+              }}
+            >
+              <span
+                className={styles.swatch}
+                style={{ backgroundColor: slice.color }}
+              />
+              <span className={styles.dimension}>{slice.label}</span>
+              <span className={styles.percent}>
+                <input
+                  type="number"
+                  min={0}
+                  max={MAX_WEIGHT}
+                  step={1}
+                  value={slice.value}
+                  aria-label={slice.label + " weight"}
+                  onFocus={() => setActive(slice.key)}
+                  onBlur={() => setActive(null)}
+                  onChange={(e) => {
+                    if (e.target.value !== "")
+                      commit(
+                        setWeight(weights, slice.key, Number(e.target.value)),
+                      );
+                  }}
+                />
+                %
+              </span>
+            </label>
+          ))}
         </div>
       </div>
-    </div>
+      <p id={id + "-help"} className={styles.footer}>
+        Total always stays at 100%. Use arrow keys on a boundary or edit a
+        percentage.
+      </p>
+      <details className={styles.policy}>
+        <summary>How points are allocated</summary>
+        <p>
+          Each percentage is that category’s share of the 100 points. Categories
+          absent from the JD share their points across the remaining weighted
+          categories. Within a category, mandatory requirements receive twice
+          the share of preferred requirements. The scorecard shows the final
+          points.
+        </p>
+      </details>
+    </section>
   );
 }
 

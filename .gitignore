@@ -70,6 +70,7 @@ user_inputs.txt
 db-dump.json
 db-dump*.json
 *.sql
+!work-nucleus/backend/prisma/patches/resume-ranking-scorecards.sql
 backup*.sql
 
 # Ad-hoc debug and fix scripts that should not run in production

@@ -155,23 +155,23 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
 
   return (
     <aside
-      className="flex h-full flex-col border-r border-slate-200/60 bg-white"
-      style={{ width: "var(--sidebar-width)" }}
+      className="flex h-full w-16 shrink-0 flex-col border-r border-slate-200/60 bg-white md:w-[var(--sidebar-width)]"
     >
       {/* Logo */}
       <div
-        className="flex items-center border-b border-slate-200/60 px-5"
+        className="flex items-center justify-center border-b border-slate-200/60 md:justify-start md:px-5"
         style={{ height: "var(--topbar-height)" }}
       >
-        <QuestEdgeLogo href={homeHref} size="md" priority />
+        <div className="hidden md:block"><QuestEdgeLogo href={homeHref} size="md" priority /></div>
+        <div className="md:hidden"><QuestEdgeLogo href={homeHref} variant="icon" size="sm" priority /></div>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-3">
+      <nav aria-label="Workspace navigation" className="flex-1 space-y-4 overflow-y-auto px-2 py-3 md:px-3">
         {sections.map((section, sIdx) => (
           <div key={section.title || sIdx} className="space-y-1">
             {section.title && (
-              <div className="px-3 pb-1 pt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              <div className="hidden px-3 pb-1 pt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 md:block">
                 {section.title}
               </div>
             )}
@@ -187,8 +187,11 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
                   <Link
                     key={item.href}
                     href={item.href}
+                    aria-label={item.label}
+                    title={item.label}
+                    aria-current={isActive ? "page" : undefined}
                     className={cn(
-                      "flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-sm font-medium transition-colors duration-150",
+                      "flex min-h-11 items-center justify-center gap-2.5 rounded-[10px] px-3 py-2 text-sm font-medium transition-colors duration-150 md:min-h-0 md:justify-start",
                       isActive
                         ? activeBg
                         : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
@@ -200,7 +203,7 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
                         isActive ? config.accent : "text-slate-400"
                       )}
                     />
-                    <span className="truncate">{item.label}</span>
+                    <span className="hidden truncate md:inline">{item.label}</span>
                   </Link>
                 );
               })}
@@ -210,7 +213,7 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
       </nav>
 
       {/* Role badge */}
-      <div className="p-3 border-t border-slate-100">
+      <div className="hidden p-3 border-t border-slate-100 md:block">
         <div
           className={`rounded-lg px-3 py-2 text-xs font-medium capitalize ${
             userType === "recruiter"

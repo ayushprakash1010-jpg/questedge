@@ -47,6 +47,8 @@ export default function RankingPage() {
   const [mandate, setMandate] = useState<Mandate | null>(null);
   const [candidates, setCandidates] = useState<CandidateOption[]>([]);
   const [sessions, setSessions] = useState<RankingSession[]>([]);
+  const [lastSettings, setLastSettings] = useState<React.ComponentProps<typeof RankingTrigger>["lastSettings"]>(null);
+  const [poolError, setPoolError] = useState("");
   const [results, setResults] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showCompare, setShowCompare] = useState(false);
@@ -117,6 +119,7 @@ export default function RankingPage() {
       if (sessionsRes.ok) {
         const sessData = await sessionsRes.json();
         setSessions(sessData.data || []);
+        setLastSettings(sessData.lastSettings || null);
       }
     } catch (err) {
       console.error("Failed to load ranking data:", err);
@@ -137,7 +140,12 @@ export default function RankingPage() {
       if (pending) {
         const parsed = JSON.parse(pending);
         sessionStorage.removeItem(pendingKey);
-        setResults(parsed);
+        if (typeof parsed.quickRunId === "string") {
+          fetch("/api/resume-ranking/quick-runs/" + encodeURIComponent(parsed.quickRunId), {cache:"no-store"})
+            .then(async (res) => { if (!res.ok) throw new Error(); return res.json(); })
+            .then((run) => { if (run.result) setResults(run.result); })
+            .catch(() => setPoolError("The original Quick Rank result is unavailable or expired."));
+        } else if (Array.isArray(parsed.rankings)) setResults(parsed);
       }
     } catch (e) {}
   }, [mandateId]);
@@ -148,7 +156,7 @@ export default function RankingPage() {
     // Refresh sessions list
     fetch(`/api/resume-ranking/sessions/${mandateId}`)
       .then((r) => r.json())
-      .then((d) => setSessions(d.data || []))
+      .then((d) => { setSessions(d.data || []); setLastSettings(d.lastSettings || null); })
       .catch(() => {});
   };
 
@@ -174,7 +182,7 @@ export default function RankingPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-0 sm:px-6 py-6 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link
@@ -222,10 +230,12 @@ export default function RankingPage() {
       </div>
 
       {/* New Ranking Tab */}
+      {!results && poolError && <p role="alert">{poolError}</p>}
       {tab === "new" && !results && (
         <RankingTrigger
           mandateId={mandateId}
           candidates={candidates}
+          lastSettings={lastSettings}
           onRankingComplete={handleRankingComplete}
         />
       )}
@@ -233,6 +243,15 @@ export default function RankingPage() {
       {/* Results View */}
       {results && (
         <div className="space-y-4">
+          {results.evaluation?.scorecardId && <button className="text-sm text-blue-700" onClick={async () => {
+            setPoolError("");
+            try {
+              const res = await fetch("/api/resume-ranking/pool/" + encodeURIComponent(mandateId) + "/" + encodeURIComponent(results.evaluation.scorecardId));
+              if (!res.ok) throw new Error();
+              setResults(await res.json());
+            } catch { setPoolError("Could not load the combined ranking. Please retry."); }
+          }}>View all applicants assessed with this scorecard</button>}
+          {poolError && <p role="alert" className="text-sm text-red-700">{poolError}</p>}
           {/* Pool Summary */}
           {(results.session?.poolSummary || results.summary) && (
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 p-4">
@@ -349,6 +368,7 @@ export default function RankingPage() {
               );
               return (
                 <RankedCandidateCard
+                  reviewRecord={r.id && r.scoreBreakdown?._evaluation?.scorecardId ? {source: "MANDATE", recordId: r.id} : undefined}
                   key={candId}
                   candidate={r}
                   expanded={Boolean(expandedCardIds[candId])}

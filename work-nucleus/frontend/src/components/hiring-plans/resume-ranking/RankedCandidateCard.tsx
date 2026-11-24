@@ -157,6 +157,7 @@ function getTopSkills(c: RankedCandidateData): string[] {
 }
 
 interface RankedCandidateCardProps {
+  reviewRecord?: {source: "QUICK" | "MANDATE"; recordId: string};
   candidate: RankedCandidateData;
   defaultExpanded?: boolean;
   expanded?: boolean;
@@ -168,6 +169,7 @@ interface RankedCandidateCardProps {
 }
 
 export default function RankedCandidateCard({
+  reviewRecord,
   candidate,
   defaultExpanded = false,
   expanded: controlledExpanded,
@@ -301,6 +303,9 @@ export default function RankedCandidateCard({
                   {displayName}
                 </h3>
                 {verdictBadge(c.verdict, c.totalScore, isDisqualified)}
+                {(c.scoreBreakdown as any)?.eligibility === 'NEEDS_VERIFICATION' && (
+                  <span className="text-xs font-medium text-amber-700">Required conditions need verification</span>
+                )}
               </div>
 
               {isDisqualified && (
@@ -546,9 +551,10 @@ export default function RankedCandidateCard({
         {/* Detailed Score Breakdown */}
         <div>
           <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-            Detailed 8-Dimension Score Breakdown
+            Scoring Evidence and Qualification Checks
           </h4>
           <ScoreBreakdownChart
+            reviewContext={reviewRecord ? {...reviewRecord, candidateId: c.candidateId} : undefined}
             scoreBreakdown={c.scoreBreakdown}
             showEvidence
           />

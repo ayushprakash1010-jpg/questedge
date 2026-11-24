@@ -41,7 +41,6 @@ const DIMENSION_LABELS: Record<string, string> = {
   domainIndustryFit: "Domain Fit",
   roleSeniorityFit: "Role Fit",
   culturalSoftSignals: "Culture",
-  logisticsAvailability: "Logistics",
 };
 
 const VERDICT_COLORS: Record<string, string> = {
@@ -114,7 +113,6 @@ export default function ComparisonView({
         "domainIndustryFit",
         "roleSeniorityFit",
         "culturalSoftSignals",
-        "logisticsAvailability",
       ];
 
       const selected = rankings.filter((r: any, idx: number) => {

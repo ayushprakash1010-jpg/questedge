@@ -545,6 +545,9 @@ model Organization {
   // -- Resume Ranking Relations --
   resumeRankingSessions ResumeRankingSession[]
 
+  rankingScorecards ResumeRankingScorecard[]
+  quickRankingRuns QuickRankingRun[]
+
   @@map("organizations")
 }
 
@@ -606,6 +609,8 @@ model User {
 
   // -- Resume Ranking Relations --
   resumeRankingSessions ResumeRankingSession[]
+
+  quickRankingRuns QuickRankingRun[]
 
   @@index([orgId])
   @@index([auth0Sub])
@@ -1857,6 +1862,8 @@ model Mandate {
   // -- Resume Ranking Relations --
   resumeRankingSessions ResumeRankingSession[]
 
+  rankingScorecards ResumeRankingScorecard[]
+
   @@index([orgId, status])
   @@index([status])
   @@map("mandates")
@@ -2490,6 +2497,37 @@ enum RankingStatus {
   PROCESSING
   COMPLETED
   FAILED
+}
+
+model ResumeRankingScorecard {
+  id           String       @id @default(uuid()) @db.Uuid
+  orgId        String       @map("org_id") @db.Uuid
+  mandateId    String?      @map("mandate_id") @db.Uuid
+  fingerprint  String
+  requirements Json
+  createdAt    DateTime     @default(now()) @map("created_at")
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  mandate      Mandate?     @relation(fields: [mandateId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, fingerprint])
+  @@map("resume_ranking_scorecards")
+}
+
+model QuickRankingRun {
+  id           String        @id @db.Uuid
+  orgId        String        @map("org_id") @db.Uuid
+  userId       String        @map("user_id") @db.Uuid
+  requestHash  String        @map("request_hash")
+  status       RankingStatus @default(PROCESSING)
+  result       Json?
+  message      String?
+  createdAt    DateTime      @default(now()) @map("created_at")
+  expiresAt    DateTime      @map("expires_at")
+  organization Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("quick_ranking_runs")
 }
 
 model ResumeRankingSession {

@@ -30,4 +30,22 @@ def _extract_docx(file_bytes: bytes) -> str:
     from docx import Document
 
     doc = Document(io.BytesIO(file_bytes))
-    return "\n".join(para.text for para in doc.paragraphs if para.text.strip())
+    # iter_inner_content retains the reading order of paragraphs and table cells.
+    # Merged cells share their XML node; emit each only once.
+    from docx.table import Table
+    from docx.text.paragraph import Paragraph
+
+    def paragraphs(container):
+        for block in container.iter_inner_content():
+            if isinstance(block, Paragraph):
+                if block.text.strip():
+                    yield block.text
+            elif isinstance(block, Table):
+                visited = set()
+                for row in block.rows:
+                    for cell in row.cells:
+                        if cell._tc not in visited:
+                            visited.add(cell._tc)
+                            yield from paragraphs(cell)
+
+    return "\n".join(paragraphs(doc))

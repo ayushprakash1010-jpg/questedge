@@ -107,7 +107,25 @@ Now that the database is live, we need to initialize its schema.
 
 ---
 
+### Resume ranking rollout
+
+For an existing database that already has the resume ranking tables, apply
+`backend/prisma/patches/resume-ranking-scorecards.sql` once before rolling out
+the new backend. Fresh installations using the schema push above already have
+these tables. Generate the Prisma client during the backend build. Mandate file
+uploads use the internal document parser at `AI_SERVICE_URL` with the shared
+`INTERNAL_API_KEY`. Quick Rank reads selectable PDF, DOCX and TXT in the browser.
+
+To check a configured Gemini model with ten synthetic applicants, run
+`npx ts-node scripts/check-ranking-batch.ts --compare-order` from the backend.
+This exercises the model with one shared scorecard and reports failed checks.
+Add `--each-alone` to compare every applicant individually against the batch.
+Use `RESUME_RANKING_BATCH_SIZE` to set the number of resumes per evaluation
+request (1 through 10, default 10). Confirm the selected size against
+recruiter-reviewed examples before enabling it for live hiring.
+
 ## Step 6: Finalize Auth0 & Vercel Configuration
+
 Auth0 needs to know your live Vercel URL to allow logins, and Vercel needs to know its own URL for Auth0 callbacks.
 
 1. **Update Vercel Environment Variables:**

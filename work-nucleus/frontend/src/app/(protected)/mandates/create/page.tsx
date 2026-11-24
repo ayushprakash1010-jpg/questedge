@@ -296,8 +296,8 @@ export default function CreateMandatePage() {
   };
 
   const [importedRankingData, setImportedRankingData] = useState<{
-    evaluatedCandidates?: any[];
-    resumes?: any[];
+    quickRunId: string;
+    candidateCount: number;
   } | null>(null);
 
   useEffect(() => {
@@ -306,10 +306,10 @@ export default function CreateMandatePage() {
       if (saved) {
         const parsed = JSON.parse(saved);
         sessionStorage.removeItem("mandate_draft_prefill");
-        if (parsed.evaluatedCandidates?.length || parsed.resumes?.length) {
+        if (typeof parsed.quickRunId === "string") {
           setImportedRankingData({
-            evaluatedCandidates: parsed.evaluatedCandidates || [],
-            resumes: parsed.resumes || [],
+            quickRunId: parsed.quickRunId,
+            candidateCount: Number(parsed.candidateCount) || 0,
           });
         }
         setForm((prev) => ({
@@ -520,17 +520,11 @@ export default function CreateMandatePage() {
       
       const mandate = await createMandate(token, payload);
       setSavedId(mandate.id);
-      if (importedRankingData?.evaluatedCandidates?.length) {
+      if (importedRankingData?.quickRunId) {
         try {
           sessionStorage.setItem(
             `mandate_pending_ranking_${mandate.id}`,
-            JSON.stringify({
-              rankings: importedRankingData.evaluatedCandidates,
-              candidates: importedRankingData.evaluatedCandidates,
-              candidateCount: importedRankingData.evaluatedCandidates.length,
-              jobTitle: mandate.title,
-              isQuickRank: false,
-            })
+            JSON.stringify({ quickRunId: importedRankingData.quickRunId })
           );
         } catch (e) {}
       }
@@ -566,17 +560,11 @@ export default function CreateMandatePage() {
         const mandate = await createMandate(token, payload);
         id = mandate.id;
       }
-      if (importedRankingData?.evaluatedCandidates?.length) {
+      if (importedRankingData?.quickRunId) {
         try {
           sessionStorage.setItem(
             `mandate_pending_ranking_${id}`,
-            JSON.stringify({
-              rankings: importedRankingData.evaluatedCandidates,
-              candidates: importedRankingData.evaluatedCandidates,
-              candidateCount: importedRankingData.evaluatedCandidates.length,
-              jobTitle: form.title,
-              isQuickRank: false,
-            })
+            JSON.stringify({ quickRunId: importedRankingData.quickRunId })
           );
         } catch (e) {}
       }
@@ -645,21 +633,21 @@ export default function CreateMandatePage() {
         </div>
 
         {/* Quick Rank Continuity Banner */}
-        {importedRankingData?.evaluatedCandidates && importedRankingData.evaluatedCandidates.length > 0 && (
+        {importedRankingData && importedRankingData.candidateCount > 0 && (
           <div className="mb-6 rounded-xl border border-indigo-200 bg-indigo-50/80 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <Sparkles className="w-5 h-5 text-indigo-600 shrink-0" />
               <div>
                 <p className="text-sm font-semibold text-indigo-900">
-                  Carrying forward {importedRankingData.evaluatedCandidates.length} evaluated candidate{importedRankingData.evaluatedCandidates.length > 1 ? "s" : ""} from Resume Ranker
+                  Carrying forward {importedRankingData.candidateCount} evaluated candidate{importedRankingData.candidateCount > 1 ? "s" : ""} from Resume Ranker
                 </p>
                 <p className="text-xs text-indigo-700 mt-0.5">
-                  AI ranking scores, fit verdicts, and detailed breakdowns will be immediately viewable in this mandate&apos;s AI Ranking dashboard upon creation.
+                  The original Quick Rank result can be opened from this mandate during its 24-hour viewing period.
                 </p>
               </div>
             </div>
             <span className="inline-flex items-center text-xs font-semibold text-indigo-700 bg-indigo-100 border border-indigo-200 px-3 py-1 rounded-full shrink-0">
-              {importedRankingData.evaluatedCandidates.length} Candidates Linked
+              {importedRankingData.candidateCount} evaluated
             </span>
           </div>
         )}

@@ -161,7 +161,7 @@ export default function ProtectedLayout({
             tabIndex={-1}
             role="main"
             aria-label="Main Content"
-            className="flex-1 overflow-y-auto bg-background p-6 outline-none"
+            className="flex-1 overflow-y-auto bg-background p-3 sm:p-6 outline-none"
           >
             {children}
           </main>
@@ -236,7 +236,7 @@ export default function ProtectedLayout({
           tabIndex={-1}
           role="main"
           aria-label="Main Content"
-          className="flex-1 overflow-y-auto bg-background p-6 outline-none print:h-auto print:block print:overflow-visible print:p-0 print:bg-white"
+          className="flex-1 overflow-y-auto bg-background p-3 sm:p-6 outline-none print:h-auto print:block print:overflow-visible print:p-0 print:bg-white"
         >
           {profileError && (
             <div className="mb-4 flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-sm">

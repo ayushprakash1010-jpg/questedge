@@ -48,6 +48,12 @@ export interface RankingResponse {
   rankings: RankedCandidate[];
   summary: string;
   jdCoverage: JdCoverageStats;
+  evaluation?: {
+    policyVersion: string;
+    weights: Record<string, number>;
+    scorecard: unknown[];
+    scorecardHash: string;
+  };
 }
 
 export interface RankingSessionSummary {
