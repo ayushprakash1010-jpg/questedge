@@ -5,9 +5,15 @@ import { passportJwtSecret } from 'jwks-rsa';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Role } from '@prisma/client';
+import {
+  buildTrustedAuth0Issuers,
+  normalizeAuth0Domain,
+  resolveTrustedUserInfoOrigin,
+} from '../auth0-domain.util';
 
 interface Auth0JwtPayload {
   sub: string;
+  iss?: string;
   email?: string;
   email_verified?: boolean;
   name?: string;
@@ -26,8 +32,18 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
   ) {
-    const domain = configService.get<string>('AUTH0_DOMAIN');
+    const domain = normalizeAuth0Domain(
+      configService.get<string>('AUTH0_DOMAIN'),
+    );
+    const managementDomain = normalizeAuth0Domain(
+      configService.get<string>('AUTH0_MANAGEMENT_DOMAIN'),
+    );
     const audience = configService.get<string>('AUTH0_AUDIENCE');
+    const trustedIssuers = buildTrustedAuth0Issuers(domain, managementDomain);
+    const issuerOption =
+      trustedIssuers.length > 1
+        ? (trustedIssuers as [string, ...string[]])
+        : trustedIssuers[0] ?? `https://${domain}/`;
 
     super({
       secretOrKeyProvider: passportJwtSecret({
@@ -37,7 +53,7 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         jwksUri: `https://${domain}/.well-known/jwks.json`,
       }),
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      issuer: `https://${domain}/`,
+      issuer: issuerOption,
       audience,
       algorithms: ['RS256'],
       passReqToCallback: true,
@@ -64,11 +80,15 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 
     // If token email is empty or not yet confirmed verified, fetch Auth0 /userinfo
     if (!tokenEmail || !isEmailVerified) {
-      const domain = this.configService.get<string>('AUTH0_DOMAIN');
+      const userInfoOrigin = resolveTrustedUserInfoOrigin(
+        payload.iss,
+        this.configService.get<string>('AUTH0_DOMAIN'),
+        this.configService.get<string>('AUTH0_MANAGEMENT_DOMAIN'),
+      );
       const authHeader = req?.headers?.authorization;
-      if (domain && authHeader) {
+      if (userInfoOrigin && authHeader) {
         try {
-          const userInfoRes = await fetch(`https://${domain}/userinfo`, {
+          const userInfoRes = await fetch(`${userInfoOrigin}/userinfo`, {
             headers: { Authorization: authHeader },
           });
           if (userInfoRes.ok) {

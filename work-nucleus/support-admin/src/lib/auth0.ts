@@ -1,11 +1,16 @@
 import { Auth0Client } from "@auth0/nextjs-auth0/server";
 
 export const auth0 = new Auth0Client({
-  domain:
+  domain: (
     process.env.AUTH0_DOMAIN ||
     process.env.AUTHO_DOMAIN ||
-    (process.env.AUTH0_ISSUER_BASE_URL || process.env.AUTHO_ISSUER_BASE_URL)?.replace("https://", "").replace(/\/$/, "") ||
-    "",
+    process.env.AUTH0_ISSUER_BASE_URL ||
+    process.env.AUTHO_ISSUER_BASE_URL ||
+    ""
+  )
+    .trim()
+    .replace(/^https?:\/\//i, "")
+    .replace(/\/+$/, ""),
   clientId: process.env.AUTH0_CLIENT_ID || process.env.AUTHO_CLIENT_ID || "",
   clientSecret: process.env.AUTH0_CLIENT_SECRET || process.env.AUTHO_CLIENT_SECRET || "",
   secret: process.env.AUTH0_SECRET || process.env.AUTHO_SECRET || "",
