@@ -14,9 +14,9 @@ const testimonials: Testimonial[] = [
   {
     quote:
       "Switching from traditional agency retainers to performance-backed referral bounties gave our engineering team immediate cost predictability. Gemini AI fit scoring filters out resume noise before hiring manager review, and paying only after tenure completion removes hiring risk.",
-    name: "Rajeshwari Nair",
-    role: "VP of Engineering · Series B FinTech",
-    initials: "RN",
+    name: "Dr. Shiv Kumar",
+    role: "Managing Director · VIP & Enterprise Hiring Partner",
+    initials: "SK",
     avatarBg: "bg-emerald-600",
     tag: "For Companies",
     tagColor: "text-emerald-400 bg-emerald-950/60 border-emerald-800/60",
@@ -24,9 +24,9 @@ const testimonials: Testimonial[] = [
   {
     quote:
       "Exclusive claim scope locks change the game for independent recruiters. Instead of worrying about duplicate submissions or credit disputes, SHA-256 collision protection secures my ownership window and lets me track every milestone through payout.",
-    name: "Ananya Deshmukh",
-    role: "Independent Technical Recruiter",
-    initials: "AD",
+    name: "Pooja Singh",
+    role: "Founder & AI Talent Strategist · GrowYT",
+    initials: "PS",
     avatarBg: "bg-violet-600",
     tag: "For Recruiters",
     tagColor: "text-violet-400 bg-violet-950/60 border-violet-800/60",
@@ -34,9 +34,9 @@ const testimonials: Testimonial[] = [
   {
     quote:
       "I usually ignore cold recruiter outreach because profiles get forwarded without permission. On QuestEdge, I reviewed the company name, role details, work model, and recruiter pitch note before granting consent—and my profile stayed private until I accepted.",
-    name: "Karthik Subramanian",
-    role: "Staff Software Engineer · Distributed Systems",
-    initials: "KS",
+    name: "Ayush Prakash",
+    role: "Staff Software Engineer · Systems & Infrastructure",
+    initials: "AP",
     avatarBg: "bg-amber-600",
     tag: "For Candidates",
     tagColor: "text-amber-400 bg-amber-950/60 border-amber-800/60",
