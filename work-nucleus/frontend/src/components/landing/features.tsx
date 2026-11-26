@@ -159,11 +159,11 @@ export function Features() {
                   <div className="mt-6 space-y-2">
                     <div className="grid grid-cols-2 gap-2 text-[11px]">
                       <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2">
-                        <span className="text-slate-400 block">Salary Band</span>
+                        <span className="text-slate-600 block">Salary Band</span>
                         <span className="font-bold text-slate-800">₹40L – ₹58L</span>
                       </div>
                       <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2">
-                        <span className="text-slate-400 block">Ownership Lock</span>
+                        <span className="text-slate-600 block">Ownership Lock</span>
                         <span className="font-bold text-slate-800">180 Days</span>
                       </div>
                     </div>
@@ -275,11 +275,11 @@ export function Features() {
                   <div className="mt-6 space-y-2">
                     <div className="grid grid-cols-2 gap-2 text-[11px]">
                       <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2">
-                        <span className="text-slate-400 block">Eligible Pool</span>
+                        <span className="text-slate-600 block">Eligible Pool</span>
                         <span className="font-bold text-slate-800">₹1,20,000</span>
                       </div>
                       <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2">
-                        <span className="text-slate-400 block">Approved</span>
+                        <span className="text-slate-600 block">Approved</span>
                         <span className="font-bold text-emerald-700">₹95,000</span>
                       </div>
                     </div>
@@ -389,11 +389,11 @@ export function Features() {
                   <div className="mt-6 space-y-2">
                     <div className="grid grid-cols-2 gap-2 text-[11px]">
                       <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2">
-                        <span className="text-slate-400 block">Portability</span>
+                        <span className="text-slate-600 block">Portability</span>
                         <span className="font-bold text-slate-800">JSON Export</span>
                       </div>
                       <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2">
-                        <span className="text-slate-400 block">Privacy Control</span>
+                        <span className="text-slate-600 block">Privacy Control</span>
                         <span className="font-bold text-emerald-700">Right to Erasure</span>
                       </div>
                     </div>

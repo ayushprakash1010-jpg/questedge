@@ -200,7 +200,7 @@ export function RoiCalculator() {
                       onChange={(e) => setCandidateCtc(Number(e.target.value))}
                       className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                     />
-                    <div className="flex justify-between text-[11px] text-slate-400 mt-1">
+                    <div className="flex justify-between text-[11px] text-slate-500 mt-1">
                       <span>₹12L</span>
                       <span>₹40L</span>
                       <span>₹70L</span>
@@ -230,7 +230,7 @@ export function RoiCalculator() {
                       onChange={(e) => setAnnualHires(Number(e.target.value))}
                       className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                     />
-                    <div className="flex justify-between text-[11px] text-slate-400 mt-1">
+                    <div className="flex justify-between text-[11px] text-slate-500 mt-1">
                       <span>1 Hire</span>
                       <span>8 Hires</span>
                       <span>15 Hires</span>
@@ -360,7 +360,7 @@ export function RoiCalculator() {
                       onChange={(e) => setMonthlyPlacements(Number(e.target.value))}
                       className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-violet-600"
                     />
-                    <div className="flex justify-between text-[11px] text-slate-400 mt-1">
+                    <div className="flex justify-between text-[11px] text-slate-500 mt-1">
                       <span>1 placement</span>
                       <span>3 placements</span>
                       <span>6 placements</span>
@@ -390,7 +390,7 @@ export function RoiCalculator() {
                       onChange={(e) => setAvgBounty(Number(e.target.value))}
                       className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-violet-600"
                     />
-                    <div className="flex justify-between text-[11px] text-slate-400 mt-1">
+                    <div className="flex justify-between text-[11px] text-slate-500 mt-1">
                       <span>₹40,000</span>
                       <span>₹85,000</span>
                       <span>₹1,50,000</span>

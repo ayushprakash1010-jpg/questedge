@@ -150,7 +150,7 @@ export function LandingFooter() {
           </div>
         </div>
 
-        <div className="mt-12 border-t border-slate-800 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+        <div className="mt-12 border-t border-slate-800 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
           <div>
             &copy; {new Date().getFullYear()} QuestEdge Technologies. Built with DPDP Act 2023 & GDPR consent architecture.
           </div>

@@ -94,7 +94,7 @@ export function MarketplaceCard({
       <div className="mt-6 border-t border-slate-100 pt-4">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <span className="text-[10px] uppercase font-bold text-slate-400 block">
+            <span className="text-[10px] uppercase font-bold text-slate-500 block">
               Salary Range
             </span>
             <span className="text-xs font-bold text-slate-900">
@@ -128,7 +128,7 @@ export function MarketplaceCard({
           </button>
         </div>
 
-        <div className="mt-2.5 flex items-center justify-between text-[10px] text-slate-400">
+        <div className="mt-2.5 flex items-center justify-between text-[10px] text-slate-500">
           <span className="flex items-center gap-1">
             <Clock className="h-3 w-3 text-violet-500" />
             {mandate.ownershipPeriodDays}d Ownership Lock

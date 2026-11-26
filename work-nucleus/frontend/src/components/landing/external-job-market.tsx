@@ -123,7 +123,7 @@ export function ExternalJobMarket() {
               {source.name}
             </span>
           ))}
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500">
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-400">
             + more sources
           </span>
         </motion.div>
@@ -177,9 +177,9 @@ export function ExternalJobMarket() {
                   >
                     <div className="flex items-start justify-between">
                       <div>
-                        <h4 className="text-sm font-bold text-white">
+                        <h3 className="text-sm font-bold text-white">
                           {job.title}
-                        </h4>
+                        </h3>
                         <p className="mt-0.5 text-xs text-slate-400">
                           {job.company}
                         </p>
@@ -204,7 +204,7 @@ export function ExternalJobMarket() {
                       >
                         via {job.source}
                       </span>
-                      <span className="text-slate-500">
+                      <span className="text-slate-400">
                         Posted {job.posted}
                       </span>
                     </div>
@@ -218,7 +218,7 @@ export function ExternalJobMarket() {
                   <Zap className="h-3.5 w-3.5" />
                   Thousands of active roles
                 </span>
-                <span className="text-[10px] text-slate-500">
+                <span className="text-[10px] text-slate-400">
                   Continuously synced across ATS boards
                 </span>
               </div>
@@ -263,7 +263,7 @@ export function ExternalJobMarket() {
                 Explore the Job Market
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </a>
-              <p className="mt-3 text-center text-[11px] text-slate-500">
+              <p className="mt-3 text-center text-[11px] text-slate-400">
                 Free for all candidates — sign in to browse, save, and unlock AI recommendations
               </p>
             </div>

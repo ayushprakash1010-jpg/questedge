@@ -100,8 +100,8 @@ export function Testimonials() {
                   {t.initials}
                 </div>
                 <div className="min-w-0">
-                  <h4 className="text-sm font-bold text-white">{t.name}</h4>
-                  <p className="text-xs text-slate-400 leading-snug">{t.role}</p>
+                  <h3 className="text-sm font-bold text-white">{t.name}</h3>
+                  <p className="mt-0.5 text-xs text-slate-400 leading-snug min-h-[2.25rem]">{t.role}</p>
                 </div>
               </div>
             </div>

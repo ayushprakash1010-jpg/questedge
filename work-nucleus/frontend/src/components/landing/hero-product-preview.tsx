@@ -121,9 +121,9 @@ export function HeroProductPreview() {
               {/* Role & Bounty Spec */}
               <div className="flex items-start justify-between">
                 <div>
-                  <h4 className="text-base font-bold text-slate-900">
+                  <div className="text-base font-bold text-slate-900">
                     Staff Distributed Systems Engineer
-                  </h4>
+                  </div>
                   <p className="text-xs text-slate-500 mt-0.5">
                     Compensation: ₹45L - ₹65L • Full-time
                   </p>
@@ -180,7 +180,7 @@ export function HeroProductPreview() {
                   <div className="rounded bg-emerald-100 text-emerald-800 py-1 px-0.5 truncate">Referred ✓</div>
                   <div className="rounded bg-emerald-100 text-emerald-800 py-1 px-0.5 truncate">Consented ✓</div>
                   <div className="rounded bg-indigo-600 text-white py-1 px-0.5 truncate">Interviewing</div>
-                  <div className="rounded bg-slate-200 text-slate-500 py-1 px-0.5 truncate">Tenure (Day 90)</div>
+                  <div className="rounded bg-slate-200 text-slate-700 py-1 px-0.5 truncate">Tenure (Day 90)</div>
                 </div>
               </div>
 

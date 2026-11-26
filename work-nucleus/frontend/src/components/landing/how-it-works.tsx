@@ -319,7 +319,7 @@ export function HowItWorks() {
                     <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${gradients[flow.role]} text-white shadow-md shadow-indigo-500/10`}>
                       <s.icon className="h-6 w-6" />
                     </div>
-                    <span className="font-mono text-xs font-bold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-full border border-slate-200">
+                    <span className="font-mono text-xs font-bold text-slate-600 bg-slate-50 px-2.5 py-1 rounded-full border border-slate-200">
                       Step {s.step}
                     </span>
                   </div>

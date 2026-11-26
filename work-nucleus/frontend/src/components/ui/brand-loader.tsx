@@ -62,7 +62,7 @@ export function BrandLoader({
                 alt="QuestEdge"
                 width={64}
                 height={64}
-                priority
+                unoptimized
                 className="h-full w-full object-contain"
               />
             </div>
@@ -73,7 +73,7 @@ export function BrandLoader({
                 alt="QuestEdge"
                 width={160}
                 height={40}
-                priority
+                unoptimized
                 className="h-auto w-36 sm:w-44 object-contain dark:hidden"
               />
               <Image
@@ -81,7 +81,7 @@ export function BrandLoader({
                 alt="QuestEdge"
                 width={160}
                 height={40}
-                priority
+                unoptimized
                 className="h-auto w-36 sm:w-44 object-contain hidden dark:block"
               />
             </div>

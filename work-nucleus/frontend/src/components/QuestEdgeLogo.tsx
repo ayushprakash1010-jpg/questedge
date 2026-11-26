@@ -54,8 +54,8 @@ export function QuestEdgeLogo({
         height={height}
         priority={priority}
         unoptimized
-        className="h-auto w-auto object-contain"
-        style={{ maxHeight: height }}
+        className="object-contain"
+        style={{ width, height }}
       />
     </div>
   );
