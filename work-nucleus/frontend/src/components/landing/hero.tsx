@@ -20,7 +20,7 @@ export function Hero() {
       <div className="absolute bottom-10 left-0 h-80 w-80 rounded-full bg-violet-200/40 blur-3xl pointer-events-none" />
       <div className="absolute top-1/2 left-1/3 -translate-y-1/2 h-72 w-72 rounded-full bg-cyan-200/30 blur-3xl pointer-events-none" />
 
-      <div className="relative mx-auto max-w-7xl px-4 pt-16 pb-20 sm:px-6 sm:pt-20 sm:pb-24 lg:px-8 lg:pt-24 lg:pb-28">
+      <div className="relative mx-auto max-w-7xl px-4 pt-12 pb-16 sm:px-6 sm:pt-16 sm:pb-20 lg:px-8 lg:pt-20 lg:pb-24">
         {/* Two-Column Asymmetric Hero Split */}
         <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-8">
           {/* Left Column: Core Value Proposition */}

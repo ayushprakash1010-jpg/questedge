@@ -14,7 +14,7 @@ export function Features() {
   const [activeTab, setActiveTab] = useState<"companies" | "recruiters" | "candidates">("companies");
 
   return (
-    <section id="features" className="bg-slate-50/60 border-t border-slate-200/80 py-24 sm:py-32">
+    <section id="features" className="bg-slate-50/60 border-t border-slate-200/80 py-16 sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="mx-auto max-w-2xl text-center">
@@ -162,29 +162,29 @@ export function Features() {
                   </div>
                 </div>
 
-                {/* Bento Card 3: Referral Inbox & SLA Nudges (Span 4) */}
+                {/* Bento Card 3: Referral Inbox & SLA Alerts (Span 4) */}
                 <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm hover:shadow-md transition-all md:col-span-4">
                   <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 mb-3">
                     <Inbox className="h-4 w-4" />
                   </div>
                   <h3 className="text-base font-bold text-slate-900">
-                    Referral Inbox & SLA Nudges
+                    Referral Inbox &amp; SLA Alerts
                   </h3>
                   <p className="mt-2 text-xs leading-relaxed text-slate-600">
-                    Manage candidate referrals with time-stamped status updates, recruiter notes, and 48-hour review reminders to prevent hiring delays.
+                    Manage candidate referrals with time-stamped status updates, recruiter notes, &lt;48h consent urgency alerts, and 3-day review SLA tracking.
                   </p>
                 </div>
 
-                {/* Bento Card 4: 5-Stage Pipeline Funnel (Span 4) */}
+                {/* Bento Card 4: Pipeline, Assessments, BGV & Offers (Span 4) */}
                 <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm hover:shadow-md transition-all md:col-span-4">
                   <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 mb-3">
                     <BarChart3 className="h-4 w-4" />
                   </div>
                   <h3 className="text-base font-bold text-slate-900">
-                    5-Stage Pipeline Funnel
+                    Assessments, BGV &amp; E-Sign Offers
                   </h3>
                   <p className="mt-2 text-xs leading-relaxed text-slate-600">
-                    Track conversion velocity across Referred → Consented → Screened → Interviewed → Hired with time-to-hire analytics.
+                    Run timed quizzes, Monaco coding tests, and HD video interviews—then close hires with OTP-consented BGV, digital offers, and joining checklists.
                   </p>
                 </div>
 
@@ -197,7 +197,7 @@ export function Features() {
                     Milestone Reward Distribution
                   </h3>
                   <p className="mt-2 text-xs leading-relaxed text-slate-600">
-                    Rewards transition from Potential to Eligible upon offer, and Approved upon tenure completion. Pay only when hires stay.
+                    Rewards track across Potential → Eligible → Pending Approval → Approved → Paid stages. Pay bounties only when hires complete tenure.
                   </p>
                 </div>
               </motion.div>
@@ -330,7 +330,7 @@ export function Features() {
                       Two-Way Consent Verification
                     </h3>
                     <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                      Never have your resume circulated without your consent. Inspect full role details — company name, salary range, and expectations — before consenting to share your profile.
+                      Never have your resume circulated without your consent. Inspect the company name, role title, location, work model, and the recruiter&apos;s pitch note before consenting to share your profile.
                     </p>
                   </div>
 
@@ -343,8 +343,8 @@ export function Features() {
                       </span>
                     </div>
                     <div className="mt-3 flex items-center justify-between text-xs text-slate-600">
-                      <span>✓ Compensation visible: ₹45L - ₹65L</span>
-                      <span className="font-semibold text-emerald-700">Consent Required</span>
+                      <span>✓ Company &amp; role details visible</span>
+                      <span className="font-semibold text-emerald-700">7-Day Consent Link</span>
                     </div>
                   </div>
                 </div>

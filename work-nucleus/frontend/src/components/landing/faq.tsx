@@ -21,7 +21,7 @@ export function FAQ() {
   };
 
   return (
-    <section id="faq" className="bg-white py-24 sm:py-32" aria-labelledby="faq-heading">
+    <section id="faq" className="bg-white py-16 sm:py-20" aria-labelledby="faq-heading">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-3.5 py-1 rounded-full border border-indigo-100">

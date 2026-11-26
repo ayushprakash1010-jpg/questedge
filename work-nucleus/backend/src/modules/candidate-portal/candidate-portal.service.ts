@@ -888,6 +888,7 @@ export class CandidatePortalService {
                 location: true,
                 workModel: true,
                 referralRewardAmount: true,
+                currency: true,
                 organization: { select: { name: true } },
               },
             },

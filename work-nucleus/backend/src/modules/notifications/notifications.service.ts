@@ -270,7 +270,7 @@ export class NotificationsService {
           items.push({
             id: `scope-exp-${scope.id}`,
             type: 'CLAIM',
-            title: '48h Claim Scope Expiring',
+            title: 'Claim Scope Expiring',
             body: `Exclusivity lock on ${cName} for ${mTitle} expires in ${hoursLeft} hours.`,
             read: this.readItemIds.has(`scope-exp-${scope.id}`),
             entityType: 'CLAIM_SCOPE',

@@ -79,7 +79,7 @@ export function HeroProductPreview() {
         className="relative rounded-3xl border border-slate-200/90 bg-white/95 p-4 sm:p-6 shadow-2xl backdrop-blur-md"
       >
         <AnimatePresence mode="wait">
-          {/* ==================== 1. COMPANY VIEW (Dr. Shiv Kumar) ==================== */}
+          {/* ==================== 1. COMPANY VIEW ==================== */}
           {activePersona === "company" && (
             <motion.div
               key="company-view"
@@ -100,7 +100,7 @@ export function HeroProductPreview() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-900">VIP FinTech Scaleup</span>
+                      <span className="text-xs font-bold text-slate-900">FinCore Payments</span>
                       {/* Active Mandate with Radar Pulse Ring */}
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
                         <span className="relative flex h-2 w-2">
@@ -110,7 +110,7 @@ export function HeroProductPreview() {
                         Active Mandate
                       </span>
                     </div>
-                    <span className="text-[11px] text-slate-500">Hiring Lead: Dr. Shiv Kumar • Hybrid (Bangalore)</span>
+                    <span className="text-[11px] text-slate-500">Hiring Lead: Vikram Rao • Hybrid (Bangalore)</span>
                   </div>
                 </div>
                 <span className="font-mono text-[11px] text-slate-600 bg-slate-50 px-2 py-1 rounded-md border border-slate-200">
@@ -153,7 +153,7 @@ export function HeroProductPreview() {
                 <div className="mt-2 text-xs flex items-center justify-between text-slate-700 font-medium">
                   <span className="inline-flex items-center gap-1 text-slate-800">
                     <User className="h-3.5 w-3.5 text-indigo-600" />
-                    Candidate: <strong>Ayush Prakash</strong>
+                    Candidate: <strong>Rohan Mehta</strong>
                   </span>
                   <span className="text-[11px] text-emerald-600 font-semibold">Consent Verified</span>
                 </div>
@@ -195,7 +195,7 @@ export function HeroProductPreview() {
             </motion.div>
           )}
 
-          {/* ==================== 2. RECRUITER VIEW (Pooja Singh) ==================== */}
+          {/* ==================== 2. RECRUITER VIEW ==================== */}
           {activePersona === "recruiter" && (
             <motion.div
               key="recruiter-view"
@@ -226,7 +226,7 @@ export function HeroProductPreview() {
                         Claim Scope Active
                       </span>
                     </div>
-                    <span className="text-[11px] text-slate-500">Recruiter: Pooja Singh (Top 2% Partner)</span>
+                    <span className="text-[11px] text-slate-500">Recruiter: Meera Iyer (Gold Verified Partner)</span>
                   </div>
                 </div>
                 <span className="font-mono text-[11px] text-violet-700 bg-violet-50 px-2 py-1 rounded-md border border-violet-200">
@@ -271,14 +271,14 @@ export function HeroProductPreview() {
               <div className="rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-sm space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-800">
-                    Referred: Ayush Prakash (Staff SRE)
+                    Referred: Rohan Mehta (Staff SRE)
                   </span>
                   <span className="rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
                     Consent Approved
                   </span>
                 </div>
                 <div className="text-[11px] text-slate-500">
-                  Target: VIP FinTech Scaleup • Hiring Lead: Dr. Shiv Kumar
+                  Target: FinCore Payments • Hiring Lead: Vikram Rao
                 </div>
               </div>
 
@@ -294,14 +294,14 @@ export function HeroProductPreview() {
                   </span>
                 </div>
                 <div className="mt-1 flex items-center justify-between text-[11px] text-emerald-800">
-                  <span>Status: Milestone Locked in Escrow</span>
+                  <span>Status: Pending Tenure Approval</span>
                   <span className="font-semibold">Releases on Day 90</span>
                 </div>
               </div>
             </motion.div>
           )}
 
-          {/* ==================== 3. CANDIDATE VIEW (Ayush Prakash) ==================== */}
+          {/* ==================== 3. CANDIDATE VIEW ==================== */}
           {activePersona === "candidate" && (
             <motion.div
               key="candidate-view"
@@ -332,7 +332,7 @@ export function HeroProductPreview() {
                         Consent Active
                       </span>
                     </div>
-                    <span className="text-[11px] text-slate-500">Candidate: Ayush Prakash • Referred by Pooja Singh</span>
+                    <span className="text-[11px] text-slate-500">Candidate: Rohan Mehta • Referred by Meera Iyer</span>
                   </div>
                 </div>
                 <span className="font-mono text-[11px] text-slate-600 bg-slate-50 px-2 py-1 rounded-md border border-slate-200">
@@ -340,20 +340,20 @@ export function HeroProductPreview() {
                 </span>
               </div>
 
-              {/* Role & Total Transparency */}
+              {/* Role & Transparency */}
               <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5 space-y-2">
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="text-xs font-bold text-slate-900">Staff Distributed Systems Engineer</div>
-                    <div className="text-[11px] text-slate-500">VIP FinTech Scaleup (Dr. Shiv Kumar's Org)</div>
+                    <div className="text-[11px] text-slate-500">FinCore Payments • Platform Engineering</div>
                   </div>
                   <span className="rounded bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-800">
-                    Full Transparency
+                    7-Day Consent Link
                   </span>
                 </div>
                 <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 text-xs">
-                  <span className="text-slate-600">Disclosed CTC:</span>
-                  <span className="font-bold text-slate-900">₹45L - ₹65L Fixed + 0.15% ESOP</span>
+                  <span className="text-slate-600">Location &amp; Mode:</span>
+                  <span className="font-bold text-slate-900">Bangalore, IN • Hybrid</span>
                 </div>
               </div>
 
@@ -365,11 +365,11 @@ export function HeroProductPreview() {
                     Two-Way Consent Guarantee
                   </span>
                   <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
-                    <Check className="h-3.5 w-3.5" /> Approved by Ayush
+                    <Check className="h-3.5 w-3.5" /> Approved by Candidate
                   </span>
                 </div>
                 <p className="text-[11px] text-emerald-900 leading-relaxed">
-                  Your resume and contact information are disclosed strictly to Dr. Shiv's hiring committee. Never shopped around or made public.
+                  Your profile and resume stay private until you review the role and explicitly accept. Never shopped around without approval.
                 </p>
               </div>
 
@@ -377,10 +377,10 @@ export function HeroProductPreview() {
               <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3.5 py-2 text-[11px] text-slate-600">
                 <span className="flex items-center gap-1 font-mono text-[10px]">
                   <EyeOff className="h-3 w-3 text-cyan-600" />
-                  DPDP Section 11 Compliant
+                  DPDP &amp; GDPR Art. 20 Compliant
                 </span>
                 <span className="text-[10px] font-semibold text-indigo-600 flex items-center gap-0.5">
-                  1-Click Right to Erasure
+                  Self-Service Export &amp; Erasure
                 </span>
               </div>
             </motion.div>

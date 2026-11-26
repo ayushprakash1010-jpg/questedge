@@ -461,7 +461,8 @@ export class MandatesService {
 
     if (updated.hiringManagerName) {
       // Send WhatsApp notification to the manager
-      const appLink = `https://questedge.com/mandates/${updated.id}`;
+      const baseUrl = (process.env.FRONTEND_URL || 'https://questedge.in').replace(/\/+$/, '');
+      const appLink = `${baseUrl}/mandates/${updated.id}`;
       if (updated.hiringManagerPhone) {
         this.whatsappService
           .sendWhatsAppNotification(
@@ -551,6 +552,10 @@ export class MandatesService {
   ): Promise<PaginatedResult<Mandate>> {
     const where = this.buildWhereClause(filter);
     where.status = 'ACTIVE';
+    where.organization = {
+      ...(where.organization as object),
+      users: { none: { isDemoAccount: true } },
+    };
     const page = filter.page ?? 1;
     const limit = Math.min(filter.limit ?? 20, 100);
     const skip = (page - 1) * limit;

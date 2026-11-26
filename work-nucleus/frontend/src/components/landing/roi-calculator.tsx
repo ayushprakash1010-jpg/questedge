@@ -96,7 +96,7 @@ export function RoiCalculator() {
   const isHighRecruiterEarnings = annualEarnings >= 1000000;
 
   return (
-    <section id="roi-calculator" className="bg-slate-50/70 border-t border-slate-200/80 py-24 sm:py-32">
+    <section id="roi-calculator" className="bg-slate-50/70 border-t border-slate-200/80 py-16 sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mx-auto max-w-2xl text-center">

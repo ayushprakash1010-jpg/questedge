@@ -26,7 +26,7 @@ const companyPlans: Plan[] = [
     features: [
       "Up to 2 active mandates",
       "Unlimited recruiter referrals",
-      "Referral inbox with 48h SLA nudges",
+      "Referral inbox with <48h consent & 3d review SLA",
       "Two-way candidate consent verification",
       "Standard email support",
     ],
@@ -47,7 +47,7 @@ const companyPlans: Plan[] = [
       "Candidate BGV verification pre-check",
       "Priority customer support",
     ],
-    cta: "Start 14-Day Free Trial",
+    cta: "Get Started Free",
     popular: true,
     href: "/auth/login?returnTo=/dashboard",
     tag: "Recommended for Teams",
@@ -191,7 +191,7 @@ export function Pricing() {
   const [activeTab, setActiveTab] = useState<"companies" | "recruiters">("companies");
 
   return (
-    <section id="pricing" className="bg-slate-50/70 border-t border-slate-200/80 py-24 sm:py-32">
+    <section id="pricing" className="bg-slate-50/70 border-t border-slate-200/80 py-16 sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mx-auto max-w-2xl text-center">
@@ -213,7 +213,7 @@ export function Pricing() {
             <span>Milestone-Protected Bounty Security</span>
           </div>
           <p className="mt-1.5 text-xs text-slate-300 leading-relaxed max-w-xl mx-auto">
-            Rewards are tracked across Potential → Eligible → Pending Approval → Approved stages and paid out securely upon confirmed 60-90 days retention.
+            Rewards are tracked across Potential → Eligible → Pending Approval → Approved → Paid stages and released upon confirmed 60-90 days retention.
           </p>
         </div>
 
@@ -295,6 +295,10 @@ export function Pricing() {
             )}
           </AnimatePresence>
         </div>
+
+        <p className="mt-8 text-center text-xs text-slate-500">
+          Early Access: Full platform workflows are currently open at ₹0 subscription cost during beta—companies pay referral bounties only on verified hires.
+        </p>
       </div>
     </section>
   );

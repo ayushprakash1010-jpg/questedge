@@ -64,7 +64,7 @@ const flows: Flow[] = [
           line2Label: "Tenure Clause",
           line2Value: "90 Days Retention",
           footerText: "Marketplace Access",
-          footerHighlight: "2,400+ Vetted Recruiters",
+          footerHighlight: "Verified Recruiter Network",
           footerHighlightColor: "text-indigo-600",
         },
       },
@@ -128,8 +128,8 @@ const flows: Flow[] = [
           tagColor: "bg-violet-100 text-violet-800",
           line1Label: "Referral Bounty",
           line1Value: "₹1,20,000 Pool",
-          line2Label: "SLA Response",
-          line2Value: "48h Review Nudge",
+          line2Label: "SLA Target",
+          line2Value: "3-Day Review SLA",
           footerText: "Claim Availability",
           footerHighlight: "Ready to Lock Scope",
           footerHighlightColor: "text-emerald-600",
@@ -188,15 +188,15 @@ const flows: Flow[] = [
         icon: Bell,
         badge: "Private Invite",
         title: "Receive Referral Invite",
-        description: "A trusted recruiter submits you for an exclusive role. You receive a private, secure link to inspect company name, role expectations, and salary bands.",
+        description: "A trusted recruiter refers you for an open role. You receive a private 7-day consent link to inspect the company name, role details, work model, and recruiter pitch note.",
         illustration: {
           title: "Confidential Referral Invite",
           tag: "Protected Link",
           tagColor: "bg-emerald-100 text-emerald-800",
           line1Label: "Role Matched",
           line1Value: "Head of Infrastructure",
-          line2Label: "Company & Range",
-          line2Value: "₹45L - ₹55L + ESOP",
+          line2Label: "Company & Location",
+          line2Value: "Bangalore • Hybrid",
           footerText: "Identity Status",
           footerHighlight: "Hidden until you consent",
           footerHighlightColor: "text-amber-600",
@@ -255,7 +255,7 @@ export function HowItWorks() {
   const flow = flows[active];
 
   return (
-    <section id="how-it-works" className="bg-slate-50/70 border-t border-slate-200/80 py-24 sm:py-32">
+    <section id="how-it-works" className="bg-slate-50/70 border-t border-slate-200/80 py-16 sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="mx-auto max-w-2xl text-center">

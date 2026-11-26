@@ -64,7 +64,7 @@ const agents: Agent[] = [
         { label: "Suggested CTC Range", value: "₹50,00,000 - ₹72,00,000 Fixed + ESOP", status: "neutral" },
         { label: "Recommended Bounty", value: "₹1,50,000 (3.5% of CTC vs 20% Headhunter fee)", status: "success" },
         { label: "Inclusivity Index", value: "98/100 (Bias-free language verified)", status: "success" },
-        { label: "SLA Review Window", value: "48-Hour Nudge rule auto-applied", status: "neutral" },
+        { label: "SLA Review Window", value: "3-Day Review SLA & <48h Consent Alerts", status: "neutral" },
       ],
       footerNote: "Ready to publish to QuestEdge verified recruiter marketplace.",
     },
@@ -121,7 +121,7 @@ export function AIAgents() {
   return (
     <section
       id="ai-agents"
-      className="relative overflow-hidden bg-slate-900 py-24 sm:py-32"
+      className="relative overflow-hidden bg-slate-900 py-16 sm:py-20"
     >
       {/* Background ambient lighting */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(99,102,241,0.22),transparent)]" />

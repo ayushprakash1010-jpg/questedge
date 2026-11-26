@@ -41,15 +41,6 @@ const sampleJobs = [
     sourceColor: "text-blue-600 bg-blue-50",
     posted: "Today",
   },
-  {
-    title: "Senior Product Designer",
-    company: "Figma",
-    location: "Remote",
-    tags: ["Figma", "Design Systems", "UI/UX"],
-    source: "Ashby",
-    sourceColor: "text-violet-600 bg-violet-50",
-    posted: "1d ago",
-  },
 ];
 
 const features = [
@@ -79,7 +70,7 @@ export function ExternalJobMarket() {
   return (
     <section
       id="external-job-market"
-      className="relative overflow-hidden bg-gradient-to-b from-slate-900 via-slate-900 to-slate-800 py-24 sm:py-32"
+      className="relative overflow-hidden bg-gradient-to-b from-slate-900 via-slate-900 to-slate-800 py-16 sm:py-20"
     >
       {/* Ambient glow decorations */}
       <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
@@ -108,8 +99,8 @@ export function ExternalJobMarket() {
           </h2>
           <p className="mt-5 text-base sm:text-lg leading-relaxed text-slate-400">
             Discover roles from Greenhouse, Lever, Ashby, Jobicy, Remotive,
-            Careerjet &amp; more — all aggregated in one place with AI-powered
-            recommendations personalized for your profile.
+            RemoteOK, Careerjet &amp; JSearch — all aggregated in one place with
+            AI-powered recommendations personalized for your profile.
           </p>
         </motion.div>
 

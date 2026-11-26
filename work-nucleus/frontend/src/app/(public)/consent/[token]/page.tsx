@@ -36,6 +36,7 @@ interface ConsentData {
       location?: string;
       workModel?: string;
       referralRewardAmount?: number;
+      currency?: string;
       organization: { name: string };
     };
   };
@@ -253,7 +254,18 @@ export default function ConsentPage() {
             {/* Reward info */}
             {mandate.referralRewardAmount && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800 flex items-center gap-2">
-                🏆 The recruiter earns <strong>${mandate.referralRewardAmount.toLocaleString()}</strong> if you are successfully hired
+                🏆 The recruiter earns{" "}
+                <strong>
+                  {mandate.currency === "USD"
+                    ? "$"
+                    : mandate.currency === "GBP"
+                    ? "£"
+                    : mandate.currency === "EUR"
+                    ? "€"
+                    : "₹"}
+                  {Number(mandate.referralRewardAmount).toLocaleString("en-IN")}
+                </strong>{" "}
+                if you are successfully hired
               </div>
             )}
 

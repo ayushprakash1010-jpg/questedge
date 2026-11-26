@@ -106,7 +106,7 @@ function MandateCard({ mandate }: { mandate: Mandate }) {
           <div />
         )}
         <button
-          onClick={() => router.push("/auth/login")}
+          onClick={() => router.push("/auth/login?returnTo=/recruiter/discover")}
           className="group/btn flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white transition-all hover:bg-indigo-700"
         >
           Refer a Candidate

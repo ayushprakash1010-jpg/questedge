@@ -9,10 +9,26 @@ import { Label } from "@/components/ui/label";
 
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
-  const [role, setRole] = useState("company");
+  const [reason, setReason] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+
+  function getRecipientEmail(selectedReason: string) {
+    if (selectedReason === "recruiter-join") return "recruiters@questedge.com";
+    if (selectedReason === "candidate-help") return "candidates@questedge.com";
+    return "companies@questedge.com";
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const to = getRecipientEmail(reason);
+    const subject = `[QuestEdge Contact] ${reason || "Inquiry"} - ${firstName} ${lastName}`.trim();
+    const body = `Name: ${firstName} ${lastName}\nEmail: ${email}\nTopic: ${reason}\n\n${message}`;
+    if (typeof window !== "undefined") {
+      window.location.href = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    }
     setSubmitted(true);
   }
 
@@ -93,10 +109,12 @@ export default function ContactPage() {
             ) : (
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <Label htmlFor="contact-reason">What's this about?</Label>
+                  <Label htmlFor="contact-reason">What&apos;s this about?</Label>
                   <select
                     id="contact-reason"
                     required
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
                     className="mt-1.5 block w-full rounded-xl border border-slate-200 bg-white py-2.5 px-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   >
                     <option value="">Select a reason...</option>
@@ -112,22 +130,22 @@ export default function ContactPage() {
                 <div className="grid gap-6 sm:grid-cols-2">
                   <div>
                     <Label htmlFor="contact-first">First Name</Label>
-                    <Input id="contact-first" type="text" className="mt-1.5" required />
+                    <Input id="contact-first" type="text" className="mt-1.5" required value={firstName} onChange={(e) => setFirstName(e.target.value)} />
                   </div>
                   <div>
                     <Label htmlFor="contact-last">Last Name</Label>
-                    <Input id="contact-last" type="text" className="mt-1.5" required />
+                    <Input id="contact-last" type="text" className="mt-1.5" required value={lastName} onChange={(e) => setLastName(e.target.value)} />
                   </div>
                 </div>
 
                 <div>
                   <Label htmlFor="contact-email">Email Address</Label>
-                  <Input id="contact-email" type="email" className="mt-1.5" required />
+                  <Input id="contact-email" type="email" className="mt-1.5" required value={email} onChange={(e) => setEmail(e.target.value)} />
                 </div>
 
                 <div>
                   <Label htmlFor="contact-message">Message</Label>
-                  <Textarea id="contact-message" rows={5} className="mt-1.5" required placeholder="How can we help you?" />
+                  <Textarea id="contact-message" rows={5} className="mt-1.5" required placeholder="How can we help you?" value={message} onChange={(e) => setMessage(e.target.value)} />
                 </div>
 
                 <Button type="submit" size="lg" className="w-full h-12 text-base bg-indigo-600 hover:bg-indigo-700">

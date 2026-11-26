@@ -107,13 +107,19 @@ export function MarketplaceModal({
         </button>
 
         {/* Modal Header */}
-        <div className="flex items-center gap-2 text-xs font-semibold text-indigo-600 mb-2">
-          <Building2 className="h-4 w-4" />
+        <div className="flex items-center gap-2 text-xs font-semibold text-indigo-600 mb-2 flex-wrap">
+          <Building2 className="h-4 w-4 shrink-0" />
           <span>{mandate.organization?.name}</span>
-          <span className="text-slate-300">•</span>
-          <span>{mandate.location}</span>
-          <span className="text-slate-300">•</span>
-          <span>{mandate.workModel}</span>
+          {(mandate.location || mandate.workModel) && (
+            <>
+              <span className="text-slate-300">•</span>
+              <span>
+                {mandate.location && mandate.workModel && !mandate.location.toLowerCase().includes(mandate.workModel.toLowerCase())
+                  ? `${mandate.location} • ${mandate.workModel}`
+                  : mandate.location || mandate.workModel}
+              </span>
+            </>
+          )}
         </div>
 
         <h3 id="modal-mandate-title" className="text-2xl font-extrabold text-slate-900">
@@ -195,7 +201,11 @@ export function MarketplaceModal({
             Close
           </button>
           <a
-            href="/auth/login?returnTo=/jobs"
+            href={
+              mandate.id.startsWith("sample-")
+                ? "/auth/login?returnTo=/recruiter/discover"
+                : `/auth/login?returnTo=/recruiter/mandates/${mandate.id}`
+            }
             className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-2.5 text-xs font-semibold text-white shadow-md hover:bg-indigo-500 transition-all"
           >
             <span>Lock Scope &amp; Refer</span>

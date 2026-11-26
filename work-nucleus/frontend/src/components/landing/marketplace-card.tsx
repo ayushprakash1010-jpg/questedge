@@ -12,6 +12,16 @@ interface MarketplaceCardProps {
   formatBounty: (reward?: number | null, max?: number | null, fallbackIndex?: number) => string;
 }
 
+function formatLocationLine(location?: string | null, workModel?: string | null) {
+  const loc = location?.trim() || "";
+  const mode = workModel?.trim() || "";
+  if (loc && mode) {
+    if (loc.toLowerCase().includes(mode.toLowerCase())) return loc;
+    return `${loc} • ${mode}`;
+  }
+  return loc || mode || "Flexible";
+}
+
 export function MarketplaceCard({
   mandate,
   index,
@@ -19,6 +29,10 @@ export function MarketplaceCard({
   formatCtc,
   formatBounty,
 }: MarketplaceCardProps) {
+  const referHref = mandate.id.startsWith("sample-")
+    ? "/auth/login?returnTo=/recruiter/discover"
+    : `/auth/login?returnTo=/recruiter/mandates/${mandate.id}`;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -40,8 +54,8 @@ export function MarketplaceCard({
                 <ShieldCheck className="h-3.5 w-3.5 text-indigo-600" />
               </div>
               <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
-                <MapPin className="h-3 w-3" />
-                <span>{mandate.location} • {mandate.workModel}</span>
+                <MapPin className="h-3 w-3 shrink-0" />
+                <span className="truncate">{formatLocationLine(mandate.location, mandate.workModel)}</span>
               </div>
             </div>
           </div>
@@ -100,10 +114,10 @@ export function MarketplaceCard({
         {/* Action CTA */}
         <div className="grid grid-cols-2 gap-2">
           <a
-            href="/auth/login?returnTo=/jobs"
+            href={referHref}
             className="flex items-center justify-center gap-1 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 transition-all"
           >
-            <span>Claim & Refer</span>
+            <span>Claim &amp; Refer</span>
             <ArrowRight className="h-3 w-3" />
           </a>
           <button

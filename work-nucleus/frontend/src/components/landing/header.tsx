@@ -11,31 +11,31 @@ const navLinks = [
   { label: "Job Market", href: "/#external-job-market" },
   { label: "How It Works", href: "/#how-it-works" },
   { label: "AI Engines", href: "/#ai-agents" },
-  { label: "Calculator", href: "/#roi-calculator" },
   { label: "Pricing", href: "/#pricing" },
+  { label: "FAQ", href: "/#faq" },
 ];
 
 const joinOptions = [
   {
     icon: Building2,
-    label: "Post a Mandate",
-    sub: "Hire with referrals",
+    label: "Company Portal",
+    sub: "Post mandates & hire with referrals",
     href: "/auth/login?returnTo=/dashboard",
     color: "text-indigo-600",
     bg: "hover:bg-indigo-50",
   },
   {
     icon: Target,
-    label: "Join as Recruiter",
-    sub: "Refer & earn rewards",
+    label: "Recruiter Portal",
+    sub: "Refer candidates & earn bounties",
     href: "/auth/login?returnTo=/recruiter/dashboard",
     color: "text-violet-600",
     bg: "hover:bg-violet-50",
   },
   {
     icon: UserCircle,
-    label: "I'm a Candidate",
-    sub: "Track my applications",
+    label: "Candidate Portal",
+    sub: "Track applications & explore jobs",
     href: "/auth/login?returnTo=/candidate/dashboard",
     color: "text-emerald-600",
     bg: "hover:bg-emerald-50",
@@ -129,7 +129,13 @@ export function LandingHeader() {
           <div className="hidden items-center gap-3 md:flex">
             <a
               href="/auth/login?returnTo=/dashboard"
-              className="px-3.5 py-2 text-xs font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
+              className="hidden lg:inline-block px-2.5 py-2 text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
+            >
+              Company Portal
+            </a>
+            <a
+              href="/auth/login?returnTo=/dashboard"
+              className="px-3 py-2 text-xs font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
             >
               Log in
             </a>

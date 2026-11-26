@@ -1,11 +1,10 @@
 import { Hero } from "@/components/landing/hero";
 import { MarketplaceStats } from "@/components/landing/marketplace-stats";
-import { TrustStrip } from "@/components/landing/trust-strip";
 import { LiveMarketplacePreview } from "@/components/landing/live-marketplace-preview";
 import { Features } from "@/components/landing/features";
 import { ExternalJobMarket } from "@/components/landing/external-job-market";
-import { AIAgents } from "@/components/landing/ai-agents";
 import { HowItWorks } from "@/components/landing/how-it-works";
+import { AIAgents } from "@/components/landing/ai-agents";
 import { RoiCalculator } from "@/components/landing/roi-calculator";
 import { Testimonials } from "@/components/landing/testimonials";
 import { Pricing } from "@/components/landing/pricing";
@@ -17,7 +16,6 @@ export default function LandingPage() {
     <>
       <Hero />
       <MarketplaceStats />
-      <TrustStrip />
       <LiveMarketplacePreview />
       <Features />
       <ExternalJobMarket />

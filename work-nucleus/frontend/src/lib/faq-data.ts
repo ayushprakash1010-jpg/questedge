@@ -44,7 +44,7 @@ export const faqs: FaqItem[] = [
     id: "claim-scope-protection",
     question: "How do Claim Scope locks and duplicate protection work?",
     answer:
-      "When a recruiter submits a referral for an open mandate, QuestEdge creates a Claim Scope ownership lock tied to that mandate's configured ownership period (defaulting to 180 days, minimum 30 days) and surfaces 48-hour SLA and scope-expiry alerts. Candidate email addresses are SHA-256 hashed to prevent duplicate submissions on the same mandate—and candidate profiles also store SHA-256 phone hashes—protecting placement credit and reducing recruiter disputes.",
+      "When a recruiter submits a referral for an open mandate, QuestEdge creates a Claim Scope ownership lock tied to that mandate's configured ownership period (defaulting to 180 days, minimum 30 days) with <48h consent urgency alerts and 3-day review SLA tracking. Candidate email addresses are SHA-256 hashed to prevent duplicate submissions on the same mandate—and candidate profiles also store SHA-256 phone hashes—protecting placement credit and reducing recruiter disputes.",
     categories: ["recruiters", "companies"],
   },
   {

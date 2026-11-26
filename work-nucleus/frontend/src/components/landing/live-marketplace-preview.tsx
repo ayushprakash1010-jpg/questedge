@@ -1,30 +1,40 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { AnimatePresence } from "framer-motion";
 import { Search, ArrowRight } from "lucide-react";
 import { publicDiscoverMandates, Mandate } from "@/lib/marketplace-api";
 import { MarketplaceCard } from "./marketplace-card";
 import { MarketplaceModal } from "./marketplace-modal";
 
-// Fallback calibration bands ensuring varied, realistic numbers if remote data is missing fields
-const FALLBACK_BANDS: [number, number, number][] = [
-  [4500000, 6500000, 120000],
-  [4000000, 5500000, 95000],
-  [5000000, 7000000, 150000],
-  [3800000, 5000000, 90000],
-  [3200000, 4500000, 80000],
-  [4500000, 6500000, 130000],
-];
+const TEST_NAME_PATTERN = /^(gg|test|demo|sample|dummy|asdf|qwerty|tmp|xxx|\d+)$/i;
 
-// Curated realistic sample mandates for instant, zero-latency showcase
+function isShowcaseQualityMandate(m: Mandate): boolean {
+  const orgName = m.organization?.name?.trim() || "";
+  const title = m.title?.trim() || "";
+  const desc = m.description?.trim() || "";
+
+  if (orgName.length < 3 || TEST_NAME_PATTERN.test(orgName)) return false;
+  if (title.length < 6 || TEST_NAME_PATTERN.test(title)) return false;
+  if (desc.length < 35 || /at huge/i.test(desc)) return false;
+
+  const minComp = Number(m.compensationMin || 0);
+  const maxComp = Number(m.compensationMax || 0);
+  const reward = Number(m.referralRewardAmount || 0);
+
+  return minComp > 0 && maxComp > 0 && reward > 0;
+}
+
+// Curated realistic sample mandates used as fallback when live DB has fewer than 3 showcase-ready mandates
 const sampleMandates: Mandate[] = [
   {
     id: "sample-1",
     orgId: "org-1",
     title: "Senior Staff Backend Engineer (Distributed Systems)",
     department: "Platform Engineering",
-    description: "Architect and scale distributed high-throughput event streaming systems handling 2M+ transactions daily. Lead consensus protocol design and database partitioning.",
+    description:
+      "Architect and scale distributed high-throughput event streaming systems handling 2M+ transactions daily. Lead consensus protocol design and database partitioning.",
     mandatorySkills: ["Go", "Apache Kafka", "PostgreSQL", "Distributed Systems"],
     preferredSkills: ["Kubernetes", "gRPC", "Raft"],
     numberOfOpenings: 2,
@@ -39,11 +49,11 @@ const sampleMandates: Mandate[] = [
     participationType: "OPEN",
     referralRewardAmount: 120000,
     referralRewardType: "FIXED",
-    ownershipPeriodDays: 90,
+    ownershipPeriodDays: 180,
     status: "ACTIVE",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    organization: { id: "org-1", name: "VIP FinTech Core (Hiring Lead: Dr. Shiv Kumar)" },
+    organization: { id: "org-1", name: "FinCore Systems" },
     _count: { referrals: 8, applications: 14, participations: 5 },
   },
   {
@@ -51,11 +61,12 @@ const sampleMandates: Mandate[] = [
     orgId: "org-2",
     title: "Lead AI/ML Systems Engineer",
     department: "Applied AI",
-    description: "Lead integration of generative LLM pipelines, fine-tuning retrieval augmented generation (RAG) models for enterprise search and automated domain parsing.",
+    description:
+      "Lead integration of generative LLM pipelines, fine-tuning retrieval augmented generation (RAG) models for enterprise search and automated domain parsing.",
     mandatorySkills: ["Python", "PyTorch", "LangChain", "Vector DBs"],
     preferredSkills: ["CUDA", "FastAPI", "Docker"],
     numberOfOpenings: 1,
-    location: "Remote (India)",
+    location: "India",
     workModel: "Remote",
     employmentType: "Full-time",
     compensationMin: 4000000,
@@ -66,7 +77,7 @@ const sampleMandates: Mandate[] = [
     participationType: "OPEN",
     referralRewardAmount: 95000,
     referralRewardType: "FIXED",
-    ownershipPeriodDays: 90,
+    ownershipPeriodDays: 180,
     status: "ACTIVE",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -78,7 +89,8 @@ const sampleMandates: Mandate[] = [
     orgId: "org-3",
     title: "Head of Product (B2B SaaS Growth)",
     department: "Product",
-    description: "Drive self-serve activation, expansion loops, and enterprise billing infrastructure for a fast-scaling developer infrastructure platform.",
+    description:
+      "Drive self-serve activation, expansion loops, and enterprise billing infrastructure for a fast-scaling developer infrastructure platform.",
     mandatorySkills: ["Product Strategy", "PLG Loops", "B2B SaaS", "User Analytics"],
     preferredSkills: ["SQL", "Segment", "Figma"],
     numberOfOpenings: 1,
@@ -93,93 +105,12 @@ const sampleMandates: Mandate[] = [
     participationType: "OPEN",
     referralRewardAmount: 150000,
     referralRewardType: "FIXED",
-    ownershipPeriodDays: 90,
+    ownershipPeriodDays: 180,
     status: "ACTIVE",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     organization: { id: "org-3", name: "Pulse Scale Systems" },
     _count: { referrals: 11, applications: 18, participations: 7 },
-  },
-  {
-    id: "sample-4",
-    orgId: "org-4",
-    title: "Staff SRE & Kubernetes Architect",
-    department: "Infrastructure",
-    description: "Manage zero-downtime multi-region Kubernetes deployments, automated disaster recovery, and infrastructure-as-code with Terraform and ArgoCD.",
-    mandatorySkills: ["Kubernetes", "Terraform", "AWS", "ArgoCD"],
-    preferredSkills: ["Prometheus", "Istio", "Golang"],
-    numberOfOpenings: 2,
-    location: "Hyderabad, IN",
-    workModel: "Hybrid",
-    employmentType: "Full-time",
-    compensationMin: 3800000,
-    compensationMax: 5000000,
-    currency: "INR",
-    acceptsDirectApply: true,
-    acceptsReferrals: true,
-    participationType: "OPEN",
-    referralRewardAmount: 90000,
-    referralRewardType: "FIXED",
-    ownershipPeriodDays: 90,
-    status: "ACTIVE",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    organization: { id: "org-4", name: "CloudGrid Global" },
-    _count: { referrals: 4, applications: 7, participations: 2 },
-  },
-  {
-    id: "sample-5",
-    orgId: "org-5",
-    title: "Lead Frontend Engineer (React / Next.js)",
-    department: "Frontend Engineering",
-    description: "Design high-performance web applications with Next.js 14, Tailwind CSS, TypeScript, and micro-frontend architecture for financial analytics.",
-    mandatorySkills: ["Next.js", "React", "TypeScript", "Tailwind CSS"],
-    preferredSkills: ["GraphQL", "WebSockets", "Cypress"],
-    numberOfOpenings: 1,
-    location: "Remote (India)",
-    workModel: "Remote",
-    employmentType: "Full-time",
-    compensationMin: 3200000,
-    compensationMax: 4500000,
-    currency: "INR",
-    acceptsDirectApply: true,
-    acceptsReferrals: true,
-    participationType: "OPEN",
-    referralRewardAmount: 80000,
-    referralRewardType: "FIXED",
-    ownershipPeriodDays: 60,
-    status: "ACTIVE",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    organization: { id: "org-5", name: "Acuity Financial Tech" },
-    _count: { referrals: 7, applications: 12, participations: 4 },
-  },
-  {
-    id: "sample-6",
-    orgId: "org-6",
-    title: "Director of Enterprise Sales",
-    department: "Commercial & Sales",
-    description: "Drive multi-year enterprise contracts with Tier-1 banks, insurance providers, and fintechs. Lead executive stakeholder alignment and RFP cycles.",
-    mandatorySkills: ["Enterprise Sales", "B2B Negotiations", "Fintech Domain", "Executive Quotas"],
-    preferredSkills: ["Salesforce", "MEDDIC", "Contract Law"],
-    numberOfOpenings: 1,
-    location: "Gurgaon, IN",
-    workModel: "On-site",
-    employmentType: "Full-time",
-    compensationMin: 4500000,
-    compensationMax: 6500000,
-    currency: "INR",
-    acceptsDirectApply: true,
-    acceptsReferrals: true,
-    participationType: "OPEN",
-    referralRewardAmount: 130000,
-    referralRewardType: "FIXED",
-    ownershipPeriodDays: 90,
-    status: "ACTIVE",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    organization: { id: "org-6", name: "Veritas Global Capital" },
-    _count: { referrals: 6, applications: 10, participations: 3 },
   },
 ];
 
@@ -189,72 +120,65 @@ export function LiveMarketplacePreview() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMandate, setSelectedMandate] = useState<Mandate | null>(null);
 
-  // Safe formatting helpers ensuring zero values never appear, using index-based variation fallback
-  const formatCtc = (min?: number | null, max?: number | null, fallbackIndex = 0) => {
-    const band = FALLBACK_BANDS[fallbackIndex % FALLBACK_BANDS.length];
-    const minVal = typeof min === "number" && min > 0 ? min : band[0];
-    const maxVal = typeof max === "number" && max > 0 ? max : band[1];
+  const formatCtc = (min?: number | null, max?: number | null) => {
+    const minVal = Number(min || 0);
+    const maxVal = Number(max || 0);
+    if (minVal <= 0 || maxVal <= 0) return "Competitive";
     return `₹${(minVal / 100000).toFixed(0)}L - ₹${(maxVal / 100000).toFixed(0)}L`;
   };
 
-  const formatBounty = (reward?: number | null, max?: number | null, fallbackIndex = 0) => {
-    if (typeof reward === "number" && reward > 0) {
-      return `₹${reward.toLocaleString("en-IN")}`;
-    }
-    const band = FALLBACK_BANDS[fallbackIndex % FALLBACK_BANDS.length];
-    return `₹${band[2].toLocaleString("en-IN")}`;
+  const formatBounty = (reward?: number | null) => {
+    const val = Number(reward || 0);
+    if (val <= 0) return "Bounty on Hire";
+    return `₹${val.toLocaleString("en-IN")}`;
   };
 
-  // Attempt to load live backend mandates if available with realistic fallback diversity
   useEffect(() => {
     let isMounted = true;
-    publicDiscoverMandates({ limit: 6 })
+    publicDiscoverMandates({ limit: 12 })
       .then((res) => {
-        if (isMounted && res && res.data && res.data.length > 0) {
-          const sanitized = res.data.map((m, index) => {
-            const band = FALLBACK_BANDS[index % FALLBACK_BANDS.length];
-            const minComp: number = (typeof m.compensationMin === "number" && m.compensationMin > 0) ? m.compensationMin : band[0];
-            const maxComp: number = (typeof m.compensationMax === "number" && m.compensationMax > 0) ? m.compensationMax : band[1];
-            const bounty: number = (typeof m.referralRewardAmount === "number" && m.referralRewardAmount > 0)
-              ? m.referralRewardAmount
-              : band[2];
+        if (!isMounted || !res?.data?.length) return;
+        const qualityLive = res.data.filter(isShowcaseQualityMandate).slice(0, 3);
+        if (qualityLive.length === 0) return;
 
-            return {
-              ...m,
-              compensationMin: minComp,
-              compensationMax: maxComp,
-              referralRewardAmount: bounty,
-            };
-          });
-          setMandates(sanitized);
+        // Fill remaining showcase slots (up to 3) with distinct curated mandates if needed
+        const combined = [...qualityLive];
+        for (const fallback of sampleMandates) {
+          if (combined.length >= 3) break;
+          if (!combined.some((m) => m.title === fallback.title)) {
+            combined.push(fallback);
+          }
         }
+        setMandates(combined);
       })
       .catch(() => {
-        // Fallback to sample mandates seamlessly
+        // Keep curated fallback mandates seamlessly
       });
     return () => {
       isMounted = false;
     };
   }, []);
 
-  const filteredMandates = mandates.filter((m) => {
-    const matchesSearch =
-      searchQuery === "" ||
-      m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.mandatorySkills.some((s) => s.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (m.organization?.name && m.organization.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredMandates = mandates
+    .filter((m) => {
+      const matchesSearch =
+        searchQuery === "" ||
+        m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        m.mandatorySkills.some((s) => s.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (m.organization?.name && m.organization.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    if (activeCategory === "high-bounty") {
-      return matchesSearch && (m.referralRewardAmount ?? 0) >= 90000;
-    }
-    if (activeCategory === "remote") {
-      return matchesSearch && m.workModel?.toLowerCase() === "remote";
-    }
-    return matchesSearch;
-  });
+      if (activeCategory === "high-bounty") {
+        return matchesSearch && (Number(m.referralRewardAmount) || 0) >= 90000;
+      }
+      if (activeCategory === "remote") {
+        return matchesSearch && m.workModel?.toLowerCase() === "remote";
+      }
+      return matchesSearch;
+    })
+    .slice(0, 3);
 
   return (
-    <section id="marketplace-preview" className="bg-white border-t border-slate-200/80 py-24 sm:py-32">
+    <section id="marketplace-preview" className="bg-white border-t border-slate-200/80 py-16 sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mx-auto max-w-3xl text-center">
@@ -262,16 +186,15 @@ export function LiveMarketplacePreview() {
             Live Marketplace Discovery
           </span>
           <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
-            Explore active mandates & verified bounty pools
+            Explore active mandates &amp; verified bounty pools
           </h2>
           <p className="mt-4 text-base sm:text-lg text-slate-600">
-            Browse real company mandates, lock exclusive claim scopes, and submit pre-screened talent with guaranteed milestone payouts.
+            Browse company mandates, lock exclusive claim scopes, and submit pre-screened talent with milestone-backed payouts.
           </p>
         </div>
 
         {/* Filter & Search Bar */}
-        <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-4">
-          {/* Category Tabs */}
+        <div className="mt-10 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div
             role="tablist"
             aria-label="Filter mandates by category"
@@ -288,7 +211,7 @@ export function LiveMarketplacePreview() {
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200/70"
               }`}
             >
-              All Roles ({mandates.length})
+              Featured ({mandates.length})
             </button>
             <button
               role="tab"
@@ -332,7 +255,7 @@ export function LiveMarketplacePreview() {
           </div>
         </div>
 
-        {/* Mandate Cards Grid */}
+        {/* Single 3-card row */}
         <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredMandates.map((m, i) => (
             <MarketplaceCard
@@ -346,23 +269,22 @@ export function LiveMarketplacePreview() {
           ))}
         </div>
 
-        {/* Bottom Banner */}
-        <div className="mt-16 rounded-3xl border border-indigo-100 bg-gradient-to-r from-indigo-50/80 via-white to-violet-50/60 p-8 text-center shadow-sm">
-          <h3 className="text-xl font-bold text-slate-900">
-            Hiring engineers, product leaders, or specialized talent?
-          </h3>
-          <p className="mt-2 text-sm text-slate-600 max-w-xl mx-auto">
-            Publish your mandate with a custom bounty pool. Verified independent recruiters will source pre-screened talent with explicit candidate consent.
-          </p>
-          <div className="mt-6">
-            <a
-              href="/auth/login?returnTo=/dashboard"
-              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-md hover:bg-slate-800 transition-all hover:gap-3"
-            >
-              <span>Post a Mandate — Zero Upfront Retainer</span>
-              <ArrowRight className="h-4 w-4" />
-            </a>
-          </div>
+        {/* Compact Action Row */}
+        <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <Link
+            href="/jobs"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-all"
+          >
+            <span>Browse all open mandates</span>
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+          <a
+            href="/auth/login?returnTo=/dashboard"
+            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-md hover:bg-slate-800 transition-all"
+          >
+            <span>Post a Mandate — Zero Upfront Retainer</span>
+            <ArrowRight className="h-4 w-4" />
+          </a>
         </div>
       </div>
 
@@ -380,4 +302,3 @@ export function LiveMarketplacePreview() {
     </section>
   );
 }
-

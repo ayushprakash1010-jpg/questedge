@@ -3,7 +3,7 @@ import { ArrowRight, Building2, Target, UserCircle, Globe } from "lucide-react";
 
 export function CTABanner() {
   return (
-    <section aria-labelledby="cta-heading" className="relative overflow-hidden bg-slate-900 py-20">
+    <section aria-labelledby="cta-heading" className="relative overflow-hidden bg-slate-900 py-16">
       {/* Background decorations */}
       <div className="absolute -left-20 -top-20 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl" />
       <div className="absolute -bottom-20 -right-20 h-64 w-64 rounded-full bg-violet-500/10 blur-3xl" />
