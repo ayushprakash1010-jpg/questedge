@@ -120,7 +120,7 @@ export function Features() {
                     <div className="flex items-center justify-between pb-3 border-b border-slate-200/60">
                       <div className="flex items-center gap-2">
                         <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                        <span className="text-xs font-bold text-slate-800">Candidate Match Evaluation</span>
+                        <span className="text-xs font-bold text-slate-800">Full-Stack Platform Match</span>
                       </div>
                       <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-700">
                         94% Strong Match
@@ -128,16 +128,16 @@ export function Features() {
                     </div>
                     <div className="mt-3 flex flex-wrap gap-1.5">
                       <span className="rounded-md bg-white px-2 py-1 text-[11px] font-medium text-slate-700 border border-slate-200">
-                        ✓ Go / Microservices
+                        ✓ TypeScript / Next.js
                       </span>
                       <span className="rounded-md bg-white px-2 py-1 text-[11px] font-medium text-slate-700 border border-slate-200">
-                        ✓ High Concurrency
+                        ✓ PostgreSQL Tuning
                       </span>
                       <span className="rounded-md bg-white px-2 py-1 text-[11px] font-medium text-slate-700 border border-slate-200">
-                        ✓ Apache Kafka
+                        ✓ System Architecture
                       </span>
                       <span className="rounded-md bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-700 border border-amber-200">
-                        ⚠ Redis Caching (Gap)
+                        ⚠ Kubernetes Helm (Gap)
                       </span>
                     </div>
                   </div>
@@ -156,9 +156,21 @@ export function Features() {
                       Define job expectations, required tech stacks, salary bands, and performance referral bounties in under 5 minutes.
                     </p>
                   </div>
-                  <div className="mt-6 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 text-xs text-indigo-900 flex items-center justify-between">
-                    <span className="font-semibold">Bounty Configurator:</span>
-                    <span className="font-bold text-indigo-600">Fixed or % of CTC</span>
+                  <div className="mt-6 space-y-2">
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2">
+                        <span className="text-slate-400 block">Salary Band</span>
+                        <span className="font-bold text-slate-800">₹40L – ₹58L</span>
+                      </div>
+                      <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2">
+                        <span className="text-slate-400 block">Ownership Lock</span>
+                        <span className="font-bold text-slate-800">180 Days</span>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 text-xs text-indigo-900 flex items-center justify-between">
+                      <span className="font-semibold">Bounty Configurator:</span>
+                      <span className="font-bold text-indigo-600">Fixed or % of CTC</span>
+                    </div>
                   </div>
                 </div>
 
@@ -260,9 +272,21 @@ export function Features() {
                       Track your earnings across Potential, Eligible, and Approved stages. Direct disbursement to your verified bank account upon tenure completion.
                     </p>
                   </div>
-                  <div className="mt-6 rounded-xl border border-violet-100 bg-violet-50/50 p-3 text-xs text-violet-900 flex items-center justify-between">
-                    <span className="font-semibold">Payout Lifecycle:</span>
-                    <span className="font-bold text-violet-600">Zero Payment Delays</span>
+                  <div className="mt-6 space-y-2">
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2">
+                        <span className="text-slate-400 block">Eligible Pool</span>
+                        <span className="font-bold text-slate-800">₹1,20,000</span>
+                      </div>
+                      <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2">
+                        <span className="text-slate-400 block">Approved</span>
+                        <span className="font-bold text-emerald-700">₹95,000</span>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-violet-100 bg-violet-50/50 p-3 text-xs text-violet-900 flex items-center justify-between">
+                      <span className="font-semibold">Payout Lifecycle:</span>
+                      <span className="font-bold text-violet-600">Bank Transfer Verified</span>
+                    </div>
                   </div>
                 </div>
 
@@ -362,9 +386,21 @@ export function Features() {
                       Built for strict compliance with DPDP Act 2023 and GDPR Article 20, including one-click full data export and right-to-be-forgotten data erasure.
                     </p>
                   </div>
-                  <div className="mt-6 rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 text-xs text-emerald-900 flex items-center justify-between">
-                    <span className="font-semibold">Candidate Data Rights:</span>
-                    <span className="font-bold text-emerald-600">Instant Self-Service Erasure</span>
+                  <div className="mt-6 space-y-2">
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2">
+                        <span className="text-slate-400 block">Portability</span>
+                        <span className="font-bold text-slate-800">JSON Export</span>
+                      </div>
+                      <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2">
+                        <span className="text-slate-400 block">Privacy Control</span>
+                        <span className="font-bold text-emerald-700">Right to Erasure</span>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 text-xs text-emerald-900 flex items-center justify-between">
+                      <span className="font-semibold">Candidate Data Rights:</span>
+                      <span className="font-bold text-emerald-600">Instant Self-Service Control</span>
+                    </div>
                   </div>
                 </div>
 

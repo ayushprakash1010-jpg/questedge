@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ShieldCheck } from "lucide-react";
 import { QuestEdgeLogo } from "@/components/QuestEdgeLogo";
 
 const productLinks = [
@@ -41,10 +42,10 @@ export function LandingFooter() {
               The AI-powered referral hiring marketplace connecting companies, independent recruiters, and top candidates. Pay only on verified tenure completion.
             </p>
 
-            {/* Status indicator */}
+            {/* Compliance trust badge */}
             <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              All Systems Operational
+              <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+              DPDP Act 2023 &amp; GDPR Compliant
             </div>
 
             {/* Social Links */}

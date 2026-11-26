@@ -2,15 +2,8 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, CheckCircle, Shield, DollarSign, Lock, Globe } from "lucide-react";
+import { ArrowRight, Globe } from "lucide-react";
 import { HeroProductPreview } from "./hero-product-preview";
-
-const trustItems = [
-  { icon: CheckCircle, label: "Vetted Recruiter Network", color: "text-indigo-500" },
-  { icon: Shield, label: "Candidate Consent First", color: "text-violet-500" },
-  { icon: DollarSign, label: "Milestone-Protected Rewards", color: "text-emerald-500" },
-  { icon: Lock, label: "DPDP & GDPR Compliant", color: "text-cyan-600" },
-];
 
 export function Hero() {
   return (
@@ -20,7 +13,7 @@ export function Hero() {
       <div className="absolute bottom-10 left-0 h-80 w-80 rounded-full bg-violet-200/40 blur-3xl pointer-events-none" />
       <div className="absolute top-1/2 left-1/3 -translate-y-1/2 h-72 w-72 rounded-full bg-cyan-200/30 blur-3xl pointer-events-none" />
 
-      <div className="relative mx-auto max-w-7xl px-4 pt-12 pb-16 sm:px-6 sm:pt-16 sm:pb-20 lg:px-8 lg:pt-20 lg:pb-24">
+      <div className="relative mx-auto max-w-7xl px-4 pt-10 pb-14 sm:px-6 sm:pt-14 sm:pb-16 lg:px-8 lg:pt-16 lg:pb-20">
         {/* Two-Column Asymmetric Hero Split */}
         <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-8">
           {/* Left Column: Core Value Proposition */}
@@ -86,7 +79,7 @@ export function Hero() {
 
             {/* Candidate Exploration Pill */}
             <motion.div
-              className="mt-4"
+              className="mt-5"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.35 }}
@@ -99,21 +92,6 @@ export function Hero() {
                 Candidate? Explore thousands of live jobs from top platforms
                 <ArrowRight className="h-3 w-3" />
               </a>
-            </motion.div>
-
-            {/* Trust items row */}
-            <motion.div
-              className="mt-8 flex items-center gap-x-6 gap-y-2.5 flex-wrap pt-4 border-t border-slate-200/80"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.4 }}
-            >
-              {trustItems.map((item) => (
-                <span key={item.label} className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
-                  <item.icon className={`h-3.5 w-3.5 ${item.color}`} />
-                  {item.label}
-                </span>
-              ))}
             </motion.div>
           </div>
 

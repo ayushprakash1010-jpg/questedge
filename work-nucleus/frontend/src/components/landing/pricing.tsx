@@ -21,8 +21,8 @@ const companyPlans: Plan[] = [
   {
     name: "Pay-on-Hire (Free)",
     price: "₹0",
-    period: "",
-    description: "Start referral hiring with zero upfront retainer. Pay only when a candidate stays 90 days.",
+    period: "/mo platform fee",
+    description: "Zero monthly subscription. Set your own mandate bounty pool and pay only when a hire completes 90-day tenure.",
     features: [
       "Up to 2 active mandates",
       "Unlimited recruiter referrals",
@@ -194,7 +194,7 @@ export function Pricing() {
     <section id="pricing" className="bg-slate-50/70 border-t border-slate-200/80 py-16 sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="mx-auto max-w-2xl text-center">
+        <div className="mx-auto max-w-3xl text-center">
           <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-3.5 py-1 rounded-full border border-indigo-100">
             Transparent Pricing
           </span>
@@ -206,14 +206,14 @@ export function Pricing() {
           </p>
         </div>
 
-        {/* Milestone-Backed Bounty Lifecycle Banner */}
-        <div className="mt-10 mx-auto max-w-3xl rounded-2xl bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 px-8 py-5 text-center text-white shadow-lg border border-indigo-800/60">
-          <div className="flex items-center justify-center gap-2 text-sm font-bold text-indigo-300">
-            <Award className="h-4 w-4 text-indigo-400" />
+        {/* Milestone-Backed Bounty Lifecycle Notice */}
+        <div className="mt-8 mx-auto max-w-3xl rounded-2xl border border-indigo-100 bg-white px-6 py-4 text-center shadow-xs">
+          <div className="inline-flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-600">
+            <Award className="h-4 w-4 text-indigo-500" />
             <span>Milestone-Protected Bounty Security</span>
           </div>
-          <p className="mt-1.5 text-xs text-slate-300 leading-relaxed max-w-xl mx-auto">
-            Rewards are tracked across Potential → Eligible → Pending Approval → Approved → Paid stages and released upon confirmed 60-90 days retention.
+          <p className="mt-1 text-xs text-slate-600 leading-relaxed max-w-xl mx-auto">
+            Rewards track across Potential → Eligible → Pending Approval → Approved → Paid stages and release upon confirmed 60-90 days retention.
           </p>
         </div>
 
