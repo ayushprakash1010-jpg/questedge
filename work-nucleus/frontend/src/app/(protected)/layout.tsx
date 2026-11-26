@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { TopBar } from "@/components/top-bar";
+import { WorkspaceShellProvider, PortalRole } from "@/components/workspace-shell-context";
 import { useProfile } from "@/hooks/use-profile";
 import { registerServiceWorker } from "@/lib/pwa";
 import { BrandLoader } from "@/components/ui/brand-loader";
@@ -39,6 +40,47 @@ function isSharedRoute(pathname?: string): boolean {
     pathname.startsWith("/support/") ||
     pathname === "/profile" ||
     pathname.startsWith("/profile/")
+  );
+}
+
+function WorkspaceShell({
+  userType,
+  banner,
+  children,
+}: {
+  userType: PortalRole;
+  banner?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <WorkspaceShellProvider userType={userType}>
+      <div className="flex h-screen print:h-auto print:block print:overflow-visible">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 z-50 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg ring-2 ring-white ring-offset-2 ring-offset-indigo-600 outline-none transition-all"
+        >
+          Skip to main content
+        </a>
+        <div className="print:hidden">
+          <Sidebar userType={userType} />
+        </div>
+        <div className="flex flex-1 flex-col overflow-hidden print:h-auto print:block print:overflow-visible">
+          <div className="print:hidden">
+            <TopBar />
+          </div>
+          <main
+            id="main-content"
+            tabIndex={-1}
+            role="main"
+            aria-label="Main Content"
+            className="flex-1 overflow-y-auto bg-background p-6 outline-none print:h-auto print:block print:overflow-visible print:p-0 print:bg-white"
+          >
+            {banner}
+            {children}
+          </main>
+        </div>
+      </div>
+    </WorkspaceShellProvider>
   );
 }
 
@@ -145,29 +187,7 @@ export default function ProtectedLayout({
     if (profileLoading) {
       return <BrandLoader message="Loading workspace..." />;
     }
-    return (
-      <div className="flex h-screen">
-        <a
-          href="#main-content"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 z-50 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg ring-2 ring-white ring-offset-2 ring-offset-indigo-600 outline-none transition-all"
-        >
-          Skip to main content
-        </a>
-        <Sidebar userType={sidebarUserType} />
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <TopBar />
-          <main
-            id="main-content"
-            tabIndex={-1}
-            role="main"
-            aria-label="Main Content"
-            className="flex-1 overflow-y-auto bg-background p-6 outline-none"
-          >
-            {children}
-          </main>
-        </div>
-      </div>
-    );
+    return <WorkspaceShell userType={sidebarUserType}>{children}</WorkspaceShell>;
   }
 
   if (authLoading || profileLoading) {
@@ -216,45 +236,24 @@ export default function ProtectedLayout({
     }
   }
 
-  return (
-    <div className="flex h-screen print:h-auto print:block print:overflow-visible">
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 z-50 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg ring-2 ring-white ring-offset-2 ring-offset-indigo-600 outline-none transition-all"
+  const errorBanner = profileError ? (
+    <div className="mb-4 flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-sm">
+      <div className="flex items-center gap-2">
+        <span className="font-semibold">⚠️ Backend Service Notice:</span>
+        <span>{profileError}. The backend API may be booting up or connecting.</span>
+      </div>
+      <button
+        onClick={() => refreshProfile()}
+        className="rounded bg-amber-600 px-3 py-1 font-medium text-white hover:bg-amber-700 transition-colors"
       >
-        Skip to main content
-      </a>
-      <div className="print:hidden">
-        <Sidebar userType={sidebarUserType} />
-      </div>
-      <div className="flex flex-1 flex-col overflow-hidden print:h-auto print:block print:overflow-visible">
-        <div className="print:hidden">
-          <TopBar />
-        </div>
-        <main
-          id="main-content"
-          tabIndex={-1}
-          role="main"
-          aria-label="Main Content"
-          className="flex-1 overflow-y-auto bg-background p-6 outline-none print:h-auto print:block print:overflow-visible print:p-0 print:bg-white"
-        >
-          {profileError && (
-            <div className="mb-4 flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-sm">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold">⚠️ Backend Service Notice:</span>
-                <span>{profileError}. The backend API may be booting up or connecting.</span>
-              </div>
-              <button
-                onClick={() => refreshProfile()}
-                className="rounded bg-amber-600 px-3 py-1 font-medium text-white hover:bg-amber-700 transition-colors"
-              >
-                Retry
-              </button>
-            </div>
-          )}
-          {children}
-        </main>
-      </div>
+        Retry
+      </button>
     </div>
+  ) : null;
+
+  return (
+    <WorkspaceShell userType={sidebarUserType} banner={errorBanner}>
+      {children}
+    </WorkspaceShell>
   );
 }

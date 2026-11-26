@@ -2,7 +2,7 @@
 
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { useTheme } from "next-themes";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   LogOut,
   User,
@@ -10,13 +10,12 @@ import {
   ChevronDown,
   Moon,
   Sun,
-  RefreshCw,
   Shield,
   ExternalLink,
   Briefcase,
   Building2,
   UserCircle,
-  Search,
+  Menu,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -29,6 +28,10 @@ import {
 import { NotificationBell } from "@/components/notification-bell";
 import { GlobalSearch } from "@/components/global-search";
 import { useProfile } from "@/hooks/use-profile";
+import {
+  PortalRole,
+  useOptionalWorkspaceShell,
+} from "@/components/workspace-shell-context";
 
 const IS_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
 const SUPPORT_ADMIN_URL =
@@ -41,11 +44,13 @@ export function TopBar() {
   const displayName = IS_MOCK ? "Priya Sharma" : user?.name;
   const displayPicture = IS_MOCK ? undefined : user?.picture || undefined;
   const { theme, setTheme } = useTheme();
-  const router = useRouter();
   const pathname = usePathname();
+  const shell = useOptionalWorkspaceShell();
   const isRecruiter = pathname?.startsWith("/recruiter");
   const isCandidate = pathname === "/candidate" || pathname?.startsWith("/candidate/");
   const isCompany = !isRecruiter && !isCandidate;
+  const portalRole: PortalRole =
+    shell?.userType ?? (isRecruiter ? "recruiter" : isCandidate ? "candidate" : "company");
 
   const isDemo =
     Boolean((profile as any)?.isDemoAccount) ||
@@ -90,30 +95,22 @@ export function TopBar() {
 
   return (
     <header
-      className="flex items-center justify-between border-b border-slate-200/60 bg-white px-6"
+      className="flex items-center justify-between border-b border-slate-200/70 bg-white px-4 sm:px-6 dark:border-slate-800/80 dark:bg-slate-900"
       style={{ height: "var(--topbar-height)" }}
     >
-      {isCompany ? (
-        <GlobalSearch />
-      ) : isRecruiter ? (
-        <button
-          onClick={() => router.push("/recruiter/discover")}
-          className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-400 hover:border-slate-300 hover:text-slate-600 transition-colors"
-          title="Search mandates to refer candidates"
-        >
-          <Search className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Search jobs to refer...</span>
-        </button>
-      ) : (
-        <button
-          onClick={() => router.push("/candidate/jobs")}
-          className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-400 hover:border-slate-300 hover:text-slate-600 transition-colors"
-          title="Search open opportunities"
-        >
-          <Search className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Search open jobs...</span>
-        </button>
-      )}
+      <div className="flex items-center gap-2.5">
+        {shell && (
+          <button
+            type="button"
+            onClick={shell.toggleMobileOpen}
+            aria-label="Open navigation menu"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 lg:hidden dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
+        )}
+        <GlobalSearch userType={portalRole} />
+      </div>
 
       <div className="flex items-center gap-3">
         {/* Demo Account Role Switcher segmented pill buttons */}
@@ -137,7 +134,7 @@ export function TopBar() {
               onClick={() => handleRoleSwitch("RECRUITER")}
               className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
                 isRecruiter
-                  ? "bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-xs font-bold"
+                  ? "bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 shadow-xs font-bold"
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
               }`}
               title="Switch to Recruiter View"
@@ -193,7 +190,7 @@ export function TopBar() {
               <AvatarImage src={displayPicture} />
               <AvatarFallback className="text-xs">{initials}</AvatarFallback>
             </Avatar>
-            <span className="hidden text-sm font-medium text-slate-700 md:inline">
+            <span className="hidden text-sm font-medium text-slate-700 dark:text-slate-200 md:inline">
               {displayName}
             </span>
             <ChevronDown className="hidden h-3.5 w-3.5 text-slate-400 md:block" />

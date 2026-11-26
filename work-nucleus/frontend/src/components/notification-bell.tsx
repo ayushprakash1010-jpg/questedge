@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { useOptionalWorkspaceShell } from "@/components/workspace-shell-context";
 import {
   Bell,
   Check,
@@ -26,20 +27,28 @@ interface Notification {
 }
 
 export function NotificationBell() {
+  const shell = useOptionalWorkspaceShell();
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<"ALL" | "UNREAD">("ALL");
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [localUnreadCount, setLocalUnreadCount] = useState(0);
+
+  const unreadCount = shell ? shell.unreadCount : localUnreadCount;
+  const setUnreadCount = shell ? shell.setUnreadCount : setLocalUnreadCount;
 
   const fetchUnreadCount = useCallback(async () => {
+    if (shell) {
+      await shell.refreshUnreadCount();
+      return;
+    }
     try {
       const res = await fetch("/api/notifications?type=unread-count");
       if (res.ok) {
         const data = await res.json();
-        setUnreadCount(data.unreadCount || 0);
+        setLocalUnreadCount(data.unreadCount || 0);
       }
     } catch {}
-  }, []);
+  }, [shell]);
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -56,10 +65,11 @@ export function NotificationBell() {
   }, [filter]);
 
   useEffect(() => {
+    if (shell) return;
     fetchUnreadCount();
     const interval = setInterval(fetchUnreadCount, 30000);
     return () => clearInterval(interval);
-  }, [fetchUnreadCount]);
+  }, [shell, fetchUnreadCount]);
 
   useEffect(() => {
     if (open) fetchNotifications();
@@ -151,7 +161,7 @@ export function NotificationBell() {
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="relative rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+        className="relative rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : "Notifications"}
