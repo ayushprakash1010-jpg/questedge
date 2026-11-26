@@ -49,7 +49,7 @@ const PRESET_CONFIGS: Record<EmptyStatePreset, PresetConfig> = {
     icon: UserPlus,
     defaultTitle: "No Referrals Submitted",
     defaultDescription:
-      "Browse active job mandates and refer your top candidates to activate 48-hour ownership locks and earn placement rewards.",
+      "Browse active job mandates and refer your top candidates to activate exclusive ownership locks and earn placement rewards.",
     bgGlow: "bg-sky-100",
     iconBg: "bg-sky-50 border-sky-100",
     iconColor: "text-sky-600",

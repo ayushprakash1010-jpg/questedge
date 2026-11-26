@@ -102,8 +102,9 @@ export default function TermsOfServicePage() {
             </h2>
             <ul className="mt-3 list-disc space-y-2 pl-5">
               <li>
-                The Starter plan is free with limited features as described on
-                our pricing page
+                The Pay-on-Hire (Free) company plan and Independent Recruiter
+                plan include free access with plan limits as described in our
+                pricing section
               </li>
               <li>
                 Paid plans are billed monthly or annually as selected at
@@ -128,9 +129,10 @@ export default function TermsOfServicePage() {
               6. AI-Generated Content
             </h2>
             <p className="mt-3">
-              The Platform uses AI (powered by Anthropic&apos;s Claude) to
-              generate job descriptions, feedback summaries, candidate scores,
-              and communications. You acknowledge that:
+              The Platform uses AI (powered by Google Gemini AI) to generate job
+              descriptions, candidate fit scores, resume rankings, BGV
+              summaries, feedback summaries, and communications. You acknowledge
+              that:
             </p>
             <ul className="mt-3 list-disc space-y-2 pl-5">
               <li>

@@ -276,16 +276,16 @@ export default function ConsentPage() {
             </div>
 
             <p className="text-xs text-slate-400 text-center">
-              By clicking "I Accept", you agree to our{" "}
-              <a href="#" className="underline text-indigo-500">Privacy Policy</a> and{" "}
-              <a href="#" className="underline text-indigo-500">Terms of Service</a>
+              By clicking &quot;I Accept&quot;, you agree to our{" "}
+              <a href="/privacy-policy" className="underline text-indigo-500">Privacy Policy</a> and{" "}
+              <a href="/terms-of-service" className="underline text-indigo-500">Terms of Service</a>
             </p>
           </div>
         </div>
 
         {/* Branding */}
         <p className="text-center text-xs text-slate-400">
-          Powered by <span className="font-semibold text-indigo-600">Referral Hire</span>
+          Powered by <span className="font-semibold text-indigo-600">QuestEdge</span>
         </p>
       </div>
     </div>

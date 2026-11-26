@@ -73,10 +73,10 @@ const flows: Flow[] = [
         icon: Users,
         badge: "Verified Referrals",
         title: "Recruiters Screen & Refer",
-        description: "Independent recruiters review open roles, lock 48-hour exclusive claim scopes, and submit pre-screened talent with candidate consent already verified.",
+        description: "Independent recruiters review open roles, lock exclusive claim scopes for the mandate's lock window, and submit pre-screened talent with candidate consent already verified.",
         illustration: {
           title: "Scope Lock: #MND-842",
-          tag: "⏱ 41h 22m Lock",
+          tag: "⏱ 180d Lock",
           tagColor: "bg-amber-100 text-amber-800",
           line1Label: "Candidate Consent",
           line1Value: "Verified via Magic Link",
@@ -138,12 +138,12 @@ const flows: Flow[] = [
       {
         step: "02",
         icon: Users,
-        badge: "48h Exclusivity",
+        badge: "Ownership Lock",
         title: "Refer with Collision Shield",
-        description: "Lock 48-hour referral exclusivity with SHA-256 duplicate collision protection. Candidate receives an encrypted consent invite to review before sharing.",
+        description: "Lock exclusive referral ownership for the mandate's configured period with SHA-256 duplicate collision protection. Candidate receives a secure consent invite to review before sharing.",
         illustration: {
           title: "Referral Lock Granted",
-          tag: "48h Exclusive",
+          tag: "Scope Locked",
           tagColor: "bg-violet-100 text-violet-800",
           line1Label: "Encrypted Invite",
           line1Value: "Dispatched to Candidate",

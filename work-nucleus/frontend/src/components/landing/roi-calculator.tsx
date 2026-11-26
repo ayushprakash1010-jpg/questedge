@@ -77,7 +77,7 @@ export function RoiCalculator() {
     if (placements <= 3) {
       return {
         label: "Active Talent Partner",
-        sub: "Top 20% marketplace earner with 48h protected scopes",
+        sub: "Top 20% marketplace earner with protected claim scopes",
         icon: "🚀",
         color: "text-emerald-700 bg-emerald-50 border-emerald-200",
       };
@@ -401,7 +401,7 @@ export function RoiCalculator() {
                   <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 text-xs text-slate-600 space-y-2">
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="h-4 w-4 text-violet-600 shrink-0" />
-                      <span><strong>48h Claim Scope:</strong> Protects your exclusive placement rights</span>
+                      <span><strong>Claim Scope Lock:</strong> Protects your exclusive placement rights</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="h-4 w-4 text-violet-600 shrink-0" />

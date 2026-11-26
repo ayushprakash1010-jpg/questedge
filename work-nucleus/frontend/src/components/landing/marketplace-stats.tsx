@@ -9,9 +9,9 @@ const valuePillars = [
   },
   {
     icon: Clock,
-    value: "48h",
-    label: "Claim Exclusivity",
-    sub: "Protected recruiter referral locks & duplicate shield",
+    value: "180d",
+    label: "Default Claim Lock",
+    sub: "Configurable mandate ownership locks & duplicate shield",
   },
   {
     icon: ShieldCheck,

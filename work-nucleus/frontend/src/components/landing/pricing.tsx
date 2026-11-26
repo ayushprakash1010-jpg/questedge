@@ -79,7 +79,7 @@ const recruiterPlans: Plan[] = [
     description: "Free to join. Start monetizing your technical network with protected claim scopes.",
     features: [
       "Browse all verified company mandates",
-      "48-hour exclusive claim scope locks",
+      "Exclusive claim scope ownership locks",
       "Real-time bounty wallet tracker",
       "Candidate consent email verification",
       "Direct payout to registered bank account",

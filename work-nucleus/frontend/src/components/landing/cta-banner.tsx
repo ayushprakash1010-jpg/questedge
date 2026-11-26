@@ -46,7 +46,7 @@ export function CTABanner() {
             </div>
             <h3 className="mt-4 text-xl font-bold text-white">Have a strong network?</h3>
             <p className="mt-2 text-sm text-slate-400">
-              Monetize your talent network with 48-hour claim scope exclusivity.
+              Monetize your talent network with exclusive claim scope locks.
               Browse active mandates, submit consent-verified referrals, and earn bounties.
             </p>
             <a

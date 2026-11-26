@@ -43,7 +43,7 @@ export default function AiCostPage() {
     <div className="mx-auto max-w-5xl">
       <PageHeader
         title="AI cost dashboard"
-        subtitle="Anthropic spend across all agents in the last 30 days."
+        subtitle="Gemini AI spend across all agents in the last 30 days."
       />
 
       {data.anomaly && (

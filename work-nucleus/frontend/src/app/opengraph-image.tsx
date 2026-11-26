@@ -106,8 +106,8 @@ export default function Image() {
               lineHeight: 1.4,
             }}
           >
-            Connect with vetted independent recruiters through 48-hour exclusive claim
-            scopes, Google Gemini AI screening, and two-way candidate consent.
+            Connect with vetted independent recruiters through exclusive claim
+            scope locks, Google Gemini AI screening, and two-way candidate consent.
           </p>
         </div>
 
@@ -130,7 +130,7 @@ export default function Image() {
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <span style={{ color: "#818CF8", fontSize: "20px" }}>●</span>
             <span style={{ color: "#CBD5E1", fontSize: "18px", fontWeight: 600 }}>
-              48h Claim Scope Exclusivity
+              Exclusive Claim Scopes
             </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>

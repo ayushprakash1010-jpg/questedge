@@ -755,7 +755,7 @@ export default function RecruiterMandateDetail() {
                   </div>
                   <h4 className="text-lg font-bold text-slate-900 mb-1">Referral Submitted!</h4>
                   <p className="text-sm text-slate-500 text-center">
-                    An email has been dispatched to the candidate for consent. 48-hour ownership lock is now active.
+                    An email has been dispatched to the candidate for consent. Your {mandate.ownershipPeriodDays}-day ownership lock is now active.
                   </p>
                 </div>
               ) : (

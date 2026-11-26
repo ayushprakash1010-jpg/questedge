@@ -265,7 +265,7 @@ export function LiveMarketplacePreview() {
             Explore active mandates & verified bounty pools
           </h2>
           <p className="mt-4 text-base sm:text-lg text-slate-600">
-            Browse real company mandates, lock 48-hour exclusive claim scopes, and submit pre-screened talent with guaranteed milestone payouts.
+            Browse real company mandates, lock exclusive claim scopes, and submit pre-screened talent with guaranteed milestone payouts.
           </p>
         </div>
 

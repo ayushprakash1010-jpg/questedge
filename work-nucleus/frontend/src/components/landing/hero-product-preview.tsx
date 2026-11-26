@@ -223,7 +223,7 @@ export function HeroProductPreview() {
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75" />
                           <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500" />
                         </span>
-                        48h Scope Active
+                        Claim Scope Active
                       </span>
                     </div>
                     <span className="text-[11px] text-slate-500">Recruiter: Pooja Singh (Top 2% Partner)</span>
@@ -234,7 +234,7 @@ export function HeroProductPreview() {
                 </span>
               </div>
 
-              {/* 48h Countdown Lock & Duplicate Shield */}
+              {/* Ownership Lock & Duplicate Shield */}
               <div className="grid grid-cols-2 gap-2.5">
                 <div className="rounded-xl border border-violet-200 bg-violet-50/70 p-3">
                   <div className="flex items-center justify-between">
@@ -245,11 +245,11 @@ export function HeroProductPreview() {
                     <span className="h-2 w-2 rounded-full bg-violet-600 animate-pulse" />
                   </div>
                   <div className="mt-1.5 flex items-baseline gap-1">
-                    <span className="font-mono text-base font-extrabold text-violet-900">34h 18m</span>
+                    <span className="font-mono text-base font-extrabold text-violet-900">178d 14h</span>
                     <span className="text-[10px] text-violet-700">remaining</span>
                   </div>
                   <div className="text-[10px] text-violet-700 font-medium mt-0.5">
-                    Exclusive referral rights protected
+                    Default 180-day ownership lock active
                   </div>
                 </div>
 

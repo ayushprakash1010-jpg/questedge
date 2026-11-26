@@ -108,9 +108,11 @@ export default function GDPRPage() {
                   Right to Erasure
                 </h3>
                 <p className="mt-1">
-                  You can request deletion of your personal data. We will comply
-                  unless we have a legal obligation to retain it. Deletion will
-                  be completed within 30 days.
+                  Candidates can trigger instant self-service cryptographic
+                  anonymization directly from their profile settings. For
+                  manual deletion requests, we will comply unless we have a
+                  legal obligation to retain data, with completion within 30
+                  days.
                 </p>
               </div>
 
@@ -119,8 +121,10 @@ export default function GDPRPage() {
                   Right to Data Portability
                 </h3>
                 <p className="mt-1">
-                  You can request your data in a structured, commonly used,
-                  machine-readable format (JSON or CSV).
+                  Candidates can export a complete machine-readable JSON archive
+                  of their profile, applications, referrals, and consents
+                  directly from their profile settings, or request an export in
+                  JSON or CSV format.
                 </p>
               </div>
 
@@ -174,7 +178,8 @@ export default function GDPRPage() {
               If your data is transferred outside the EEA, we ensure appropriate
               safeguards are in place, including Standard Contractual Clauses
               (SCCs) approved by the European Commission. Our AI processing
-              provider (Anthropic) maintains their own GDPR compliance measures.
+              provider (Google Gemini AI) maintains its own GDPR compliance
+              measures.
             </p>
           </section>
 

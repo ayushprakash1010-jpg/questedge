@@ -446,7 +446,7 @@ export function JdTab({ planId }: { planId: string }) {
             AI is crafting your job description…
           </h3>
           <p className="mt-2 text-sm text-slate-500">
-            Powered by Claude AI. This may take a moment.
+            Powered by Gemini AI. This may take a moment.
           </p>
         </CardContent>
       </Card>
@@ -465,7 +465,7 @@ export function JdTab({ planId }: { planId: string }) {
             Generate Job Description with AI
           </h3>
           <p className="mt-2 max-w-md text-center text-sm text-slate-500">
-            Let Claude AI generate a professional job description based on your hiring plan.
+            Let Gemini AI generate a professional job description based on your hiring plan.
           </p>
           <div className="mt-6 w-full max-w-md space-y-3">
             <Textarea
@@ -951,7 +951,7 @@ export function JdTab({ planId }: { planId: string }) {
         <p className="text-xs text-slate-400">
           Created by {jd.createdBy?.name} on{" "}
           {new Date(jd.createdAt).toLocaleDateString()}
-          {jd.generatedByAi && " — Powered by Claude AI"}
+          {jd.generatedByAi && " — Powered by Gemini AI"}
         </p>
       </div>
 

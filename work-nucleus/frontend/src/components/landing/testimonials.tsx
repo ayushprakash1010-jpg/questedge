@@ -23,7 +23,7 @@ const testimonials: Testimonial[] = [
   },
   {
     quote:
-      "The 48-hour claim scope exclusivity is revolutionary for independent recruiters. In traditional staffing, you constantly battle client circumvention and duplicate submissions. On QuestEdge, the SHA-256 collision lock guarantees my placement credit, and having bounties released directly to my wallet upon confirmed tenure makes it my primary referral channel.",
+      "The exclusive claim scope lock is revolutionary for independent recruiters. In traditional staffing, you constantly battle client circumvention and duplicate submissions. On QuestEdge, the SHA-256 collision lock guarantees my placement credit, and having bounties released directly to my wallet upon confirmed tenure makes it my primary referral channel.",
     name: "Pooja Singh",
     role: "Founder & AI Talent Strategist · GrowYT",
     initials: "PS",

@@ -179,9 +179,9 @@ export function MarketplaceModal({
         <div className="mt-6 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4 text-xs text-emerald-900 flex items-start gap-3">
           <Lock className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
           <div>
-            <span className="font-bold">48-Hour Claim Scope & SHA-256 Shield</span>
+            <span className="font-bold">Claim Scope Ownership &amp; SHA-256 Shield</span>
             <p className="mt-0.5 text-[11px] text-emerald-800 leading-relaxed">
-              Locking a claim scope gives you exclusive submission rights. Candidate receives an encrypted consent invite, and duplicate collision guards prevent disputes.
+              Locking a claim scope protects your candidate ownership for {mandate.ownershipPeriodDays} days on this mandate. The candidate receives a secure consent invite, and duplicate collision guards prevent disputes.
             </p>
           </div>
         </div>
@@ -198,7 +198,7 @@ export function MarketplaceModal({
             href="/auth/login?returnTo=/jobs"
             className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-2.5 text-xs font-semibold text-white shadow-md hover:bg-indigo-500 transition-all"
           >
-            <span>Claim 48h Scope & Refer</span>
+            <span>Lock Scope &amp; Refer</span>
             <ArrowRight className="h-3.5 w-3.5" />
           </a>
         </div>

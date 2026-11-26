@@ -215,7 +215,7 @@ export function Features() {
                 transition={{ duration: 0.35 }}
                 className="grid gap-6 md:grid-cols-12"
               >
-                {/* Bento Card 1: 48-Hour Claim Scope & Hash Guard (Span 7) */}
+                {/* Bento Card 1: Exclusive Claim Scope & Hash Guard (Span 7) */}
                 <div className="rounded-3xl border border-violet-100 bg-white p-7 shadow-sm hover:shadow-md transition-all md:col-span-7 flex flex-col justify-between">
                   <div>
                     <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600 mb-4">
@@ -223,10 +223,10 @@ export function Features() {
                     </div>
                     <span className="text-xs font-bold uppercase tracking-wider text-violet-600 block">Placement Security</span>
                     <h3 className="text-xl font-bold text-slate-900 mt-1">
-                      48-Hour Claim Scope & SHA-256 Collision Guard
+                      Exclusive Claim Scope &amp; SHA-256 Collision Guard
                     </h3>
                     <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                      Lock candidate referral scopes for 48 hours to protect your placement rights. Our cryptographic hashing prevents duplicate submissions without exposing raw candidate contact info.
+                      Lock candidate referral ownership for each mandate&apos;s configured lock period (default 180 days, min 30 days) with 48-hour expiry alerts. SHA-256 email hashing prevents duplicate submissions without exposing raw candidate contact info.
                     </p>
                   </div>
 
@@ -235,7 +235,7 @@ export function Features() {
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-mono text-slate-600 flex items-center gap-1.5">
                         <Lock className="h-3.5 w-3.5 text-violet-600" />
-                        Claim Lock: Active (47h 58m remaining)
+                        Claim Lock: Active (179d remaining)
                       </span>
                       <span className="rounded-full bg-violet-100 px-2.5 py-0.5 font-bold text-violet-700 text-[11px]">
                         Protected Scope

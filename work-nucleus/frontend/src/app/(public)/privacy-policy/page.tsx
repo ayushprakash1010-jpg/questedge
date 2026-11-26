@@ -91,10 +91,11 @@ export default function PrivacyPolicyPage() {
               4. AI Data Processing
             </h2>
             <p className="mt-3">
-              QuestEdge uses Anthropic&apos;s Claude AI to power features
-              like JD generation and feedback summarization. Your data is
-              processed by AI solely to deliver the requested service output.
-              Your data is never used to train AI models.
+              QuestEdge uses Google Gemini AI to power features such as mandate
+              and JD drafting, candidate fit screening, resume ranking, and BGV
+              summary generation. Your data is processed by AI solely to deliver
+              the requested service output. Your data is never used to train AI
+              models.
             </p>
           </section>
 
@@ -140,10 +141,12 @@ export default function PrivacyPolicyPage() {
             </h2>
             <p className="mt-3">
               We retain your data for as long as your account is active or as
-              needed to provide services. You may request deletion of your data
-              at any time by contacting us. Upon account termination, we will
-              delete or anonymize your data within 90 days, unless required by
-              law to retain it.
+              needed to provide services. Candidates can trigger immediate
+              self-service data export or cryptographic anonymization (Right to
+              Erasure) directly from their profile settings, or contact us to
+              request deletion. Upon account termination, we will delete or
+              anonymize your data within 90 days, unless required by law to
+              retain it.
             </p>
           </section>
 

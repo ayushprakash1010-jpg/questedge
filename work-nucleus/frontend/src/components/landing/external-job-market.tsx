@@ -17,7 +17,9 @@ const jobSources = [
   { name: "Ashby", color: "bg-violet-500" },
   { name: "Jobicy", color: "bg-orange-500" },
   { name: "Remotive", color: "bg-cyan-500" },
+  { name: "RemoteOK", color: "bg-teal-500" },
   { name: "Careerjet", color: "bg-rose-500" },
+  { name: "JSearch", color: "bg-indigo-500" },
 ];
 
 const sampleJobs = [
@@ -271,7 +273,7 @@ export function ExternalJobMarket() {
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </a>
               <p className="mt-3 text-center text-[11px] text-slate-500">
-                Free for all candidates — no sign-up required to browse
+                Free for all candidates — sign in to browse, save, and unlock AI recommendations
               </p>
             </div>
           </motion.div>
