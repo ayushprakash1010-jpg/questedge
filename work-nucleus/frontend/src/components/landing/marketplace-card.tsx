@@ -69,7 +69,7 @@ export function MarketplaceCard({
         </div>
 
         {/* Role Title */}
-        <h3 className="mt-4 text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+        <h3 className="mt-4 min-h-[2.75rem] text-base font-bold leading-snug text-slate-900 line-clamp-2 group-hover:text-indigo-600 transition-colors">
           {mandate.title}
         </h3>
 

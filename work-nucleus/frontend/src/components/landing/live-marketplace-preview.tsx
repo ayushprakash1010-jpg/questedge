@@ -31,7 +31,7 @@ const sampleMandates: Mandate[] = [
   {
     id: "sample-1",
     orgId: "org-1",
-    title: "Senior Staff Backend Engineer (Distributed Systems)",
+    title: "Staff Backend Engineer (Go & Kafka)",
     department: "Platform Engineering",
     description:
       "Architect and scale distributed high-throughput event streaming systems handling 2M+ transactions daily. Lead consensus protocol design and database partitioning.",
@@ -178,7 +178,7 @@ export function LiveMarketplacePreview() {
     .slice(0, 3);
 
   return (
-    <section id="marketplace-preview" className="bg-white border-t border-slate-200/80 py-16 sm:py-20">
+    <section id="marketplace-preview" className="bg-white py-16 sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mx-auto max-w-3xl text-center">

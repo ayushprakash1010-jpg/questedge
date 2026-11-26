@@ -97,8 +97,10 @@
   --color-purple-600: #7c3aed;
   --color-purple-700: #6d28d9;
 
-  /* Font — actual font is set by next/font on <body>; this is a fallback */
+  /* Font — actual fonts are set by next/font on <html>; these are fallbacks */
   --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Plus Jakarta Sans", var(--font-sans);
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -360,6 +362,10 @@
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-sans);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  h1, h2 {
+    font-family: var(--font-display);
+    text-wrap: balance;
   }
 }
 

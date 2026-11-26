@@ -38,12 +38,12 @@ const agents: Agent[] = [
     preview: {
       badge: "96% Strong Match",
       score: "96%",
-      summary: "Evaluated against Staff Distributed Systems Engineer mandate (#MND-842). Candidate exhibits top-decile distributed systems depth with zero critical skill gaps.",
+      summary: "Evaluated against Principal Data Platform Engineer mandate (#MND-918). Candidate exhibits top-decile streaming and warehouse architecture depth.",
       keyPoints: [
-        { label: "Core Tech Match", value: "Go, Apache Kafka, Raft, Distributed DB", status: "success" },
-        { label: "Scale Experience", value: "2M+ transactions/sec in FinTech scaleup", status: "success" },
+        { label: "Core Tech Match", value: "Apache Spark, Kafka, ClickHouse, Python", status: "success" },
+        { label: "Scale Experience", value: "10B+ daily event pipelines in FinTech scaleup", status: "success" },
         { label: "Retention Risk", value: "Low (Avg tenure: 3.4 yrs per organization)", status: "success" },
-        { label: "Capability Gaps", value: "Minor: Kubernetes Operator development (Trainable)", status: "warning" },
+        { label: "Capability Gaps", value: "Minor: Apache Flink state tuning (Trainable)", status: "warning" },
       ],
       footerNote: "Recommendation: Auto-advance to Hiring Manager interview loop.",
     },
@@ -129,7 +129,7 @@ export function AIAgents() {
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <div className="mx-auto max-w-2xl text-center">
+        <div className="mx-auto max-w-3xl text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1.5 text-xs font-bold text-indigo-300">
             <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
             Powered by Google Gemini AI Engine

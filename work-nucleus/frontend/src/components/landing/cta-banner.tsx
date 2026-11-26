@@ -1,93 +1,60 @@
 import Link from "next/link";
-import { ArrowRight, Building2, Target, UserCircle, Globe } from "lucide-react";
+import { ArrowRight, Building2, Target, Globe, UserCircle } from "lucide-react";
 
 export function CTABanner() {
   return (
     <section aria-labelledby="cta-heading" className="relative overflow-hidden bg-slate-900 py-16">
-      {/* Background decorations */}
-      <div className="absolute -left-20 -top-20 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl" />
-      <div className="absolute -bottom-20 -right-20 h-64 w-64 rounded-full bg-violet-500/10 blur-3xl" />
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-48 w-48 rounded-full bg-emerald-500/5 blur-3xl" />
+      <div className="absolute -left-20 -top-20 h-64 w-64 rounded-full bg-indigo-500/15 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-20 -right-20 h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
 
-      <div className="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h2 id="cta-heading" className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+      <div className="relative mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+        <div className="rounded-3xl border border-slate-800 bg-slate-800/40 px-6 py-12 text-center shadow-2xl backdrop-blur-sm sm:px-12">
+          <h2 id="cta-heading" className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
             Ready to hire smarter with verified referrals?
           </h2>
-          <p className="mt-3 text-lg text-slate-400">
-            Join the ecosystem where companies, independent recruiters, and top candidates connect with full transparency.
+          <p className="mx-auto mt-3 max-w-2xl text-base text-slate-300">
+            Connect companies, independent recruiters, and consent-first candidates with AI screening and milestone-backed bounties.
           </p>
-        </div>
 
-        <div className="grid gap-6 sm:grid-cols-3">
-          {/* Company CTA */}
-          <div className="rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-8 backdrop-blur-sm">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-600">
-              <Building2 className="h-5 w-5 text-white" />
-            </div>
-            <h3 className="mt-4 text-xl font-bold text-white">Hiring top talent?</h3>
-            <p className="mt-2 text-sm text-slate-400">
-              Post your mandate in under 5 minutes. Tap into verified independent recruiters,
-              screen candidates with Gemini AI, and pay only on successful tenure completion.
-            </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3.5">
             <a
               href="/auth/login?returnTo=/dashboard"
-              className="group mt-6 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500"
+              className="group inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 transition-all hover:bg-indigo-500"
             >
-              Post a Mandate
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              <Building2 className="h-4 w-4" aria-hidden="true" />
+              <span>Post a Mandate</span>
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
             </a>
-          </div>
 
-          {/* Recruiter CTA */}
-          <div className="rounded-2xl border border-violet-500/30 bg-violet-500/10 p-8 backdrop-blur-sm">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-600">
-              <Target className="h-5 w-5 text-white" />
-            </div>
-            <h3 className="mt-4 text-xl font-bold text-white">Have a strong network?</h3>
-            <p className="mt-2 text-sm text-slate-400">
-              Monetize your talent network with exclusive claim scope locks.
-              Browse active mandates, submit consent-verified referrals, and earn bounties.
-            </p>
             <a
               href="/auth/login?returnTo=/recruiter/dashboard"
-              className="group mt-6 inline-flex items-center gap-2 rounded-xl bg-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-violet-500"
+              className="group inline-flex items-center gap-2 rounded-xl bg-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-500/20 transition-all hover:bg-violet-500"
             >
-              Join as Recruiter
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              <Target className="h-4 w-4" aria-hidden="true" />
+              <span>Join as Recruiter</span>
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
             </a>
-          </div>
 
-          {/* Candidate CTA — NEW */}
-          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-8 backdrop-blur-sm">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-600">
-              <Globe className="h-5 w-5 text-white" />
-            </div>
-            <h3 className="mt-4 text-xl font-bold text-white">Exploring opportunities?</h3>
-            <p className="mt-2 text-sm text-slate-400">
-              Browse thousands of live jobs aggregated from Greenhouse, Lever, Ashby &amp; more.
-              Get AI-powered recommendations and apply directly or through referrals.
-            </p>
             <a
               href="/auth/login?returnTo=/candidate/external-jobs"
-              className="group mt-6 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-500"
+              className="group inline-flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/15 px-6 py-3 text-sm font-semibold text-emerald-300 transition-all hover:bg-emerald-500/25"
             >
-              Explore Job Market
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              <Globe className="h-4 w-4" aria-hidden="true" />
+              <span>Explore Job Market</span>
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
             </a>
           </div>
-        </div>
 
-        {/* Candidate exploration link */}
-        <div className="mt-10 text-center">
-          <Link
-            href="/jobs"
-            className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-300 transition-colors"
-          >
-            <UserCircle className="h-4 w-4" />
-            Or browse the referral marketplace directly
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
+          <div className="mt-7">
+            <Link
+              href="/jobs"
+              className="inline-flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors"
+            >
+              <UserCircle className="h-4 w-4" aria-hidden="true" />
+              <span>Or browse open referral mandates directly</span>
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </Link>
+          </div>
         </div>
       </div>
     </section>

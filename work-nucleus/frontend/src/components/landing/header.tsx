@@ -129,18 +129,12 @@ export function LandingHeader() {
           <div className="hidden items-center gap-3 md:flex">
             <a
               href="/auth/login?returnTo=/dashboard"
-              className="hidden lg:inline-block px-2.5 py-2 text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
-            >
-              Company Portal
-            </a>
-            <a
-              href="/auth/login?returnTo=/dashboard"
-              className="px-3 py-2 text-xs font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
+              className="px-3.5 py-2 text-xs font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
             >
               Log in
             </a>
 
-            {/* Accessible Join Now dropdown */}
+            {/* Accessible Get Started dropdown */}
             <div className="relative" ref={dropdownRef}>
               <button
                 type="button"
@@ -149,7 +143,7 @@ export function LandingHeader() {
                 aria-expanded={joinOpen}
                 onClick={() => setJoinOpen(!joinOpen)}
               >
-                <span>Join Now</span>
+                <span>Get Started</span>
                 <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${joinOpen ? "rotate-180" : ""}`} />
               </button>
 

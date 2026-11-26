@@ -99,7 +99,7 @@ export function RoiCalculator() {
     <section id="roi-calculator" className="bg-slate-50/70 border-t border-slate-200/80 py-16 sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="mx-auto max-w-2xl text-center">
+        <div className="mx-auto max-w-3xl text-center">
           <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-3.5 py-1 rounded-full border border-indigo-100">
             Interactive Economics
           </span>
@@ -275,10 +275,10 @@ export function RoiCalculator() {
                       </span>
                     </div>
 
-                    <div className="mt-4 font-extrabold text-4xl sm:text-5xl text-white tracking-tight flex items-baseline gap-2">
-                      <span>₹{(totalAnnualSavings / 100000).toFixed(1)} Lakhs</span>
+                    <div className="mt-4 font-extrabold text-3xl sm:text-4xl text-white tracking-tight flex flex-wrap items-center gap-3">
+                      <span className="whitespace-nowrap">₹{(totalAnnualSavings / 100000).toFixed(1)} Lakhs</span>
                       {isHighCompanySavings && (
-                        <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-800">
+                        <span className="whitespace-nowrap shrink-0 text-[11px] font-semibold text-emerald-400 uppercase tracking-wider bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-800">
                           High Impact
                         </span>
                       )}
@@ -435,10 +435,10 @@ export function RoiCalculator() {
                       </span>
                     </div>
 
-                    <div className="mt-4 font-extrabold text-4xl sm:text-5xl text-white tracking-tight flex items-baseline gap-2">
-                      <span>₹{(annualEarnings / 100000).toFixed(2)} Lakhs</span>
+                    <div className="mt-4 font-extrabold text-3xl sm:text-4xl text-white tracking-tight flex flex-wrap items-center gap-3">
+                      <span className="whitespace-nowrap">₹{(annualEarnings / 100000).toFixed(2)} Lakhs</span>
                       {isHighRecruiterEarnings && (
-                        <span className="text-xs font-semibold text-violet-300 uppercase tracking-wider bg-violet-950/60 px-2 py-0.5 rounded-full border border-violet-800">
+                        <span className="whitespace-nowrap shrink-0 text-[11px] font-semibold text-violet-300 uppercase tracking-wider bg-violet-950/60 px-2.5 py-0.5 rounded-full border border-violet-800">
                           Top Tier
                         </span>
                       )}
