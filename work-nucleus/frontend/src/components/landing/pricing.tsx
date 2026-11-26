@@ -125,7 +125,7 @@ function PlanCard({ plan, role }: { plan: Plan; role: "companies" | "recruiters"
     >
       {plan.tag && (
         <div
-          className={`absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full px-4 py-1 text-xs font-bold text-white shadow-sm ${
+          className={`absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-4 py-1 text-xs font-bold text-white shadow-sm ${
             role === "companies"
               ? "bg-gradient-to-r from-indigo-600 to-indigo-500"
               : "bg-gradient-to-r from-violet-600 to-violet-500"
@@ -137,7 +137,7 @@ function PlanCard({ plan, role }: { plan: Plan; role: "companies" | "recruiters"
 
       <div>
         <h3 className="text-xl font-bold text-slate-900">{plan.name}</h3>
-        <p className="mt-2 text-xs text-slate-500 min-h-[36px]">{plan.description}</p>
+        <p className="mt-2 text-xs leading-relaxed text-slate-500 min-h-[54px]">{plan.description}</p>
 
         <div className="mt-6 flex items-baseline border-b border-slate-100 pb-6">
           <span className="text-4xl font-extrabold text-slate-900">{plan.price}</span>

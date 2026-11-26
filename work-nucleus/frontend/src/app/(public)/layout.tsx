@@ -11,6 +11,7 @@ const jsonLd = {
       "name": "QuestEdge Technologies",
       "url": "https://questedge.in",
       "logo": "https://questedge.in/icon-512.png",
+      "sameAs": ["https://www.linkedin.com/company/145508519"],
       "description":
         "AI-Powered Referral Hiring Marketplace connecting companies, independent recruiters, and top talent with milestone-backed bounties.",
     },

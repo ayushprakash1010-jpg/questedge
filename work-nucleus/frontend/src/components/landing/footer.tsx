@@ -51,7 +51,7 @@ export function LandingFooter() {
             {/* Social Links */}
             <div className="mt-6 flex gap-3">
               <a
-                href="https://linkedin.com/company/questedge"
+                href="https://www.linkedin.com/company/145508519"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800 text-slate-400 transition-colors hover:bg-indigo-600 hover:text-white"
