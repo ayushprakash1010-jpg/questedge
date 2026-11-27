@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Resend } from 'resend';
-import sgMail from '@sendgrid/mail';
+import sgMail = require('@sendgrid/mail');
 
 function escapeHtml(str: unknown): string {
   if (str === null || str === undefined) return '';

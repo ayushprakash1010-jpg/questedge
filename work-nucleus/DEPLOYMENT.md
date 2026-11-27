@@ -1,6 +1,6 @@
 # QuestEdge Deployment Runbook
 
-Production architecture: **Vercel** (Next.js frontend) + **Render** (NestJS backend + pg-boss background workers) + **Neon** (PostgreSQL) + **S3 / Cloudflare R2** (resumes, joining documents, offer letters, compensation letters) + **Resend** (transactional emails and BGV consent OTPs).
+Production architecture: **Vercel** (Next.js frontend) + **Render** (NestJS backend + pg-boss background workers) + **Neon** (PostgreSQL) + **S3 / Cloudflare R2** (resumes, joining documents, offer letters, compensation letters) + **SendGrid / Resend** (transactional emails and BGV consent OTPs).
 
 ---
 
@@ -48,7 +48,7 @@ Migration history is stored in `backend/prisma/migrations/0001_baseline`.
    - `SUPPORT_ADMIN_SUBS` / `SUPPORT_ADMIN_EMAILS` *(comma-separated allowlist for platform admins)*
    - `FRONTEND_URL` *(exact production Vercel URL, e.g. `https://app.questedge.in`)*
    - `EXTRA_CORS_ORIGINS` *(optional comma-separated additional origins)*
-   - `RESEND_API_KEY` and `RESEND_FROM_EMAIL` *(e.g. `QuestEdge <noreply@yourdomain.com>`)*
+   - `SENDGRID_API_KEY` + `SENDGRID_FROM_EMAIL` *(or `RESEND_API_KEY` + `RESEND_FROM_EMAIL`)*
    - `GEMINI_API_KEY` *(AI JD generation, match scoring, feedback & BGV summaries)*
    - `S3_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET`, `S3_OFFERS_BUCKET`
    - Vendor webhook secrets (unique strong secrets; required if corresponding vendor API key is configured):
