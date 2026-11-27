@@ -95,8 +95,13 @@ export default function RankingTrigger({
       });
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Ranking failed" }));
-        throw new Error(err.message || err.error || `Error ${res.status}`);
+        const err = await res.json().catch(() => ({}));
+        const msg =
+          err?.error?.message ||
+          (typeof err?.message === "string" ? err.message : undefined) ||
+          (typeof err?.error === "string" ? err.error : undefined) ||
+          `Error ${res.status}`;
+        throw new Error(msg);
       }
 
       const data = await res.json();

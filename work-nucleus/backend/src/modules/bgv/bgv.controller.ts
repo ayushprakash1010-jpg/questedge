@@ -50,6 +50,14 @@ export class BgvController {
     });
   }
 
+  @Get('candidates')
+  @ApiOperation({
+    summary: 'List org candidates and offers available for BGV initiation',
+  })
+  candidates(@CurrentUser('orgId') orgId: string) {
+    return this.service.listCandidatesForInitiation(orgId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get one BGV profile (full detail)' })
   findOne(

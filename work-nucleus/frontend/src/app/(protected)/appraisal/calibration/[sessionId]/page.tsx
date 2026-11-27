@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { BrandLoader } from "@/components/ui/brand-loader";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "@/components/ui/toaster";
+import { readResponseError } from "@/lib/api";
 
 interface Board {
   session: {
@@ -35,11 +36,20 @@ const BUCKETS = [5, 4, 3, 2, 1];
 export default function CalibrationBoardPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const [board, setBoard] = useState<Board | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function refresh() {
-    const res = await fetch(`/api/v2/appraisal/calibration/${sessionId}/board`);
-    if (res.ok) setBoard(await res.json());
+    setError(null);
+    try {
+      const res = await fetch(`/api/v2/appraisal/calibration/${sessionId}/board`);
+      if (!res.ok) {
+        throw new Error(await readResponseError(res, "Failed to load calibration board"));
+      }
+      setBoard(await res.json());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load calibration board");
+    }
   }
 
   useEffect(() => {
@@ -60,7 +70,7 @@ export default function CalibrationBoardPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ employeeId, newRating, reason }),
       });
-      if (!res.ok) throw new Error("Move failed");
+      if (!res.ok) throw new Error(await readResponseError(res, "Move failed"));
       await refresh();
       toast.success("Rating moved");
     } catch (err) {
@@ -77,7 +87,7 @@ export default function CalibrationBoardPage() {
       const res = await fetch(`/api/v2/appraisal/calibration/${sessionId}/lock`, {
         method: "POST",
       });
-      if (!res.ok) throw new Error("Lock failed");
+      if (!res.ok) throw new Error(await readResponseError(res, "Lock failed"));
       await refresh();
       toast.success("Session locked");
     } catch (err) {
@@ -87,14 +97,33 @@ export default function CalibrationBoardPage() {
     }
   }
 
+  if (error) {
+    return (
+      <div className="mx-auto max-w-2xl py-10">
+        <Card className="border-rose-200 bg-rose-50/40">
+          <CardHeader>
+            <CardTitle className="text-rose-900">Calibration Board Unavailable</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-rose-700">{error}</p>
+            <Button variant="outline" size="sm" onClick={refresh}>
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (!board) {
     return <BrandLoader fullscreen={false} message="Loading calibration board..." />;
   }
 
-  const grouped: Record<number, Board["assessments"]> = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+  const grouped: Record<number, Board["assessments"]> = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [] };
   for (const a of board.assessments) {
-    const r = a.finalRating ? Math.round(Number(a.finalRating)) : 3;
+    const r = a.finalRating ? Math.round(Number(a.finalRating)) : 0;
     if (grouped[r]) grouped[r].push(a);
+    else grouped[0].push(a);
   }
 
   const locked = board.session.status === "COMPLETED";
@@ -148,6 +177,29 @@ export default function CalibrationBoardPage() {
           </div>
         </CardContent>
       </Card>
+
+      {grouped[0].length > 0 && (
+        <Card className="mb-4 border-amber-200 bg-amber-50/40">
+          <CardHeader>
+            <CardTitle className="text-sm text-amber-900">
+              Unrated ({grouped[0].length}) — click an employee to assign a rating (1–5)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            {grouped[0].map((a) => (
+              <button
+                key={a.id}
+                disabled={locked || busy}
+                onClick={() => move(a.employee.id, 0)}
+                className="w-full rounded-md border border-amber-200 bg-white p-2 text-left transition-colors hover:border-indigo-300 disabled:opacity-60"
+              >
+                <p className="text-sm font-medium text-slate-900">{a.employee.name}</p>
+                <p className="text-xs text-slate-500">{a.manager.name}</p>
+              </button>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-5 gap-3">
         {BUCKETS.map((r) => (

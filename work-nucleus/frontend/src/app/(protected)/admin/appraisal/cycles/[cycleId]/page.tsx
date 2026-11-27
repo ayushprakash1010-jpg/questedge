@@ -3,13 +3,16 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Calendar, CheckCircle2, ChevronRight, ClipboardCheck, Scale } from "lucide-react";
+import { ArrowLeft, Calendar, CheckCircle2, ChevronRight, ClipboardCheck, ListChecks, Plus, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BrandLoader } from "@/components/ui/brand-loader";
 import { PageHeader } from "@/components/shared/page-header";
 import { toast } from "@/components/ui/toaster";
+import { useProfile } from "@/hooks/use-profile";
+import { readResponseError } from "@/lib/api";
+import { CreateGoalDialog } from "@/components/appraisal/create-goal-dialog";
 import { cn } from "@/lib/utils";
 
 const STAGES = [
@@ -37,6 +40,16 @@ interface CycleDetail {
   ratingScale?: Array<{ value: number; label: string }>;
 }
 
+interface CycleGoalRow {
+  id: string;
+  title: string;
+  type: string;
+  weight: number;
+  status: string;
+  employee?: { id: string; name: string; email: string };
+  manager?: { id: string; name: string; email: string };
+}
+
 function formatDate(iso?: string): string {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -45,21 +58,30 @@ function formatDate(iso?: string): string {
 
 export default function AdminAppraisalCycleDetailPage() {
   const { cycleId } = useParams<{ cycleId: string }>();
+  const { profile } = useProfile();
   const [cycle, setCycle] = useState<CycleDetail | null>(null);
+  const [cycleGoals, setCycleGoals] = useState<CycleGoalRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [goalModalOpen, setGoalModalOpen] = useState(false);
 
   const loadCycle = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/v2/appraisal/cycles/${cycleId}`);
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(body?.message || "Appraisal cycle could not be loaded");
+      const [cycleRes, goalsRes] = await Promise.all([
+        fetch(`/api/v2/appraisal/cycles/${cycleId}`),
+        fetch(`/api/v2/appraisal/goals/cycle/${cycleId}`).catch(() => null),
+      ]);
+      if (!cycleRes.ok) {
+        throw new Error(await readResponseError(cycleRes, "Appraisal cycle could not be loaded"));
       }
-      setCycle(body);
+      setCycle(await cycleRes.json());
+      if (goalsRes && goalsRes.ok) {
+        const g = await goalsRes.json().catch(() => []);
+        setCycleGoals(Array.isArray(g) ? g : []);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load cycle");
     } finally {
@@ -71,6 +93,20 @@ export default function AdminAppraisalCycleDetailPage() {
     loadCycle();
   }, [loadCycle]);
 
+  async function agreeGoal(goalId: string) {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/v2/appraisal/goals/${goalId}/agree`, { method: "POST" });
+      if (!res.ok) throw new Error(await readResponseError(res, "Failed to agree goal"));
+      toast.success("Goal agreed");
+      await loadCycle();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to agree goal");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function advanceStage() {
     if (!cycle) return;
     setBusy(true);
@@ -78,10 +114,10 @@ export default function AdminAppraisalCycleDetailPage() {
       const res = await fetch(`/api/v2/appraisal/cycles/${cycle.id}/advance`, {
         method: "POST",
       });
-      const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(body?.message || "Advance failed");
+        throw new Error(await readResponseError(res, "Advance failed"));
       }
+      const body = await res.json();
       toast.success(`Advanced cycle to ${body?.status || "next stage"}`);
       setCycle(body);
     } catch (err) {
@@ -248,6 +284,72 @@ export default function AdminAppraisalCycleDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2">
+              <ListChecks className="h-4 w-4 text-indigo-600" />
+              Cycle Goals ({cycleGoals.length})
+            </CardTitle>
+            {cycleGoals.length === 0 ? (
+              <Badge variant="warning">At least 1 goal required for SELF_ASSESSMENT</Badge>
+            ) : (
+              <Badge variant="success">Ready for stage progression</Badge>
+            )}
+          </div>
+          <Button size="sm" onClick={() => setGoalModalOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Add Goal
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {cycleGoals.length === 0 ? (
+            <p className="text-sm text-slate-500">
+              No employee goals have been created for this cycle yet. Add a goal to unblock advancing past Goal Setting.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {cycleGoals.map((g) => (
+                <div
+                  key={g.id}
+                  className="flex flex-col gap-2 rounded-lg border border-slate-200 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{g.title}</p>
+                    <p className="text-xs text-slate-500">
+                      {g.employee?.name || "Employee"} · Reviewer: {g.manager?.name || "Manager"} · {g.type} · {g.weight}%
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={g.status === "AGREED" ? "success" : "secondary"}>
+                      {g.status}
+                    </Badge>
+                    {g.status !== "AGREED" && (
+                      <Button size="sm" variant="outline" disabled={busy} onClick={() => agreeGoal(g.id)}>
+                        Agree
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <CreateGoalDialog
+        open={goalModalOpen}
+        onClose={() => setGoalModalOpen(false)}
+        onCreated={() => {
+          setGoalModalOpen(false);
+          loadCycle();
+        }}
+        cycles={[cycle]}
+        defaultCycleId={cycle.id}
+        currentUserId={profile?.id}
+        currentUserRole={profile?.role}
+      />
     </div>
   );
 }

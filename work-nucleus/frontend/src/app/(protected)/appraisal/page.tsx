@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Sparkles,
@@ -9,11 +9,18 @@ import {
   Users,
   ListChecks,
   ArrowRight,
+  Plus,
+  CheckCircle2,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BrandLoader } from "@/components/ui/brand-loader";
 import { PageHeader } from "@/components/shared/page-header";
+import { toast } from "@/components/ui/toaster";
+import { useProfile } from "@/hooks/use-profile";
+import { readResponseError } from "@/lib/api";
+import { CreateGoalDialog } from "@/components/appraisal/create-goal-dialog";
 import {
   DataTable,
   DataTableBody,
@@ -43,9 +50,24 @@ interface Cycle {
 interface MyGoal {
   id: string;
   title: string;
+  type?: string;
   weight: number;
   status: string;
+  metrics?: string | null;
+  selfRating?: number | null;
+  managerRating?: number | null;
   cycle: { id: string; name: string; status: string };
+}
+
+interface TeamGoal {
+  id: string;
+  title: string;
+  type?: string;
+  weight: number;
+  status: string;
+  selfRating?: number | null;
+  managerRating?: number | null;
+  employee: { id: string; name: string; email: string };
 }
 
 interface MyAssessment {
@@ -133,23 +155,73 @@ const statusPill: Record<string, string> = {
 };
 
 export default function AppraisalHomePage() {
+  const { profile } = useProfile();
   const [data, setData] = useState<HomeData | null>(null);
+  const [teamGoals, setTeamGoals] = useState<TeamGoal[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [goalDialogOpen, setGoalDialogOpen] = useState(false);
+  const [actingGoalId, setActingGoalId] = useState<string | null>(null);
+
+  const loadHome = useCallback(async () => {
+    setError(null);
+    try {
+      const r = await fetch("/api/v2/appraisal/assessments/home");
+      if (!r.ok) {
+        throw new Error(await readResponseError(r, "Failed to load appraisal workspace"));
+      }
+      const home: HomeData = await r.json();
+      setData(home);
+
+      const firstCycleId = home?.cycles?.[0]?.id;
+      if (firstCycleId) {
+        const mgrRes = await fetch(`/api/v2/appraisal/goals/manager?cycleId=${firstCycleId}`).catch(() => null);
+        if (mgrRes && mgrRes.ok) {
+          const list = await mgrRes.json().catch(() => []);
+          setTeamGoals(Array.isArray(list) ? list : []);
+        }
+      } else {
+        setTeamGoals([]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load appraisal data");
+    }
+  }, []);
 
   useEffect(() => {
-    fetch("/api/v2/appraisal/assessments/home")
-      .then(async (r) => {
-        const body = await r.json().catch(() => ({}));
-        if (!r.ok) {
-          throw new Error(body?.message || "Failed to load appraisal workspace");
-        }
-        return body;
-      })
-      .then(setData)
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : "Failed to load appraisal data");
+    loadHome();
+  }, [loadHome]);
+
+  async function updateGoalRating(goalId: string, field: "selfRating" | "managerRating", rating: number) {
+    setActingGoalId(goalId);
+    try {
+      const res = await fetch(`/api/v2/appraisal/goals/${goalId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: rating }),
       });
-  }, []);
+      if (!res.ok) throw new Error(await readResponseError(res, "Failed to save rating"));
+      toast.success("Goal rating updated");
+      await loadHome();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save rating");
+    } finally {
+      setActingGoalId(null);
+    }
+  }
+
+  async function agreeGoal(goalId: string) {
+    setActingGoalId(goalId);
+    try {
+      const res = await fetch(`/api/v2/appraisal/goals/${goalId}/agree`, { method: "POST" });
+      if (!res.ok) throw new Error(await readResponseError(res, "Failed to agree goal"));
+      toast.success("Goal marked AGREED");
+      await loadHome();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to agree goal");
+    } finally {
+      setActingGoalId(null);
+    }
+  }
 
   const stats = useMemo(() => computeStats(data), [data]);
   const ratingDist = useMemo(() => computeRatingDist(data), [data]);
@@ -192,6 +264,14 @@ export default function AppraisalHomePage() {
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            {(profile?.role === "ADMIN" || profile?.role === "HR") && (
+              <Link href="/admin/appraisal/cycles">
+                <Button variant="outline" size="sm">
+                  <Calendar className="h-4 w-4" />
+                  Manage Cycles
+                </Button>
+              </Link>
+            )}
             {!cycle && (
               <Link href="/appraisal/cycles/new">
                 <Button variant="default" size="sm">
@@ -199,6 +279,12 @@ export default function AppraisalHomePage() {
                   Start New Cycle
                 </Button>
               </Link>
+            )}
+            {cycle && (
+              <Button size="sm" onClick={() => setGoalDialogOpen(true)}>
+                <Plus className="h-4 w-4" />
+                Add Goal
+              </Button>
             )}
             <Button variant="outline" size="sm" disabled>
               <Download className="h-4 w-4" />
@@ -340,37 +426,148 @@ export default function AppraisalHomePage() {
       </div>
 
       {/* My goals */}
-      {data.goals.length > 0 && (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <ListChecks className="h-4 w-4 text-indigo-600" />
+            My Goals ({data.goals.length})
+          </CardTitle>
+          {cycle && (
+            <Button size="sm" variant="outline" onClick={() => setGoalDialogOpen(true)}>
+              <Plus className="h-3.5 w-3.5" />
+              Add Goal
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-2.5">
+          {data.goals.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-slate-200 px-4 py-6 text-center">
+              <p className="text-sm text-slate-600">
+                {cycle
+                  ? "No goals captured yet for this cycle. Add at least one goal to unlock cycle progression."
+                  : "Create an appraisal cycle to start setting goals."}
+              </p>
+              {cycle && (
+                <Button size="sm" className="mt-3" onClick={() => setGoalDialogOpen(true)}>
+                  <Plus className="h-3.5 w-3.5" />
+                  Create First Goal
+                </Button>
+              )}
+            </div>
+          ) : (
+            data.goals.map((g) => (
+              <div
+                key={g.id}
+                className="flex flex-col gap-2 rounded-lg border border-slate-200/70 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-medium text-slate-900">{g.title}</p>
+                    {g.type && (
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
+                        {g.type}
+                      </span>
+                    )}
+                  </div>
+                  <p className="truncate text-[11px] text-slate-400">
+                    {g.cycle.name} · weight {g.weight}%{g.metrics ? ` · ${g.metrics}` : ""}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-1" title="Self rating (1–5)">
+                    <span className="text-[10px] text-slate-400 mr-1">Self:</span>
+                    {[1, 2, 3, 4, 5].map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        disabled={actingGoalId === g.id}
+                        onClick={() => updateGoalRating(g.id, "selfRating", r)}
+                        className={cn(
+                          "h-6 w-6 rounded border text-[11px] font-semibold transition-colors",
+                          g.selfRating === r
+                            ? "border-indigo-600 bg-indigo-600 text-white"
+                            : "border-slate-200 bg-white text-slate-600 hover:border-indigo-300"
+                        )}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                  <span
+                    className={cn(
+                      "rounded-full border px-2 py-0.5 text-[11px] font-bold",
+                      statusPill[g.status] ??
+                        "bg-slate-100 text-slate-700 border-slate-200"
+                    )}
+                  >
+                    {g.status.replace(/_/g, " ")}
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Direct report goals (Manager review & Agree) */}
+      {teamGoals.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
-              <ListChecks className="h-4 w-4 text-indigo-600" />
-              My Goals
+              <Users className="h-4 w-4 text-emerald-600" />
+              Team Goals (Manager Review · {teamGoals.length})
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            {data.goals.map((g) => (
+          <CardContent className="space-y-2.5">
+            {teamGoals.map((tg) => (
               <div
-                key={g.id}
-                className="flex items-center justify-between rounded-lg border border-slate-200/60 px-3 py-2.5"
+                key={tg.id}
+                className="flex flex-col gap-2 rounded-lg border border-slate-200/70 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-slate-900">
-                    {g.title}
+                    {tg.title}
                   </p>
-                  <p className="truncate text-[11px] text-slate-400">
-                    {g.cycle.name} · weight {g.weight}%
+                  <p className="truncate text-[11px] text-slate-500">
+                    {tg.employee.name} · weight {tg.weight}% · self rating {tg.selfRating ?? "—"}
                   </p>
                 </div>
-                <span
-                  className={cn(
-                    "rounded-full border px-2 py-0.5 text-[11px] font-bold",
-                    statusPill[g.status] ??
-                      "bg-slate-100 text-slate-700 border-slate-200"
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-1" title="Manager rating (1–5)">
+                    <span className="text-[10px] text-slate-400 mr-1">Mgr:</span>
+                    {[1, 2, 3, 4, 5].map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        disabled={actingGoalId === tg.id}
+                        onClick={() => updateGoalRating(tg.id, "managerRating", r)}
+                        className={cn(
+                          "h-6 w-6 rounded border text-[11px] font-semibold transition-colors",
+                          tg.managerRating === r
+                            ? "border-emerald-600 bg-emerald-600 text-white"
+                            : "border-slate-200 bg-white text-slate-600 hover:border-emerald-300"
+                        )}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                  {tg.status !== "AGREED" ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={actingGoalId === tg.id}
+                      onClick={() => agreeGoal(tg.id)}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                      Agree
+                    </Button>
+                  ) : (
+                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+                      AGREED
+                    </span>
                   )}
-                >
-                  {g.status.replace(/_/g, " ")}
-                </span>
+                </div>
               </div>
             ))}
           </CardContent>
@@ -474,6 +671,19 @@ export default function AppraisalHomePage() {
           )}
         </CardContent>
       </Card>
+
+      <CreateGoalDialog
+        open={goalDialogOpen}
+        onClose={() => setGoalDialogOpen(false)}
+        onCreated={() => {
+          setGoalDialogOpen(false);
+          loadHome();
+        }}
+        cycles={data.cycles}
+        defaultCycleId={cycle?.id}
+        currentUserId={profile?.id}
+        currentUserRole={profile?.role}
+      />
     </div>
   );
 }

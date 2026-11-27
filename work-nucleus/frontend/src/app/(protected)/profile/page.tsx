@@ -293,8 +293,19 @@ export default function UnifiedProfilePage() {
                 try {
                   const res = await fetch("/api/auth/reset-role", { method: "POST" });
                   if (!res.ok) {
-                    const data = await res.json();
-                    alert(data.error || "Cannot change role right now.");
+                    const msg = await res
+                      .json()
+                      .then((d) =>
+                        typeof d?.error?.message === "string"
+                          ? d.error.message
+                          : typeof d?.message === "string"
+                            ? d.message
+                            : typeof d?.error === "string"
+                              ? d.error
+                              : "Cannot change role right now.",
+                      )
+                      .catch(() => "Cannot change role right now.");
+                    alert(msg);
                     return;
                   }
                   document.cookie = "demo_role=; path=/; max-age=0";

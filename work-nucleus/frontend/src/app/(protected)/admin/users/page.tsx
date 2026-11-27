@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "@/components/ui/toaster";
+import { readResponseError } from "@/lib/api";
 import { PageHeader } from "@/components/shared/page-header";
 import {
   DataTable,
@@ -113,8 +114,7 @@ export default function AdminUsersPage() {
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Operation failed");
+        throw new Error(await readResponseError(res, "Operation failed"));
       }
 
       setDialogOpen(false);
@@ -131,7 +131,7 @@ export default function AdminUsersPage() {
     if (!confirm(`Deactivate ${user.name}?`)) return;
     try {
       const res = await fetch(`/api/admin/users/${user.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Delete failed");
+      if (!res.ok) throw new Error(await readResponseError(res, "Delete failed"));
       fetchUsers(meta.page);
       toast.success(`${user.name} deactivated`);
     } catch (err) {

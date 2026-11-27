@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,6 +35,7 @@ import {
 import { FeedbackDisplay } from "./feedback-display";
 import { FeedbackForm } from "./feedback-form";
 import { DecisionModal } from "./decision-modal";
+import { CreateOfferDialog } from "@/components/offers/create-offer-dialog";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
 
 // Candidate detail surface — design-system-v2/ui-kit/04-Candidate-Detail.html.
@@ -82,6 +84,14 @@ interface ApplicationDetail {
   hiringPlan: { id: string; title: string; department: string; designation: string };
   currentStage: { id: string; name: string; stageType: string } | null;
   stageHistory: StageHistoryItem[];
+  offer?: { id: string; status: string } | null;
+  decision?: {
+    id: string;
+    decision: string;
+    offerCtc: string | null;
+    offerDesignation: string | null;
+    joiningDate: string | null;
+  } | null;
 }
 
 interface StageDef {
@@ -400,6 +410,7 @@ export function CandidateSheet({
   const [acting, setActing] = useState(false);
   const [stages, setStages] = useState<StageDef[]>([]);
   const [showDecisionModal, setShowDecisionModal] = useState(false);
+  const [showCreateOffer, setShowCreateOffer] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
   const drawerRef = useFocusTrap<HTMLDivElement>({ isOpen: true, onClose });
   const [savingNote, setSavingNote] = useState(false);
@@ -603,6 +614,7 @@ export function CandidateSheet({
                   onPutOnHold={() => handleStatus("ON_HOLD")}
                   onReject={() => setShowRejectDialog(true)}
                   onMakeDecision={() => setShowDecisionModal(true)}
+                  onCreateOffer={() => setShowCreateOffer(true)}
                   onOpenAiQuestions={() => setActiveTab("ai-questions")}
                   onExportScorecard={() => printCandidateScorecard(app)}
                   hasNextStage={!!nextStage}
@@ -757,6 +769,19 @@ export function CandidateSheet({
           onClose={() => setShowDecisionModal(false)}
         />
       )}
+
+      {app && (
+        <CreateOfferDialog
+          open={showCreateOffer}
+          preselectedApplicationId={app.id}
+          onClose={() => setShowCreateOffer(false)}
+          onCreated={() => {
+            setShowCreateOffer(false);
+            fetchDetail();
+            onUpdated();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -771,6 +796,7 @@ function HeroCard({
   onPutOnHold,
   onReject,
   onMakeDecision,
+  onCreateOffer,
   onOpenAiQuestions,
   onExportScorecard,
   hasNextStage,
@@ -781,6 +807,7 @@ function HeroCard({
   onPutOnHold: () => void;
   onReject: () => void;
   onMakeDecision: () => void;
+  onCreateOffer: () => void;
   onOpenAiQuestions: () => void;
   onExportScorecard: () => void;
   hasNextStage: boolean;
@@ -909,6 +936,28 @@ function HeroCard({
                 Hold
               </Button>
             </>
+          )}
+          {app.status === "SELECTED" && !app.offer && (
+            <Button size="sm" onClick={onCreateOffer} disabled={acting}>
+              <FileText className="h-3.5 w-3.5" />
+              Create Offer
+            </Button>
+          )}
+          {app.offer && (
+            <Link href={`/offers/${app.offer.id}`}>
+              <Button size="sm" variant="outline">
+                <ExternalLink className="h-3.5 w-3.5" />
+                Offer ({app.offer.status})
+              </Button>
+            </Link>
+          )}
+          {app.status === "SELECTED" && (
+            <Link href={`/candidates/${app.id}/joining`}>
+              <Button size="sm" variant="outline">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Joining Checklist
+              </Button>
+            </Link>
           )}
           <Button
             variant="outline"

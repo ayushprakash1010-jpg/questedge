@@ -3,10 +3,13 @@ import { Type } from 'class-transformer';
 import {
   IsArray,
   IsDate,
+  IsNumber,
   IsObject,
   IsOptional,
   IsString,
   IsUUID,
+  Max,
+  Min,
   MinLength,
 } from 'class-validator';
 
@@ -49,6 +52,10 @@ export class MoveAssessmentDto {
   @ApiProperty({
     description: 'New rating value, must exist in cycle ratingScale',
   })
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  @Max(5)
   newRating!: number;
 
   @ApiProperty()

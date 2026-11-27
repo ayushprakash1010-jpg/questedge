@@ -28,7 +28,10 @@ export class OffersService {
       throw new BadRequestException(
         'Offer already exists for this application',
       );
-    if (!application.decision || application.decision.decision !== 'SELECTED') {
+    const isSelected =
+      application.status === 'SELECTED' ||
+      application.decision?.decision === 'SELECTED';
+    if (!isSelected) {
       throw new BadRequestException(
         'Cannot create offer: application is not in SELECTED state',
       );
@@ -162,6 +165,37 @@ export class OffersService {
       data,
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     };
+  }
+
+  async listEligibleApplications(orgId: string) {
+    return this.prisma.candidateApplication.findMany({
+      where: {
+        hiringPlan: { orgId },
+        offer: null,
+        OR: [{ status: 'SELECTED' }, { decision: { decision: 'SELECTED' } }],
+      },
+      include: {
+        candidate: { select: { id: true, name: true, email: true } },
+        hiringPlan: {
+          select: {
+            id: true,
+            title: true,
+            designation: true,
+            department: true,
+          },
+        },
+        decision: {
+          select: {
+            id: true,
+            decision: true,
+            offerCtc: true,
+            offerDesignation: true,
+            joiningDate: true,
+          },
+        },
+      },
+      orderBy: { completedAt: 'desc' },
+    });
   }
 
   async revoke(orgId: string, id: string) {

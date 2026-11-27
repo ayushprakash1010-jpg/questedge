@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { FileText, Receipt } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { FileText, Plus, Receipt } from "lucide-react";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { toast } from "@/components/ui/toaster";
+import { readResponseError } from "@/lib/api";
+import { CreateOfferDialog } from "@/components/offers/create-offer-dialog";
 import {
   DataTable,
   DataTableBody,
@@ -51,20 +54,21 @@ const FILTER_OPTIONS = [
 ];
 
 export default function OffersListPage() {
+  const router = useRouter();
   const [data, setData] = useState<OfferRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [createOpen, setCreateOpen] = useState(false);
 
-  useEffect(() => {
+  const loadOffers = useCallback(() => {
     setLoading(true);
     const qs = statusFilter ? `?status=${statusFilter}` : "";
     fetch(`/api/v2/offers${qs}`)
       .then(async (r) => {
-        const j = await r.json().catch(() => ({}));
         if (!r.ok) {
-          throw new Error(j?.message || "Failed to load offers");
+          throw new Error(await readResponseError(r, "Failed to load offers"));
         }
-        return j;
+        return r.json();
       })
       .then((j) => setData(Array.isArray(j?.data) ? j.data : []))
       .catch((err) => {
@@ -74,17 +78,26 @@ export default function OffersListPage() {
       .finally(() => setLoading(false));
   }, [statusFilter]);
 
+  useEffect(() => {
+    loadOffers();
+  }, [loadOffers]);
+
   return (
     <div>
       <PageHeader
         title="Offers"
         subtitle="Generate, approve, and track offer letters end-to-end."
         actions={
-          <Link href="/offers/templates">
-            <Button variant="outline" size="sm">
-              <FileText className="h-4 w-4" /> Templates
+          <div className="flex items-center gap-2">
+            <Link href="/offers/templates">
+              <Button variant="outline" size="sm">
+                <FileText className="h-4 w-4" /> Templates
+              </Button>
+            </Link>
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4" /> Create Offer
             </Button>
-          </Link>
+          </div>
         }
       />
 
@@ -111,7 +124,12 @@ export default function OffersListPage() {
         <EmptyState
           icon={<Receipt className="h-6 w-6" />}
           title="No offers yet"
-          description="Create one from a SELECTED candidate's decision page."
+          description="Create an offer for any SELECTED candidate."
+          action={
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4" /> Create Offer
+            </Button>
+          }
         />
       ) : (
         <DataTable>
@@ -157,6 +175,15 @@ export default function OffersListPage() {
           </DataTableBody>
         </DataTable>
       )}
+
+      <CreateOfferDialog
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={(offerId) => {
+          setCreateOpen(false);
+          router.push(`/offers/${offerId}`);
+        }}
+      />
     </div>
   );
 }

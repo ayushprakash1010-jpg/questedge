@@ -1,14 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/toaster";
+import { readResponseError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import {
-  X, Check, Ban, Mail, Loader2, Send, Edit3, Eye,
+  X, Check, Ban, Mail, Loader2, Send, Edit3, Eye, FileCheck, ExternalLink,
 } from "lucide-react";
 
 interface DecisionModalProps {
@@ -37,14 +41,32 @@ export function DecisionModal({
   const [joiningDate, setJoiningDate] = useState("");
   const [decisionNotes, setDecisionNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [commDraft, setCommDraft] = useState<CommDraft | null>(null);
   const [editingComm, setEditingComm] = useState(false);
   const [decisionMade, setDecisionMade] = useState(false);
   const [markingSent, setMarkingSent] = useState(false);
+  const [templates, setTemplates] = useState<Array<{ id: string; name: string; version: number }>>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [creatingOffer, setCreatingOffer] = useState(false);
+  const [createdOfferId, setCreatedOfferId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/v2/offer-templates?activeOnly=true")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list) => {
+        if (Array.isArray(list)) {
+          setTemplates(list);
+          if (list[0]?.id) setSelectedTemplateId(list[0].id);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async () => {
     if (!decision) return;
     setSubmitting(true);
+    setError(null);
     try {
       const body: any = {
         decision,
@@ -62,54 +84,103 @@ export function DecisionModal({
         body: JSON.stringify(body),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.communicationDraft) {
-          setCommDraft(data.communicationDraft as CommDraft);
-        }
-        setDecisionMade(true);
-
-        // Poll for communication draft if not immediately available
-        if (!data.communicationDraft) {
-          setTimeout(async () => {
-            const decRes = await fetch(`/api/applications/${applicationId}/decision`);
-            if (decRes.ok) {
-              const decData = await decRes.json();
-              if (decData.communicationDraft) {
-                setCommDraft(decData.communicationDraft as CommDraft);
-              }
-            }
-          }, 3000);
-        }
-
-        onDecisionMade();
+      if (!res.ok) {
+        throw new Error(await readResponseError(res, "Failed to save decision"));
       }
-    } catch {
-      // handle error
+
+      const data = await res.json();
+      if (data.communicationDraft) {
+        setCommDraft(data.communicationDraft as CommDraft);
+      }
+      setDecisionMade(true);
+      toast.success(`Decision recorded (${decision})`);
+
+      // Poll for communication draft if not immediately available
+      if (!data.communicationDraft) {
+        setTimeout(async () => {
+          const decRes = await fetch(`/api/applications/${applicationId}/decision`);
+          if (decRes.ok) {
+            const decData = await decRes.json();
+            if (decData.communicationDraft) {
+              setCommDraft(decData.communicationDraft as CommDraft);
+            }
+          }
+        }, 3000);
+      }
+
+      onDecisionMade();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to save decision";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }
   };
 
+  const handleCreateOffer = async () => {
+    if (!selectedTemplateId) {
+      toast.error("Please select an active offer template first.");
+      return;
+    }
+    const fixedAnnual = parseFloat(offerCtc || "0");
+    if (Number.isNaN(fixedAnnual) || fixedAnnual <= 0) {
+      toast.error("Enter a valid Offer CTC before generating the draft offer.");
+      return;
+    }
+
+    setCreatingOffer(true);
+    try {
+      const res = await fetch("/api/v2/offers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          applicationId,
+          templateId: selectedTemplateId,
+          compensation: { fixedAnnual, currency: "INR" },
+        }),
+      });
+      if (!res.ok) {
+        throw new Error(await readResponseError(res, "Failed to create draft offer"));
+      }
+      const offer = await res.json();
+      setCreatedOfferId(offer.id);
+      toast.success("Formal offer draft created");
+      onDecisionMade();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create draft offer");
+    } finally {
+      setCreatingOffer(false);
+    }
+  };
+
   const handleSaveComm = async () => {
     if (!commDraft) return;
-    await fetch(`/api/applications/${applicationId}/decision`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(commDraft),
-    });
-    setEditingComm(false);
+    try {
+      const res = await fetch(`/api/applications/${applicationId}/decision`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(commDraft),
+      });
+      if (!res.ok) throw new Error(await readResponseError(res, "Failed to save communication draft"));
+      setEditingComm(false);
+      toast.success("Communication draft saved");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save communication draft");
+    }
   };
 
   const handleMarkSent = async () => {
     setMarkingSent(true);
     try {
-      await fetch(`/api/applications/${applicationId}/decision?action=send`, {
+      const res = await fetch(`/api/applications/${applicationId}/decision?action=send`, {
         method: "POST",
       });
+      if (!res.ok) throw new Error(await readResponseError(res, "Failed to mark communication as sent"));
+      toast.success("Decision communication marked as sent");
       onClose();
-    } catch {
-      // handle error
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to mark sent");
     } finally {
       setMarkingSent(false);
     }
@@ -136,6 +207,11 @@ export function DecisionModal({
         <div className="px-6 py-5">
           {!decisionMade ? (
             <div className="space-y-5">
+              {error && (
+                <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                  {error}
+                </div>
+              )}
               {/* Decision Toggle */}
               <div>
                 <label className="text-sm font-medium text-slate-700">Decision *</label>
@@ -307,6 +383,68 @@ export function DecisionModal({
                     </div>
                   </CardContent>
                 </Card>
+              )}
+
+              {/* Formal Offer Creation when SELECTED */}
+              {decision === "SELECTED" && (
+                <div className="rounded-lg border border-indigo-100 bg-indigo-50/50 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-indigo-950 flex items-center gap-1.5">
+                      <FileCheck className="h-4 w-4 text-indigo-600" />
+                      Formal Offer Letter
+                    </span>
+                    <Link href="/offers/templates" className="text-xs text-indigo-600 hover:underline">
+                      Templates
+                    </Link>
+                  </div>
+                  {createdOfferId ? (
+                    <div className="flex items-center justify-between gap-2 text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2">
+                      <span>Draft offer created and ready for review.</span>
+                      <Link
+                        href={`/offers/${createdOfferId}`}
+                        className="inline-flex items-center gap-1 font-semibold text-emerald-700 underline"
+                      >
+                        Open Offer <ExternalLink className="h-3 w-3" />
+                      </Link>
+                    </div>
+                  ) : templates.length === 0 ? (
+                    <p className="text-xs text-slate-600">
+                      Create an active offer template in{" "}
+                      <Link href="/offers/templates" className="font-medium text-indigo-600 underline">
+                        Offer Templates
+                      </Link>{" "}
+                      before issuing a formal offer letter.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      <Select
+                        value={selectedTemplateId}
+                        onChange={(e) => setSelectedTemplateId(e.target.value)}
+                      >
+                        {templates.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name} (v{t.version})
+                          </option>
+                        ))}
+                      </Select>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleCreateOffer}
+                        disabled={creatingOffer || !selectedTemplateId || !offerCtc}
+                      >
+                        {creatingOffer ? (
+                          <>
+                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                            Creating Draft Offer...
+                          </>
+                        ) : (
+                          "Generate Draft Offer"
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Actions */}

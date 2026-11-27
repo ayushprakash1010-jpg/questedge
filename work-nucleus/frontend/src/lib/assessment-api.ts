@@ -121,12 +121,14 @@ export interface VideoInterview {
   weaknesses?: string;
 }
 
+import { extractApiErrorMessage, readResponseError } from '@/lib/api';
+
 // ── Helpers ───────────────────────────────────────────────────────
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(errorData.message || `Request failed (${res.status})`);
+    const msg = await readResponseError(res, `Request failed (${res.status})`);
+    throw new Error(msg);
   }
   if (res.status === 204) return {} as T;
   return res.json();
@@ -240,11 +242,8 @@ export async function sendAssessmentInvite(
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    const errorObj = data.error || {};
-    const message =
-      (typeof errorObj === 'object' && errorObj.message ? errorObj.message : undefined) ||
-      data.message ||
-      `Request failed (${res.status})`;
+    const errorObj = (data?.error && typeof data.error === 'object' ? data.error : {}) as Record<string, any>;
+    const message = extractApiErrorMessage(data, `Request failed (${res.status})`);
 
     const err: any = new Error(message);
     const details = errorObj.details || data.details || {};

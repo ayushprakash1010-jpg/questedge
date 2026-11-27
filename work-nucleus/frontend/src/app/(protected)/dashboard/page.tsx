@@ -26,6 +26,7 @@ import { KpiCard } from "@/components/shared/kpi-card";
 import { AiInsightCard } from "@/components/shared/ai-insight-card";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { useProfile } from "@/hooks/use-profile";
+import { readResponseError } from "@/lib/api";
 import {
   DataTable,
   DataTableBody,
@@ -346,8 +347,7 @@ function CompanyDashboardContent() {
         setInsightsGeneratedBy(data.generatedBy?.name || null);
         toast.success("Insights regenerated successfully");
       } else {
-        const errData = await res.json().catch(() => ({}));
-        toast.error(errData.message || errData.error || "Failed to generate insights");
+        toast.error(await readResponseError(res, "Failed to generate insights"));
       }
     } catch {
       toast.error("Network error while generating insights");

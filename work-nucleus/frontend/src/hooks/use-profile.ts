@@ -2,6 +2,7 @@
 
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { useEffect, useState, useCallback } from "react";
+import { extractApiErrorMessage } from "@/lib/api";
 
 export interface UserProfile {
   isProvisioned: boolean;
@@ -37,9 +38,9 @@ export function useProfile() {
       setIsLoading(true);
       setError(null);
       const res = await fetch(`/api/profile?t=${Date.now()}`);
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        setError(data.error || "Failed to fetch profile");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) {
+        setError(extractApiErrorMessage(data, "Failed to fetch profile"));
         setProfile(null);
       } else {
         setProfile(data);

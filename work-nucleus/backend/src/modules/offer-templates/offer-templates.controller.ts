@@ -35,6 +35,7 @@ export class OfferTemplatesController {
   }
 
   @Get()
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER)
   @ApiOperation({ summary: 'List offer templates for org' })
   list(
     @CurrentUser('orgId') orgId: string,

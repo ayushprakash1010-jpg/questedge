@@ -19,6 +19,7 @@ import { RewardDisputeModal } from "@/components/rewards/reward-dispute-modal";
 export default function CompanyFinancialsPage() {
   const [rewards, setRewards] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [addingFunds, setAddingFunds] = useState(false);
   const [auditRewardId, setAuditRewardId] = useState<string | null>(null);
@@ -79,13 +80,19 @@ export default function CompanyFinancialsPage() {
   }, []);
 
   const fetchData = async () => {
+    setLoadError(null);
     try {
       const tokenRes = await fetch("/api/auth/token");
+      if (!tokenRes.ok) {
+        throw new Error("Unable to authenticate session");
+      }
       const { accessToken } = await tokenRes.json();
       const res = await getCompanyRewards(accessToken);
-      setRewards(res);
+      setRewards(Array.isArray(res) ? res : []);
     } catch (err) {
-      console.error(err);
+      const msg = err instanceof Error ? err.message : "Failed to load financial ledger";
+      setLoadError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -95,11 +102,15 @@ export default function CompanyFinancialsPage() {
     try {
       setProcessingId(rewardId);
       const tokenRes = await fetch("/api/auth/token");
+      if (!tokenRes.ok) {
+        throw new Error("Unable to authenticate session");
+      }
       const { accessToken } = await tokenRes.json();
       await approveReward(accessToken, rewardId);
+      toast.success("Reward approved for payout release");
       await fetchData();
     } catch (err) {
-      console.error("Failed to approve reward", err);
+      toast.error(err instanceof Error ? err.message : "Failed to approve reward");
     } finally {
       setProcessingId(null);
     }
@@ -113,9 +124,18 @@ export default function CompanyFinancialsPage() {
     );
   }
 
-  // Aggregate stats
-  const totalPaid = rewards.filter((r) => r.status === "PAID" || r.status === "APPROVED").reduce((sum, r) => sum + r.rewardAmount, 0);
-  const totalInEscrow = rewards.filter((r) => r.status !== "PAID" && r.status !== "APPROVED" && r.status !== "REJECTED").reduce((sum, r) => sum + r.rewardAmount, 0);
+  // Aggregate stats safely using Number() on Prisma Decimal values
+  const totalPaid = rewards
+    .filter((r) => r.status === "PAID" || r.status === "APPROVED")
+    .reduce((sum, r) => sum + Number(r.rewardAmount || 0), 0);
+  const totalInEscrow = rewards
+    .filter(
+      (r) =>
+        r.status !== "PAID" &&
+        r.status !== "APPROVED" &&
+        r.status !== "CANCELLED",
+    )
+    .reduce((sum, r) => sum + Number(r.rewardAmount || 0), 0);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -150,6 +170,21 @@ export default function CompanyFinancialsPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
+        {loadError && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 flex items-center justify-between gap-4">
+            <span>{loadError}</span>
+            <button
+              type="button"
+              onClick={() => {
+                setLoading(true);
+                fetchData();
+              }}
+              className="rounded-lg border border-rose-300 bg-white px-3 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50"
+            >
+              Retry
+            </button>
+          </div>
+        )}
         {/* Balances */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex items-start gap-4">
@@ -217,7 +252,7 @@ export default function CompanyFinancialsPage() {
                         {reward.recruiter?.name}
                       </td>
                       <td className="px-6 py-4 font-bold text-slate-900">
-                        ₹{reward.rewardAmount.toLocaleString()}
+                        ₹{Number(reward.rewardAmount || 0).toLocaleString("en-IN")}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2 flex-wrap">

@@ -53,6 +53,26 @@ export class GoalsService {
     });
   }
 
+  async listOrgUsers(orgId: string) {
+    return this.prisma.user.findMany({
+      where: { orgId, isActive: true },
+      select: { id: true, name: true, email: true, role: true },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  async listForCycle(orgId: string, cycleId: string) {
+    await this.assertCycleInOrg(orgId, cycleId);
+    return this.prisma.goal.findMany({
+      where: { cycleId },
+      include: {
+        employee: { select: { id: true, name: true, email: true } },
+        manager: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: [{ employeeId: 'asc' }, { createdAt: 'asc' }],
+    });
+  }
+
   async update(
     orgId: string,
     id: string,

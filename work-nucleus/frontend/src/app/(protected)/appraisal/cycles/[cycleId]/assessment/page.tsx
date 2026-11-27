@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { BrandLoader } from "@/components/ui/brand-loader";
 import { toast } from "@/components/ui/toaster";
+import { readResponseError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 interface Assessment {
@@ -42,11 +43,10 @@ export default function SelfAssessmentPage() {
     setError(null);
     fetch("/api/profile")
       .then(async (r) => {
-        const body = await r.json().catch(() => ({}));
         if (!r.ok) {
-          throw new Error(body?.message || "Failed to load user profile");
+          throw new Error(await readResponseError(r, "Failed to load user profile"));
         }
-        return body;
+        return r.json();
       })
       .then(async (profile) => {
         const managerId = profile?.managerId ?? profile?.id;
@@ -59,11 +59,10 @@ export default function SelfAssessmentPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ cycleId, employeeId, managerId, type: "SELF" }),
         });
-        const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          throw new Error(data?.message || "Failed to load self-assessment");
+          throw new Error(await readResponseError(res, "Failed to load self-assessment"));
         }
-        return data;
+        return res.json();
       })
       .then((data) => {
         if (!data) return;
@@ -98,7 +97,7 @@ export default function SelfAssessmentPage() {
       const res = await fetch(`/api/v2/appraisal/assessments/${a.id}/submit`, {
         method: "POST",
       });
-      if (!res.ok) throw new Error("Submit failed");
+      if (!res.ok) throw new Error(await readResponseError(res, "Submit failed"));
       const updated = await res.json();
       setA(updated);
       toast.success("Self-assessment submitted");

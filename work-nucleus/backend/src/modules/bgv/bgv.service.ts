@@ -85,6 +85,31 @@ export class BgvService {
     return profile;
   }
 
+  async listCandidatesForInitiation(orgId: string) {
+    return this.prisma.candidate.findMany({
+      where: { orgId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        applications: {
+          select: {
+            id: true,
+            status: true,
+            hiringPlan: { select: { id: true, title: true } },
+            offer: { select: { id: true, status: true } },
+          },
+        },
+        bgvProfiles: {
+          select: { id: true, status: true, offerId: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+  }
+
   async listForOrg(orgId: string, opts: { status?: BgvProfileStatus } = {}) {
     return this.prisma.bgvProfile.findMany({
       where: { orgId, ...(opts.status && { status: opts.status }) },
@@ -490,6 +515,10 @@ export class BgvService {
       data: {
         status: BgvProfileStatus.CANCELLED,
         aiSummary: {
+          overall_recommendation: 'CANCELLED',
+          executive_summary: `Background verification cancelled: ${reason}`,
+          key_findings: [],
+          discrepancies: [],
           cancelledReason: reason,
           cancelledAt: new Date().toISOString(),
         } as any,

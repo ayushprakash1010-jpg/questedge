@@ -40,6 +40,42 @@ export function getDemoRole(): string | null {
   return null;
 }
 
+export function extractApiErrorMessage(
+  body: unknown,
+  fallback = "Request failed",
+): string {
+  if (!body || typeof body !== "object") {
+    return typeof body === "string" && body.trim() ? body : fallback;
+  }
+  const obj = body as Record<string, any>;
+  const nestedError =
+    obj.error && typeof obj.error === "object" ? obj.error : undefined;
+  const raw =
+    nestedError?.message ??
+    (typeof obj.message === "string" || Array.isArray(obj.message)
+      ? obj.message
+      : undefined) ??
+    (typeof obj.error === "string" ? obj.error : undefined);
+
+  if (Array.isArray(raw)) {
+    const joined = raw.filter((item) => typeof item === "string" && item.trim()).join(", ");
+    return joined || fallback;
+  }
+  if (typeof raw === "string" && raw.trim()) {
+    return raw;
+  }
+  return fallback;
+}
+
+export async function readResponseError(
+  res: Response,
+  fallback?: string,
+): Promise<string> {
+  const defaultMsg = fallback || res.statusText || `Request failed (${res.status})`;
+  const body = await res.json().catch(() => null);
+  return extractApiErrorMessage(body, defaultMsg);
+}
+
 interface FetchOptions extends RequestInit {
   token?: string;
 }
@@ -64,13 +100,8 @@ export async function apiClient<T = unknown>(
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({ message: res.statusText || `Request failed with HTTP ${res.status}` }));
-    const rawMsg =
-      body?.error?.message ??
-      (typeof body?.message === "string" || Array.isArray(body?.message) ? body.message : undefined) ??
-      (typeof body?.error === "string" ? body.error : undefined);
-    const msg = Array.isArray(rawMsg) ? rawMsg.join(", ") : rawMsg;
-    const err = new Error(msg || `API error: ${res.status}`);
+    const msg = await readResponseError(res, `API error: ${res.status}`);
+    const err = new Error(msg);
     (err as any).status = res.status;
     throw err;
   }

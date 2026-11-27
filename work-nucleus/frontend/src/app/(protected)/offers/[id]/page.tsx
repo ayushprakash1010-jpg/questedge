@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { BrandLoader } from "@/components/ui/brand-loader";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toaster";
+import { readResponseError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { QuestEdgeLogo } from "@/components/QuestEdgeLogo";
 
@@ -92,12 +93,21 @@ function getInitials(name: string): string {
 export default function OfferDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [offer, setOffer] = useState<OfferDetail | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [aiBody, setAiBody] = useState<string | null>(null);
 
   async function refresh() {
-    const res = await fetch(`/api/v2/offers/${id}`);
-    if (res.ok) setOffer(await res.json());
+    setError(null);
+    try {
+      const res = await fetch(`/api/v2/offers/${id}`);
+      if (!res.ok) {
+        throw new Error(await readResponseError(res, "Failed to load offer"));
+      }
+      setOffer(await res.json());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load offer");
+    }
   }
 
   useEffect(() => {
@@ -113,7 +123,7 @@ export default function OfferDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: body ? JSON.stringify(body) : undefined,
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) throw new Error(await readResponseError(res, "Action failed"));
       await refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Action failed");
@@ -130,11 +140,27 @@ export default function OfferDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tone: "warm" }),
       });
+      if (!res.ok) throw new Error(await readResponseError(res, "Failed to draft offer body"));
       const data = await res.json();
       setAiBody(data.body ?? "");
+      toast.success("AI offer body draft generated");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to draft offer body");
     } finally {
       setBusy(false);
     }
+  }
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-xl p-6 space-y-3">
+        <p className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={refresh}>Retry</Button>
+          <Link href="/offers"><Button variant="ghost" size="sm">Back to Offers</Button></Link>
+        </div>
+      </div>
+    );
   }
 
   if (!offer) {

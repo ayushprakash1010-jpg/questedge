@@ -39,13 +39,25 @@ const CHECK_TYPE_META: Record<
   string,
   { label: string; icon: React.ElementType; color: string; bg: string }
 > = {
-  IDENTITY: {
-    label: "Identity & Aadhaar/PAN",
+  PAN: {
+    label: "PAN Verification",
     icon: ShieldCheck,
     color: "text-blue-600",
     bg: "bg-blue-50 border-blue-200",
   },
-  EMPLOYMENT: {
+  AADHAAR: {
+    label: "Aadhaar Identity",
+    icon: ShieldCheck,
+    color: "text-blue-600",
+    bg: "bg-blue-50 border-blue-200",
+  },
+  PASSPORT: {
+    label: "Passport Verification",
+    icon: ShieldCheck,
+    color: "text-sky-600",
+    bg: "bg-sky-50 border-sky-200",
+  },
+  EMPLOYMENT_HISTORY: {
     label: "Employment History",
     icon: Briefcase,
     color: "text-emerald-600",
@@ -57,23 +69,53 @@ const CHECK_TYPE_META: Record<
     color: "text-purple-600",
     bg: "bg-purple-50 border-purple-200",
   },
-  ADDRESS: {
-    label: "Address Verification",
+  ADDRESS_CURRENT: {
+    label: "Current Address Verification",
     icon: MapPin,
     color: "text-amber-600",
     bg: "bg-amber-50 border-amber-200",
   },
-  CRIMINAL: {
+  ADDRESS_PERMANENT: {
+    label: "Permanent Address Verification",
+    icon: MapPin,
+    color: "text-amber-600",
+    bg: "bg-amber-50 border-amber-200",
+  },
+  CRIMINAL_COURT: {
     label: "Criminal & Court Records",
     icon: ShieldAlert,
     color: "text-red-600",
     bg: "bg-red-50 border-red-200",
+  },
+  POLICE_VERIFICATION: {
+    label: "Police Verification",
+    icon: ShieldAlert,
+    color: "text-rose-600",
+    bg: "bg-rose-50 border-rose-200",
+  },
+  CREDIT_CHECK: {
+    label: "Credit Check",
+    icon: IndianRupee,
+    color: "text-teal-600",
+    bg: "bg-teal-50 border-teal-200",
   },
   GLOBAL_DATABASE: {
     label: "Global Watchlist / Sanctions",
     icon: ShieldCheck,
     color: "text-indigo-600",
     bg: "bg-indigo-50 border-indigo-200",
+  },
+  DRUG_TEST: {
+    label: "Drug Screening",
+    icon: ShieldCheck,
+    color: "text-violet-600",
+    bg: "bg-violet-50 border-violet-200",
+  },
+  REFERENCE: {
+    label: "Reference Verification",
+    icon: Users,
+    color: "text-cyan-600",
+    bg: "bg-cyan-50 border-cyan-200",
   },
 };
 

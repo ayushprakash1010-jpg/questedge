@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { toast } from "@/components/ui/toaster";
+import { readResponseError } from "@/lib/api";
+import { ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
 
 interface ChecklistItem {
   key: string;
@@ -29,13 +32,24 @@ interface Joining {
 export default function HRCandidateJoiningPage() {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<Joining | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function load() {
-    const res = await fetch(`/api/v2/joining?applicationId=${id}`);
-    if (res.ok) {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/v2/joining?applicationId=${id}`);
+      if (!res.ok) {
+        throw new Error(await readResponseError(res, "Failed to load joining record"));
+      }
       const j = await res.json();
       setData(j ?? null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load joining record");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -57,23 +71,52 @@ export default function HRCandidateJoiningPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ itemKey, decision, notes }),
       });
-      if (!res.ok) throw new Error("Review failed");
+      if (!res.ok) throw new Error(await readResponseError(res, "Review failed"));
+      toast.success(decision === "APPROVED" ? "Document approved" : "Revision requested");
       await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Review failed");
     } finally {
       setBusy(false);
     }
   }
 
+  if (loading) {
+    return <div className="p-6 text-slate-500">Loading joining record...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 max-w-2xl space-y-3">
+        <Link href="/candidates" className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:underline">
+          <ArrowLeft className="h-4 w-4" />
+          Back to Candidates
+        </Link>
+        <p className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>
+      </div>
+    );
+  }
+
   if (!data) {
     return (
-      <div className="p-6 text-slate-500">
-        No joining record yet — it will be created automatically when the offer is signed.
+      <div className="p-6 max-w-2xl space-y-3">
+        <Link href="/candidates" className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:underline">
+          <ArrowLeft className="h-4 w-4" />
+          Back to Candidates
+        </Link>
+        <p className="text-slate-500">
+          No joining record yet — it will be created automatically when the offer is signed.
+        </p>
       </div>
     );
   }
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
+      <Link href="/candidates" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 mb-3">
+        <ArrowLeft className="h-4 w-4" />
+        Back to Candidates
+      </Link>
       <header className="mb-6">
         <h1 className="text-2xl font-semibold">
           Joining: {data.offer.application.candidate.name}

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { BrandLoader } from "@/components/ui/brand-loader";
 import { CheckCircle2, ShieldCheck, AlertCircle } from "lucide-react";
+import { readResponseError } from "@/lib/api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -71,8 +72,7 @@ export default function BgvConsentPage() {
         body: JSON.stringify({ otp, signedName }),
       });
       if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(e.message || "OTP verification failed");
+        throw new Error(await readResponseError(res, "OTP verification failed"));
       }
       setStep("verified");
     } catch (err) {

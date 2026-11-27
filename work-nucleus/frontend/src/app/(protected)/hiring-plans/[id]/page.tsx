@@ -99,8 +99,18 @@ export default function HiringPlanDetailPage() {
   const [plan, setPlan] = useState<HiringPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("overview");
   const [pipelineView, setPipelineView] = useState<"board" | "setup">("board");
   const [statusUpdating, setStatusUpdating] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const appId = new URLSearchParams(window.location.search).get("appId");
+    if (appId) {
+      setActiveTab("pipeline");
+      setSelectedAppId(appId);
+    }
+  }, []);
 
   useEffect(() => {
     async function fetchPlan() {
@@ -273,7 +283,7 @@ export default function HiringPlanDetailPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="overview">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="jd">

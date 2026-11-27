@@ -179,7 +179,12 @@ function OnboardingContent() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Provisioning failed. Please try again.");
+        const msg =
+          (typeof data?.error?.message === "string" && data.error.message) ||
+          (typeof data?.message === "string" && data.message) ||
+          (typeof data?.error === "string" && data.error) ||
+          "Provisioning failed. Please try again.";
+        throw new Error(msg);
       }
 
       setStep("success");

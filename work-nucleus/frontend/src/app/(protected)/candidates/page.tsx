@@ -38,11 +38,14 @@ import {
   DataTableRow,
 } from "@/components/shared/data-table";
 import { cn } from "@/lib/utils";
+import { readResponseError } from "@/lib/api";
 
 interface Application {
   id: string;
   hiringPlanId: string;
   status: string;
+  isReferral?: boolean;
+  offer?: { id: string; status: string } | null;
   aiMatchScore: string | null;
   aiMatchSummary: string | null;
   appliedAt: string;
@@ -184,11 +187,16 @@ export default function CandidatesPage() {
   };
   const [meta, setMeta] = useState<Meta | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [topN, setTopN] = useState<number | null>(null);
   const [hiringPlanId, setHiringPlanId] = useState<string>("");
   const [sourceFilter, setSourceFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("status") || "";
+  });
   const [hiringPlans, setHiringPlans] = useState<HiringPlanLite[]>([]);
   const [triggeringScoring, setTriggeringScoring] = useState(false);
   const [expandedCandidate, setExpandedCandidate] = useState<string | null>(null);
@@ -295,10 +303,12 @@ export default function CandidatesPage() {
 
   const fetchCandidates = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     const params = new URLSearchParams();
     if (search) params.set("q", search);
     if (hiringPlanId) params.set("hiringPlanId", hiringPlanId);
     if (sourceFilter) params.set("source", sourceFilter);
+    if (statusFilter) params.set("status", statusFilter);
     if (topN) params.set("topN", String(topN));
     if (!topN) {
       params.set("page", String(page));
@@ -307,22 +317,25 @@ export default function CandidatesPage() {
 
     try {
       const res = await fetch(`/api/candidates?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setCandidates(
-          (data.data || []).map((c: any) => ({
-            ...c,
-            applications: c.applications || [],
-          }))
-        );
-        setMeta(data.meta || null);
+      if (!res.ok) {
+        throw new Error(await readResponseError(res, "Failed to load candidates"));
       }
-    } catch {
-      // ignore
+      const data = await res.json();
+      setCandidates(
+        (data.data || []).map((c: any) => ({
+          ...c,
+          applications: c.applications || [],
+        }))
+      );
+      setMeta(data.meta || null);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to load candidates";
+      setLoadError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
-  }, [search, page, topN, hiringPlanId, sourceFilter]);
+  }, [search, page, topN, hiringPlanId, sourceFilter, statusFilter]);
 
   useEffect(() => {
     const timer = setTimeout(fetchCandidates, 300);
@@ -457,6 +470,25 @@ export default function CandidatesPage() {
               </Select>
             </div>
 
+            <div className="flex items-center gap-2">
+              <Select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setPage(1);
+                }}
+                className="w-44"
+              >
+                <option value="">All Statuses</option>
+                <option value="PENDING_REVIEW">Pending Review</option>
+                <option value="ACTIVE">Active</option>
+                <option value="ON_HOLD">On Hold</option>
+                <option value="SELECTED">Selected</option>
+                <option value="REJECTED">Rejected</option>
+                <option value="WITHDRAWN">Withdrawn</option>
+              </Select>
+            </div>
+
             {hiringPlanId && (
               <div className="flex items-center gap-1.5">
                 <Trophy className="h-4 w-4 text-amber-500" />
@@ -493,6 +525,14 @@ export default function CandidatesPage() {
       </Card>
 
       {/* Results */}
+      {loadError && (
+        <div className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          <span>{loadError}</span>
+          <Button variant="outline" size="sm" onClick={fetchCandidates}>
+            Retry
+          </Button>
+        </div>
+      )}
       {loading ? (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -607,13 +647,27 @@ export default function CandidatesPage() {
                             )}
 
                             {mainApp?.id ? (
-                              <Link
-                                href={`/candidates/${c.id}/joining`}
-                                className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-0.5"
-                              >
-                                View
-                                <ArrowRight className="h-3 w-3" />
-                              </Link>
+                              <div className="flex items-center gap-2">
+                                {!mainApp.isReferral && mainApp.status === "SELECTED" && (
+                                  <Link
+                                    href={`/candidates/${mainApp.id}/joining`}
+                                    className="text-xs font-semibold text-emerald-700 hover:underline"
+                                  >
+                                    Joining
+                                  </Link>
+                                )}
+                                <Link
+                                  href={
+                                    mainApp.isReferral
+                                      ? `/mandates/${mainApp.hiringPlanId}/referrals`
+                                      : `/hiring-plans/${mainApp.hiringPlanId}?appId=${mainApp.id}`
+                                  }
+                                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-0.5"
+                                >
+                                  View
+                                  <ArrowRight className="h-3 w-3" />
+                                </Link>
+                              </div>
                             ) : (
                               <span className="text-[10px] text-slate-400">
                                 {c.experienceYears ? `${c.experienceYears}y exp` : ""}
@@ -755,13 +809,26 @@ export default function CandidatesPage() {
                             >
                               <div className="flex items-center gap-3">
                                 <Link
-                                  href={`/mandates/${app.hiringPlanId}`}
+                                  href={
+                                    app.isReferral
+                                      ? `/mandates/${app.hiringPlanId}/referrals`
+                                      : `/hiring-plans/${app.hiringPlanId}?appId=${app.id}`
+                                  }
                                   className="text-sm font-medium text-indigo-600 hover:underline"
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   {app.hiringPlan?.title || "View Position"}
                                   <ExternalLink className="ml-1 inline h-3 w-3" />
                                 </Link>
+                                {!app.isReferral && app.status === "SELECTED" && (
+                                  <Link
+                                    href={app.offer?.id ? `/offers/${app.offer.id}` : `/candidates/${app.id}/joining`}
+                                    className="text-xs font-medium text-emerald-700 hover:underline"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {app.offer?.id ? `Offer (${app.offer.status})` : "Joining"}
+                                  </Link>
+                                )}
                                 {VALID_STATUS_SET.has(app.status) ? (
                                   <CandidateStatusBadge
                                     status={app.status as CandidateStatus}

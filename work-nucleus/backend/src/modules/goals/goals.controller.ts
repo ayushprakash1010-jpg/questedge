@@ -55,6 +55,22 @@ export class GoalsController {
     return this.service.listForManager(orgId, cycleId, userId);
   }
 
+  @Get('team-members')
+  @ApiOperation({ summary: 'List active org members for goal/manager selection' })
+  teamMembers(@CurrentUser('orgId') orgId: string) {
+    return this.service.listOrgUsers(orgId);
+  }
+
+  @Get('cycle/:cycleId')
+  @Roles(Role.ADMIN, Role.HR)
+  @ApiOperation({ summary: 'List all goals in an appraisal cycle (Admin/HR)' })
+  listByCycle(
+    @CurrentUser('orgId') orgId: string,
+    @Param('cycleId', ParseUUIDPipe) cycleId: string,
+  ) {
+    return this.service.listForCycle(orgId, cycleId);
+  }
+
   @Patch(':id')
   @ApiOperation({ summary: 'Update goal (description, ratings, comments)' })
   update(

@@ -26,6 +26,11 @@ export class QueryCandidatesDto {
   @IsString()
   hiringPlanId?: string;
 
+  @ApiPropertyOptional({ description: 'Filter by application or review status' })
+  @IsOptional()
+  @IsString()
+  status?: string;
+
   @ApiPropertyOptional({
     description: 'Top N candidates by AI match score',
     enum: [5, 10, 20],

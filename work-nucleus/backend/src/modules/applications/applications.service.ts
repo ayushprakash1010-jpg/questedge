@@ -323,6 +323,16 @@ export class ApplicationsService {
           },
           orderBy: { enteredAt: 'asc' },
         },
+        offer: { select: { id: true, status: true } },
+        decision: {
+          select: {
+            id: true,
+            decision: true,
+            offerCtc: true,
+            offerDesignation: true,
+            joiningDate: true,
+          },
+        },
       },
     });
     if (!app) throw new NotFoundException('Application not found');

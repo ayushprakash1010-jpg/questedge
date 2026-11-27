@@ -57,6 +57,14 @@ export class OffersController {
     });
   }
 
+  @Get('eligible-applications')
+  @ApiOperation({
+    summary: 'List SELECTED applications eligible for offer creation',
+  })
+  eligibleApplications(@CurrentUser('orgId') orgId: string) {
+    return this.service.listEligibleApplications(orgId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get one offer with full detail' })
   findOne(

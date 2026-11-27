@@ -56,10 +56,18 @@ export class CandidatesService {
       q,
       source,
       hiringPlanId,
+      status,
       topN,
       sortBy = 'createdAt',
       sortOrder = 'desc',
     } = query;
+
+    const appStatusFilter =
+      status === 'PENDING_REVIEW'
+        ? 'ACTIVE'
+        : status && ['ACTIVE', 'SELECTED', 'REJECTED', 'ON_HOLD', 'WITHDRAWN'].includes(status)
+          ? status
+          : undefined;
 
     const where: Prisma.CandidateWhereInput = { orgId };
     if (q) {
@@ -69,8 +77,13 @@ export class CandidatesService {
       ];
     }
     if (source) where.source = source;
-    if (hiringPlanId) {
-      where.applications = { some: { hiringPlanId } };
+    if (hiringPlanId || appStatusFilter) {
+      where.applications = {
+        some: {
+          ...(hiringPlanId ? { hiringPlanId } : {}),
+          ...(appStatusFilter ? { status: appStatusFilter as any } : {}),
+        },
+      };
     }
 
     // For topN by AI score, we need a special query
@@ -108,6 +121,7 @@ export class CandidatesService {
               aiMatchSummary: true,
               appliedAt: true,
               hiringPlan: { select: { id: true, title: true } },
+              offer: { select: { id: true, status: true } },
             },
           },
         },
@@ -121,6 +135,25 @@ export class CandidatesService {
       const referralWhere: any = { mandate: { orgId } };
       if (hiringPlanId) {
         referralWhere.mandateId = hiringPlanId;
+      }
+      if (status) {
+        if (status === 'PENDING_REVIEW') {
+          referralWhere.status = {
+            in: ['UNDER_REVIEW', 'SHORTLISTED', 'CANDIDATE_ACCEPTED', 'ACTIVATED', 'PENDING_CONSENT', 'CONSENT_REQUESTED'],
+          };
+        } else if (status === 'SELECTED') {
+          referralWhere.status = { in: ['SELECTED', 'HIRED'] };
+        } else if (status === 'REJECTED') {
+          referralWhere.status = { in: ['REJECTED', 'CANDIDATE_DECLINED'] };
+        } else if (status === 'WITHDRAWN') {
+          referralWhere.status = 'WITHDRAWN';
+        } else if (status === 'ACTIVE') {
+          referralWhere.status = {
+            in: ['PENDING_CONSENT', 'CONSENT_REQUESTED', 'CANDIDATE_ACCEPTED', 'ACTIVATED', 'UNDER_REVIEW', 'SHORTLISTED', 'INTERVIEW'],
+          };
+        } else if (status === 'ON_HOLD') {
+          referralWhere.id = '00000000-0000-0000-0000-000000000000';
+        }
       }
       if (q) {
         referralWhere.candidateProfile = {
@@ -164,14 +197,16 @@ export class CandidatesService {
             {
               id: r.id,
               hiringPlanId: r.mandateId,
+              isReferral: true,
               status:
                 r.status === 'HIRED' || r.status === 'SELECTED'
                   ? 'SELECTED'
                   : r.status === 'REJECTED' ||
-                      r.status === 'CANDIDATE_DECLINED' ||
-                      r.status === 'WITHDRAWN'
+                      r.status === 'CANDIDATE_DECLINED'
                     ? 'REJECTED'
-                    : 'ACTIVE',
+                    : r.status === 'WITHDRAWN'
+                      ? 'WITHDRAWN'
+                      : 'ACTIVE',
               aiMatchScore: r.aiMatchScore
                 ? new Prisma.Decimal(r.aiMatchScore.toString())
                 : null,
