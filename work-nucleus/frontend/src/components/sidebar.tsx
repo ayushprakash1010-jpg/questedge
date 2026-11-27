@@ -458,6 +458,7 @@ interface HoverPillState {
   isPortal?: boolean;
   top: number;
   left: number;
+  width: number;
   height: number;
 }
 
@@ -617,7 +618,10 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
   const showNavHover = useCallback(
     (
       e: React.MouseEvent<HTMLElement> | React.FocusEvent<HTMLElement>,
-      data: Omit<HoverPillState, "top" | "left" | "height" | "bgColor" | "shadow">
+      data: Omit<
+        HoverPillState,
+        "top" | "left" | "width" | "height" | "bgColor" | "shadow"
+      >
     ) => {
       if (hoverHideTimerRef.current) {
         clearTimeout(hoverHideTimerRef.current);
@@ -632,9 +636,10 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
       setHoveredNav({
         ...data,
         ...colors,
-        top: rect.top - 2,
-        left: rect.left - 2,
-        height: rect.height + 4,
+        top: rect.top - 3,
+        left: rect.left - 3,
+        width: rect.width + 6,
+        height: rect.height + 6,
       });
     },
     [effectiveRole]
@@ -854,12 +859,13 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
                           }
                           onBlur={collapsed ? scheduleHideNavHover : undefined}
                           aria-label={collapsed ? item.label : undefined}
+                          title={collapsed ? item.label : undefined}
                           aria-current={isActive ? "page" : undefined}
                           className={cn(
-                            "group/item relative flex items-center rounded-[10px] text-[13.5px] font-medium transition-all duration-150",
+                            "group/item relative flex items-center text-[13.5px] font-medium transition-all duration-150",
                             collapsed
-                              ? "mx-auto h-9 w-9 justify-center p-0"
-                              : "gap-2.5 px-2.5 py-[7px]",
+                              ? "mx-auto h-9 w-9 justify-center rounded-full p-0"
+                              : "gap-2.5 rounded-[10px] px-2.5 py-[7px]",
                             isActive
                               ? config.activeBg
                               : cn(
@@ -869,8 +875,8 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
                                 )
                           )}
                         >
-                          {/* Active left indicator bar */}
-                          {isActive && (
+                          {/* Active left indicator bar (expanded mode only) */}
+                          {isActive && !collapsed && (
                             <span
                               aria-hidden="true"
                               className={cn(
@@ -967,21 +973,22 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
           }
           title={
             collapsed
-              ? undefined
+              ? `${config.portalTitle} — ${config.portalSubtitle}`
               : `View ${effectiveRole} profile and settings`
           }
           className={cn(
-            "group relative flex items-center rounded-xl border transition-all duration-200 shadow-2xs hover:shadow-xs",
+            "group relative flex items-center border transition-all duration-200 shadow-2xs hover:shadow-xs",
             config.cardStyle,
             collapsed
-              ? "h-10 w-10 justify-center p-0"
-              : "w-full justify-between p-2"
+              ? "h-10 w-10 justify-center rounded-full p-0"
+              : "w-full justify-between rounded-xl p-2"
           )}
         >
           <div className={cn("flex items-center min-w-0", !collapsed && "gap-2.5")}>
             <div
               className={cn(
-                "relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-white shadow-xs transition-transform group-hover:scale-105",
+                "relative flex h-8 w-8 shrink-0 items-center justify-center bg-gradient-to-br text-white shadow-xs transition-transform group-hover:scale-105",
+                collapsed ? "rounded-full" : "rounded-lg",
                 config.cardGradient
               )}
             >
@@ -1140,26 +1147,27 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
         </div>
       )}
 
-      {/* Sliding Colored Pop-Out Hover Capsule for Collapsed Icon Rail */}
+      {/* Sliding Circular Colored Pop-Out Orb for Collapsed Icon Rail */}
       <AnimatePresence>
         {hoveredNav && effectiveCollapsed && (
           <motion.div
-            key="rail-hover-pill"
-            role="tooltip"
+            key="rail-hover-orb"
+            aria-hidden="true"
             initial={
               prefersReducedMotion
                 ? {
                     opacity: 0,
                     y: hoveredNav.top,
+                    width: hoveredNav.width,
                     height: hoveredNav.height,
                     backgroundColor: hoveredNav.bgColor,
                     boxShadow: hoveredNav.shadow,
                   }
                 : {
                     opacity: 0,
-                    scale: 0.94,
-                    x: -8,
+                    scale: 0.78,
                     y: hoveredNav.top,
+                    width: hoveredNav.width,
                     height: hoveredNav.height,
                     backgroundColor: hoveredNav.bgColor,
                     boxShadow: hoveredNav.shadow,
@@ -1170,76 +1178,52 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
                 ? {
                     opacity: 1,
                     y: hoveredNav.top,
+                    width: hoveredNav.width,
                     height: hoveredNav.height,
                     backgroundColor: hoveredNav.bgColor,
                     boxShadow: hoveredNav.shadow,
                   }
                 : {
                     opacity: 1,
-                    scale: 1.02,
-                    x: 0,
+                    scale: 1.08,
                     y: hoveredNav.top,
+                    width: hoveredNav.width,
                     height: hoveredNav.height,
                     backgroundColor: hoveredNav.bgColor,
                     boxShadow: hoveredNav.shadow,
                   }
             }
-            exit={{ opacity: 0, scale: 0.94, x: -6 }}
+            exit={{ opacity: 0, scale: 0.78 }}
             transition={
               prefersReducedMotion
                 ? { duration: 0.12 }
                 : {
-                    y: { type: "spring", stiffness: 520, damping: 36, mass: 0.65 },
-                    height: { type: "spring", stiffness: 520, damping: 36 },
+                    y: { type: "spring", stiffness: 540, damping: 36, mass: 0.6 },
+                    width: { type: "spring", stiffness: 540, damping: 36 },
+                    height: { type: "spring", stiffness: 540, damping: 36 },
+                    scale: { type: "spring", stiffness: 500, damping: 28 },
                     backgroundColor: { duration: 0.2, ease: "easeOut" },
                     boxShadow: { duration: 0.2, ease: "easeOut" },
                     opacity: { duration: 0.14 },
-                    scale: { duration: 0.14 },
-                    x: { duration: 0.16, ease: "easeOut" },
                   }
             }
             style={{
               top: 0,
               left: hoveredNav.left,
               backgroundImage:
-                "linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(15,23,42,0.12) 100%)",
+                "linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(15,23,42,0.12) 100%)",
             }}
-            className="pointer-events-none fixed z-[60] hidden lg:flex items-center overflow-hidden rounded-xl pr-3.5 text-white ring-1 ring-white/25 select-none"
+            className="pointer-events-none fixed z-[60] hidden lg:flex items-center justify-center rounded-full text-white ring-2 ring-white/40 dark:ring-slate-900/50 select-none"
           >
-            <span
-              className={cn(
-                "flex shrink-0 items-center justify-center",
-                hoveredNav.isPortal ? "h-11 w-11" : "h-10 w-10"
-              )}
-            >
-              <hoveredNav.icon className="h-[18px] w-[18px] text-white drop-shadow-2xs" />
-            </span>
-
-            <div className="flex flex-col justify-center pr-0.5">
-              <div className="flex items-center gap-1.5">
-                <span className="whitespace-nowrap text-[13px] font-bold leading-tight tracking-tight text-white">
-                  {hoveredNav.label}
-                </span>
-                {hoveredNav.isActive && (
-                  <span className="rounded bg-white/20 px-1 py-[1px] text-[9px] font-semibold uppercase tracking-wider text-white/95">
-                    Active
-                  </span>
-                )}
-                {hoveredNav.isPortal && (
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-2xs" />
-                )}
-                {hoveredNav.badge && hoveredNav.badge > 0 && (
-                  <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-white/25 px-1.5 text-[10px] font-bold text-white">
-                    {hoveredNav.badge > 99 ? "99+" : hoveredNav.badge}
-                  </span>
-                )}
-              </div>
-              {hoveredNav.section && (
-                <span className="whitespace-nowrap text-[10px] font-medium leading-tight text-white/80">
-                  {hoveredNav.section}
-                </span>
-              )}
-            </div>
+            <hoveredNav.icon className="h-[19px] w-[19px] text-white drop-shadow-2xs transition-transform duration-150" />
+            {hoveredNav.badge && hoveredNav.badge > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white ring-2 ring-white dark:ring-slate-900">
+                {hoveredNav.badge > 99 ? "99+" : hoveredNav.badge}
+              </span>
+            )}
+            {hoveredNav.isPortal && (
+              <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-white dark:ring-slate-900" />
+            )}
           </motion.div>
         )}
       </AnimatePresence>
