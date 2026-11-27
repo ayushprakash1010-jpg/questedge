@@ -16,6 +16,7 @@ const ALLOWED_ANALYTICS_TYPES = new Set([
   "interviewers",
   "progress",
   "sources",
+  "insights",
 ]);
 
 // GET /api/analytics?type=overview|funnel|time-to-hire|cost|interviewers|progress|sources
