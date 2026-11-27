@@ -8,6 +8,7 @@ import {
 } from "@/lib/api-url";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 30;
 
 // GET /api/applications/:appId/feedback — get all feedback for application
 // GET /api/applications/:appId/feedback?matrix=true — get skill matrix
@@ -81,6 +82,7 @@ export async function POST(
       method: "POST",
       headers: getProxyHeaders(req, accessToken, body ? "application/json" : undefined),
       ...(body ? { body } : {}),
+      signal: AbortSignal.timeout(25_000),
     });
     return forwardUpstreamResponse(res, "Failed to process feedback");
   } catch {

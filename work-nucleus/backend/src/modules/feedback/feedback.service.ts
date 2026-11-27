@@ -262,81 +262,103 @@ export class FeedbackService {
       throw new BadRequestException('No submitted feedback to summarize');
     }
 
-    const rawKey = this.config.get<string>('GEMINI_API_KEY');
-    const trimmedKey = rawKey ? rawKey.trim() : null;
-    let summary: any = {};
-    if (!trimmedKey) {
-      summary = {
-        overallScore: 80,
-        strengths: ['Good communication'],
-        weaknesses: ['Needs technical prep'],
-        summary: 'Mock summary',
-      };
-    } else {
-      const { GoogleGenAI } = require('@google/genai');
-      const ai = new GoogleGenAI({ apiKey: trimmedKey });
+    const resolvedOrgId = (application.hiringPlan as any)?.orgId || orgId;
+    const avgRating =
+      feedbacks.reduce((sum, f) => sum + f.overallRating, 0) / feedbacks.length;
+    const strengthItems = feedbacks
+      .map((f) => f.strengths?.trim())
+      .filter((s): s is string => Boolean(s));
+    const concernItems = feedbacks
+      .map((f) => f.concerns?.trim())
+      .filter((s): s is string => Boolean(s));
+    const notesPreview = feedbacks
+      .map((f) => f.qualitativeNotes?.trim())
+      .filter((s): s is string => Boolean(s))
+      .slice(0, 2)
+      .join(' ');
+    const defaultRecommendation =
+      avgRating >= 3.5 ? 'hire' : avgRating >= 2.5 ? 'conditional_hire' : 'no_hire';
 
-      const payload = {
-        applicationContext: {
-          candidateName: application.candidate.name,
-          role: application.hiringPlan.designation,
-          department: application.hiringPlan.department,
-          planTitle: application.hiringPlan.title,
-        },
-        feedbacks: feedbacks.map((fb) => ({
-          interviewer: fb.interviewer.name,
-          stage: fb.stage.name,
-          stageType: fb.stage.stageType,
-          overallRating: fb.overallRating,
-          recommendation: fb.recommendation,
-          strengths: fb.strengths,
-          concerns: fb.concerns,
-          qualitativeNotes: fb.qualitativeNotes,
-          skillRatings: fb.skillRatings.map((sr) => ({
-            skillName: sr.skill.name,
-            category: sr.skill.category,
-            rating: sr.rating,
-            notes: sr.notes,
-          })),
+    const payload = {
+      applicationContext: {
+        candidateName: application.candidate.name,
+        role: application.hiringPlan.designation,
+        department: application.hiringPlan.department,
+        planTitle: application.hiringPlan.title,
+      },
+      feedbacks: feedbacks.map((fb) => ({
+        interviewer: fb.interviewer.name,
+        stage: fb.stage.name,
+        stageType: fb.stage.stageType,
+        overallRating: fb.overallRating,
+        recommendation: fb.recommendation,
+        strengths: fb.strengths,
+        concerns: fb.concerns,
+        qualitativeNotes: fb.qualitativeNotes,
+        skillRatings: fb.skillRatings.map((sr) => ({
+          skillName: sr.skill.name,
+          category: sr.skill.category,
+          rating: sr.rating,
+          notes: sr.notes,
         })),
-      };
+      })),
+    };
 
-      const prompt = `Summarize this interview feedback into a structured JSON candidate scorecard. Context: ${JSON.stringify(payload)}`;
-      const model =
-        this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
-      const startedAtMs = Date.now();
-      try {
-        const response = await ai.models.generateContent({
-          model,
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          config: { responseMimeType: 'application/json', temperature: 0.2 },
-        });
-        await this.aiCost?.logGeminiCall({
-          orgId: (application.hiringPlan as any)?.orgId || orgId,
-          agentName: 'feedback.summarize',
-          modelUsed: model,
-          startedAtMs,
-          response,
-        });
-        summary = JSON.parse(
-          (response.text || '{}')
-            .replace(/```json/g, '')
-            .replace(/```/g, '')
-            .trim(),
-        );
-      } catch (err: any) {
-        await this.aiCost?.logGeminiCall({
-          orgId: (application.hiringPlan as any)?.orgId || orgId,
-          agentName: 'feedback.summarize',
-          modelUsed: model,
-          startedAtMs,
-          error: err,
-        });
-        throw new BadRequestException(
-          `AI summarization failed: ${err.message}`,
-        );
-      }
-    }
+    const prompt = `Summarize this interview feedback into a structured JSON candidate scorecard matching these exact keys:
+{
+  "overallAssessment": "2-3 concise sentences evaluating the candidate overall",
+  "recommendation": "hire" | "conditional_hire" | "no_hire",
+  "confidence": "HIGH" | "MEDIUM" | "LOW",
+  "keyStrengths": ["string"],
+  "areasOfConcern": ["string"],
+  "riskFactors": ["string"],
+  "skillAnalysis": [{ "skillName": "string", "category": "string", "averageRating": 4, "assessment": "string" }]
+}
+Context: ${JSON.stringify(payload)}`;
+
+    const aiSummary = await this.callGeminiJson<Record<string, any>>({
+      orgId: resolvedOrgId,
+      agentName: 'feedback.summarize',
+      prompt,
+      temperature: 0.2,
+    });
+
+    const summary = {
+      overallAssessment:
+        (typeof aiSummary?.overallAssessment === 'string' &&
+          aiSummary.overallAssessment.trim()) ||
+        (typeof aiSummary?.summary === 'string' && aiSummary.summary.trim()) ||
+        `${application.candidate.name} averaged ${avgRating.toFixed(1)}/5 across ${feedbacks.length} submitted stage evaluation(s) for ${application.hiringPlan.designation}.${notesPreview ? ` Interviewer notes: ${notesPreview}` : ''}`,
+      recommendation:
+        typeof aiSummary?.recommendation === 'string' &&
+        ['hire', 'conditional_hire', 'no_hire'].includes(
+          aiSummary.recommendation.toLowerCase(),
+        )
+          ? aiSummary.recommendation.toLowerCase()
+          : defaultRecommendation,
+      confidence:
+        typeof aiSummary?.confidence === 'string' && aiSummary.confidence.trim()
+          ? aiSummary.confidence.toUpperCase()
+          : feedbacks.length >= 2
+            ? 'HIGH'
+            : 'MEDIUM',
+      keyStrengths: Array.isArray(aiSummary?.keyStrengths)
+        ? aiSummary.keyStrengths.filter((s: unknown) => typeof s === 'string')
+        : Array.isArray(aiSummary?.strengths)
+          ? aiSummary.strengths.filter((s: unknown) => typeof s === 'string')
+          : strengthItems,
+      areasOfConcern: Array.isArray(aiSummary?.areasOfConcern)
+        ? aiSummary.areasOfConcern.filter((s: unknown) => typeof s === 'string')
+        : Array.isArray(aiSummary?.weaknesses)
+          ? aiSummary.weaknesses.filter((s: unknown) => typeof s === 'string')
+          : concernItems,
+      riskFactors: Array.isArray(aiSummary?.riskFactors)
+        ? aiSummary.riskFactors.filter((s: unknown) => typeof s === 'string')
+        : concernItems,
+      skillAnalysis: Array.isArray(aiSummary?.skillAnalysis)
+        ? aiSummary.skillAnalysis
+        : [],
+    };
 
     // Store summary in application
     await this.prisma.candidateApplication.update({
@@ -382,100 +404,96 @@ export class FeedbackService {
       throw new BadRequestException('No submitted feedback to score');
     }
 
-    const rawKey = this.config.get<string>('GEMINI_API_KEY');
-    const trimmedKey = rawKey ? rawKey.trim() : null;
-    const isProd = this.config.get<string>('NODE_ENV') === 'production';
-    let scoreResult: any = {};
-    if (!trimmedKey) {
-      if (isProd) {
-        throw new BadRequestException('AI scoring is unavailable: GEMINI_API_KEY not configured');
-      }
-      const avgRating =
-        feedbacks.reduce((sum, f) => sum + f.overallRating, 0) / feedbacks.length;
-      scoreResult = {
-        score: Math.round((avgRating / 5) * 100),
-        reasoning: 'Calculated from average interviewer ratings (offline mode).',
-        confidence: 'LOW',
-        breakdown: [],
-        keyFactors: ['Average interviewer rating'],
-      };
-    } else {
-      const { GoogleGenAI } = require('@google/genai');
-      const ai = new GoogleGenAI({ apiKey: trimmedKey });
+    const resolvedOrgId = (application.hiringPlan as any)?.orgId || orgId;
+    const avgRating =
+      feedbacks.reduce((sum, f) => sum + f.overallRating, 0) / feedbacks.length;
+    const fallbackScore = Math.round((avgRating / 5) * 100);
+    const fallbackResult = {
+      score: fallbackScore,
+      reasoning: `Calculated from ${feedbacks.length} submitted evaluation(s) averaging ${avgRating.toFixed(1)}/5.`,
+      confidence: feedbacks.length >= 2 ? 'MEDIUM' : 'LOW',
+      breakdown: [],
+      keyFactors: feedbacks
+        .map((f) => `${f.stage.name}: ${f.overallRating}/5 (${f.recommendation})`)
+        .slice(0, 5),
+    };
 
-      const resolvedOrgId = (application.hiringPlan as any)?.orgId || orgId;
-      const orgSettings = resolvedOrgId
-        ? await this.prisma.orgSettings.findUnique({
-            where: { orgId: resolvedOrgId },
-          })
-        : null;
-      const scoringWeights = (orgSettings?.settings as any)?.scoringWeights || {
-        technical: 40,
-        leadership: 25,
-        behavioural: 20,
-        communication: 15,
-      };
+    const orgSettings = resolvedOrgId
+      ? await this.prisma.orgSettings.findUnique({
+          where: { orgId: resolvedOrgId },
+        })
+      : null;
+    const scoringWeights = (orgSettings?.settings as any)?.scoringWeights || {
+      technical: 40,
+      leadership: 25,
+      behavioural: 20,
+      communication: 15,
+    };
 
-      const payload = {
-        applicationContext: {
-          candidateName: application.candidate.name,
-          role: application.hiringPlan.designation,
-          department: application.hiringPlan.department,
-          planTitle: application.hiringPlan.title,
-        },
-        feedbacks: feedbacks.map((fb) => ({
-          interviewer: fb.interviewer.name,
-          stage: fb.stage.name,
-          stageType: fb.stage.stageType,
-          overallRating: fb.overallRating,
-          recommendation: fb.recommendation,
-          strengths: fb.strengths,
-          concerns: fb.concerns,
-          qualitativeNotes: fb.qualitativeNotes,
-          skillRatings: fb.skillRatings.map((sr) => ({
-            skillName: sr.skill.name,
-            category: sr.skill.category,
-            rating: sr.rating,
-            notes: sr.notes,
-          })),
+    const payload = {
+      applicationContext: {
+        candidateName: application.candidate.name,
+        role: application.hiringPlan.designation,
+        department: application.hiringPlan.department,
+        planTitle: application.hiringPlan.title,
+      },
+      feedbacks: feedbacks.map((fb) => ({
+        interviewer: fb.interviewer.name,
+        stage: fb.stage.name,
+        stageType: fb.stage.stageType,
+        overallRating: fb.overallRating,
+        recommendation: fb.recommendation,
+        strengths: fb.strengths,
+        concerns: fb.concerns,
+        qualitativeNotes: fb.qualitativeNotes,
+        skillRatings: fb.skillRatings.map((sr) => ({
+          skillName: sr.skill.name,
+          category: sr.skill.category,
+          rating: sr.rating,
+          notes: sr.notes,
         })),
-        scoringWeights,
-      };
+      })),
+      scoringWeights,
+    };
 
-      const prompt = `Calculate a final objective score (0-100) for this candidate based on the feedback and scoring weights. Return JSON with: "score" (number 0-100), "confidence" ("HIGH"|"MEDIUM"|"LOW"), "reasoning" (string), "breakdown" (array of { "category", "score" (1-5), "weight" (number), "weightedScore" (number) }), and "keyFactors" (array of concise factor strings). Context: ${JSON.stringify(payload)}`;
-      const model =
-        this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
-      const startedAtMs = Date.now();
-      try {
-        const response = await ai.models.generateContent({
-          model,
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          config: { responseMimeType: 'application/json', temperature: 0.2 },
-        });
-        await this.aiCost?.logGeminiCall({
-          orgId: resolvedOrgId,
-          agentName: 'feedback.score',
-          modelUsed: model,
-          startedAtMs,
-          response,
-        });
-        scoreResult = JSON.parse(
-          (response.text || '{}')
-            .replace(/```json/g, '')
-            .replace(/```/g, '')
-            .trim(),
-        );
-      } catch (err: any) {
-        await this.aiCost?.logGeminiCall({
-          orgId: resolvedOrgId,
-          agentName: 'feedback.score',
-          modelUsed: model,
-          startedAtMs,
-          error: err,
-        });
-        throw new BadRequestException(`AI scoring failed: ${err.message}`);
-      }
-    }
+    const prompt = `Calculate a final objective score (0-100) for this candidate based on the feedback and scoring weights. Return JSON with: "score" (number 0-100), "confidence" ("HIGH"|"MEDIUM"|"LOW"), "reasoning" (string), "breakdown" (array of { "category", "score" (1-5), "weight" (number), "weightedScore" (number) }), and "keyFactors" (array of concise factor strings). Context: ${JSON.stringify(payload)}`;
+
+    const aiScore = await this.callGeminiJson<Record<string, any>>({
+      orgId: resolvedOrgId,
+      agentName: 'feedback.score',
+      prompt,
+      temperature: 0.2,
+    });
+
+    const rawScore = Number(aiScore?.score);
+    const validScore = Number.isFinite(rawScore)
+      ? Math.min(100, Math.max(0, Math.round(rawScore)))
+      : fallbackResult.score;
+
+    const scoreResult = {
+      score: validScore,
+      confidence:
+        typeof aiScore?.confidence === 'string' && aiScore.confidence.trim()
+          ? aiScore.confidence.toUpperCase()
+          : fallbackResult.confidence,
+      reasoning:
+        typeof aiScore?.reasoning === 'string' && aiScore.reasoning.trim()
+          ? aiScore.reasoning
+          : fallbackResult.reasoning,
+      breakdown: Array.isArray(aiScore?.breakdown)
+        ? aiScore.breakdown.map((b: any) => ({
+            category: String(b?.category || 'Overall'),
+            score: Number.isFinite(Number(b?.score)) ? Number(b.score) : avgRating,
+            weight: Number.isFinite(Number(b?.weight)) ? Number(b.weight) : 25,
+            weightedScore: Number.isFinite(Number(b?.weightedScore))
+              ? Number(b.weightedScore)
+              : 0,
+          }))
+        : fallbackResult.breakdown,
+      keyFactors: Array.isArray(aiScore?.keyFactors)
+        ? aiScore.keyFactors.filter((f: unknown) => typeof f === 'string')
+        : fallbackResult.keyFactors,
+    };
 
     // Store score in application
     await this.prisma.candidateApplication.update({
@@ -484,6 +502,80 @@ export class FeedbackService {
     });
 
     return scoreResult;
+  }
+
+  private async callGeminiJson<T = Record<string, any>>(params: {
+    orgId?: string;
+    agentName: string;
+    prompt: string;
+    temperature?: number;
+  }): Promise<T | null> {
+    const rawKey = this.config.get<string>('GEMINI_API_KEY');
+    const trimmedKey = rawKey ? rawKey.trim() : null;
+    if (!trimmedKey) return null;
+
+    const candidateModels = [
+      'gemini-flash-lite-latest',
+      this.config.get<string>('GEMINI_MODEL'),
+      'gemini-3.1-flash-lite',
+      'gemini-flash-latest',
+    ].filter((m, idx, arr): m is string => Boolean(m) && arr.indexOf(m) === idx);
+
+    const { GoogleGenAI } = require('@google/genai');
+    const ai = new GoogleGenAI({ apiKey: trimmedKey });
+
+    for (const model of candidateModels.slice(0, 2)) {
+      const startedAtMs = Date.now();
+      try {
+        let timer: NodeJS.Timeout | undefined;
+        const response: any = await Promise.race([
+          ai.models.generateContent({
+            model,
+            contents: [{ role: 'user', parts: [{ text: params.prompt }] }],
+            config: {
+              responseMimeType: 'application/json',
+              temperature: params.temperature ?? 0.2,
+            },
+          }),
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(
+              () => reject(new Error(`Gemini timeout on ${model} after 12s`)),
+              12_000,
+            );
+          }),
+        ]).finally(() => {
+          if (timer) clearTimeout(timer);
+        });
+
+        await this.aiCost?.logGeminiCall({
+          orgId: params.orgId,
+          agentName: params.agentName,
+          modelUsed: model,
+          startedAtMs,
+          response,
+        });
+
+        const parsed = JSON.parse(
+          (response.text || '{}')
+            .replace(/```json/gi, '')
+            .replace(/```/g, '')
+            .trim(),
+        );
+        if (parsed && typeof parsed === 'object') {
+          return parsed as T;
+        }
+      } catch (err) {
+        await this.aiCost?.logGeminiCall({
+          orgId: params.orgId,
+          agentName: params.agentName,
+          modelUsed: model,
+          startedAtMs,
+          error: err,
+        });
+      }
+    }
+
+    return null;
   }
 
   async getFeedbackById(feedbackId: string) {

@@ -763,6 +763,7 @@ export function CandidateSheet({
                       applicationId={app.id}
                       aiSummary={app.aiSummary}
                       totalScore={app.totalScore}
+                      onUpdated={fetchDetail}
                     />
                   </TabsContent>
 

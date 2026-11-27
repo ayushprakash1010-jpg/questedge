@@ -85,10 +85,12 @@ export function FeedbackDisplay({
   applicationId,
   aiSummary,
   totalScore,
+  onUpdated,
 }: {
   applicationId: string;
   aiSummary: string | null;
   totalScore: string | null;
+  onUpdated?: () => void;
 }) {
   const [groups, setGroups] = useState<FeedbackGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,17 +135,24 @@ export function FeedbackDisplay({
     try {
       const res = await fetch(
         `/api/applications/${applicationId}/feedback?action=summarize`,
-        { method: "POST" }
+        { method: "POST", signal: AbortSignal.timeout(30_000) }
       );
       if (res.ok) {
         const data = await res.json();
         setSummary(data);
         toast.success("AI summary generated");
+        onUpdated?.();
       } else {
         toast.error(await readResponseError(res, "Failed to generate AI summary"));
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to generate AI summary");
+      toast.error(
+        err instanceof Error && err.name === "TimeoutError"
+          ? "AI summary timed out. Please try again."
+          : err instanceof Error
+            ? err.message
+            : "Failed to generate AI summary"
+      );
     } finally {
       setSummarizing(false);
     }
@@ -154,17 +163,24 @@ export function FeedbackDisplay({
     try {
       const res = await fetch(
         `/api/applications/${applicationId}/feedback?action=score`,
-        { method: "POST" }
+        { method: "POST", signal: AbortSignal.timeout(30_000) }
       );
       if (res.ok) {
         const data = await res.json();
         setScore(data);
         toast.success("AI score calculated");
+        onUpdated?.();
       } else {
         toast.error(await readResponseError(res, "Failed to calculate AI score"));
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to calculate AI score");
+      toast.error(
+        err instanceof Error && err.name === "TimeoutError"
+          ? "AI scoring timed out. Please try again."
+          : err instanceof Error
+            ? err.message
+            : "Failed to calculate AI score"
+      );
     } finally {
       setScoring(false);
     }
@@ -484,12 +500,12 @@ export function FeedbackDisplay({
 
               {(score.breakdown?.length ?? 0) > 0 && (
                 <div className="space-y-2">
-                  {score.breakdown.map((b) => (
-                    <div key={b.category}>
+                  {score.breakdown.map((b, idx) => (
+                    <div key={`${b.category}-${idx}`}>
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-medium text-slate-700 capitalize">{b.category}</span>
                         <span className="text-slate-500">
-                          {b.score.toFixed(1)}/5 ({b.weight}%)
+                          {Number(b.score ?? 0).toFixed(1)}/5 ({b.weight ?? 0}%)
                         </span>
                       </div>
                       <div className="mt-1 h-2 rounded-full bg-slate-100">
@@ -498,7 +514,9 @@ export function FeedbackDisplay({
                             "h-2 rounded-full",
                             categoryColors[b.category] ? "bg-indigo-500" : "bg-indigo-500"
                           )}
-                          style={{ width: `${(b.score / 5) * 100}%` }}
+                          style={{
+                            width: `${Math.min(100, Math.max(0, (Number(b.score ?? 0) / 5) * 100))}%`,
+                          }}
                         />
                       </div>
                     </div>
