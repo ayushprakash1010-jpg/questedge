@@ -848,7 +848,7 @@ export class CandidatePortalService {
     const candidateIds = await this.consolidateCandidateProfiles(candidateId).catch(() => [candidateId]);
     const [applications, referrals] = await Promise.all([
       this.prisma.candidateApplication.findMany({
-        where: { candidateProfileId: { in: candidateIds } },
+        where: { candidateProfileId: { in: candidateIds }, referralId: null },
         include: {
           mandate: {
             select: {

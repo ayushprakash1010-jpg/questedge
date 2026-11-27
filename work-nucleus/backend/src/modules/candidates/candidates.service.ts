@@ -119,6 +119,7 @@ export class CandidatesService {
               id: true,
               hiringPlanId: true,
               mandateId: true,
+              referralId: true,
               candidateProfileId: true,
               sourceType: true,
               status: true,
@@ -158,6 +159,10 @@ export class CandidatesService {
       const linkedProfile = appWithProfile?.candidateProfile;
       return {
         ...c,
+        applications: (c.applications || []).map((a: any) => ({
+          ...a,
+          isReferral: Boolean(a.referralId),
+        })),
         candidateProfileId:
           c.candidateProfileId || appWithProfile?.candidateProfileId || linkedProfile?.id,
         resumeUrl: c.resumeUrl || linkedProfile?.resumeUrl || null,
@@ -266,10 +271,14 @@ export class CandidatesService {
         const key = rc.email.toLowerCase();
         if (candidateMap.has(key)) {
           const existing = candidateMap.get(key);
-          existing.applications = [
-            ...(existing.applications || []),
-            ...rc.applications,
-          ];
+          const existingApps = existing.applications || [];
+          const newReferralApps = (rc.applications || []).filter(
+            (rcApp: any) =>
+              !existingApps.some(
+                (ea: any) => ea.referralId === rcApp.id || ea.id === rcApp.id,
+              ),
+          );
+          existing.applications = [...existingApps, ...newReferralApps];
           // If the candidate has referrals, prioritize REFERRAL status
           if (rc.source === 'REFERRAL') {
             existing.source = 'REFERRAL';

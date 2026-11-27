@@ -181,7 +181,9 @@ export class MandatesService {
       activeParticipations,
       distinctReferralRecruiters,
     ] = await Promise.all([
-      this.prisma.candidateApplication.count({ where: { mandateId } }),
+      this.prisma.candidateApplication.count({
+        where: { mandateId, referralId: null },
+      }),
       this.prisma.referral.groupBy({
         by: ['status'],
         where: { mandateId },
@@ -375,7 +377,7 @@ export class MandatesService {
           _count: {
             select: {
               referrals: true,
-              applications: true,
+              applications: { where: { referralId: null } },
               participations: true,
             },
           },
