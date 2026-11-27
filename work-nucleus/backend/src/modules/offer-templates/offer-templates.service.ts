@@ -25,12 +25,45 @@ export class OfferTemplatesService {
     });
   }
 
-  async list(orgId: string, opts: { activeOnly?: boolean } = {}) {
-    return this.prisma.offerTemplate.findMany({
+  async list(
+    orgId: string,
+    opts: { activeOnly?: boolean; seedForUserId?: string } = {},
+  ) {
+    const existing = await this.prisma.offerTemplate.findMany({
       where: { orgId, ...(opts.activeOnly ? { isActive: true } : {}) },
       orderBy: [{ isActive: 'desc' }, { updatedAt: 'desc' }],
       include: { createdBy: { select: { id: true, name: true } } },
     });
+
+    if (existing.length === 0 && opts.seedForUserId) {
+      const totalCount = await this.prisma.offerTemplate.count({
+        where: { orgId },
+      });
+      if (totalCount === 0) {
+        const seeded = await this.prisma.offerTemplate.create({
+          data: {
+            orgId,
+            createdById: opts.seedForUserId,
+            name: 'Standard Offer Letter',
+            body: `<p>Dear {{candidate.name}},</p>
+
+<p>We are pleased to offer you the position of <strong>{{role.title}}</strong> at {{org.name}}.</p>
+
+<p>Your annual fixed compensation will be {{compensation.currency}} {{compensation.fixedAnnual}}.</p>
+
+<p>Please review the attached terms and sign electronically by {{offer.expiresAt}}.</p>
+
+<p>We look forward to welcoming you to the team.</p>`,
+            variables: [],
+            brandingJson: null as any,
+          },
+          include: { createdBy: { select: { id: true, name: true } } },
+        });
+        return [seeded];
+      }
+    }
+
+    return existing;
   }
 
   async findOne(orgId: string, id: string) {

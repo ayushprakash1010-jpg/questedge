@@ -190,54 +190,96 @@ export class DecisionsService {
       };
     }
 
-    const model =
-      this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
     const resolvedOrgId = application.hiringPlan?.orgId;
-    let startedAtMs = 0;
-    let aiAttempted = false;
-    try {
-      const rawKey = this.config.get<string>('GEMINI_API_KEY');
-      const trimmedKey = rawKey ? rawKey.trim() : null;
-      if (!trimmedKey) return;
+    const roleLabel =
+      dto.offerDesignation ||
+      application.hiringPlan?.designation ||
+      application.hiringPlan?.title ||
+      'the role';
+    const candidateFirst =
+      (application.candidate?.name || 'Candidate').split(' ')[0];
+    const fallbackDraft =
+      dto.decision === DecisionType.SELECTED
+        ? {
+            subject: `Congratulations ${application.candidate?.name || ''} — Selection for ${roleLabel}`,
+            body: `Hi ${candidateFirst},\n\nWe are delighted to inform you that you have been selected for ${roleLabel} at ${application.hiringPlan?.title || 'our team'}.\n\n${dto.offerCtc ? `Proposed Annual CTC: INR ${Number(dto.offerCtc).toLocaleString('en-IN')}\n` : ''}${dto.joiningDate ? `Target Joining Date: ${new Date(dto.joiningDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}\n` : ''}\nOur HR team will shortly follow up with your formal offer letter for review and acceptance.\n\nWarm regards,\nHiring Team`,
+          }
+        : {
+            subject: `Update on your application for ${roleLabel}`,
+            body: `Hi ${candidateFirst},\n\nThank you for taking the time to interview for ${roleLabel}. After careful review with the hiring panel, we will not be moving forward at this stage.\n\nWe truly appreciate your interest and wish you every success ahead.\n\nWarm regards,\nHiring Team`,
+          };
+
+    const candidateModels = [
+      'gemini-flash-lite-latest',
+      this.config.get<string>('GEMINI_MODEL'),
+      'gemini-flash-latest',
+    ].filter((m, idx, arr): m is string => Boolean(m) && arr.indexOf(m) === idx);
+
+    const rawKey = this.config.get<string>('GEMINI_API_KEY');
+    const trimmedKey = rawKey ? rawKey.trim() : null;
+    let draft: { subject: string; body: string } | null = null;
+
+    if (trimmedKey) {
       const { GoogleGenAI } = require('@google/genai');
       const ai = new GoogleGenAI({ apiKey: trimmedKey });
       const prompt = `Draft a communication email for a candidate based on this decision context: ${JSON.stringify(payload)}. Return JSON with "subject" and "body".`;
-      aiAttempted = true;
-      startedAtMs = Date.now();
-      const response = await ai.models.generateContent({
-        model,
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: { responseMimeType: 'application/json', temperature: 0.7 },
-      });
-      await this.aiCost?.logGeminiCall({
-        orgId: resolvedOrgId,
-        agentName: 'decisions.draft_communication',
-        modelUsed: model,
-        startedAtMs,
-        response,
-      });
-      const draft = JSON.parse(
-        (response.text || '{}')
-          .replace(/```json/g, '')
-          .replace(/```/g, '')
-          .trim(),
-      );
-      await this.prisma.selectionDecision.update({
-        where: { id: decisionId },
-        data: { communicationDraft: draft },
-      });
-    } catch (err) {
-      if (aiAttempted) {
-        await this.aiCost?.logGeminiCall({
-          orgId: resolvedOrgId,
-          agentName: 'decisions.draft_communication',
-          modelUsed: model,
-          startedAtMs,
-          error: err,
-        });
+
+      for (const model of candidateModels.slice(0, 2)) {
+        const startedAtMs = Date.now();
+        try {
+          let timer: NodeJS.Timeout | undefined;
+          const response: any = await Promise.race([
+            ai.models.generateContent({
+              model,
+              contents: [{ role: 'user', parts: [{ text: prompt }] }],
+              config: { responseMimeType: 'application/json', temperature: 0.7 },
+            }),
+            new Promise<never>((_, reject) => {
+              timer = setTimeout(
+                () => reject(new Error(`Gemini timeout on ${model} after 10s`)),
+                10_000,
+              );
+            }),
+          ]).finally(() => {
+            if (timer) clearTimeout(timer);
+          });
+
+          await this.aiCost?.logGeminiCall({
+            orgId: resolvedOrgId,
+            agentName: 'decisions.draft_communication',
+            modelUsed: model,
+            startedAtMs,
+            response,
+          });
+
+          const parsed = JSON.parse(
+            (response.text || '{}')
+              .replace(/```json/gi, '')
+              .replace(/```/g, '')
+              .trim(),
+          );
+          if (parsed?.subject && parsed?.body) {
+            draft = parsed;
+            break;
+          }
+        } catch (err) {
+          await this.aiCost?.logGeminiCall({
+            orgId: resolvedOrgId,
+            agentName: 'decisions.draft_communication',
+            modelUsed: model,
+            startedAtMs,
+            error: err,
+          });
+        }
       }
-      // AI service unavailable — draft can be added manually
     }
+
+    await this.prisma.selectionDecision
+      .update({
+        where: { id: decisionId },
+        data: { communicationDraft: (draft ?? fallbackDraft) as any },
+      })
+      .catch(() => {});
   }
 
   async approveDecision(applicationId: string, userId: string, orgId?: string) {

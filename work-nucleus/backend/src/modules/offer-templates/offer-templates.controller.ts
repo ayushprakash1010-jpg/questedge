@@ -39,9 +39,13 @@ export class OfferTemplatesController {
   @ApiOperation({ summary: 'List offer templates for org' })
   list(
     @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') userId: string,
     @Query('activeOnly') activeOnly?: string,
   ) {
-    return this.service.list(orgId, { activeOnly: activeOnly === 'true' });
+    return this.service.list(orgId, {
+      activeOnly: activeOnly === 'true',
+      seedForUserId: userId,
+    });
   }
 
   @Get(':id')

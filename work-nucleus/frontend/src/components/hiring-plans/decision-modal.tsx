@@ -101,18 +101,40 @@ export function DecisionModal({
       setDecisionMade(true);
       toast.success(`Decision recorded (${decision})`);
 
-      // Poll for communication draft if not immediately available
+      // Poll cleanly up to 4 times for communication draft if not immediately ready
       if (!data.communicationDraft) {
-        setTimeout(async () => {
-          const decRes = await fetch(`/api/applications/${applicationId}/decision`);
-          if (decRes.ok) {
-            const decData = await decRes.json();
-            if (decData.communicationDraft) {
-              setCommDraft(decData.communicationDraft as CommDraft);
+        let attempts = 0;
+        const pollDraft = async () => {
+          attempts += 1;
+          try {
+            const decRes = await fetch(`/api/applications/${applicationId}/decision`);
+            if (decRes.ok) {
+              const decData = await decRes.json();
+              if (decData.communicationDraft) {
+                setCommDraft(decData.communicationDraft as CommDraft);
+                setApprovalRequired(Boolean(decData.approvalRequired));
+                return;
+              }
             }
-            setApprovalRequired(Boolean(decData.approvalRequired));
+          } catch {
+            // retry up to cap
           }
-        }, 3000);
+          if (attempts < 4) {
+            setTimeout(pollDraft, 2500);
+          } else {
+            setCommDraft({
+              subject:
+                decision === "SELECTED"
+                  ? `Selection & Offer Update: ${roleName}`
+                  : `Application Update: ${roleName}`,
+              body:
+                decision === "SELECTED"
+                  ? `Hi ${candidateName},\n\nCongratulations on being selected for ${roleName}. Our team will follow up shortly with formal offer details.\n\nBest regards,\nHiring Team`
+                  : `Hi ${candidateName},\n\nThank you for interviewing for ${roleName}. At this time we will not be moving forward.\n\nBest regards,\nHiring Team`,
+            });
+          }
+        };
+        setTimeout(pollDraft, 2000);
       }
 
       onDecisionMade();
