@@ -1,5 +1,7 @@
 "use client";
 
+import { Suspense, useState } from "react";
+import Link from "next/link";
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { useTheme } from "next-themes";
 import { usePathname } from "next/navigation";
@@ -8,6 +10,7 @@ import {
   User,
   Settings,
   ChevronDown,
+  ChevronRight,
   Moon,
   Sun,
   Shield,
@@ -27,11 +30,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { NotificationBell } from "@/components/notification-bell";
 import { GlobalSearch } from "@/components/global-search";
+import {
+  resolveNavContext,
+  roleConfig,
+  SearchQuerySync,
+} from "@/components/sidebar";
 import { useProfile } from "@/hooks/use-profile";
 import {
   PortalRole,
   useOptionalWorkspaceShell,
 } from "@/components/workspace-shell-context";
+import { cn } from "@/lib/utils";
 
 const IS_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
 const SUPPORT_ADMIN_URL =
@@ -45,12 +54,16 @@ export function TopBar() {
   const displayPicture = IS_MOCK ? undefined : user?.picture || undefined;
   const { theme, setTheme } = useTheme();
   const pathname = usePathname();
+  const [searchString, setSearchString] = useState("");
   const shell = useOptionalWorkspaceShell();
   const isRecruiter = pathname?.startsWith("/recruiter");
   const isCandidate = pathname === "/candidate" || pathname?.startsWith("/candidate/");
   const isCompany = !isRecruiter && !isCandidate;
   const portalRole: PortalRole =
     shell?.userType ?? (isRecruiter ? "recruiter" : isCandidate ? "candidate" : "company");
+  const config = roleConfig[portalRole] ?? roleConfig.company;
+  const PortalIcon = config.PortalIcon;
+  const breadcrumb = resolveNavContext(portalRole, pathname || "/dashboard", searchString);
 
   const isDemo =
     Boolean((profile as any)?.isDemoAccount) ||
@@ -95,24 +108,79 @@ export function TopBar() {
 
   return (
     <header
-      className="flex items-center justify-between border-b border-slate-200/70 bg-white px-4 sm:px-6 dark:border-slate-800/80 dark:bg-slate-900"
+      className="flex items-center justify-between gap-3 border-b border-slate-200/70 bg-white px-4 sm:px-6 dark:border-slate-800/80 dark:bg-slate-900"
       style={{ height: "var(--topbar-height)" }}
     >
-      <div className="flex items-center gap-2.5">
+      <Suspense fallback={null}>
+        <SearchQuerySync onChange={setSearchString} />
+      </Suspense>
+
+      <div className="flex min-w-0 items-center gap-3">
         {shell && (
           <button
             type="button"
             onClick={shell.toggleMobileOpen}
             aria-label="Open navigation menu"
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 lg:hidden dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 lg:hidden dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
           >
             <Menu className="h-4 w-4" />
           </button>
         )}
         <GlobalSearch userType={portalRole} />
+
+        {/* Active Portal Chip + Contextual Breadcrumb */}
+        <nav
+          aria-label="Breadcrumb"
+          className="hidden md:flex min-w-0 items-center gap-1.5 text-xs"
+        >
+          <Link
+            href={config.homeHref}
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold transition-opacity hover:opacity-85",
+              config.badgeStyle
+            )}
+          >
+            <PortalIcon className="h-3 w-3" />
+            <span>{breadcrumb.portalLabel}</span>
+          </Link>
+
+          {breadcrumb.sectionLabel && (
+            <>
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300 dark:text-slate-600" />
+              <span className="hidden xl:inline truncate text-slate-500 dark:text-slate-400">
+                {breadcrumb.sectionLabel}
+              </span>
+              <ChevronRight className="hidden xl:inline h-3.5 w-3.5 shrink-0 text-slate-300 dark:text-slate-600" />
+            </>
+          )}
+
+          {!breadcrumb.sectionLabel && (
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300 dark:text-slate-600" />
+          )}
+
+          <span
+            className={cn(
+              "truncate font-medium",
+              breadcrumb.subLabel
+                ? "text-slate-500 dark:text-slate-400"
+                : "text-slate-800 dark:text-slate-100 font-semibold"
+            )}
+          >
+            {breadcrumb.pageLabel}
+          </span>
+
+          {breadcrumb.subLabel && (
+            <>
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300 dark:text-slate-600" />
+              <span className="truncate font-semibold text-slate-800 dark:text-slate-100">
+                {breadcrumb.subLabel}
+              </span>
+            </>
+          )}
+        </nav>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex shrink-0 items-center gap-3">
         {/* Demo Account Role Switcher segmented pill buttons */}
         {isDemo && (
           <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">

@@ -154,6 +154,7 @@ export default function CandidateDashboardPage() {
 
       // Remove from list
       setConsents((prev) => prev.filter((c) => c.consentToken !== consentToken));
+      window.dispatchEvent(new Event("questedge:refresh-counts"));
       toast.success(accepted ? "Referral accepted!" : "Referral declined.");
     } catch (err) {
       console.error(err);

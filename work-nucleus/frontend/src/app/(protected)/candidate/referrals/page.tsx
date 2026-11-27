@@ -124,6 +124,7 @@ export default function CandidateReferralsPage() {
         body: JSON.stringify({ accepted }),
       });
       setConsents((prev) => prev.filter((c) => c.consentToken !== consentToken));
+      window.dispatchEvent(new Event("questedge:refresh-counts"));
       if (accepted) {
         const appsData = await getMyApplications(accessToken).catch(() => null);
         if (appsData?.referrals) {

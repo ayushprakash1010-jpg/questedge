@@ -13,6 +13,7 @@ import {
   Moon,
   Sun,
   Compass,
+  Eye,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getPortalNavSections, NavItem } from "@/components/sidebar";
@@ -157,6 +158,23 @@ export function GlobalSearch({ userType = "company" }: { userType?: PortalRole }
           icon: PanelLeft,
           action: () => {
             shell.toggleCollapsed();
+            closeModal();
+          },
+        });
+      }
+
+      const peekText = shell.autoPeek
+        ? "Disable Hover-to-Peek Sidebar"
+        : "Enable Hover-to-Peek Sidebar";
+      if (!q || `${peekText} hover peek auto expand`.toLowerCase().includes(q)) {
+        entries.push({
+          id: "cmd:toggle-peek",
+          group: "Workspace Actions",
+          label: peekText,
+          subtitle: "Auto-expand shrunk sidebar cleanly on hover",
+          icon: Eye,
+          action: () => {
+            shell.toggleAutoPeek();
             closeModal();
           },
         });

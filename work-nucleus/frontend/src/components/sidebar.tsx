@@ -1,6 +1,13 @@
 "use client";
 
-import React, { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -27,6 +34,7 @@ import {
   ChevronLeft,
   ChevronDown,
   X,
+  Eye,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -135,6 +143,7 @@ export const roleConfig = {
     sections: companyNavSections,
     homeHref: "/dashboard",
     portalHref: "/admin/settings",
+    portalShortLabel: "Company",
     portalTitle: "Company Portal",
     portalSubtitle: "Hiring & Talent Pipeline",
     accent: "text-indigo-600 dark:text-indigo-400",
@@ -157,6 +166,7 @@ export const roleConfig = {
     sections: recruiterNavSections,
     homeHref: "/recruiter/dashboard",
     portalHref: "/recruiter/profile",
+    portalShortLabel: "Recruiter",
     portalTitle: "Recruiter Portal",
     portalSubtitle: "Sourcing & Direct Apply",
     accent: "text-sky-600 dark:text-sky-400",
@@ -179,6 +189,7 @@ export const roleConfig = {
     sections: candidateNavSections,
     homeHref: "/candidate/dashboard",
     portalHref: "/candidate/profile",
+    portalShortLabel: "Candidate",
     portalTitle: "Candidate Portal",
     portalSubtitle: "Applications & Matches",
     accent: "text-emerald-600 dark:text-emerald-400",
@@ -203,7 +214,7 @@ export function getPortalNavSections(userType: PortalRole): NavSection[] {
   return (roleConfig[userType] ?? roleConfig.company).sections;
 }
 
-// ── Route + query matching (fixes /candidate/jobs?saved=true) ────────────
+// ── Route + query matching & breadcrumb resolver ─────────────────────────
 
 function matchesQuery(itemQuery: string, searchString: string): boolean {
   const targetParams = new URLSearchParams(itemQuery);
@@ -244,8 +255,103 @@ function isNavItemActive(
   );
 }
 
+export interface BreadcrumbContext {
+  portalLabel: string;
+  sectionLabel?: string;
+  pageLabel: string;
+  subLabel?: string;
+}
+
+function getSubPageLabel(pathname: string): string | undefined {
+  if (pathname === "/mandates/create") return "New Mandate";
+  if (pathname === "/mandates/rewards") return "Rewards";
+  if (/^\/mandates\/[^/]+\/ranking/.test(pathname)) return "Resume Ranking";
+  if (/^\/mandates\/[^/]+\/referrals/.test(pathname)) return "Referrals";
+  if (/^\/mandates\/[^/]+$/.test(pathname)) return "Mandate Details";
+  if (/^\/candidates\/[^/]+\/joining/.test(pathname)) return "Joining";
+  if (pathname === "/admin/settings") return "Workspace Settings";
+  return undefined;
+}
+
+export function resolveNavContext(
+  userType: PortalRole,
+  pathname: string,
+  searchString = ""
+): BreadcrumbContext {
+  const config = roleConfig[userType] ?? roleConfig.company;
+  const sections = config.sections;
+  const allItems = sections.flatMap((s) => s.items);
+
+  for (const section of sections) {
+    for (const item of section.items) {
+      if (isNavItemActive(item, pathname, searchString, allItems)) {
+        return {
+          portalLabel: config.portalShortLabel,
+          sectionLabel: section.title,
+          pageLabel: item.label,
+          subLabel: getSubPageLabel(pathname),
+        };
+      }
+    }
+  }
+
+  // Known sub-routes outside main nav items
+  if (pathname.startsWith("/hiring-plans")) {
+    return {
+      portalLabel: config.portalShortLabel,
+      sectionLabel: "Recruiting",
+      pageLabel: "Hiring Plans",
+      subLabel: pathname === "/hiring-plans/new" ? "New Plan" : pathname !== "/hiring-plans" ? "Plan Details" : undefined,
+    };
+  }
+  if (pathname.startsWith("/recruiter/mandates")) {
+    return {
+      portalLabel: config.portalShortLabel,
+      sectionLabel: "Sourcing",
+      pageLabel: "Discover Jobs",
+      subLabel: "Mandate Details",
+    };
+  }
+  if (pathname.startsWith("/admin")) {
+    return {
+      portalLabel: config.portalShortLabel,
+      sectionLabel: "Organization",
+      pageLabel: "Admin Settings",
+      subLabel: pathname === "/admin/settings" ? "Workspace Settings" : undefined,
+    };
+  }
+  if (pathname.startsWith("/offers")) {
+    return {
+      portalLabel: config.portalShortLabel,
+      sectionLabel: "Recruiting",
+      pageLabel: "Offers",
+    };
+  }
+  if (pathname.startsWith("/profile")) {
+    return {
+      portalLabel: config.portalShortLabel,
+      sectionLabel: userType === "company" ? "Organization" : "Account",
+      pageLabel: "Profile",
+    };
+  }
+
+  const lastSegment = pathname.split("/").filter(Boolean).pop() || "Workspace";
+  const formatted = lastSegment
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
+  return {
+    portalLabel: config.portalShortLabel,
+    pageLabel: formatted,
+  };
+}
+
 // Reads URL query string safely inside a Suspense boundary for static prerendering
-function SearchQuerySync({ onChange }: { onChange: (value: string) => void }) {
+export function SearchQuerySync({
+  onChange,
+}: {
+  onChange: (value: string) => void;
+}) {
   const searchParams = useSearchParams();
   const str = searchParams.toString();
   useEffect(() => {
@@ -278,6 +384,9 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
   const [fallbackSections, setFallbackSections] = useState<Record<string, boolean>>({});
   const [searchString, setSearchString] = useState("");
   const [tooltip, setTooltip] = useState<FloatingTooltipState | null>(null);
+  const [isPeeking, setIsPeeking] = useState(false);
+  const peekEnterRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const peekLeaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const effectiveRole: PortalRole = shell?.userType ?? userType;
   const config = roleConfig[effectiveRole] ?? roleConfig.company;
@@ -288,13 +397,76 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
   );
 
   const isCollapsed = shell ? shell.isCollapsed : fallbackCollapsed;
+  const autoPeek = shell ? shell.autoPeek : false;
   const hydrated = shell ? shell.hydrated : false;
   const unreadCount = shell ? shell.unreadCount : 0;
+  const actionBadges = shell ? shell.actionBadges : {};
   const isMobileOpen = shell ? shell.isMobileOpen : false;
 
-  const toggleCollapsed = shell
-    ? shell.toggleCollapsed
-    : () => setFallbackCollapsed((c) => !c);
+  const isOverlayPeek = Boolean(isCollapsed && autoPeek && isPeeking);
+  const effectiveCollapsed = isCollapsed && !isOverlayPeek;
+
+  const clearPeekTimers = useCallback(() => {
+    if (peekEnterRef.current) {
+      clearTimeout(peekEnterRef.current);
+      peekEnterRef.current = null;
+    }
+    if (peekLeaveRef.current) {
+      clearTimeout(peekLeaveRef.current);
+      peekLeaveRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isCollapsed || !autoPeek) {
+      clearPeekTimers();
+      setIsPeeking(false);
+    }
+    return clearPeekTimers;
+  }, [isCollapsed, autoPeek, clearPeekTimers]);
+
+  const handleRailMouseEnter = useCallback(() => {
+    if (!isCollapsed || !autoPeek) return;
+    if (peekLeaveRef.current) {
+      clearTimeout(peekLeaveRef.current);
+      peekLeaveRef.current = null;
+    }
+    if (!isPeeking && !peekEnterRef.current) {
+      peekEnterRef.current = setTimeout(() => {
+        setIsPeeking(true);
+        setTooltip(null);
+        peekEnterRef.current = null;
+      }, 110);
+    }
+  }, [isCollapsed, autoPeek, isPeeking]);
+
+  const handleRailMouseLeave = useCallback(() => {
+    if (peekEnterRef.current) {
+      clearTimeout(peekEnterRef.current);
+      peekEnterRef.current = null;
+    }
+    if (isPeeking) {
+      peekLeaveRef.current = setTimeout(() => {
+        setIsPeeking(false);
+        peekLeaveRef.current = null;
+      }, 150);
+    }
+  }, [isPeeking]);
+
+  const toggleCollapsed = useCallback(() => {
+    clearPeekTimers();
+    setIsPeeking(false);
+    if (shell) {
+      shell.toggleCollapsed();
+    } else {
+      setFallbackCollapsed((c) => !c);
+    }
+  }, [shell, clearPeekTimers]);
+
+  const toggleAutoPeek = useCallback(() => {
+    shell?.toggleAutoPeek();
+  }, [shell]);
+
   const closeMobile = useCallback(() => {
     shell?.setMobileOpen(false);
   }, [shell]);
@@ -318,10 +490,10 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
     [shell]
   );
 
-  // Clear floating tooltip whenever collapsed state or route changes
+  // Clear floating tooltip whenever collapsed state, peek state, or route changes
   useEffect(() => {
     setTooltip(null);
-  }, [isCollapsed, pathname, searchString]);
+  }, [effectiveCollapsed, pathname, searchString]);
 
   const showFloatingTooltip = useCallback(
     (
@@ -343,6 +515,29 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
   }, []);
 
   const logoTheme = hydrated && resolvedTheme === "dark" ? "dark" : "light";
+
+  const getItemBadge = (href: string) => {
+    if (href === "/notifications") {
+      return {
+        count: unreadCount,
+        pillClass: "bg-rose-500 text-white",
+        dotClass: "bg-rose-500",
+      };
+    }
+    const count = actionBadges[href] || 0;
+    if (href === "/candidate/referrals") {
+      return {
+        count,
+        pillClass: "bg-amber-500 text-white",
+        dotClass: "bg-amber-500",
+      };
+    }
+    return {
+      count,
+      pillClass: config.badgeStyle,
+      dotClass: config.dot,
+    };
+  };
 
   const renderSidebarBody = ({
     collapsed,
@@ -367,6 +562,42 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
           size="md"
           priority
         />
+
+        {!collapsed && !mobile && shell && (
+          <button
+            type="button"
+            onClick={toggleAutoPeek}
+            onMouseEnter={(e) =>
+              showFloatingTooltip(e, {
+                label: autoPeek ? "Hover-to-peek: ON" : "Hover-to-peek: OFF",
+                section: autoPeek
+                  ? "Collapsed rail auto-expands on hover"
+                  : "Enable auto-expand when hovering collapsed rail",
+              })
+            }
+            onMouseLeave={hideFloatingTooltip}
+            onFocus={(e) =>
+              showFloatingTooltip(e, {
+                label: autoPeek ? "Hover-to-peek: ON" : "Hover-to-peek: OFF",
+                section: autoPeek
+                  ? "Collapsed rail auto-expands on hover"
+                  : "Enable auto-expand when hovering collapsed rail",
+              })
+            }
+            onBlur={hideFloatingTooltip}
+            aria-pressed={autoPeek}
+            aria-label="Toggle hover-to-peek sidebar mode"
+            className={cn(
+              "mr-1.5 flex h-7 w-7 items-center justify-center rounded-lg transition-colors",
+              autoPeek
+                ? config.badgeStyle
+                : "text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+            )}
+          >
+            <Eye className="h-3.5 w-3.5" />
+          </button>
+        )}
+
         {mobile && (
           <button
             type="button"
@@ -386,8 +617,8 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
           if (tooltip) setTooltip(null);
         }}
         className={cn(
-          "scrollbar-thin flex-1 overflow-y-auto overflow-x-hidden py-2.5",
-          collapsed ? "px-2 space-y-1.5" : "px-2.5 space-y-2.5"
+          "scrollbar-thin flex-1 overflow-y-auto overflow-x-hidden",
+          collapsed ? "px-2 py-2 space-y-1" : "px-2.5 py-2.5 space-y-2.5"
         )}
       >
         {sections.map((section, sIdx) => {
@@ -403,7 +634,7 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
               {collapsed && sIdx > 0 && (
                 <div
                   role="separator"
-                  className="mx-auto my-2 w-6 border-t border-slate-200/80 dark:border-slate-700/80"
+                  className="mx-auto my-1.5 w-6 border-t border-slate-200/80 dark:border-slate-700/80"
                 />
               )}
 
@@ -451,8 +682,7 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
                         searchString,
                         allItems
                       );
-                      const isNotifications = item.href === "/notifications";
-                      const badgeCount = isNotifications ? unreadCount : 0;
+                      const badge = getItemBadge(item.href);
 
                       return (
                         <Link
@@ -462,22 +692,22 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
                           onMouseEnter={
                             collapsed
                               ? (e) =>
-                                showFloatingTooltip(e, {
-                                  label: item.label,
-                                  section: title,
-                                  badge: badgeCount > 0 ? badgeCount : undefined,
-                                })
+                                  showFloatingTooltip(e, {
+                                    label: item.label,
+                                    section: title,
+                                    badge: badge.count > 0 ? badge.count : undefined,
+                                  })
                               : undefined
                           }
                           onMouseLeave={collapsed ? hideFloatingTooltip : undefined}
                           onFocus={
                             collapsed
                               ? (e) =>
-                                showFloatingTooltip(e, {
-                                  label: item.label,
-                                  section: title,
-                                  badge: badgeCount > 0 ? badgeCount : undefined,
-                                })
+                                  showFloatingTooltip(e, {
+                                    label: item.label,
+                                    section: title,
+                                    badge: badge.count > 0 ? badge.count : undefined,
+                                  })
                               : undefined
                           }
                           onBlur={collapsed ? hideFloatingTooltip : undefined}
@@ -486,7 +716,7 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
                           className={cn(
                             "group/item relative flex items-center rounded-[10px] text-[13.5px] font-medium transition-all duration-150",
                             collapsed
-                              ? "mx-auto h-10 w-10 justify-center p-0"
+                              ? "mx-auto h-9 w-9 justify-center p-0"
                               : "gap-2.5 px-2.5 py-[7px]",
                             isActive
                               ? config.activeBg
@@ -498,7 +728,7 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
                             <span
                               aria-hidden="true"
                               className={cn(
-                                "absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full",
+                                "absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full",
                                 config.activeBar
                               )}
                             />
@@ -513,10 +743,13 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
                                   : "text-slate-500 group-hover/item:text-slate-700 dark:text-slate-400 dark:group-hover/item:text-slate-200"
                               )}
                             />
-                            {collapsed && badgeCount > 0 && (
+                            {collapsed && badge.count > 0 && (
                               <span
-                                aria-label={`${badgeCount} unread notifications`}
-                                className="absolute -right-1 -top-1 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900"
+                                aria-label={`${badge.count} pending`}
+                                className={cn(
+                                  "absolute -right-1 -top-1 flex h-2.5 w-2.5 items-center justify-center rounded-full ring-2 ring-white dark:ring-slate-900",
+                                  badge.dotClass
+                                )}
                               />
                             )}
                           </span>
@@ -524,9 +757,14 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
                           {!collapsed && (
                             <>
                               <span className="flex-1 truncate">{item.label}</span>
-                              {badgeCount > 0 && (
-                                <span className="ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white shadow-2xs">
-                                  {badgeCount > 99 ? "99+" : badgeCount}
+                              {badge.count > 0 && (
+                                <span
+                                  className={cn(
+                                    "ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-bold shadow-2xs",
+                                    badge.pillClass
+                                  )}
+                                >
+                                  {badge.count > 99 ? "99+" : badge.count}
                                 </span>
                               )}
                             </>
@@ -555,20 +793,20 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
           onMouseEnter={
             collapsed
               ? (e) =>
-                showFloatingTooltip(e, {
-                  label: config.portalTitle,
-                  section: config.portalSubtitle,
-                })
+                  showFloatingTooltip(e, {
+                    label: config.portalTitle,
+                    section: config.portalSubtitle,
+                  })
               : undefined
           }
           onMouseLeave={collapsed ? hideFloatingTooltip : undefined}
           onFocus={
             collapsed
               ? (e) =>
-                showFloatingTooltip(e, {
-                  label: config.portalTitle,
-                  section: config.portalSubtitle,
-                })
+                  showFloatingTooltip(e, {
+                    label: config.portalTitle,
+                    section: config.portalSubtitle,
+                  })
               : undefined
           }
           onBlur={collapsed ? hideFloatingTooltip : undefined}
@@ -658,63 +896,80 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
         <SearchQuerySync onChange={setSearchString} />
       </Suspense>
 
-      {/* Desktop Interactive Sidebar */}
-      <aside
-        aria-label="Sidebar"
+      {/* Desktop Slot Reserve (stays 68px during Hover-to-Peek so content never shifts) */}
+      <div
         className={cn(
-          "relative hidden lg:flex h-full shrink-0 flex-col border-r border-slate-200/70 bg-white dark:border-slate-800/80 dark:bg-slate-900 select-none",
+          "relative hidden lg:block h-full shrink-0",
           hydrated && "transition-[width] duration-200 ease-out"
         )}
         style={{
           width: isCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_EXPANDED_WIDTH,
         }}
+        onMouseEnter={handleRailMouseEnter}
+        onMouseLeave={handleRailMouseLeave}
       >
-        {renderSidebarBody({ collapsed: isCollapsed })}
-
-        {/* Interactive Right-Edge Rail Highlight + Toggle Pill */}
-        <div
-          className="group/edge absolute inset-y-0 -right-1 z-20 hidden lg:block w-2"
-          onDoubleClick={toggleCollapsed}
-        >
-          <div
-            className={cn(
-              "mx-auto h-full w-[2px] transition-colors duration-150",
-              config.railHoverBg
-            )}
-          />
-        </div>
-        <button
-          type="button"
-          onClick={toggleCollapsed}
-          onMouseEnter={(e) =>
-            showFloatingTooltip(e, {
-              label: isCollapsed ? "Expand sidebar" : "Collapse sidebar",
-              shortcut: "⌘B",
-            })
-          }
-          onMouseLeave={hideFloatingTooltip}
-          onFocus={(e) =>
-            showFloatingTooltip(e, {
-              label: isCollapsed ? "Expand sidebar" : "Collapse sidebar",
-              shortcut: "⌘B",
-            })
-          }
-          onBlur={hideFloatingTooltip}
-          aria-expanded={!isCollapsed}
-          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        <aside
+          aria-label="Sidebar"
+          style={{
+            width: effectiveCollapsed
+              ? SIDEBAR_COLLAPSED_WIDTH
+              : SIDEBAR_EXPANDED_WIDTH,
+          }}
           className={cn(
-            "absolute -right-3 top-[21px] z-30 flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-xs transition-all duration-150 hover:scale-110 hover:shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300",
-            config.toggleHover
+            "flex flex-col border-r border-slate-200/70 bg-white dark:border-slate-800/80 dark:bg-slate-900 select-none",
+            hydrated && "transition-[width,box-shadow] duration-200 ease-out",
+            isOverlayPeek
+              ? "fixed left-0 top-0 bottom-0 z-40 shadow-2xl"
+              : "relative h-full"
           )}
         >
-          <ChevronLeft
+          {renderSidebarBody({ collapsed: effectiveCollapsed })}
+
+          {/* Interactive Right-Edge Rail Highlight + Toggle Pill */}
+          <div
+            className="group/edge absolute inset-y-0 -right-1 z-20 hidden lg:block w-2"
+            onDoubleClick={toggleCollapsed}
+          >
+            <div
+              className={cn(
+                "mx-auto h-full w-[2px] transition-colors duration-150",
+                config.railHoverBg
+              )}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            onMouseEnter={(e) =>
+              showFloatingTooltip(e, {
+                label: isCollapsed ? "Expand sidebar" : "Collapse sidebar",
+                shortcut: "⌘B",
+              })
+            }
+            onMouseLeave={hideFloatingTooltip}
+            onFocus={(e) =>
+              showFloatingTooltip(e, {
+                label: isCollapsed ? "Expand sidebar" : "Collapse sidebar",
+                shortcut: "⌘B",
+              })
+            }
+            onBlur={hideFloatingTooltip}
+            aria-expanded={!isCollapsed}
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             className={cn(
-              "h-3.5 w-3.5 transition-transform duration-200",
-              isCollapsed && "rotate-180"
+              "absolute -right-3 top-[21px] z-30 flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-xs transition-all duration-150 hover:scale-110 hover:shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300",
+              config.toggleHover
             )}
-          />
-        </button>
-      </aside>
+          >
+            <ChevronLeft
+              className={cn(
+                "h-3.5 w-3.5 transition-transform duration-200",
+                effectiveCollapsed && "rotate-180"
+              )}
+            />
+          </button>
+        </aside>
+      </div>
 
       {/* Mobile & Tablet Slide-Over Drawer */}
       {isMobileOpen && (
@@ -742,7 +997,6 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
           style={{ top: tooltip.top, left: tooltip.left }}
           className="pointer-events-none fixed z-[60] -translate-y-1/2 hidden lg:flex items-center gap-2 rounded-lg border border-slate-700/80 bg-slate-900 px-2.5 py-1.5 text-xs text-white shadow-lg dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-100"
         >
-          {/* Caret */}
           <span
             aria-hidden="true"
             className="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 border-b border-l border-slate-700/80 bg-slate-900 dark:bg-slate-800"

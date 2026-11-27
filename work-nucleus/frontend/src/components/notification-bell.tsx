@@ -112,34 +112,34 @@ export function NotificationBell() {
     const t = (type || "").toUpperCase();
     if (t.includes("REFERRAL") || t.includes("CONSENT")) {
       return (
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600 dark:bg-violet-950/70 dark:text-violet-300">
           <Target className="h-4 w-4" />
         </div>
       );
     }
     if (t.includes("MANDATE")) {
       return (
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600 dark:bg-indigo-950/70 dark:text-indigo-300">
           <Briefcase className="h-4 w-4" />
         </div>
       );
     }
     if (t.includes("REWARD")) {
       return (
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-950/70 dark:text-emerald-300">
           <Gift className="h-4 w-4" />
         </div>
       );
     }
     if (t.includes("CLAIM")) {
       return (
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600 dark:bg-amber-950/70 dark:text-amber-300">
           <Clock className="h-4 w-4" />
         </div>
       );
     }
     return (
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
         <Bell className="h-4 w-4" />
       </div>
     );
@@ -185,14 +185,14 @@ export function NotificationBell() {
           <div
             role="region"
             aria-label="Notification inbox"
-            className="absolute right-0 z-50 mt-2 w-88 sm:w-96 rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 outline-none"
+            className="absolute right-0 z-50 mt-2 w-88 sm:w-96 rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 outline-none dark:border-slate-700 dark:bg-slate-900"
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 bg-slate-50/50">
+            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/60">
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-slate-900">Notifications</h3>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Notifications</h3>
                 {unreadCount > 0 && (
-                  <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700 border border-indigo-200">
+                  <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700 border border-indigo-200 dark:bg-indigo-950/70 dark:text-indigo-300 dark:border-indigo-800">
                     {unreadCount} unread
                   </span>
                 )}
@@ -200,7 +200,7 @@ export function NotificationBell() {
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAllRead}
-                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 rounded"
+                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 rounded"
                 >
                   Mark all read
                 </button>
@@ -208,7 +208,7 @@ export function NotificationBell() {
             </div>
 
             {/* Filter Toggle */}
-            <div role="tablist" aria-label="Notification filter" className="flex border-b border-slate-100 px-4 py-1.5 bg-white gap-2">
+            <div role="tablist" aria-label="Notification filter" className="flex border-b border-slate-100 px-4 py-1.5 bg-white gap-2 dark:border-slate-800 dark:bg-slate-900">
               <button
                 role="tab"
                 aria-selected={filter === "ALL"}
@@ -216,8 +216,8 @@ export function NotificationBell() {
                 className={cn(
                   "px-3 py-1 text-xs font-medium rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
                   filter === "ALL"
-                    ? "bg-indigo-50 text-indigo-700 font-semibold"
-                    : "text-slate-500 hover:text-slate-700"
+                    ? "bg-indigo-50 text-indigo-700 font-semibold dark:bg-indigo-950/60 dark:text-indigo-300"
+                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                 )}
               >
                 All
@@ -229,8 +229,8 @@ export function NotificationBell() {
                 className={cn(
                   "px-3 py-1 text-xs font-medium rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
                   filter === "UNREAD"
-                    ? "bg-indigo-50 text-indigo-700 font-semibold"
-                    : "text-slate-500 hover:text-slate-700"
+                    ? "bg-indigo-50 text-indigo-700 font-semibold dark:bg-indigo-950/60 dark:text-indigo-300"
+                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                 )}
               >
                 Unread only
@@ -238,14 +238,14 @@ export function NotificationBell() {
             </div>
 
             {/* List */}
-            <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+            <div className="max-h-80 overflow-y-auto scrollbar-thin divide-y divide-slate-100 dark:divide-slate-800">
               {notifications.length === 0 ? (
                 <div className="py-10 text-center">
-                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400 mb-2">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500 mb-2">
                     <Check className="h-5 w-5" />
                   </div>
-                  <p className="text-xs font-medium text-slate-500">You're all caught up!</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">No notifications to display</p>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">You're all caught up!</p>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">No notifications to display</p>
                 </div>
               ) : (
                 notifications.map((n) => (
@@ -253,8 +253,8 @@ export function NotificationBell() {
                     key={n.id}
                     onClick={() => handleClick(n)}
                     className={cn(
-                      "flex items-start gap-3 p-3.5 text-left transition-colors cursor-pointer hover:bg-slate-50/80",
-                      !n.read ? "bg-indigo-50/30" : "bg-white"
+                      "flex items-start gap-3 p-3.5 text-left transition-colors cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-800/70",
+                      !n.read ? "bg-indigo-50/30 dark:bg-indigo-950/30" : "bg-white dark:bg-slate-900"
                     )}
                   >
                     {getCategoryIcon(n.type)}
@@ -263,21 +263,21 @@ export function NotificationBell() {
                         <p
                           className={cn(
                             "text-xs leading-snug truncate",
-                            !n.read ? "font-bold text-slate-900" : "font-medium text-slate-700"
+                            !n.read ? "font-bold text-slate-900 dark:text-slate-100" : "font-medium text-slate-700 dark:text-slate-300"
                           )}
                         >
                           {n.title}
                         </p>
-                        <span className="text-[10px] text-slate-400 shrink-0">
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">
                           {timeAgo(n.createdAt)}
                         </span>
                       </div>
-                      <p className="mt-1 text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
                         {n.body}
                       </p>
                     </div>
                     {!n.read && (
-                      <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-indigo-600" />
+                      <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-indigo-600 dark:bg-indigo-400" />
                     )}
                   </div>
                 ))
@@ -285,11 +285,11 @@ export function NotificationBell() {
             </div>
 
             {/* Footer */}
-            <div className="border-t border-slate-100 p-2.5 bg-slate-50 text-center">
+            <div className="border-t border-slate-100 p-2.5 bg-slate-50 text-center dark:border-slate-800 dark:bg-slate-950/60">
               <Link
                 href="/notifications"
                 onClick={() => setOpen(false)}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
               >
                 View full notification center
                 <ArrowRight className="h-3 w-3" />

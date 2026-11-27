@@ -9,6 +9,10 @@ import React, {
   useState,
 } from "react";
 import { usePathname } from "next/navigation";
+import {
+  getPendingConsents,
+  getRecruiterDashboard,
+} from "@/lib/marketplace-api";
 
 export type PortalRole = "company" | "recruiter" | "candidate";
 
@@ -17,12 +21,20 @@ export const SIDEBAR_COLLAPSED_WIDTH = 68;
 
 const STORAGE_COLLAPSED_KEY = "questedge.sidebar.collapsed";
 const STORAGE_SECTIONS_KEY = "questedge.sidebar.sections";
+const STORAGE_AUTO_PEEK_KEY = "questedge.sidebar.autopeek";
+
+const IS_MOCK =
+  process.env.NODE_ENV !== "production" &&
+  process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
 
 interface WorkspaceShellContextValue {
   userType: PortalRole;
   isCollapsed: boolean;
   setCollapsed: (collapsed: boolean) => void;
   toggleCollapsed: () => void;
+  autoPeek: boolean;
+  setAutoPeek: (enabled: boolean) => void;
+  toggleAutoPeek: () => void;
   isMobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
   toggleMobileOpen: () => void;
@@ -31,6 +43,8 @@ interface WorkspaceShellContextValue {
   unreadCount: number;
   setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
   refreshUnreadCount: () => Promise<void>;
+  actionBadges: Record<string, number>;
+  refreshActionBadges: () => Promise<void>;
   hydrated: boolean;
 }
 
@@ -55,11 +69,13 @@ export function WorkspaceShellProvider({
 }) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsedState] = useState(false);
+  const [autoPeek, setAutoPeekState] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState<
     Record<string, boolean>
   >({});
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [actionBadges, setActionBadges] = useState<Record<string, number>>({});
   const [hydrated, setHydrated] = useState(false);
 
   // Hydrate persisted sidebar preferences safely after mount to avoid SSR mismatch
@@ -68,6 +84,10 @@ export function WorkspaceShellProvider({
       const savedCollapsed = window.localStorage.getItem(STORAGE_COLLAPSED_KEY);
       if (savedCollapsed === "true") {
         setIsCollapsedState(true);
+      }
+      const savedPeek = window.localStorage.getItem(STORAGE_AUTO_PEEK_KEY);
+      if (savedPeek === "true") {
+        setAutoPeekState(true);
       }
       const savedSections = window.localStorage.getItem(STORAGE_SECTIONS_KEY);
       if (savedSections) {
@@ -97,6 +117,27 @@ export function WorkspaceShellProvider({
       const next = !prev;
       try {
         window.localStorage.setItem(STORAGE_COLLAPSED_KEY, String(next));
+      } catch {
+        // Ignore storage write errors
+      }
+      return next;
+    });
+  }, []);
+
+  const setAutoPeek = useCallback((enabled: boolean) => {
+    setAutoPeekState(enabled);
+    try {
+      window.localStorage.setItem(STORAGE_AUTO_PEEK_KEY, String(enabled));
+    } catch {
+      // Ignore storage write errors
+    }
+  }, []);
+
+  const toggleAutoPeek = useCallback(() => {
+    setAutoPeekState((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem(STORAGE_AUTO_PEEK_KEY, String(next));
       } catch {
         // Ignore storage write errors
       }
@@ -170,6 +211,7 @@ export function WorkspaceShellProvider({
 
   // Single shared unread notifications poller for TopBar bell & Sidebar badge
   const refreshUnreadCount = useCallback(async () => {
+    if (IS_MOCK) return;
     if (typeof document !== "undefined" && document.visibilityState === "hidden") {
       return;
     }
@@ -184,13 +226,69 @@ export function WorkspaceShellProvider({
     }
   }, []);
 
+  // Lightweight role-specific actionable counters (pending reviews, referrals, consent requests)
+  const refreshActionBadges = useCallback(async () => {
+    if (IS_MOCK) return;
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+      return;
+    }
+    try {
+      if (userType === "company") {
+        const res = await fetch("/api/analytics?type=overview");
+        if (res.ok) {
+          const data = await res.json();
+          const pendingReviews = Number(data?.pendingReferrals) || 0;
+          setActionBadges({ "/candidates": pendingReviews });
+        }
+        return;
+      }
+
+      const tokenRes = await fetch("/api/auth/token");
+      if (!tokenRes.ok) return;
+      const { accessToken } = await tokenRes.json();
+      if (!accessToken) return;
+
+      if (userType === "recruiter") {
+        const dash = await getRecruiterDashboard(accessToken);
+        const activeReferrals =
+          (Number(dash?.stats?.activePipeline) || 0) +
+          (Number(dash?.stats?.pendingConsents) || 0);
+        setActionBadges({ "/recruiter/referrals": activeReferrals });
+      } else if (userType === "candidate") {
+        const consents = await getPendingConsents(accessToken);
+        const pendingConsents = Array.isArray(consents) ? consents.length : 0;
+        setActionBadges({ "/candidate/referrals": pendingConsents });
+      }
+    } catch {
+      // Ignore unprovisioned profiles or transient network errors
+    }
+  }, [userType]);
+
+  // Reset role-specific badges immediately on role switch so stale badges never flash
+  useEffect(() => {
+    setActionBadges({});
+    void refreshActionBadges();
+  }, [refreshActionBadges]);
+
   useEffect(() => {
     void refreshUnreadCount();
-    const interval = setInterval(() => {
+    const unreadTimer = setInterval(() => {
       void refreshUnreadCount();
     }, 30000);
-    return () => clearInterval(interval);
-  }, [refreshUnreadCount]);
+    const badgeTimer = setInterval(() => {
+      void refreshActionBadges();
+    }, 90000);
+    const handleCustomRefresh = () => {
+      void refreshUnreadCount();
+      void refreshActionBadges();
+    };
+    window.addEventListener("questedge:refresh-counts", handleCustomRefresh);
+    return () => {
+      clearInterval(unreadTimer);
+      clearInterval(badgeTimer);
+      window.removeEventListener("questedge:refresh-counts", handleCustomRefresh);
+    };
+  }, [refreshUnreadCount, refreshActionBadges]);
 
   const value = useMemo<WorkspaceShellContextValue>(
     () => ({
@@ -198,6 +296,9 @@ export function WorkspaceShellProvider({
       isCollapsed,
       setCollapsed,
       toggleCollapsed,
+      autoPeek,
+      setAutoPeek,
+      toggleAutoPeek,
       isMobileOpen,
       setMobileOpen: setIsMobileOpen,
       toggleMobileOpen,
@@ -206,6 +307,8 @@ export function WorkspaceShellProvider({
       unreadCount,
       setUnreadCount,
       refreshUnreadCount,
+      actionBadges,
+      refreshActionBadges,
       hydrated,
     }),
     [
@@ -213,12 +316,17 @@ export function WorkspaceShellProvider({
       isCollapsed,
       setCollapsed,
       toggleCollapsed,
+      autoPeek,
+      setAutoPeek,
+      toggleAutoPeek,
       isMobileOpen,
       toggleMobileOpen,
       isSectionCollapsed,
       toggleSection,
       unreadCount,
       refreshUnreadCount,
+      actionBadges,
+      refreshActionBadges,
       hydrated,
     ]
   );

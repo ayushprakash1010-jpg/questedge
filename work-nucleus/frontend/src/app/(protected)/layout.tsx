@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { TopBar } from "@/components/top-bar";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { WorkspaceShellProvider, PortalRole } from "@/components/workspace-shell-context";
 import { useProfile } from "@/hooks/use-profile";
 import { registerServiceWorker } from "@/lib/pwa";
@@ -73,12 +74,13 @@ function WorkspaceShell({
             tabIndex={-1}
             role="main"
             aria-label="Main Content"
-            className="flex-1 overflow-y-auto bg-background p-6 outline-none print:h-auto print:block print:overflow-visible print:p-0 print:bg-white"
+            className="flex-1 overflow-y-auto bg-background p-4 pb-20 sm:p-6 md:pb-6 outline-none print:h-auto print:block print:overflow-visible print:p-0 print:bg-white"
           >
             {banner}
             {children}
           </main>
         </div>
+        <MobileBottomNav userType={userType} />
       </div>
     </WorkspaceShellProvider>
   );
