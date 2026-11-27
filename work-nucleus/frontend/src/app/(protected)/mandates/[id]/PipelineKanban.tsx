@@ -108,29 +108,38 @@ export function PipelineKanban({
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
 
-      const [stageRes, pipelineData] = await Promise.all([
-        apiClient<StageDef[]>(`/api/v1/mandates/${mandateId}/stages`, {
-          token: accessToken,
-        }).catch(() => []),
-        apiClient<CandidateApplication[]>(
-          `/api/v1/mandates/${mandateId}/pipeline`,
-          { token: accessToken },
-        ),
-      ]);
+      const stageRes = await apiClient<StageDef[]>(
+        `/api/v1/mandates/${mandateId}/stages`,
+        { token: accessToken },
+      ).catch(() => []);
+
+      const pipelineData = await apiClient<CandidateApplication[]>(
+        `/api/v1/mandates/${mandateId}/pipeline`,
+        { token: accessToken },
+      );
 
       const apps = Array.isArray(pipelineData) ? pipelineData : [];
       setApplications(apps);
 
       const stageMap = new Map<string, StageDef>();
+      const seenKeys = new Set<string>();
+      const registerStage = (s: StageDef) => {
+        const key = `${s.stageOrder}:${s.name.trim().toLowerCase()}`;
+        if (!stageMap.has(s.id) && !seenKeys.has(key)) {
+          stageMap.set(s.id, s);
+          seenKeys.add(key);
+        }
+      };
+
       if (Array.isArray(stageRes) && stageRes.length > 0) {
-        stageRes.forEach((s) => stageMap.set(s.id, s));
+        stageRes.forEach(registerStage);
       } else {
-        FALLBACK_STAGES.forEach((s) => stageMap.set(s.id, s));
+        FALLBACK_STAGES.forEach(registerStage);
       }
 
       apps.forEach((app) => {
-        if (app.currentStage?.id && !stageMap.has(app.currentStage.id)) {
-          stageMap.set(app.currentStage.id, app.currentStage);
+        if (app.currentStage?.id) {
+          registerStage(app.currentStage);
         }
       });
 

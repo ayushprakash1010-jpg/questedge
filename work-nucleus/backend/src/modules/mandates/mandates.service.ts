@@ -51,6 +51,11 @@ import { HireDetectionService } from '../hire-detection/hire-detection.service';
 @Injectable()
 export class MandatesService {
   private readonly logger = new Logger(MandatesService.name);
+  private readonly pipelineSetupLocks = new Map<
+    string,
+    Promise<{ mandate: Mandate; backingPlanId: string; stages: any[] }>
+  >();
+  private readonly pipelineSyncLocks = new Map<string, Promise<any[]>>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -850,12 +855,33 @@ export class MandatesService {
   }
 
   async ensureMandatePipelineSetup(orgId: string, mandateId: string) {
+    const existingLock = this.pipelineSetupLocks.get(mandateId);
+    if (existingLock) {
+      return existingLock;
+    }
+
+    const promise = this.runMandatePipelineSetup(orgId, mandateId).finally(
+      () => {
+        if (this.pipelineSetupLocks.get(mandateId) === promise) {
+          this.pipelineSetupLocks.delete(mandateId);
+        }
+      },
+    );
+    this.pipelineSetupLocks.set(mandateId, promise);
+    return promise;
+  }
+
+  private async runMandatePipelineSetup(orgId: string, mandateId: string) {
     const mandate = await this.findOwnMandate(orgId, mandateId);
 
     let stages = await this.prisma.pipelineStage.findMany({
       where: { mandateId },
-      orderBy: { stageOrder: 'asc' },
+      orderBy: [{ stageOrder: 'asc' }, { createdAt: 'asc' }],
     });
+
+    if (stages.length > 0) {
+      stages = await this.dedupeMandateStages(mandateId, stages);
+    }
 
     let backingPlanId = stages[0]?.hiringPlanId;
 
@@ -935,11 +961,66 @@ export class MandatesService {
 
       stages = await this.prisma.pipelineStage.findMany({
         where: { mandateId },
-        orderBy: { stageOrder: 'asc' },
+        orderBy: [{ stageOrder: 'asc' }, { createdAt: 'asc' }],
       });
+      stages = await this.dedupeMandateStages(mandateId, stages);
     }
 
     return { mandate, backingPlanId, stages };
+  }
+
+  private async dedupeMandateStages(mandateId: string, stages: any[]) {
+    const groups = new Map<string, any[]>();
+    for (const s of stages) {
+      const key = `${s.stageOrder}:${(s.name || '').trim().toLowerCase()}`;
+      const list = groups.get(key) || [];
+      list.push(s);
+      groups.set(key, list);
+    }
+
+    const dupIdsToDelete: string[] = [];
+    for (const group of groups.values()) {
+      if (group.length <= 1) continue;
+      const canonical = group[0];
+      const dupIds = group.slice(1).map((d) => d.id);
+      dupIdsToDelete.push(...dupIds);
+
+      await Promise.all([
+        this.prisma.candidateApplication?.updateMany?.({
+          where: { currentStageId: { in: dupIds } },
+          data: { currentStageId: canonical.id },
+        }),
+        this.prisma.candidateStageHistory?.updateMany?.({
+          where: { stageId: { in: dupIds } },
+          data: { stageId: canonical.id },
+        }),
+        this.prisma.interviewFeedback?.updateMany?.({
+          where: { stageId: { in: dupIds } },
+          data: { stageId: canonical.id },
+        }),
+        (this.prisma as any).hiringAssessment?.updateMany?.({
+          where: { pipelineStageId: { in: dupIds } },
+          data: { pipelineStageId: canonical.id },
+        }),
+        (this.prisma as any).videoInterview?.updateMany?.({
+          where: { pipelineStageId: { in: dupIds } },
+          data: { pipelineStageId: canonical.id },
+        }),
+      ]);
+    }
+
+    if (dupIdsToDelete.length === 0) {
+      return stages;
+    }
+
+    await this.prisma.pipelineStage?.deleteMany?.({
+      where: { id: { in: dupIdsToDelete } },
+    });
+
+    return this.prisma.pipelineStage.findMany({
+      where: { mandateId },
+      orderBy: [{ stageOrder: 'asc' }, { createdAt: 'asc' }],
+    });
   }
 
   async getStages(orgId: string, mandateId: string) {
@@ -948,6 +1029,21 @@ export class MandatesService {
   }
 
   async getPipeline(orgId: string, mandateId: string) {
+    const existingSync = this.pipelineSyncLocks.get(mandateId);
+    if (existingSync) {
+      return existingSync;
+    }
+
+    const promise = this.runGetPipeline(orgId, mandateId).finally(() => {
+      if (this.pipelineSyncLocks.get(mandateId) === promise) {
+        this.pipelineSyncLocks.delete(mandateId);
+      }
+    });
+    this.pipelineSyncLocks.set(mandateId, promise);
+    return promise;
+  }
+
+  private async runGetPipeline(orgId: string, mandateId: string) {
     const { backingPlanId, stages } = await this.ensureMandatePipelineSetup(
       orgId,
       mandateId,
