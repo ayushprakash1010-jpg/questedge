@@ -54,6 +54,12 @@ export class AnalyticsService {
       };
     }
     return this.cached(`overview:${orgId}`, async () => {
+      const publicPlanExclusion = {
+        OR: [
+          { notes: null },
+          { notes: { not: { startsWith: '[MANDATE_PIPELINE:' } } },
+        ],
+      };
       const [
         activePlans,
         totalRolesAgg,
@@ -68,7 +74,7 @@ export class AnalyticsService {
         referralRejected,
       ] = await Promise.all([
         this.prisma.hiringPlan.count({
-          where: { orgId, status: HiringPlanStatus.ACTIVE },
+          where: { orgId, status: HiringPlanStatus.ACTIVE, ...publicPlanExclusion },
         }),
         this.prisma.hiringPlan.aggregate({
           where: {
@@ -76,6 +82,7 @@ export class AnalyticsService {
             status: {
               in: [HiringPlanStatus.ACTIVE, HiringPlanStatus.COMPLETED],
             },
+            ...publicPlanExclusion,
           },
           _sum: { totalRoles: true, filledRoles: true },
         }),
@@ -85,10 +92,10 @@ export class AnalyticsService {
         }),
         this.prisma.mandate.count({ where: { orgId, status: 'ACTIVE' } }),
         this.prisma.candidateApplication.count({
-          where: { hiringPlan: { orgId }, status: ApplicationStatus.ACTIVE },
+          where: { hiringPlan: { orgId }, mandateId: null, status: ApplicationStatus.ACTIVE },
         }),
         this.prisma.candidateApplication.count({
-          where: { mandate: { orgId }, status: ApplicationStatus.ACTIVE },
+          where: { mandate: { orgId }, referralId: null, status: ApplicationStatus.ACTIVE },
         }),
         this.prisma.referral.count({
           where: {
@@ -107,13 +114,13 @@ export class AnalyticsService {
           },
         }),
         this.prisma.candidateApplication.count({
-          where: { hiringPlan: { orgId }, status: ApplicationStatus.SELECTED },
+          where: { hiringPlan: { orgId }, referralId: null, status: ApplicationStatus.SELECTED },
         }),
         this.prisma.referral.count({
           where: { mandate: { orgId }, status: { in: ['SELECTED', 'HIRED'] } },
         }),
         this.prisma.candidateApplication.count({
-          where: { hiringPlan: { orgId }, status: ApplicationStatus.REJECTED },
+          where: { hiringPlan: { orgId }, referralId: null, status: ApplicationStatus.REJECTED },
         }),
         this.prisma.referral.count({
           where: {
@@ -170,7 +177,7 @@ export class AnalyticsService {
       sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
       const recentPlans = await this.prisma.hiringPlan.findMany({
-        where: { orgId, createdAt: { gte: sixMonthsAgo } },
+        where: { orgId, createdAt: { gte: sixMonthsAgo }, ...publicPlanExclusion },
         select: { createdAt: true },
       });
 
@@ -658,6 +665,10 @@ export class AnalyticsService {
         where: {
           orgId,
           status: { in: [HiringPlanStatus.ACTIVE, HiringPlanStatus.COMPLETED] },
+          OR: [
+            { notes: null },
+            { notes: { not: { startsWith: '[MANDATE_PIPELINE:' } } },
+          ],
         },
         select: {
           id: true,
@@ -783,6 +794,10 @@ export class AnalyticsService {
         where: {
           orgId,
           status: { in: [HiringPlanStatus.ACTIVE, HiringPlanStatus.COMPLETED] },
+          OR: [
+            { notes: null },
+            { notes: { not: { startsWith: '[MANDATE_PIPELINE:' } } },
+          ],
         },
         select: {
           id: true,

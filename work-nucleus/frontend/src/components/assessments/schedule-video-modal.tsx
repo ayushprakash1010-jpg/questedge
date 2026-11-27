@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Video, Copy, Check, X, ExternalLink, Calendar, User, Mail, Sparkles, Loader2 } from "lucide-react";
 import { scheduleVideoInterview, VideoInterview } from "@/lib/assessment-api";
@@ -9,20 +9,41 @@ interface ScheduleVideoModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreated?: (interview: VideoInterview) => void;
+  defaultEmail?: string;
+  defaultName?: string;
+  mandateId?: string;
+  applicationId?: string;
+  pipelineStageId?: string;
 }
 
 export function ScheduleVideoModal({
   isOpen,
   onClose,
   onCreated,
+  defaultEmail,
+  defaultName,
+  mandateId,
+  applicationId,
+  pipelineStageId,
 }: ScheduleVideoModalProps) {
-  const [candidateEmail, setCandidateEmail] = useState("");
-  const [candidateName, setCandidateName] = useState("");
+  const [candidateEmail, setCandidateEmail] = useState(defaultEmail || "");
+  const [candidateName, setCandidateName] = useState(defaultName || "");
   const [scheduledAt, setScheduledAt] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdInterview, setCreatedInterview] = useState<VideoInterview | null>(null);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setCandidateEmail(defaultEmail || "");
+      setCandidateName(defaultName || "");
+      setScheduledAt("");
+      setError(null);
+      setCreatedInterview(null);
+      setCopied(false);
+    }
+  }, [isOpen, defaultEmail, defaultName]);
 
   if (!isOpen) return null;
 
@@ -40,6 +61,9 @@ export function ScheduleVideoModal({
       const interview = await scheduleVideoInterview({
         candidateEmail: candidateEmail.trim(),
         candidateName: candidateName.trim() || undefined,
+        mandateId: mandateId || undefined,
+        applicationId: applicationId || undefined,
+        pipelineStageId: pipelineStageId || undefined,
         scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : new Date().toISOString(),
       });
 

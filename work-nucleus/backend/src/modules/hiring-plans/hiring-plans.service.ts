@@ -54,7 +54,14 @@ export class HiringPlansService {
       ...filters
     } = query;
 
-    const where: Prisma.HiringPlanWhereInput = { orgId };
+    const where: Prisma.HiringPlanWhereInput = {
+      orgId,
+      // Exclude internal backing HiringPlans created automatically for Mandate pipelines
+      OR: [
+        { notes: null },
+        { notes: { not: { startsWith: '[MANDATE_PIPELINE:' } } },
+      ],
+    };
     if (filters.status) where.status = filters.status;
     if (filters.quarter) where.quarter = filters.quarter;
     if (filters.year) where.year = filters.year;
@@ -259,26 +266,33 @@ export class HiringPlansService {
   }
 
   async getStats(orgId: string) {
+    const publicPlanFilter: Prisma.HiringPlanWhereInput = {
+      orgId,
+      status: HiringPlanStatus.ACTIVE,
+      OR: [
+        { notes: null },
+        { notes: { not: { startsWith: '[MANDATE_PIPELINE:' } } },
+      ],
+    };
     const [totalActive, totalOpenRoles, filledThisQuarter, avgBudget] =
       await Promise.all([
         this.prisma.hiringPlan.count({
-          where: { orgId, status: HiringPlanStatus.ACTIVE },
+          where: publicPlanFilter,
         }),
         this.prisma.hiringPlan.aggregate({
-          where: { orgId, status: HiringPlanStatus.ACTIVE },
+          where: publicPlanFilter,
           _sum: { totalRoles: true, filledRoles: true },
         }),
         this.prisma.hiringPlan.aggregate({
           where: {
-            orgId,
-            status: HiringPlanStatus.ACTIVE,
+            ...publicPlanFilter,
             quarter: Math.ceil((new Date().getMonth() + 1) / 3),
             year: new Date().getFullYear(),
           },
           _sum: { filledRoles: true },
         }),
         this.prisma.hiringPlan.aggregate({
-          where: { orgId, status: HiringPlanStatus.ACTIVE },
+          where: publicPlanFilter,
           _avg: { budgetMin: true, budgetMax: true },
         }),
       ]);

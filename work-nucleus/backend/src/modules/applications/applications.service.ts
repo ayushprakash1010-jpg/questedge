@@ -194,7 +194,7 @@ export class ApplicationsService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const updated = await this.prisma.$transaction(async (tx) => {
       // Close current stage history
       if (application.currentStageId) {
         await tx.candidateStageHistory.updateMany({
@@ -226,6 +226,39 @@ export class ApplicationsService {
 
       return this.getDetail(applicationId, orgId);
     });
+
+    if (application.referralId) {
+      const stageOrder = targetStage.stageOrder;
+      const stageType = targetStage.stageType;
+      const mappedReferralStatus =
+        stageType === 'OFFER' || stageOrder >= 5
+          ? 'SELECTED'
+          : stageOrder === 4
+            ? 'INTERVIEW'
+            : stageOrder === 3
+              ? 'SHORTLISTED'
+              : stageOrder === 2
+                ? 'UNDER_REVIEW'
+                : 'ACTIVATED';
+
+      await this.prisma.referral
+        .update({
+          where: { id: application.referralId },
+          data: {
+            status: mappedReferralStatus as any,
+            activatedAt: new Date(),
+          },
+        })
+        .catch(() => {});
+
+      if (mappedReferralStatus === 'SELECTED') {
+        await this.rewardsService
+          .triggerRewardEligibility(application.referralId)
+          .catch(() => {});
+      }
+    }
+
+    return updated;
   }
 
   async updateStatus(applicationId: string, dto: UpdateApplicationStatusDto, orgId?: string) {
@@ -291,12 +324,27 @@ export class ApplicationsService {
       return this.getDetail(applicationId, orgId);
     });
 
-    if (dto.status === ApplicationStatus.SELECTED && application.referralId) {
-      await this.rewardsService
-        .triggerRewardEligibility(application.referralId)
-        .catch((err) => {
-          console.error('Failed to trigger reward eligibility:', err);
-        });
+    if (application.referralId) {
+      if (dto.status === ApplicationStatus.REJECTED) {
+        await this.prisma.referral
+          .update({
+            where: { id: application.referralId },
+            data: { status: 'REJECTED' },
+          })
+          .catch(() => {});
+      } else if (dto.status === ApplicationStatus.SELECTED) {
+        await this.prisma.referral
+          .update({
+            where: { id: application.referralId },
+            data: { status: 'SELECTED' },
+          })
+          .catch(() => {});
+        await this.rewardsService
+          .triggerRewardEligibility(application.referralId)
+          .catch((err) => {
+            console.error('Failed to trigger reward eligibility:', err);
+          });
+      }
     }
 
     return result;
@@ -311,6 +359,8 @@ export class ApplicationsService {
       },
       include: {
         candidate: true,
+        candidateProfile: { select: { id: true, resumeUrl: true } },
+        mandate: { select: { id: true, title: true } },
         hiringPlan: {
           select: {
             id: true,
@@ -339,6 +389,12 @@ export class ApplicationsService {
       },
     });
     if (!app) throw new NotFoundException('Application not found');
+
+    // Backfill resumeUrl from candidateProfile onto candidate if missing
+    if (!app.candidate.resumeUrl && app.candidateProfile?.resumeUrl) {
+      app.candidate.resumeUrl = app.candidateProfile.resumeUrl;
+    }
+
     return app;
   }
 

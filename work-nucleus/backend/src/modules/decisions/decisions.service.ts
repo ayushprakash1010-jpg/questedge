@@ -14,6 +14,7 @@ import {
 import { DecisionType, ApplicationStatus, Prisma } from '@prisma/client';
 import { AiCostService } from '../ai-cost/ai-cost.service';
 import { AuditService } from '../audit/audit.service';
+import { RewardsService } from '../rewards/rewards.service';
 
 @Injectable()
 export class DecisionsService {
@@ -22,6 +23,7 @@ export class DecisionsService {
     private readonly config: ConfigService,
     @Optional() private readonly aiCost?: AiCostService,
     @Optional() private readonly audit?: AuditService,
+    @Optional() private readonly rewardsService?: RewardsService,
   ) {}
 
   async makeDecision(
@@ -109,8 +111,25 @@ export class DecisionsService {
         });
       }
 
+      // Sync linked Referral status when a selection decision is made
+      if (application.referralId) {
+        await tx.referral.update({
+          where: { id: application.referralId },
+          data: {
+            status:
+              dto.decision === DecisionType.SELECTED ? 'SELECTED' : 'REJECTED',
+          },
+        });
+      }
+
       return created;
     });
+
+    if (dto.decision === DecisionType.SELECTED && application.referralId) {
+      await this.rewardsService
+        ?.triggerRewardEligibility(application.referralId)
+        .catch(() => {});
+    }
 
     // Draft communication via AI (non-blocking)
     this.draftCommunication(decision.id, application, dto).catch(() => {});

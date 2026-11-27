@@ -749,19 +749,11 @@ export class CandidatePortalService {
       }
     }
 
-    // hiringPlanId is required by the legacy CandidateApplication schema.
-    // Use the most recent active HiringPlan for this org as a placeholder, or auto-provision one.
+    // Reuse or provision the mandate's dedicated internal pipeline HiringPlan + default stages
+    const pipelineMarker = `[MANDATE_PIPELINE:${mandate.id}]`;
     let hiringPlan = await this.prisma.hiringPlan.findFirst({
-      where: { orgId: mandate.orgId, status: 'ACTIVE' },
-      orderBy: { createdAt: 'desc' },
+      where: { orgId: mandate.orgId, notes: pipelineMarker },
     });
-
-    if (!hiringPlan) {
-      hiringPlan = await this.prisma.hiringPlan.findFirst({
-        where: { orgId: mandate.orgId },
-        orderBy: { createdAt: 'desc' },
-      });
-    }
 
     if (!hiringPlan) {
       let orgUser = await this.prisma.user.findFirst({
@@ -782,7 +774,7 @@ export class CandidatePortalService {
       hiringPlan = await this.prisma.hiringPlan.create({
         data: {
           orgId: mandate.orgId,
-          title: `${mandate.title} General Hiring`,
+          title: mandate.title,
           industry: 'Technology',
           department: mandate.department || 'Engineering',
           quarter: Math.floor(new Date().getMonth() / 3) + 1,
@@ -794,19 +786,42 @@ export class CandidatePortalService {
           currency: mandate.currency || 'INR',
           hiringManagerId: orgUser.id,
           reportingManagerName: mandate.hiringManagerName || 'Hiring Manager',
-          hodName: 'Engineering Lead',
+          hodName: mandate.department || 'Department Lead',
           designation: mandate.title,
+          notes: pipelineMarker,
           createdById: orgUser.id,
         },
       });
     }
 
-    return this.prisma.candidateApplication.create({
+    let firstStage = await this.prisma.pipelineStage.findFirst({
+      where: { mandateId: mandate.id },
+      orderBy: { stageOrder: 'asc' },
+    });
+
+    if (!firstStage) {
+      await this.prisma.pipelineStage.createMany({
+        data: [
+          { hiringPlanId: hiringPlan.id, mandateId: mandate.id, name: 'Sourced', stageType: 'SCREENING', stageOrder: 1, maxDurationDays: 3, skillsToEvaluate: [] },
+          { hiringPlanId: hiringPlan.id, mandateId: mandate.id, name: 'Screening', stageType: 'SCREENING', stageOrder: 2, maxDurationDays: 3, skillsToEvaluate: [] },
+          { hiringPlanId: hiringPlan.id, mandateId: mandate.id, name: 'Shortlisted', stageType: 'TECHNICAL', stageOrder: 3, maxDurationDays: 5, skillsToEvaluate: [] },
+          { hiringPlanId: hiringPlan.id, mandateId: mandate.id, name: 'Interview', stageType: 'HR', stageOrder: 4, maxDurationDays: 5, skillsToEvaluate: [] },
+          { hiringPlanId: hiringPlan.id, mandateId: mandate.id, name: 'Offer / Hired', stageType: 'OFFER', stageOrder: 5, maxDurationDays: 7, skillsToEvaluate: [] },
+        ],
+      });
+      firstStage = await this.prisma.pipelineStage.findFirst({
+        where: { mandateId: mandate.id },
+        orderBy: { stageOrder: 'asc' },
+      });
+    }
+
+    const createdApp = await this.prisma.candidateApplication.create({
       data: {
         candidateId: legacyCandidate.id,
         hiringPlanId: hiringPlan.id,
         mandateId,
         candidateProfileId,
+        currentStageId: firstStage?.id,
         sourceType: isRecruiter
           ? ('RECRUITER_SELF_APPLY' as any)
           : 'DIRECT_APPLICATION',
@@ -814,6 +829,19 @@ export class CandidatePortalService {
         status: 'ACTIVE',
       },
     });
+
+    if (firstStage) {
+      await this.prisma.candidateStageHistory
+        .create({
+          data: {
+            applicationId: createdApp.id,
+            stageId: firstStage.id,
+          },
+        })
+        .catch(() => {});
+    }
+
+    return createdApp;
   }
 
   async getMyApplications(candidateId: string) {

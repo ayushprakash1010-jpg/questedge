@@ -96,4 +96,53 @@ describe('MandatesService', () => {
     expect(result.data).toHaveLength(1);
     expect((result.data[0] as any)._count.participations).toBe(1);
   });
+
+  it('should provision 5 default PipelineStages for a mandate when none exist yet', async () => {
+    const prisma = (service as any).prisma;
+    prisma.mandate.findFirst = jest.fn().mockResolvedValue({
+      id: 'mandate-1',
+      orgId: 'org-1',
+      title: 'Senior Full Stack Developer',
+      department: 'Engineering',
+      numberOfOpenings: 1,
+      currency: 'INR',
+      organization: { id: 'org-1', name: 'roboto' },
+    });
+    const createdStages = [
+      { id: 's1', name: 'Sourced', stageType: 'SCREENING', stageOrder: 1, hiringPlanId: 'hp-1' },
+      { id: 's2', name: 'Screening', stageType: 'SCREENING', stageOrder: 2, hiringPlanId: 'hp-1' },
+      { id: 's3', name: 'Shortlisted', stageType: 'TECHNICAL', stageOrder: 3, hiringPlanId: 'hp-1' },
+      { id: 's4', name: 'Interview', stageType: 'HR', stageOrder: 4, hiringPlanId: 'hp-1' },
+      { id: 's5', name: 'Offer / Hired', stageType: 'OFFER', stageOrder: 5, hiringPlanId: 'hp-1' },
+    ];
+    prisma.pipelineStage = {
+      findMany: jest.fn()
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce(createdStages),
+      createMany: jest.fn().mockResolvedValue({ count: 5 }),
+    };
+    prisma.hiringPlan = {
+      findFirst: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockResolvedValue({ id: 'hp-1' }),
+    };
+    prisma.user = {
+      findFirst: jest.fn().mockResolvedValue({ id: 'user-1' }),
+    };
+
+    const { backingPlanId, stages } = await service.ensureMandatePipelineSetup(
+      'org-1',
+      'mandate-1',
+    );
+
+    expect(backingPlanId).toBe('hp-1');
+    expect(prisma.pipelineStage.createMany).toHaveBeenCalledTimes(1);
+    expect(stages).toHaveLength(5);
+    expect(stages.map((s: any) => s.name)).toEqual([
+      'Sourced',
+      'Screening',
+      'Shortlisted',
+      'Interview',
+      'Offer / Hired',
+    ]);
+  });
 });

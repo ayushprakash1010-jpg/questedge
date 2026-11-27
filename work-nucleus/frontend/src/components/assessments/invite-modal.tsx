@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Copy, Check, Send, X, ExternalLink, Link2, Sparkles, AlertTriangle, RotateCcw, Users, User } from "lucide-react";
 import { sendAssessmentInvite, HiringAssessment } from "@/lib/assessment-api";
 
@@ -8,13 +8,23 @@ interface InviteModalProps {
   assessment: HiringAssessment;
   isOpen: boolean;
   onClose: () => void;
+  defaultCandidateEmail?: string;
+  defaultCandidateName?: string;
+  applicationId?: string;
 }
 
 type TabType = "private" | "public";
 
-export function InviteModal({ assessment, isOpen, onClose }: InviteModalProps) {
+export function InviteModal({
+  assessment,
+  isOpen,
+  onClose,
+  defaultCandidateEmail,
+  defaultCandidateName,
+  applicationId,
+}: InviteModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>("private");
-  const [candidateId, setCandidateId] = useState("");
+  const [candidateId, setCandidateId] = useState(defaultCandidateEmail || "");
   const [copied, setCopied] = useState(false);
   const [publicCopied, setPublicCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -27,6 +37,17 @@ export function InviteModal({ assessment, isOpen, onClose }: InviteModalProps) {
     completedAt?: string;
     candidateName?: string;
   } | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setCandidateId(defaultCandidateEmail || "");
+      setActiveTab("private");
+      setGeneratedLink(null);
+      setError(null);
+      setRetakeWarning(null);
+      setCopied(false);
+    }
+  }, [isOpen, defaultCandidateEmail, assessment?.id]);
 
   if (!isOpen) return null;
 
@@ -41,7 +62,11 @@ export function InviteModal({ assessment, isOpen, onClose }: InviteModalProps) {
     setError(null);
     setRetakeWarning(null);
     try {
-      const payload: any = { allowRetake };
+      const payload: any = {
+        allowRetake,
+        ...(applicationId ? { applicationId } : {}),
+        ...(defaultCandidateName ? { candidateName: defaultCandidateName } : {}),
+      };
       const trimmed = candidateId.trim();
       if (trimmed) {
         if (trimmed.includes("@")) {

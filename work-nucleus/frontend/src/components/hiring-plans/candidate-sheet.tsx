@@ -31,11 +31,17 @@ import {
   Printer,
   Download,
   AlertTriangle,
+  Video,
+  ClipboardCheck,
+  ShieldCheck,
 } from "lucide-react";
 import { FeedbackDisplay } from "./feedback-display";
 import { FeedbackForm } from "./feedback-form";
 import { DecisionModal } from "./decision-modal";
 import { CreateOfferDialog } from "@/components/offers/create-offer-dialog";
+import { InviteModal } from "@/components/assessments/invite-modal";
+import { ScheduleVideoModal } from "@/components/assessments/schedule-video-modal";
+import { fetchAssessments, type HiringAssessment } from "@/lib/assessment-api";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
 
 // Candidate detail surface — design-system-v2/ui-kit/04-Candidate-Detail.html.
@@ -82,6 +88,8 @@ interface ApplicationDetail {
     resumeUrl?: string | null;
   };
   hiringPlan: { id: string; title: string; department: string; designation: string };
+  mandateId?: string | null;
+  mandate?: { id: string; title: string } | null;
   currentStage: { id: string; name: string; stageType: string } | null;
   stageHistory: StageHistoryItem[];
   offer?: { id: string; status: string } | null;
@@ -395,11 +403,15 @@ function printCandidateScorecard(app: ApplicationDetail) {
 export function CandidateSheet({
   applicationId,
   planId,
+  mandateId,
+  mandateTitle,
   onClose,
   onUpdated,
 }: {
   applicationId: string;
   planId: string;
+  mandateId?: string;
+  mandateTitle?: string;
   onClose: () => void;
   onUpdated: () => void;
 }) {
@@ -411,6 +423,11 @@ export function CandidateSheet({
   const [stages, setStages] = useState<StageDef[]>([]);
   const [showDecisionModal, setShowDecisionModal] = useState(false);
   const [showCreateOffer, setShowCreateOffer] = useState(false);
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [showAssessmentPicker, setShowAssessmentPicker] = useState(false);
+  const [availableAssessments, setAvailableAssessments] = useState<HiringAssessment[]>([]);
+  const [loadingAssessments, setLoadingAssessments] = useState(false);
+  const [selectedAssessmentForInvite, setSelectedAssessmentForInvite] = useState<HiringAssessment | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
   const drawerRef = useFocusTrap<HTMLDivElement>({ isOpen: true, onClose });
   const [savingNote, setSavingNote] = useState(false);
@@ -502,14 +519,26 @@ export function CandidateSheet({
     return stages.find((s) => s.stageOrder === currentOrder + 1) ?? null;
   }, [currentOrder, stages]);
 
-  const handleMoveToNext = async () => {
-    if (!nextStage) return;
+  const handleOpenAssessmentPicker = async () => {
+    setShowAssessmentPicker(true);
+    setLoadingAssessments(true);
+    try {
+      const list = await fetchAssessments();
+      setAvailableAssessments(Array.isArray(list) ? list : []);
+    } catch {
+      setAvailableAssessments([]);
+    } finally {
+      setLoadingAssessments(false);
+    }
+  };
+
+  const handleMoveToStage = async (targetStageId: string) => {
     setActing(true);
     try {
       await fetch(`/api/applications/${applicationId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetStageId: nextStage.id }),
+        body: JSON.stringify({ targetStageId }),
       });
       fetchDetail();
       onUpdated();
@@ -518,6 +547,11 @@ export function CandidateSheet({
     } finally {
       setActing(false);
     }
+  };
+
+  const handleMoveToNext = async () => {
+    if (!nextStage) return;
+    await handleMoveToStage(nextStage.id);
   };
 
   const handleStatus = async (status: string, reason?: string) => {
@@ -585,9 +619,9 @@ export function CandidateSheet({
             {/* Top bar */}
             <div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
               <nav className="flex items-center gap-1.5 text-xs text-slate-400">
-                <span>Hiring Plans</span>
+                <span>{mandateTitle || app.mandate?.title ? "Mandates" : "Hiring Plans"}</span>
                 <span className="text-slate-300">/</span>
-                <span>{app.hiringPlan.title}</span>
+                <span>{mandateTitle || app.mandate?.title || app.hiringPlan.title}</span>
                 <span className="text-slate-300">/</span>
                 <span>Pipeline</span>
                 <span className="text-slate-300">/</span>
@@ -610,12 +644,17 @@ export function CandidateSheet({
               <div className="flex-1 overflow-y-auto px-6 py-6">
                 <HeroCard
                   app={app}
+                  stages={stages}
                   onMoveToNext={handleMoveToNext}
+                  onMoveToStage={handleMoveToStage}
+                  onResumeFromHold={() => handleStatus("ACTIVE")}
                   onPutOnHold={() => handleStatus("ON_HOLD")}
                   onReject={() => setShowRejectDialog(true)}
                   onMakeDecision={() => setShowDecisionModal(true)}
                   onCreateOffer={() => setShowCreateOffer(true)}
                   onOpenAiQuestions={() => setActiveTab("ai-questions")}
+                  onSendAssessment={handleOpenAssessmentPicker}
+                  onScheduleVideo={() => setShowVideoModal(true)}
                   onExportScorecard={() => printCandidateScorecard(app)}
                   hasNextStage={!!nextStage}
                   acting={acting}
@@ -782,6 +821,87 @@ export function CandidateSheet({
           }}
         />
       )}
+
+      {app && (
+        <ScheduleVideoModal
+          isOpen={showVideoModal}
+          onClose={() => setShowVideoModal(false)}
+          defaultEmail={app.candidate.email}
+          defaultName={app.candidate.name}
+          applicationId={app.id}
+          pipelineStageId={app.currentStage?.id}
+          mandateId={mandateId || app.mandate?.id || app.mandateId || undefined}
+        />
+      )}
+
+      {showAssessmentPicker && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Send Assessment Invite</h3>
+                <p className="text-xs text-slate-500">Choose an assessment for {app?.candidate.name}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAssessmentPicker(false)}
+                className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {loadingAssessments ? (
+              <div className="py-8 text-center text-xs text-slate-500">Loading assessments...</div>
+            ) : availableAssessments.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-200 p-5 text-center space-y-3">
+                <p className="text-xs text-slate-600">No assessments created yet.</p>
+                <Link href="/assessments/create">
+                  <Button size="sm">
+                    <Plus className="h-3.5 w-3.5" /> Create Assessment
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="max-h-72 overflow-y-auto space-y-2">
+                {availableAssessments.map((assess) => (
+                  <button
+                    key={assess.id}
+                    type="button"
+                    onClick={() => {
+                      setShowAssessmentPicker(false);
+                      setSelectedAssessmentForInvite(assess);
+                    }}
+                    className="w-full flex items-center justify-between rounded-xl border border-slate-200 px-3.5 py-2.5 text-left hover:border-indigo-300 hover:bg-indigo-50/40 transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-slate-900 truncate">{assess.title}</p>
+                      <p className="text-[11px] text-slate-500">
+                        {assess.type} · {assess.durationMinutes} min
+                        {assess.mandate?.title ? ` · ${assess.mandate.title}` : ""}
+                      </p>
+                    </div>
+                    <span className="text-xs font-semibold text-indigo-600 shrink-0 ml-2">
+                      Invite →
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {selectedAssessmentForInvite && app && (
+        <InviteModal
+          assessment={selectedAssessmentForInvite}
+          isOpen={true}
+          onClose={() => setSelectedAssessmentForInvite(null)}
+          defaultCandidateEmail={app.candidate.email}
+          defaultCandidateName={app.candidate.name}
+          applicationId={app.id}
+        />
+      )}
     </div>
   );
 }
@@ -792,28 +912,39 @@ export function CandidateSheet({
 
 function HeroCard({
   app,
+  stages,
   onMoveToNext,
+  onMoveToStage,
+  onResumeFromHold,
   onPutOnHold,
   onReject,
   onMakeDecision,
   onCreateOffer,
   onOpenAiQuestions,
+  onSendAssessment,
+  onScheduleVideo,
   onExportScorecard,
   hasNextStage,
   acting,
 }: {
   app: ApplicationDetail;
+  stages: StageDef[];
   onMoveToNext: () => void;
+  onMoveToStage: (stageId: string) => void;
+  onResumeFromHold: () => void;
   onPutOnHold: () => void;
   onReject: () => void;
   onMakeDecision: () => void;
   onCreateOffer: () => void;
   onOpenAiQuestions: () => void;
+  onSendAssessment: () => void;
+  onScheduleVideo: () => void;
   onExportScorecard: () => void;
   hasNextStage: boolean;
   acting: boolean;
 }) {
   const isActive = app.status === "ACTIVE";
+  const [stageMenuOpen, setStageMenuOpen] = useState(false);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm">
@@ -865,12 +996,40 @@ function HeroCard({
                 {app.currentStage.name}
               </span>
             )}
-            <button
-              aria-label="More"
-              className="rounded-md border border-slate-200 p-1.5 text-slate-400 hover:bg-slate-50 hover:text-slate-600"
-            >
-              <MoreHorizontal className="h-3.5 w-3.5" />
-            </button>
+            <div className="relative">
+              <button
+                type="button"
+                aria-label="Move to stage"
+                onClick={() => setStageMenuOpen((v) => !v)}
+                className="rounded-md border border-slate-200 p-1.5 text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+                title="Jump to stage"
+              >
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </button>
+              {stageMenuOpen && isActive && stages.length > 0 && (
+                <div className="absolute right-0 mt-1 w-48 rounded-xl border border-slate-200 bg-white py-1 shadow-lg z-20">
+                  <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Jump to Stage
+                  </p>
+                  {[...stages]
+                    .sort((a, b) => a.stageOrder - b.stageOrder)
+                    .map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        disabled={s.id === app.currentStage?.id || acting}
+                        onClick={() => {
+                          setStageMenuOpen(false);
+                          onMoveToStage(s.id);
+                        }}
+                        className="w-full px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 disabled:opacity-40"
+                      >
+                        {s.stageOrder}. {s.name}
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -937,6 +1096,12 @@ function HeroCard({
               </Button>
             </>
           )}
+          {app.status === "ON_HOLD" && (
+            <Button size="sm" variant="outline" onClick={onResumeFromHold} disabled={acting}>
+              <ArrowRight className="h-3.5 w-3.5" />
+              Resume Active
+            </Button>
+          )}
           {app.status === "SELECTED" && !app.offer && (
             <Button size="sm" onClick={onCreateOffer} disabled={acting}>
               <FileText className="h-3.5 w-3.5" />
@@ -952,13 +1117,39 @@ function HeroCard({
             </Link>
           )}
           {app.status === "SELECTED" && (
-            <Link href={`/candidates/${app.id}/joining`}>
-              <Button size="sm" variant="outline">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                Joining Checklist
-              </Button>
-            </Link>
+            <>
+              <Link href={`/candidates/${app.id}/joining`}>
+                <Button size="sm" variant="outline">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Joining Checklist
+                </Button>
+              </Link>
+              <Link href="/bgv">
+                <Button size="sm" variant="outline">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  BGV Check
+                </Button>
+              </Link>
+            </>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onSendAssessment}
+            className="gap-1.5 text-slate-700 hover:bg-slate-50"
+          >
+            <ClipboardCheck className="h-3.5 w-3.5 text-indigo-600" />
+            Send Assessment
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onScheduleVideo}
+            className="gap-1.5 text-slate-700 hover:bg-slate-50"
+          >
+            <Video className="h-3.5 w-3.5 text-sky-600" />
+            Schedule Video
+          </Button>
           <Button
             variant="outline"
             size="sm"

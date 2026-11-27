@@ -818,77 +818,199 @@ export class MandatesService {
 
   // ── Company: Pipeline Kanban ────────────────────────────────────
 
-  async getPipeline(orgId: string, mandateId: string) {
-    await this.findOwnMandate(orgId, mandateId);
+  private static readonly MANDATE_PIPELINE_NOTE_PREFIX = '[MANDATE_PIPELINE:';
 
-    // Fetch all pipeline stages for this mandate's hiring plan (or directly if linked)
-    // Wait, let's just fetch all applications and let the frontend group them by currentStageId
-    const applications = await this.prisma.candidateApplication.findMany({
+  private buildMandatePipelineNote(mandateId: string): string {
+    return `${MandatesService.MANDATE_PIPELINE_NOTE_PREFIX}${mandateId}]`;
+  }
+
+  private resolveStageForReferralStatus(
+    stages: Array<{ id: string; name: string; stageOrder: number; stageType: string }>,
+    referralStatus: string,
+  ) {
+    if (!stages.length) return null;
+    const ordered = [...stages].sort((a, b) => a.stageOrder - b.stageOrder);
+    const byOrder = (idx: number) => ordered[Math.min(idx, ordered.length - 1)];
+
+    switch (referralStatus) {
+      case 'ACTIVATED':
+      case 'UNDER_REVIEW':
+        return byOrder(1);
+      case 'SHORTLISTED':
+        return byOrder(2);
+      case 'INTERVIEW':
+        return byOrder(3);
+      case 'SELECTED':
+      case 'HIRED':
+        return ordered.find((s) => s.stageType === 'OFFER') || byOrder(4);
+      case 'CANDIDATE_ACCEPTED':
+      default:
+        return byOrder(0);
+    }
+  }
+
+  async ensureMandatePipelineSetup(orgId: string, mandateId: string) {
+    const mandate = await this.findOwnMandate(orgId, mandateId);
+
+    let stages = await this.prisma.pipelineStage.findMany({
       where: { mandateId },
-      include: {
-        candidate: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            resumeUrl: true,
-          },
-        },
-        candidateProfile: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            headline: true,
-            experienceYears: true,
-            resumeUrl: true,
-          },
-        },
-        currentStage: {
-          select: {
-            id: true,
-            name: true,
-            stageType: true,
-            stageOrder: true,
-          },
-        },
-      },
-      orderBy: { appliedAt: 'desc' },
+      orderBy: { stageOrder: 'asc' },
     });
 
-    // Manually join referrals to avoid prisma schema relation issues for now
-    const referralIds = applications
-      .map((a) => a.referralId)
-      .filter(Boolean) as string[];
-    const referralsMap: Record<string, any> = {};
+    let backingPlanId = stages[0]?.hiringPlanId;
 
-    if (referralIds.length > 0) {
-      const referrals = await this.prisma.referral.findMany({
-        where: { id: { in: referralIds } },
-        include: { recruiter: { select: { id: true, name: true } } },
+    if (!backingPlanId) {
+      const noteMarker = this.buildMandatePipelineNote(mandate.id);
+      let backingPlan = await this.prisma.hiringPlan.findFirst({
+        where: { orgId, notes: noteMarker },
+        select: { id: true },
       });
-      referrals.forEach((r) => {
-        referralsMap[r.id] = r;
+
+      if (!backingPlan) {
+        let orgUser = await this.prisma.user.findFirst({
+          where: { orgId },
+          select: { id: true },
+        });
+        if (!orgUser) {
+          orgUser = await this.prisma.user.create({
+            data: {
+              orgId,
+              email: `hiring-${orgId.slice(0, 8)}@questedge.internal`,
+              auth0Sub: `internal|system-${orgId.slice(0, 8)}`,
+              name: `${(mandate as any).organization?.name || 'Company'} Hiring Lead`,
+              role: 'ADMIN',
+              userType: 'COMPANY_USER',
+            },
+            select: { id: true },
+          });
+        }
+
+        backingPlan = await this.prisma.hiringPlan.create({
+          data: {
+            orgId,
+            title: mandate.title,
+            industry: 'Technology',
+            department: mandate.department || 'Engineering',
+            quarter: Math.floor(new Date().getMonth() / 3) + 1,
+            year: new Date().getFullYear(),
+            totalRoles: mandate.numberOfOpenings || 1,
+            status: 'ACTIVE',
+            budgetMin: mandate.compensationMin || 0,
+            budgetMax: mandate.compensationMax || 0,
+            currency: mandate.currency || 'INR',
+            hiringManagerId: orgUser.id,
+            reportingManagerName: mandate.hiringManagerName || 'Hiring Manager',
+            hodName: mandate.department || 'Department Lead',
+            designation: mandate.title,
+            notes: noteMarker,
+            createdById: orgUser.id,
+          },
+          select: { id: true },
+        });
+      }
+
+      backingPlanId = backingPlan.id;
+    }
+
+    if (stages.length === 0) {
+      const defaults: Array<{ name: string; stageType: any; stageOrder: number; maxDurationDays: number }> = [
+        { name: 'Sourced', stageType: 'SCREENING', stageOrder: 1, maxDurationDays: 3 },
+        { name: 'Screening', stageType: 'SCREENING', stageOrder: 2, maxDurationDays: 3 },
+        { name: 'Shortlisted', stageType: 'TECHNICAL', stageOrder: 3, maxDurationDays: 5 },
+        { name: 'Interview', stageType: 'HR', stageOrder: 4, maxDurationDays: 5 },
+        { name: 'Offer / Hired', stageType: 'OFFER', stageOrder: 5, maxDurationDays: 7 },
+      ];
+
+      await this.prisma.pipelineStage.createMany({
+        data: defaults.map((s) => ({
+          hiringPlanId: backingPlanId,
+          mandateId: mandate.id,
+          name: s.name,
+          stageType: s.stageType,
+          stageOrder: s.stageOrder,
+          maxDurationDays: s.maxDurationDays,
+          skillsToEvaluate: [],
+        })),
+      });
+
+      stages = await this.prisma.pipelineStage.findMany({
+        where: { mandateId },
+        orderBy: { stageOrder: 'asc' },
       });
     }
 
-    const appItems = applications.map((app) => ({
-      ...app,
-      candidateId: app.candidateProfileId || app.candidateId,
-      resumeUrl: app.candidateProfile?.resumeUrl || app.candidate?.resumeUrl || null,
-      isReferral: Boolean(app.referralId),
-      referral:
-        app.referralId && referralsMap[app.referralId]
-          ? referralsMap[app.referralId]
-          : null,
-      currentStage: app.currentStage || {
-        id: 'sourced',
-        name: 'Sourced',
-        stageOrder: 1,
-      },
-    }));
+    return { mandate, backingPlanId, stages };
+  }
 
-    // Fetch active/accepted referrals for this mandate to populate the Kanban board
+  async getStages(orgId: string, mandateId: string) {
+    const { stages } = await this.ensureMandatePipelineSetup(orgId, mandateId);
+    return stages;
+  }
+
+  async getPipeline(orgId: string, mandateId: string) {
+    const { backingPlanId, stages } = await this.ensureMandatePipelineSetup(
+      orgId,
+      mandateId,
+    );
+    const sourcedStage = stages[0];
+    const validStageIds = new Set(stages.map((s) => s.id));
+
+    // 1. Reconcile existing applications on this mandate so every application sits on a real Mandate stage
+    const existingApps = await this.prisma.candidateApplication.findMany({
+      where: { mandateId },
+      select: {
+        id: true,
+        candidateId: true,
+        hiringPlanId: true,
+        currentStageId: true,
+        referralId: true,
+        _count: { select: { stageHistory: true } },
+      },
+    });
+
+    for (const app of existingApps) {
+      const updates: any = {};
+      if (app.hiringPlanId !== backingPlanId) {
+        const collision = await this.prisma.candidateApplication.findUnique({
+          where: {
+            candidateId_hiringPlanId: {
+              candidateId: app.candidateId,
+              hiringPlanId: backingPlanId,
+            },
+          },
+          select: { id: true },
+        });
+        if (!collision) {
+          updates.hiringPlanId = backingPlanId;
+        }
+      }
+
+      if (
+        sourcedStage &&
+        (!app.currentStageId || !validStageIds.has(app.currentStageId))
+      ) {
+        updates.currentStageId = sourcedStage.id;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        await this.prisma.candidateApplication.update({
+          where: { id: app.id },
+          data: updates,
+        });
+      }
+
+      const targetHistoryStageId = updates.currentStageId || app.currentStageId;
+      if (targetHistoryStageId && app._count.stageHistory === 0) {
+        await this.prisma.candidateStageHistory.create({
+          data: {
+            applicationId: app.id,
+            stageId: targetHistoryStageId,
+          },
+        });
+      }
+    }
+
+    // 2. Ensure every accepted/progressed referral on this mandate has a linked CandidateApplication
     const activeReferrals = await this.prisma.referral.findMany({
       where: {
         mandateId,
@@ -901,71 +1023,185 @@ export class MandatesService {
             'INTERVIEW',
             'SELECTED',
             'HIRED',
+            'REJECTED',
           ],
         },
       },
       include: {
+        candidateProfile: true,
+        recruiter: { select: { id: true, name: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const linkedReferralIds = new Set(
+      existingApps.map((a) => a.referralId).filter(Boolean) as string[],
+    );
+
+    for (const ref of activeReferrals) {
+      if (linkedReferralIds.has(ref.id) || !ref.candidateProfile?.email) {
+        continue;
+      }
+
+      const cp = ref.candidateProfile;
+      let legacyCandidate = await this.prisma.candidate.findFirst({
+        where: { orgId, email: { equals: cp.email, mode: 'insensitive' } },
+      });
+
+      if (!legacyCandidate) {
+        legacyCandidate = await this.prisma.candidate.create({
+          data: {
+            orgId,
+            name: cp.name || 'Candidate',
+            email: cp.email,
+            phone: cp.phone ?? undefined,
+            resumeUrl: cp.resumeUrl ?? undefined,
+            source: 'REFERRAL',
+            currentRole: cp.currentDesignation ?? undefined,
+            currentCompany: cp.currentCompany ?? undefined,
+            experienceYears: cp.experienceYears ?? undefined,
+            expectedCtc: cp.expectedCtc ?? undefined,
+          },
+        });
+      } else if (cp.resumeUrl && !legacyCandidate.resumeUrl) {
+        legacyCandidate = await this.prisma.candidate.update({
+          where: { id: legacyCandidate.id },
+          data: { resumeUrl: cp.resumeUrl },
+        });
+      }
+
+      const stageForRef =
+        this.resolveStageForReferralStatus(stages, ref.status) || sourcedStage;
+      const mappedAppStatus =
+        ref.status === 'SELECTED' || ref.status === 'HIRED'
+          ? 'SELECTED'
+          : ref.status === 'REJECTED'
+            ? 'REJECTED'
+            : 'ACTIVE';
+
+      const existingPlanApp = await this.prisma.candidateApplication.findUnique({
+        where: {
+          candidateId_hiringPlanId: {
+            candidateId: legacyCandidate.id,
+            hiringPlanId: backingPlanId,
+          },
+        },
+      });
+
+      if (existingPlanApp) {
+        await this.prisma.candidateApplication.update({
+          where: { id: existingPlanApp.id },
+          data: {
+            referralId: existingPlanApp.referralId || ref.id,
+            candidateProfileId: existingPlanApp.candidateProfileId || cp.id,
+            currentStageId: existingPlanApp.currentStageId || stageForRef?.id,
+          },
+        });
+      } else {
+        const createdApp = await this.prisma.candidateApplication.create({
+          data: {
+            candidateId: legacyCandidate.id,
+            hiringPlanId: backingPlanId,
+            mandateId,
+            candidateProfileId: cp.id,
+            referralId: ref.id,
+            sourceType: 'RECRUITER_REFERRAL',
+            aiMatchScore: (ref as any).aiMatchScore ?? undefined,
+            aiMatchSummary: (ref as any).aiMatchSummary ?? undefined,
+            currentStageId: stageForRef?.id,
+            status: mappedAppStatus as any,
+          },
+        });
+
+        if (stageForRef) {
+          await this.prisma.candidateStageHistory.create({
+            data: {
+              applicationId: createdApp.id,
+              stageId: stageForRef.id,
+            },
+          });
+        }
+      }
+    }
+
+    // 3. Return unified Mandate applications enriched with referral & evaluation metadata
+    const applications = await this.prisma.candidateApplication.findMany({
+      where: { mandateId },
+      include: {
+        candidate: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            resumeUrl: true,
+            currentRole: true,
+            currentCompany: true,
+            experienceYears: true,
+          },
+        },
         candidateProfile: {
           select: {
             id: true,
             name: true,
             email: true,
             headline: true,
+            currentDesignation: true,
+            currentCompany: true,
             experienceYears: true,
             resumeUrl: true,
           },
         },
-        recruiter: {
+        currentStage: {
           select: {
             id: true,
             name: true,
+            stageType: true,
+            stageOrder: true,
           },
         },
+        offer: { select: { id: true, status: true } },
+        decision: { select: { id: true, decision: true } },
+        _count: { select: { feedbacks: true } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { appliedAt: 'desc' },
     });
 
-    const existingReferralIds = new Set(referralIds);
-    const unlinkedReferrals = activeReferrals.filter(
-      (r) => !existingReferralIds.has(r.id),
-    );
+    const referralMap = new Map<string, any>();
+    for (const r of activeReferrals) {
+      referralMap.set(r.id, r);
+    }
 
-    const stageMap: Record<
-      string,
-      { id: string; name: string; stageOrder: number }
-    > = {
-      CANDIDATE_ACCEPTED: { id: 'sourced', name: 'Sourced', stageOrder: 1 },
-      ACTIVATED: { id: 'screening', name: 'Screening', stageOrder: 2 },
-      UNDER_REVIEW: { id: 'screening', name: 'Screening', stageOrder: 2 },
-      SHORTLISTED: { id: 'shortlisted', name: 'Shortlisted', stageOrder: 3 },
-      INTERVIEW: { id: 'interview', name: 'Interview', stageOrder: 4 },
-      SELECTED: { id: 'offer', name: 'Offer / Hired', stageOrder: 5 },
-      HIRED: { id: 'offer', name: 'Offer / Hired', stageOrder: 5 },
-    };
-
-    const referralItems = unlinkedReferrals.map((r) => ({
-      id: r.id,
-      candidateProfileId: r.candidateProfileId,
-      candidateProfile: r.candidateProfile,
-      mandateId: r.mandateId,
-      isReferral: true,
-      referralId: r.id,
-      referral: {
-        id: r.id,
-        recruiter: r.recruiter,
-        status: r.status,
-      },
-      currentStage: stageMap[r.status] || {
-        id: 'sourced',
-        name: 'Sourced',
-        stageOrder: 1,
-      },
-      status: r.status,
-      aiMatchScore: (r as any).aiMatchScore,
-      appliedAt: (r as any).createdAt,
-    }));
-
-    return [...appItems, ...referralItems];
+    return applications.map((app) => {
+      const linkedRef = app.referralId ? referralMap.get(app.referralId) : null;
+      const resumeUrl =
+        app.candidateProfile?.resumeUrl || app.candidate?.resumeUrl || null;
+      return {
+        ...app,
+        candidateId: app.candidateProfileId || app.candidateId,
+        legacyCandidateId: app.candidateId,
+        resumeUrl,
+        isReferral: Boolean(app.referralId),
+        referral: linkedRef
+          ? {
+              id: linkedRef.id,
+              recruiter: linkedRef.recruiter,
+              status: linkedRef.status,
+            }
+          : null,
+        candidateProfile: app.candidateProfile || {
+          id: app.candidateId,
+          name: app.candidate.name,
+          email: app.candidate.email,
+          headline:
+            [app.candidate.currentRole, app.candidate.currentCompany]
+              .filter(Boolean)
+              .join(' @ ') || '',
+          experienceYears: app.candidate.experienceYears,
+          resumeUrl,
+        },
+        currentStage: app.currentStage || sourcedStage,
+      };
+    });
   }
 
   // ── Company: Referral Inbox ─────────────────────────────────────
@@ -1160,6 +1396,8 @@ export class MandatesService {
         });
       }
 
+      await this.syncReferralApplication(orgId, mandateId, referralId, newStatus);
+
       return updatedReferral;
     }
 
@@ -1198,7 +1436,74 @@ export class MandatesService {
       });
     }
 
+    await this.syncReferralApplication(orgId, mandateId, referralId, newStatus);
+
     return updated;
+  }
+
+  private async syncReferralApplication(
+    orgId: string,
+    mandateId: string,
+    referralId: string,
+    newStatus: string,
+  ) {
+    try {
+      const linkedApp = await this.prisma.candidateApplication.findFirst({
+        where: { referralId, mandateId },
+      });
+      if (!linkedApp) return;
+
+      const { stages } = await this.ensureMandatePipelineSetup(orgId, mandateId);
+      const targetStage = this.resolveStageForReferralStatus(stages, newStatus);
+      const nextAppStatus =
+        newStatus === 'SELECTED' || newStatus === 'HIRED'
+          ? 'SELECTED'
+          : newStatus === 'REJECTED'
+            ? 'REJECTED'
+            : 'ACTIVE';
+
+      await this.prisma.$transaction(async (tx) => {
+        if (
+          targetStage &&
+          linkedApp.currentStageId &&
+          linkedApp.currentStageId !== targetStage.id
+        ) {
+          await tx.candidateStageHistory.updateMany({
+            where: {
+              applicationId: linkedApp.id,
+              stageId: linkedApp.currentStageId,
+              exitedAt: null,
+            },
+            data: {
+              exitedAt: new Date(),
+              outcome: nextAppStatus === 'REJECTED' ? 'REJECTED' : 'PASSED',
+            },
+          });
+
+          await tx.candidateStageHistory.create({
+            data: {
+              applicationId: linkedApp.id,
+              stageId: targetStage.id,
+            },
+          });
+        }
+
+        await tx.candidateApplication.update({
+          where: { id: linkedApp.id },
+          data: {
+            status: nextAppStatus as any,
+            ...(targetStage && linkedApp.currentStageId !== targetStage.id
+              ? { currentStageId: targetStage.id, stageEnteredAt: new Date() }
+              : {}),
+            ...(nextAppStatus === 'SELECTED' || nextAppStatus === 'REJECTED'
+              ? { completedAt: new Date() }
+              : {}),
+          },
+        });
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to sync application for referral ${referralId}: ${err}`);
+    }
   }
 
   async assertReferralInMandateOrg(

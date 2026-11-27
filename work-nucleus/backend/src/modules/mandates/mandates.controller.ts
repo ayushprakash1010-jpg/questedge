@@ -358,6 +358,19 @@ export class MandatesController {
 
   // ── Company: Pipeline ──────────────────────────────────────────
 
+  @Get(':id/stages')
+  @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
+  @ApiOperation({
+    summary: 'Company: Fetch or provision pipeline stages for a mandate',
+  })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
+  async getStages(
+    @CurrentUser() user: any,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.mandatesService.getStages(user.orgId, id);
+  }
+
   @Get(':id/pipeline')
   @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
   @ApiOperation({

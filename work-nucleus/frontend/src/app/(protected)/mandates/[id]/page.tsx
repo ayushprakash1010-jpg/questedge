@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getMandate, fillMandate, closeMandate, publishMandate, Mandate } from "@/lib/marketplace-api";
 import { MandateStatusBadge, RewardBadge, SkillChip } from "@/components/marketplace/MandateCard";
@@ -43,20 +43,22 @@ export default function MandateDetailPage() {
     } catch (e) {}
   }, [id]);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const tokenRes = await fetch("/api/auth/token");
-        const { accessToken } = await tokenRes.json();
-        const data = await getMandate(accessToken, id);
-        setMandate(data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    })();
+  const fetchMandate = useCallback(async () => {
+    try {
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+      const data = await getMandate(accessToken, id);
+      setMandate(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
+
+  useEffect(() => {
+    fetchMandate();
+  }, [fetchMandate]);
 
   const handleFill = async () => {
     setActionLoading(true);
@@ -391,7 +393,11 @@ export default function MandateDetailPage() {
                   </p>
                 </div>
               </div>
-              <PipelineKanban mandateId={id} />
+              <PipelineKanban
+                mandateId={id}
+                mandateTitle={mandate.title}
+                onUpdated={fetchMandate}
+              />
             </div>
           )}
 
