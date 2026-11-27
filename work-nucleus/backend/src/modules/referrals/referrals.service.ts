@@ -167,6 +167,24 @@ export class ReferralsService {
         },
       });
 
+      // Ensure the referring recruiter is tracked as an active participant on the mandate
+      if ((tx as any).mandateParticipation?.upsert) {
+        await (tx as any).mandateParticipation.upsert({
+          where: {
+            mandateId_recruiterId: {
+              mandateId: mandate.id,
+              recruiterId: recruiter.id,
+            },
+          },
+          update: { status: 'ACTIVE' },
+          create: {
+            mandateId: mandate.id,
+            recruiterId: recruiter.id,
+            status: 'ACTIVE',
+          },
+        });
+      }
+
       // Create ClaimScope
       await tx.claimScope.create({
         data: {

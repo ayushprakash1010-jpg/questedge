@@ -475,4 +475,194 @@ describe('ResumeRankingService', () => {
       );
     });
   });
+
+  describe('Persistence, Linked Candidate Profiles & S3 Resume Extraction', () => {
+    it('strips non-schema knockout columns from createMany payload and hydrates them in getSessionResults', async () => {
+      prisma.mandate.findFirst.mockResolvedValue(mockMandate);
+      prisma.candidate.findMany.mockResolvedValue([]);
+      prisma.candidateProfile.findMany.mockResolvedValue([
+        {
+          id: 'cand-profile-1',
+          name: 'Ayush Prakash',
+          email: 'ayush@example.com',
+          resumeUrl: null,
+          currentCompany: 'Acme',
+          currentDesignation: 'Full Stack Developer',
+          experienceYears: 4,
+          education: ['B.Tech CS'],
+          skills: ['React', 'Node.js', 'TypeScript', 'PostgreSQL'],
+          headline: 'Senior Full Stack Developer building scalable web apps',
+          certifications: [],
+          projects: [],
+          currentLocation: 'Bengaluru',
+          noticePeriodDays: 30,
+          workModel: 'Hybrid',
+        },
+      ]);
+      prisma.referral.findMany.mockResolvedValue([]);
+
+      let capturedCreateManyArgs: any = null;
+      prisma.resumeRankingSession = {
+        create: jest.fn().mockResolvedValue({
+          id: 'sess-1',
+          mandateId: 'mandate-123',
+          status: 'PROCESSING',
+          candidateCount: 1,
+          createdAt: new Date(),
+        }),
+        update: jest.fn().mockResolvedValue({ id: 'sess-1' }),
+        findFirst: jest.fn().mockImplementation(async () => ({
+          id: 'sess-1',
+          mandateId: 'mandate-123',
+          mandate: { id: 'mandate-123', title: 'Senior Full Stack Developer', department: 'Engineering' },
+          status: 'COMPLETED',
+          candidateCount: 1,
+          customWeights: null,
+          poolSummary: 'Pool summary',
+          processingTimeMs: 120,
+          createdAt: new Date(),
+          completedAt: new Date(),
+          createdBy: { name: 'HR', email: 'hr@example.com' },
+          results: (capturedCreateManyArgs?.data || []).map((row: any, i: number) => ({
+            id: `res-${i + 1}`,
+            referralId: null,
+            ...row,
+          })),
+        })),
+      };
+      prisma.resumeRankingResult = {
+        createMany: jest.fn().mockImplementation(async (args: any) => {
+          capturedCreateManyArgs = args;
+          return { count: args.data.length };
+        }),
+      };
+
+      jest.spyOn(service as any, 'callAiWithRetry').mockResolvedValue({
+        summary: 'Pool summary',
+        rankings: [
+          {
+            candidateId: 'cand-profile-1',
+            candidateName: 'Ayush Prakash',
+            totalScore: 80,
+            verdict: 'STRONG_FIT',
+            isDisqualified: true,
+            disqualificationReason: 'Location mismatch',
+            scoreBreakdown: {
+              skillsMatch: { score: 20, maxScore: 25 },
+              experienceRelevance: { score: 16, maxScore: 20 },
+              projectRelevance: { score: 12, maxScore: 15 },
+              educationCertifications: { score: 8, maxScore: 10 },
+              domainIndustryFit: { score: 8, maxScore: 10 },
+              roleSeniorityFit: { score: 8, maxScore: 10 },
+              culturalSoftSignals: { score: 4, maxScore: 5 },
+              logisticsAvailability: { score: 4, maxScore: 5 },
+            },
+            strengths: ['React & Node.js'],
+            gaps: ['Location'],
+          },
+        ],
+      });
+
+      const res = await service.rankResumes('org-123', 'user-1', {
+        mandateId: 'mandate-123',
+        candidateIds: ['cand-profile-1'],
+      });
+
+      expect(prisma.resumeRankingResult.createMany).toHaveBeenCalledTimes(1);
+      const savedRow = capturedCreateManyArgs.data[0];
+      expect('isDisqualified' in savedRow).toBe(false);
+      expect('disqualificationReason' in savedRow).toBe(false);
+      expect(savedRow.scoreBreakdown.isDisqualified).toBe(true);
+      expect(savedRow.scoreBreakdown.disqualificationReason).toBe('Location mismatch');
+
+      expect(res.rankings[0].isDisqualified).toBe(true);
+      expect(res.rankings[0].disqualificationReason).toBe('Location mismatch');
+      expect(res.rankings[0].verdict).toBe('DISQUALIFIED');
+    });
+
+    it('recovers resumeUrl and profileText from Candidate applications.candidateProfile for direct/recruiter applicants', async () => {
+      prisma.candidate.findMany.mockResolvedValue([
+        {
+          id: 'legacy-cand-1',
+          name: 'Ananya Iyer',
+          email: 'ananya@example.com',
+          resumeUrl: null,
+          currentCompany: 'PixelCraft',
+          currentRole: 'Frontend Lead',
+          experienceYears: 6,
+          notes: null,
+          applications: [
+            {
+              candidateProfile: {
+                id: 'profile-ananya',
+                name: 'Ananya Iyer',
+                email: 'ananya@example.com',
+                resumeUrl: 'resumes/profile-ananya/resume.pdf',
+                currentCompany: 'PixelCraft',
+                currentDesignation: 'Frontend Lead',
+                experienceYears: 6,
+                education: ['B.Tech CS'],
+                skills: ['React', 'Next.js', 'TypeScript'],
+                headline: 'Frontend Lead / Senior UI Engineer specializing in React & Next.js',
+                certifications: [],
+                projects: [],
+                currentLocation: 'Bengaluru',
+                noticePeriodDays: 30,
+                workModel: 'Hybrid',
+              },
+            },
+          ],
+        },
+      ]);
+      prisma.candidateProfile.findMany.mockResolvedValue([]);
+      prisma.referral.findMany.mockResolvedValue([]);
+
+      const gathered = await (service as any).gatherCandidateData(
+        'org-123',
+        ['legacy-cand-1'],
+        'mandate-123',
+      );
+
+      expect(gathered).toHaveLength(1);
+      expect(gathered[0].name).toBe('Ananya Iyer');
+      expect(gathered[0].resumeUrl).toBe('resumes/profile-ananya/resume.pdf');
+      expect(gathered[0].profileText).toContain('TECHNICAL SKILLS');
+    });
+
+    it('downloads S3 storage keys via FileUploadService in extractSingleResume', async () => {
+      const mockFileUpload = {
+        getFileBuffer: jest.fn().mockResolvedValue(Buffer.alloc(256, 0x25)),
+      };
+      const serviceWithStorage = new ResumeRankingService(
+        prisma,
+        config,
+        undefined,
+        mockFileUpload as any,
+      );
+
+      // Stub GoogleGenAI module used dynamically inside extractSingleResume
+      const generateContent = jest.fn().mockResolvedValue({
+        text: 'Ananya Iyer - Senior Full Stack Engineer with 6 years React and Node.js experience',
+      });
+      jest.doMock('@google/genai', () => ({
+        GoogleGenAI: jest.fn().mockImplementation(() => ({
+          models: { generateContent },
+        })),
+      }));
+
+      // Clear require cache for @google/genai if already loaded so mock applies
+      const genaiPath = require.resolve('@google/genai');
+      delete require.cache[genaiPath];
+
+      const extracted = await (serviceWithStorage as any).extractSingleResume(
+        'resumes/7da977fc/1795797411169-ap__6_.pdf',
+        'org-123',
+      );
+
+      expect(mockFileUpload.getFileBuffer).toHaveBeenCalledWith(
+        'resumes/7da977fc/1795797411169-ap__6_.pdf',
+      );
+      expect(extracted).toContain('Ananya Iyer');
+    });
+  });
 });

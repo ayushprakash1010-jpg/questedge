@@ -109,7 +109,7 @@ export class CandidatesService {
     const effectiveLimit = topN || limit;
     const skip = topN ? 0 : (page - 1) * effectiveLimit;
 
-    const [planCandidates, planTotal] = await Promise.all([
+    const [rawPlanCandidates, planTotal] = await Promise.all([
       this.prisma.candidate.findMany({
         where,
         orderBy,
@@ -118,18 +118,52 @@ export class CandidatesService {
             select: {
               id: true,
               hiringPlanId: true,
+              mandateId: true,
+              candidateProfileId: true,
+              sourceType: true,
               status: true,
               aiMatchScore: true,
               aiMatchSummary: true,
               appliedAt: true,
               hiringPlan: { select: { id: true, title: true } },
               offer: { select: { id: true, status: true } },
+              candidateProfile: {
+                select: {
+                  id: true,
+                  resumeUrl: true,
+                  headline: true,
+                  skills: true,
+                  currentCompany: true,
+                  currentDesignation: true,
+                  experienceYears: true,
+                },
+              },
             },
           },
         },
       }),
       this.prisma.candidate.count({ where }),
     ]);
+
+    // Backfill candidateProfileId & resumeUrl from linked CandidateProfile for direct/recruiter applications
+    const planCandidates = rawPlanCandidates.map((c: any) => {
+      const appWithProfile = (c.applications || []).find(
+        (a: any) =>
+          a.candidateProfile &&
+          (!planOrMandateId ||
+            a.mandateId === planOrMandateId ||
+            a.hiringPlanId === planOrMandateId),
+      ) || (c.applications || []).find((a: any) => a.candidateProfile);
+
+      const linkedProfile = appWithProfile?.candidateProfile;
+      return {
+        ...c,
+        candidateProfileId:
+          c.candidateProfileId || appWithProfile?.candidateProfileId || linkedProfile?.id,
+        resumeUrl: c.resumeUrl || linkedProfile?.resumeUrl || null,
+        ...(linkedProfile ? { candidateProfile: linkedProfile } : {}),
+      };
+    });
 
     // Query mandate referrals if source is all or REFERRAL
     let referralCandidates: any[] = [];

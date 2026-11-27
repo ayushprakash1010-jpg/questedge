@@ -13,6 +13,7 @@ import { RankResumesDto, ScoringWeightsDto } from './dto/rank-resumes.dto';
 import { RankingResponse } from './interfaces/ranking-result.interface';
 import { Prisma } from '@prisma/client';
 import { AiCostService } from '../ai-cost/ai-cost.service';
+import { FileUploadService } from '../file-upload/file-upload.service';
 
 /** Default scoring dimensions and weights */
 const DEFAULT_DIMENSION_WEIGHTS: Record<string, number> = {
@@ -39,6 +40,7 @@ export class ResumeRankingService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     @Optional() private readonly aiCost?: AiCostService,
+    @Optional() private readonly fileUpload?: FileUploadService,
   ) {
     this.geminiApiKey = this.config.get<string>('GEMINI_API_KEY', '');
     this.modelName =
@@ -146,7 +148,10 @@ export class ResumeRankingService {
     }
 
     // 9. Store results (with sanitization — Feature 5)
-    const resultRows = this.sanitizeRankingResults(aiResult, session.id);
+    // Omit transient flags (isDisqualified, disqualificationReason) that are stored inside scoreBreakdown JSON
+    const resultRows = this.sanitizeRankingResults(aiResult, session.id).map(
+      ({ isDisqualified: _isDisq, disqualificationReason: _disqReason, ...row }) => row,
+    );
 
     if (resultRows.length > 0) {
       await (this.prisma as any).resumeRankingResult.createMany({
@@ -271,6 +276,8 @@ export class ResumeRankingService {
         rank: r.rank,
         totalScore: r.totalScore,
         verdict: r.verdict,
+        isDisqualified: Boolean(r.scoreBreakdown?.isDisqualified),
+        disqualificationReason: r.scoreBreakdown?.disqualificationReason ?? null,
         scoreBreakdown: r.scoreBreakdown,
         strengths: r.strengths,
         gaps: r.gaps,
@@ -598,6 +605,32 @@ export class ResumeRankingService {
             currentRole: true,
             experienceYears: true,
             notes: true,
+            applications: {
+              where: mandateId
+                ? { OR: [{ mandateId }, { hiringPlanId: mandateId }] }
+                : undefined,
+              select: {
+                candidateProfile: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    resumeUrl: true,
+                    currentCompany: true,
+                    currentDesignation: true,
+                    experienceYears: true,
+                    education: true,
+                    skills: true,
+                    headline: true,
+                    certifications: true,
+                    projects: true,
+                    currentLocation: true,
+                    noticePeriodDays: true,
+                    workModel: true,
+                  },
+                },
+              },
+            },
           },
         }),
         this.prisma.candidateProfile.findMany({
@@ -684,16 +717,34 @@ export class ResumeRankingService {
     for (const c of directCandidates) {
       if (!seenIds.has(c.id)) {
         seenIds.add(c.id);
+        const linkedProfile = (c as any).applications?.find(
+          (a: any) => a.candidateProfile,
+        )?.candidateProfile;
+        const fallbackProfileText = linkedProfile
+          ? this.buildProfileText(linkedProfile)
+          : this.buildProfileText({
+              name: c.name,
+              currentCompany: c.currentCompany,
+              currentDesignation: c.currentRole,
+              experienceYears: c.experienceYears,
+              headline: c.notes,
+            });
         candidates.push({
           id: c.id,
-          name: c.name,
-          email: c.email,
-          resumeUrl: c.resumeUrl,
-          currentCompany: c.currentCompany,
-          currentRole: c.currentRole,
-          experienceYears: c.experienceYears ? Number(c.experienceYears) : null,
-          education: null,
-          profileText: null,
+          name: c.name || linkedProfile?.name || 'Candidate',
+          email: c.email || linkedProfile?.email || '',
+          resumeUrl: c.resumeUrl || linkedProfile?.resumeUrl || null,
+          currentCompany:
+            c.currentCompany || linkedProfile?.currentCompany || null,
+          currentRole:
+            c.currentRole || linkedProfile?.currentDesignation || null,
+          experienceYears: c.experienceYears
+            ? Number(c.experienceYears)
+            : linkedProfile?.experienceYears
+              ? Number(linkedProfile.experienceYears)
+              : null,
+          education: (linkedProfile?.education as string | null) ?? null,
+          profileText: fallbackProfileText,
         });
       }
     }
@@ -1003,30 +1054,47 @@ export class ResumeRankingService {
     resumeUrl: string,
     orgId?: string,
   ): Promise<string> {
-    // Feature 5: Validate URL before downloading
-    if (
-      !resumeUrl ||
-      (!resumeUrl.startsWith('http') && !resumeUrl.startsWith('/'))
-    ) {
+    const normalizedUrl = typeof resumeUrl === 'string' ? resumeUrl.trim() : '';
+    if (!normalizedUrl) {
       throw new Error(`Invalid resume URL: ${resumeUrl}`);
     }
 
-    // Download the resume file with timeout
-    let fileResponse: Response;
-    try {
-      fileResponse = await fetch(resumeUrl, {
-        signal: AbortSignal.timeout(15_000),
-      });
-    } catch (err: any) {
-      throw new Error(`Failed to download resume: ${err.message}`);
-    }
+    const isHttpOrRelative =
+      normalizedUrl.startsWith('http://') ||
+      normalizedUrl.startsWith('https://') ||
+      normalizedUrl.startsWith('/');
+    const isStorageKey = !normalizedUrl.includes('://') && !normalizedUrl.startsWith('/');
 
-    if (!fileResponse.ok) {
-      throw new Error(`Failed to download resume: HTTP ${fileResponse.status}`);
-    }
+    let buffer: Buffer;
+    if (isHttpOrRelative) {
+      // Download the resume file via HTTP with timeout
+      let fileResponse: Response;
+      try {
+        fileResponse = await fetch(normalizedUrl, {
+          signal: AbortSignal.timeout(15_000),
+        });
+      } catch (err: any) {
+        throw new Error(`Failed to download resume: ${err.message}`);
+      }
 
-    const fileBuffer = await fileResponse.arrayBuffer();
-    const buffer = Buffer.from(fileBuffer);
+      if (!fileResponse.ok) {
+        throw new Error(`Failed to download resume: HTTP ${fileResponse.status}`);
+      }
+
+      const fileBuffer = await fileResponse.arrayBuffer();
+      buffer = Buffer.from(fileBuffer);
+    } else if (isStorageKey) {
+      if (!this.fileUpload) {
+        throw new Error('Storage service unavailable for resume download');
+      }
+      try {
+        buffer = await this.fileUpload.getFileBuffer(normalizedUrl);
+      } catch (err: any) {
+        throw new Error(`Failed to download resume from storage: ${err.message}`);
+      }
+    } else {
+      throw new Error(`Invalid resume URL: ${resumeUrl}`);
+    }
 
     // Feature 5: Check file size — skip if too large (>10MB) or too small
     if (buffer.length < 100) {
@@ -1038,9 +1106,10 @@ export class ResumeRankingService {
 
     const base64Data = buffer.toString('base64');
 
-    const contentType = resumeUrl.toLowerCase().endsWith('.pdf')
+    const pathWithoutQuery = normalizedUrl.split('?')[0].toLowerCase();
+    const contentType = pathWithoutQuery.endsWith('.pdf')
       ? 'application/pdf'
-      : resumeUrl.toLowerCase().endsWith('.doc')
+      : pathWithoutQuery.endsWith('.doc')
         ? 'application/msword'
         : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 

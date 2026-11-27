@@ -19,6 +19,7 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  RefreshCw,
 } from "lucide-react";
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { CardGridSkeleton } from "@/components/ui/skeleton-states";
@@ -89,9 +90,11 @@ export default function MandatesPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const fetchMandates = useCallback(async () => {
+  const fetchMandates = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
       setError(null);
       // Get token from Auth0 session
       const tokenRes = await fetch("/api/auth/token");
@@ -108,14 +111,28 @@ export default function MandatesPage() {
       setTotalPages(result.meta.totalPages || 1);
     } catch (err: any) {
       console.error("Failed to load mandates", err);
-      setError(err?.message || "Failed to load job mandates from server.");
+      if (!silent) {
+        setError(err?.message || "Failed to load job mandates from server.");
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, [debouncedSearch, statusFilter, page]);
 
   useEffect(() => {
     fetchMandates();
+  }, [fetchMandates]);
+
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchMandates(true);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   }, [fetchMandates]);
 
   // Computed stats
@@ -141,10 +158,22 @@ export default function MandatesPage() {
           </>
         }
         actions={
-          <Button onClick={() => router.push("/mandates/create")}>
-            <Plus className="h-4 w-4" />
-            New Mandate
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchMandates()}
+              disabled={loading}
+              aria-label="Refresh mandates"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+            <Button onClick={() => router.push("/mandates/create")}>
+              <Plus className="h-4 w-4" />
+              New Mandate
+            </Button>
+          </div>
         }
       />
 

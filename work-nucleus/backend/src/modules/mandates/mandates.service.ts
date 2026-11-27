@@ -379,8 +379,57 @@ export class MandatesService {
       this.prisma.mandate.count({ where }),
     ]);
 
+    // Align recruiter count with getMandateStats(): max(active participations, distinct referral recruiters)
+    const mandateIds = data.map((m) => m.id);
+    const activeParticipationMap = new Map<string, number>();
+    const referralRecruiterMap = new Map<string, number>();
+
+    if (
+      mandateIds.length > 0 &&
+      (this.prisma as any).mandateParticipation?.groupBy &&
+      (this.prisma as any).referral?.findMany
+    ) {
+      const [activeParticipations, distinctReferralRecruiters] = await Promise.all([
+        this.prisma.mandateParticipation.groupBy({
+          by: ['mandateId'],
+          where: { mandateId: { in: mandateIds }, status: 'ACTIVE' },
+          _count: { recruiterId: true },
+        }),
+        this.prisma.referral.findMany({
+          where: { mandateId: { in: mandateIds } },
+          select: { mandateId: true, recruiterId: true },
+          distinct: ['mandateId', 'recruiterId'],
+        }),
+      ]);
+
+      for (const row of activeParticipations) {
+        activeParticipationMap.set(row.mandateId, row._count.recruiterId);
+      }
+      for (const row of distinctReferralRecruiters) {
+        referralRecruiterMap.set(
+          row.mandateId,
+          (referralRecruiterMap.get(row.mandateId) ?? 0) + 1,
+        );
+      }
+    }
+
+    const enrichedData = data.map((m: any) => {
+      if (!m._count) return m;
+      const activeCount = Math.max(
+        activeParticipationMap.get(m.id) ?? m._count.participations ?? 0,
+        referralRecruiterMap.get(m.id) ?? 0,
+      );
+      return {
+        ...m,
+        _count: {
+          ...m._count,
+          participations: activeCount,
+        },
+      };
+    });
+
     return {
-      data,
+      data: enrichedData,
       meta: {
         total,
         page,

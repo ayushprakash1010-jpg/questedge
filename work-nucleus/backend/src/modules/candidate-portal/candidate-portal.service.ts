@@ -713,6 +713,7 @@ export class CandidatePortalService {
           name: candidateProfile.name,
           email: candidateProfile.email,
           phone: candidateProfile.phone ?? undefined,
+          resumeUrl: candidateProfile.resumeUrl ?? undefined,
           source: isRecruiter ? ('RECRUITER_DIRECT' as any) : 'DIRECT',
           currentRole: candidateProfile.currentDesignation ?? undefined,
           currentCompany: candidateProfile.currentCompany ?? undefined,
@@ -720,11 +721,32 @@ export class CandidatePortalService {
           expectedCtc: candidateProfile.expectedCtc ?? undefined,
         },
       });
-    } else if (isRecruiter && legacyCandidate.source === 'DIRECT') {
-      legacyCandidate = await this.prisma.candidate.update({
-        where: { id: legacyCandidate.id },
-        data: { source: 'RECRUITER_DIRECT' as any },
-      });
+    } else {
+      const updateData: any = {};
+      if (isRecruiter && legacyCandidate.source === 'DIRECT') {
+        updateData.source = 'RECRUITER_DIRECT' as any;
+      }
+      if (
+        candidateProfile.resumeUrl &&
+        legacyCandidate.resumeUrl !== candidateProfile.resumeUrl
+      ) {
+        updateData.resumeUrl = candidateProfile.resumeUrl;
+      }
+      if (!legacyCandidate.currentRole && candidateProfile.currentDesignation) {
+        updateData.currentRole = candidateProfile.currentDesignation;
+      }
+      if (!legacyCandidate.currentCompany && candidateProfile.currentCompany) {
+        updateData.currentCompany = candidateProfile.currentCompany;
+      }
+      if (!legacyCandidate.experienceYears && candidateProfile.experienceYears) {
+        updateData.experienceYears = candidateProfile.experienceYears;
+      }
+      if (Object.keys(updateData).length > 0) {
+        legacyCandidate = await this.prisma.candidate.update({
+          where: { id: legacyCandidate.id },
+          data: updateData,
+        });
+      }
     }
 
     // hiringPlanId is required by the legacy CandidateApplication schema.
