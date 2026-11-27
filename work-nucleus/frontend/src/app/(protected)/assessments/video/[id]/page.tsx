@@ -87,8 +87,14 @@ export default function InterviewerVideoRoomPage() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const overallRating = Math.round(
-        (technicalScore + communicationScore + cultureFitScore + leadershipScore) / 4
+      const overallRating = Math.max(
+        1,
+        Math.min(
+          5,
+          Math.round(
+            (technicalScore + communicationScore + cultureFitScore + leadershipScore) / 8
+          )
+        )
       );
 
       await submitVideoInterviewFeedback(id, {
@@ -107,7 +113,7 @@ export default function InterviewerVideoRoomPage() {
         await endVideoInterview(id);
       }
       toast.success("Interview feedback saved successfully!");
-      router.push("/assessments");
+      router.push(interview?.mandateId ? `/mandates/${interview.mandateId}` : "/assessments");
     } catch (err: any) {
       toast.error(err.message || "Failed to submit feedback");
     } finally {
@@ -142,7 +148,7 @@ export default function InterviewerVideoRoomPage() {
       <div className="flex items-center justify-between bg-white px-5 py-2.5 rounded-xl border border-slate-200 shadow-sm">
         <div className="flex items-center gap-3">
           <Link
-            href="/assessments"
+            href={interview.mandateId ? `/mandates/${interview.mandateId}` : "/assessments"}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -176,6 +182,11 @@ export default function InterviewerVideoRoomPage() {
           <NativeWebRtcRoom
             roomName={interview.roomName}
             roomUrl={interview.roomUrl}
+            candidateJoinUrl={
+              typeof window !== "undefined" && interview.candidateAccessToken
+                ? `${window.location.origin}/interview/${interview.candidateAccessToken}`
+                : undefined
+            }
             displayName={interview.interviewer?.name || "QuestEdge Interviewer"}
             isAdmin={true}
           />

@@ -17,7 +17,7 @@ interface RoomSignalState {
 
 const MAX_ROOMS = 500;
 const ALLOWED_SENDERS = new Set(['interviewer', 'candidate']);
-const ALLOWED_TYPES = new Set(['ready', 'offer', 'answer', 'candidate', 'bye', 'chat']);
+const ALLOWED_TYPES = new Set(['ready', 'offer', 'answer', 'candidate', 'candidates', 'bye', 'chat']);
 
 @Injectable()
 export class WebRtcSignalingService {

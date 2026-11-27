@@ -178,8 +178,8 @@ export class SendSignalDto {
   @IsIn(['interviewer', 'candidate'])
   sender: 'interviewer' | 'candidate';
 
-  @IsIn(['ready', 'offer', 'answer', 'candidate', 'bye', 'chat'])
-  type: 'ready' | 'offer' | 'answer' | 'candidate' | 'bye' | 'chat';
+  @IsIn(['ready', 'offer', 'answer', 'candidate', 'candidates', 'bye', 'chat'])
+  type: 'ready' | 'offer' | 'answer' | 'candidate' | 'candidates' | 'bye' | 'chat';
 
   @IsNotEmpty()
   payload: any;

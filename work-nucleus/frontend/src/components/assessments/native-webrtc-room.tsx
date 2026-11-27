@@ -26,6 +26,7 @@ import {
 interface NativeWebRtcRoomProps {
   roomName: string;
   roomUrl?: string;
+  candidateJoinUrl?: string;
   displayName?: string;
   isAdmin?: boolean;
   onLeave?: () => void;
@@ -67,6 +68,7 @@ const ICE_SERVERS: RTCConfiguration = {
 
 export function NativeWebRtcRoom({
   roomName,
+  candidateJoinUrl,
   displayName,
   isAdmin = false,
   onLeave,
@@ -119,7 +121,7 @@ export function NativeWebRtcRoom({
   useEffect(() => { connectionStatusRef.current = connectionStatus; }, [connectionStatus]);
   useEffect(() => { isChatOpenRef.current = isChatOpen; }, [isChatOpen]);
 
-  // Ensure remote video element plays whenever remoteStream updates
+  // Ensure remote video element plays whenever tracks or connection state update
   useEffect(() => {
     const videoEl = remoteVideoRef.current;
     if (videoEl && remoteStream) {
@@ -138,7 +140,7 @@ export function NativeWebRtcRoom({
         setHasRemoteVideo(true);
       }
     }
-  }, [remoteStream]);
+  }, [remoteStream, connectionStatus, hasRemoteVideo]);
 
   // Ensure local video element plays whenever localStream updates
   useEffect(() => {
@@ -204,28 +206,28 @@ export function NativeWebRtcRoom({
     // Remote track listener
     pc.ontrack = (event) => {
       console.log("[WebRTC] ontrack fired:", event.track.kind, event.track.readyState);
-      let stream = event.streams && event.streams[0];
-      if (!stream) {
+      const incomingStream = event.streams && event.streams[0];
+      if (incomingStream) {
+        remoteStreamRef.current = incomingStream;
+      } else {
         if (!remoteStreamRef.current) {
           remoteStreamRef.current = new MediaStream();
         }
         remoteStreamRef.current.addTrack(event.track);
-        stream = remoteStreamRef.current;
-      } else {
-        remoteStreamRef.current = stream;
       }
 
-      setRemoteStream(stream);
-      setConnectionStatus("connected");
+      const activeStream = remoteStreamRef.current;
+      // Create a shallow MediaStream wrapper so React updates effect on both audio & video track arrivals
+      const uiStream = new MediaStream(activeStream.getTracks());
+      setRemoteStream(uiStream);
+      setConnectionStatus((curr) => (curr === "connected" ? "connected" : "connecting"));
 
       if (event.track.kind === "video") {
         setHasRemoteVideo(true);
       }
 
       if (remoteVideoRef.current) {
-        if (remoteVideoRef.current.srcObject !== stream) {
-          remoteVideoRef.current.srcObject = stream;
-        }
+        remoteVideoRef.current.srcObject = uiStream;
         remoteVideoRef.current
           .play()
           .then(() => setAutoplayBlocked(false))
@@ -235,7 +237,6 @@ export function NativeWebRtcRoom({
       }
 
       event.track.onunmute = () => {
-        setConnectionStatus("connected");
         if (event.track.kind === "video") {
           setHasRemoteVideo(true);
         }
@@ -254,7 +255,7 @@ export function NativeWebRtcRoom({
           if (candidateQueue.length > 0) {
             const batch = [...candidateQueue];
             candidateQueue.length = 0;
-            sendSignal("candidates", batch);
+            sendSignal("candidate", batch);
           }
         }, 120);
       }
@@ -496,40 +497,42 @@ export function NativeWebRtcRoom({
       if (isCancelled) return;
       if (backoffCount > 0) {
         backoffCount--;
-        return;
-      }
-      try {
-        const res = await fetch(
-          `/api/v2/assessment-take/video/${cleanRoom}/signal?sender=${senderRole}&since=${lastSeqRef.current}`
-        );
-        if (res.status === 429) {
-          backoffCount = 2;
-          return;
-        }
-        if (res.ok) {
-          const data = await res.json();
-          if (data.messages && Array.isArray(data.messages)) {
-            for (const msg of data.messages) {
-              if (msg.id > lastSeqRef.current) {
-                lastSeqRef.current = msg.id;
+      } else {
+        try {
+          const res = await fetch(
+            `/api/v2/assessment-take/video/${cleanRoom}/signal?sender=${senderRole}&since=${lastSeqRef.current}`
+          );
+          if (res.status === 429) {
+            backoffCount = 2;
+          } else if (res.ok) {
+            const data = await res.json();
+            if (data.messages && Array.isArray(data.messages)) {
+              for (const msg of data.messages) {
+                if (msg.id > lastSeqRef.current) {
+                  lastSeqRef.current = msg.id;
+                }
+                await handleSignalMessage(msg);
               }
-              await handleSignalMessage(msg);
             }
           }
+        } catch {
+          // Silently retry
         }
-      } catch (err) {
-        // Silently retry
+      }
+
+      if (!isCancelled) {
+        const delayMs = connectionStatusRef.current === "connected" ? 3500 : 1200;
+        pollingTimerRef.current = setTimeout(pollSignals, delayMs);
       }
     };
 
-    const intervalMs = connectionStatusRef.current === "connected" ? 3500 : 1200;
-    pollingTimerRef.current = setInterval(pollSignals, intervalMs);
+    void pollSignals();
 
     return () => {
       isCancelled = true;
-      if (pollingTimerRef.current) clearInterval(pollingTimerRef.current);
+      if (pollingTimerRef.current) clearTimeout(pollingTimerRef.current);
     };
-  }, [cleanRoom, connectionStatus, handleSignalMessage, senderRole]);
+  }, [cleanRoom, handleSignalMessage, senderRole]);
 
   // 5. Acquire Local Camera and Mic
   useEffect(() => {
@@ -704,7 +707,7 @@ export function NativeWebRtcRoom({
 
   const copyCandidateLink = () => {
     if (typeof window === "undefined") return;
-    navigator.clipboard.writeText(window.location.href);
+    navigator.clipboard.writeText(candidateJoinUrl || window.location.href);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
