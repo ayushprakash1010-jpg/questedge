@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
-import { getApiUrl, getProxyHeaders } from "@/lib/api-url";
+import { forwardUpstreamResponse, getApiUrl, getProxyHeaders } from "@/lib/api-url";
 
-const API_URL = getApiUrl();
+export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,12 +16,11 @@ export async function GET(req: NextRequest) {
     const queryString = searchParams.toString();
 
     const res = await fetch(
-      `${API_URL}/api/v1/skills/search${queryString ? `?${queryString}` : ""}`,
+      `${getApiUrl()}/api/v1/skills/search${queryString ? `?${queryString}` : ""}`,
       { headers: getProxyHeaders(req, accessToken) }
     );
 
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
+    return forwardUpstreamResponse(res, "Failed to search skills");
   } catch {
     return NextResponse.json({ error: "Failed to search skills" }, { status: 500 });
   }

@@ -1,26 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
-import { getApiUrl, getProxyHeaders } from "@/lib/api-url";
+import {
+  forwardUpstreamResponse,
+  getApiUrl,
+  getProxyHeaders,
+  isValidId,
+} from "@/lib/api-url";
 
-const API_URL = getApiUrl();
+export const dynamic = "force-dynamic";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: { sessionId: string } }
 ) {
   try {
+    if (!isValidId(params.sessionId)) {
+      return NextResponse.json({ error: "Invalid session ID" }, { status: 400 });
+    }
     const session = await auth0.getSession();
     if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     const { token: accessToken } = await auth0.getAccessToken();
 
     const res = await fetch(
-      `${API_URL}/api/v1/resume-ranking/session/${params.sessionId}`,
-      {
-        headers: getProxyHeaders(req, accessToken),
-      }
+      `${getApiUrl()}/api/v1/resume-ranking/session/${encodeURIComponent(params.sessionId)}`,
+      { headers: getProxyHeaders(req, accessToken) }
     );
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
+    return forwardUpstreamResponse(res, "Failed to fetch ranking results");
   } catch {
     return NextResponse.json({ error: "Failed to fetch ranking results" }, { status: 500 });
   }
@@ -31,21 +36,23 @@ export async function POST(
   { params }: { params: { sessionId: string } }
 ) {
   try {
+    if (!isValidId(params.sessionId)) {
+      return NextResponse.json({ error: "Invalid session ID" }, { status: 400 });
+    }
     const session = await auth0.getSession();
     if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     const { token: accessToken } = await auth0.getAccessToken();
     const body = await req.json();
 
     const res = await fetch(
-      `${API_URL}/api/v1/resume-ranking/re-rank/${params.sessionId}`,
+      `${getApiUrl()}/api/v1/resume-ranking/re-rank/${encodeURIComponent(params.sessionId)}`,
       {
         method: "POST",
         headers: getProxyHeaders(req, accessToken, "application/json"),
         body: JSON.stringify(body),
       }
     );
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
+    return forwardUpstreamResponse(res, "Failed to re-rank");
   } catch {
     return NextResponse.json({ error: "Failed to re-rank" }, { status: 500 });
   }

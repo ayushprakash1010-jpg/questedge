@@ -1,6 +1,8 @@
 import { auth0 } from "@/lib/auth0";
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const session = await auth0.getSession();
@@ -8,7 +10,7 @@ export async function GET() {
       return NextResponse.json({ email: session.user.email, name: session.user.name });
     }
     return NextResponse.json({ error: "Not logged in" }, { status: 401 });
-  } catch (err: any) {
+  } catch {
     return NextResponse.json({ error: "Failed to get session" }, { status: 500 });
   }
 }

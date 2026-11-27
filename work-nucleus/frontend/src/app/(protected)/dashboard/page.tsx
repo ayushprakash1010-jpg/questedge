@@ -213,10 +213,10 @@ export default function DashboardPage() {
     return <BrandLoader fullscreen={false} message="Loading dashboard..." />;
   }
 
-  return <CompanyDashboardContent />;
+  return <CompanyDashboardContent profileRole={profile?.role} />;
 }
 
-function CompanyDashboardContent() {
+function CompanyDashboardContent({ profileRole }: { profileRole?: string }) {
   const router = useRouter();
   const [overview, setOverview] = useState<Overview | null>(null);
   const [funnel, setFunnel] = useState<FunnelStage[]>([]);
@@ -259,7 +259,7 @@ function CompanyDashboardContent() {
       const updated = { ...prev, [key]: !prev[key] };
       try {
         localStorage.setItem("questedge_onboarding_manual_checks", JSON.stringify(updated));
-      } catch {}
+      } catch { }
       return updated;
     });
   };
@@ -268,7 +268,7 @@ function CompanyDashboardContent() {
     setOnboardingDismissed(true);
     try {
       localStorage.setItem("questedge_onboarding_dismissed", "true");
-    } catch {}
+    } catch { }
   };
 
   const handleToggleCollapse = () => {
@@ -276,7 +276,7 @@ function CompanyDashboardContent() {
       const next = !prev;
       try {
         localStorage.setItem("questedge_onboarding_collapsed", String(next));
-      } catch {}
+      } catch { }
       return next;
     });
   };
@@ -287,7 +287,7 @@ function CompanyDashboardContent() {
     try {
       localStorage.removeItem("questedge_onboarding_dismissed");
       localStorage.setItem("questedge_onboarding_collapsed", "false");
-    } catch {}
+    } catch { }
   };
 
   const fetchAll = useCallback(async (isSilent = false) => {
@@ -777,12 +777,11 @@ function CompanyDashboardContent() {
           value={overview?.activeMandates ?? overview?.openRoles ?? 0}
           subValue={
             (overview?.openRoles ?? 0) > 0
-              ? `${overview?.openRoles} open position${(overview?.openRoles ?? 0) > 1 ? "s" : ""}${
-                  (overview?.activePlans ?? 0) > 0 ? ` · ${overview?.activePlans} plans` : ""
-                }`
+              ? `${overview?.openRoles} open position${(overview?.openRoles ?? 0) > 1 ? "s" : ""}${(overview?.activePlans ?? 0) > 0 ? ` · ${overview?.activePlans} plans` : ""
+              }`
               : (overview?.activeMandates ?? 0) > 0
-              ? `${overview?.activeMandates} active listing${(overview?.activeMandates ?? 0) > 1 ? "s" : ""}`
-              : "0 open positions"
+                ? `${overview?.activeMandates} active listing${(overview?.activeMandates ?? 0) > 1 ? "s" : ""}`
+                : "0 open positions"
           }
           icon={<Briefcase />}
           accent="indigo"
@@ -1042,7 +1041,7 @@ function CompanyDashboardContent() {
               )}
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold">Recent Activity</CardTitle>
@@ -1093,19 +1092,21 @@ function CompanyDashboardContent() {
               </span>
             )}
           </div>
-          <Button
-            variant="ai"
-            size="sm"
-            onClick={handleGenerateInsights}
-            disabled={generatingInsights}
-          >
-            {generatingInsights ? (
-              <Spinner size="xs" tone="white" />
-            ) : (
-              <Sparkles className="h-3.5 w-3.5" />
-            )}
-            {generatingInsights ? "Analyzing..." : insights.length > 0 ? "Regenerate" : "Generate Insights"}
-          </Button>
+          {profileRole && ["ADMIN", "HR", "HIRING_MANAGER"].includes(profileRole) && (
+            <Button
+              variant="ai"
+              size="sm"
+              onClick={handleGenerateInsights}
+              disabled={generatingInsights}
+            >
+              {generatingInsights ? (
+                <Spinner size="xs" tone="white" />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5" />
+              )}
+              {generatingInsights ? "Analyzing..." : insights.length > 0 ? "Regenerate" : "Generate Insights"}
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {insights.length === 0 ? (

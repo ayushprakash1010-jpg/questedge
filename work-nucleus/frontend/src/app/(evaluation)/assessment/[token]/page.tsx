@@ -15,7 +15,12 @@ import {
   Loader2,
   ArrowRight,
 } from "lucide-react";
-import { fetchCandidateAttempt, startCandidateAttempt, AssessmentAttempt } from "@/lib/assessment-api";
+import {
+  fetchCandidateAttempt,
+  fetchCodingExecutionStatus,
+  startCandidateAttempt,
+  AssessmentAttempt,
+} from "@/lib/assessment-api";
 import { toast } from "@/components/ui/toaster";
 
 export default function CandidateAssessmentLandingPage() {
@@ -28,15 +33,23 @@ export default function CandidateAssessmentLandingPage() {
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
+  const [codingEnabled, setCodingEnabled] = useState(false);
 
   useEffect(() => {
-    fetchCandidateAttempt(token)
-      .then((data) => setAttempt(data))
+    Promise.all([fetchCandidateAttempt(token), fetchCodingExecutionStatus()])
+      .then(([data, status]) => {
+        setCodingEnabled(status.enabled);
+        setAttempt(data);
+      })
       .catch((err) => setError(err.message || "Failed to load assessment details"))
       .finally(() => setIsLoading(false));
   }, [token]);
 
   const handleStart = async () => {
+    if (attempt?.assessment.type === "CODING" && !codingEnabled) {
+      toast.error("Live coding compiler is temporarily offline. Please contact the hiring team.");
+      return;
+    }
     if (!acknowledged) {
       toast.error("Please check the box acknowledging the evaluation integrity policy.");
       return;
@@ -227,6 +240,17 @@ export default function CandidateAssessmentLandingPage() {
         )}
 
         {/* Confirmation Checkbox */}
+        {assessment.type === "CODING" && !codingEnabled ? (
+          <div className="p-4 rounded-2xl border border-amber-200 bg-amber-50 text-amber-900 text-xs flex items-start gap-2.5">
+            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold">Coding Sandbox Temporarily Unavailable</p>
+              <p className="text-amber-800 mt-0.5">
+                Live code compilation is disabled until post-launch configuration is complete. Please check with the hiring team before starting this assessment.
+              </p>
+            </div>
+          </div>
+        ) : (
         <div className="space-y-4 pt-2 border-t border-slate-100">
           <label className="flex items-start gap-3 cursor-pointer">
             <input
@@ -256,6 +280,7 @@ export default function CandidateAssessmentLandingPage() {
             )}
           </button>
         </div>
+        )}
       </div>
     </div>
   </div>

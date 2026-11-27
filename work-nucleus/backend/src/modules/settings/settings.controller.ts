@@ -20,6 +20,6 @@ export class SettingsController {
   @Patch()
   @ApiOperation({ summary: 'Update organization settings' })
   update(@Req() req: any, @Body() body: Record<string, any>) {
-    return this.settingsService.update(req.user.orgId, body, req.user.userId);
+    return this.settingsService.update(req.user.orgId, body, req.user.id);
   }
 }

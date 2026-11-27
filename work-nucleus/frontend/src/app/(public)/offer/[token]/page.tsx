@@ -213,10 +213,18 @@ export default function PublicOfferPage() {
               )}
               {action === "accepting" && (
                 <div className="space-y-3">
-                  <p className="text-sm text-slate-600">
-                    To accept, sign the letter electronically. The signature link has been emailed to{" "}
-                    <strong>{offer.application.candidate.email}</strong>. Once signed, this offer is binding.
-                  </p>
+                  {offer.signatureRequest ? (
+                    <p className="text-sm text-slate-600">
+                      To accept, sign the letter electronically via the signature invitation sent to{" "}
+                      <strong>{offer.application.candidate.email}</strong> (status:{" "}
+                      <span className="font-medium">{offer.signatureRequest.status}</span>). Once signed, this offer is binding.
+                    </p>
+                  ) : (
+                    <p className="text-sm text-amber-700">
+                      This offer has not been dispatched for e-signature yet. Please ask the HR team to send the e-sign request to{" "}
+                      <strong>{offer.application.candidate.email}</strong>.
+                    </p>
+                  )}
                   <Button variant="outline" onClick={() => setAction("idle")}>Back</Button>
                 </div>
               )}

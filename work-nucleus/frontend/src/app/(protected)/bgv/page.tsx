@@ -281,6 +281,7 @@ export default function BgvListPage() {
   const [initiateChecks, setInitiateChecks] = useState<string[]>(DEFAULT_PACKAGE_KEYS);
   const [initiating, setInitiating] = useState(false);
   const [initiateError, setInitiateError] = useState<string | null>(null);
+  const [orgBgvProvider, setOrgBgvProvider] = useState<string>("authbridge");
 
   const loadProfiles = useCallback(async () => {
     setLoading(true);
@@ -304,6 +305,15 @@ export default function BgvListPage() {
 
   useEffect(() => {
     loadProfiles();
+    fetch("/api/admin/settings")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        const provider = data?.settings?.bgvProvider;
+        if (typeof provider === "string" && provider.trim()) {
+          setOrgBgvProvider(provider.trim().toLowerCase());
+        }
+      })
+      .catch(() => {});
   }, [loadProfiles]);
 
   const openInitiateModal = async () => {
@@ -526,15 +536,20 @@ export default function BgvListPage() {
                 })}
               </div>
               <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
-                <span className="text-xs text-slate-500">Vendor:</span>
-                <Select className="w-44 text-xs" disabled>
-                  <option>AuthBridge</option>
-                  <option>KPMG BGV</option>
-                  <option>SpringVerify</option>
-                  <option>IDfy</option>
+                <span className="text-xs text-slate-500">Active Vendor:</span>
+                <Select className="w-44 text-xs" value={orgBgvProvider} disabled>
+                  <option value="authbridge">AuthBridge</option>
+                  <option value="ongrid">OnGrid</option>
+                  <option value="idfy">IDfy</option>
                 </Select>
+                <Link
+                  href="/admin/settings"
+                  className="text-xs font-medium text-indigo-600 hover:underline"
+                >
+                  Change in Org Settings
+                </Link>
                 <span className="text-xs text-slate-400">
-                  Avg TAT: 5–7 business days
+                  · Avg TAT: 5–7 business days
                 </span>
               </div>
             </CardContent>

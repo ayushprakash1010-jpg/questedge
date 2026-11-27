@@ -135,7 +135,7 @@ export class Msg91Client {
   ): boolean {
     const sig = (headers['x-msg91-signature'] ||
       headers['X-MSG91-Signature']) as string | undefined;
-    if (!sig) return false;
+    if (!this.webhookSecret || !sig) return false;
     const expected = createHmac('sha256', this.webhookSecret)
       .update(rawBody)
       .digest('hex');

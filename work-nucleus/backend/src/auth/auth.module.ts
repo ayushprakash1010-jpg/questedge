@@ -4,11 +4,12 @@ import { Auth0JwtStrategy } from './strategies/auth0-jwt.strategy';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { Auth0ManagementService } from './auth0-management.service';
+import { DemoRoleInterceptor } from './interceptors/demo-role.interceptor';
 
 @Module({
   imports: [PassportModule.register({ defaultStrategy: 'jwt' })],
   controllers: [AuthController],
-  providers: [Auth0JwtStrategy, AuthService, Auth0ManagementService],
-  exports: [AuthService, Auth0ManagementService],
+  providers: [Auth0JwtStrategy, AuthService, Auth0ManagementService, DemoRoleInterceptor],
+  exports: [AuthService, Auth0ManagementService, DemoRoleInterceptor],
 })
 export class AuthModule {}

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { Role, UserType } from '@prisma/client';
+import { Auth0JwtStrategy } from '../../auth/strategies/auth0-jwt.strategy';
 
 export interface ListUsersQuery {
   page?: number;
@@ -831,9 +832,28 @@ export class PlatformUsersService {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
-    // Protect root admin owner from demotion
-    if (user.email?.toLowerCase() === 'ayushprakash1110@gmail.com' && role !== Role.SUPPORT_ADMIN) {
+    // Protect root admin owners (from SUPPORT_ADMIN_EMAILS / SUPPORT_ADMIN_SUBS) and last active SUPPORT_ADMIN from demotion
+    const supportAdminEmails = (process.env.SUPPORT_ADMIN_EMAILS || '')
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+    const supportAdminSubs = (process.env.SUPPORT_ADMIN_SUBS || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const isProtectedOwner =
+      (user.email && supportAdminEmails.includes(user.email.toLowerCase())) ||
+      (user.auth0Sub && supportAdminSubs.includes(user.auth0Sub));
+    if (isProtectedOwner && role !== Role.SUPPORT_ADMIN) {
       throw new BadRequestException('Root platform owner cannot be demoted');
+    }
+    if (user.role === Role.SUPPORT_ADMIN && role !== Role.SUPPORT_ADMIN) {
+      const activeSupportAdmins = await this.prisma.user.count({
+        where: { role: Role.SUPPORT_ADMIN, isActive: true },
+      });
+      if (activeSupportAdmins <= 1) {
+        throw new BadRequestException('Cannot demote the last active SUPPORT_ADMIN');
+      }
     }
 
     // Protect self-lockout
@@ -850,6 +870,7 @@ export class PlatformUsersService {
       where: { id: user.id },
       data: { role },
     });
+    Auth0JwtStrategy.invalidateCache(user.auth0Sub);
 
     const orgId = await this.getValidOrgId(actorId);
     await this.auditService.log({

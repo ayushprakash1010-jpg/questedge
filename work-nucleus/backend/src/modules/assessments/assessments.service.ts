@@ -49,17 +49,34 @@ export class AssessmentsService {
     userRole: Role,
     dto: StartAssessmentDto,
   ) {
+    const isAdminOrHr = userRole === Role.ADMIN || userRole === Role.HR;
     if (
       dto.employeeId !== userId &&
-      userRole !== Role.ADMIN &&
-      userRole !== Role.HR &&
+      !isAdminOrHr &&
       userRole !== Role.HIRING_MANAGER
     ) {
       throw new ForbiddenException(
         'Only ADMIN, HR, or HIRING_MANAGER can start an assessment for another employee',
       );
     }
+    if (dto.type !== AssessmentType.SELF && !isAdminOrHr && userRole !== Role.HIRING_MANAGER) {
+      throw new ForbiddenException(
+        'Only ADMIN, HR, or HIRING_MANAGER can initiate manager/skip-level reviews',
+      );
+    }
+    if (dto.type !== AssessmentType.SELF && dto.employeeId === dto.managerId && !isAdminOrHr) {
+      throw new ForbiddenException(
+        'An employee cannot be assigned as their own manager reviewer',
+      );
+    }
     await this.assertCycleInOrg(orgId, dto.cycleId);
+    const participantIds = Array.from(new Set([dto.employeeId, dto.managerId]));
+    const orgMemberCount = await this.prisma.user.count({
+      where: { id: { in: participantIds }, orgId, isActive: true },
+    });
+    if (orgMemberCount !== participantIds.length) {
+      throw new NotFoundException('Employee or manager not found in organization');
+    }
     return this.prisma.appraisalAssessment.upsert({
       where: {
         cycleId_employeeId_type: {
@@ -133,14 +150,23 @@ export class AssessmentsService {
     id: string,
     userId: string,
     dto: FinaliseAssessmentDto,
+    userRole?: Role,
   ) {
     const a = await this.findOneInOrg(orgId, id);
     if (a.type === AssessmentType.SELF)
       throw new BadRequestException(
         'Cannot finalise a SELF assessment directly',
       );
-    if (a.managerId !== userId)
-      throw new BadRequestException('Only the assigned manager can finalise');
+    const isAdminOrHr = userRole === Role.ADMIN || userRole === Role.HR;
+    if (a.employeeId === userId && !isAdminOrHr) {
+      throw new ForbiddenException('You cannot finalise your own appraisal');
+    }
+    if (a.managerId !== userId && !isAdminOrHr) {
+      throw new ForbiddenException('Only the assigned manager, HR, or ADMIN can finalise');
+    }
+    if (!isAdminOrHr && userRole && userRole !== Role.HIRING_MANAGER) {
+      throw new ForbiddenException('Insufficient permissions to finalise appraisal');
+    }
     const goalsRollup = await this.computeGoalsRollup(
       a.cycleId,
       a.employeeId,

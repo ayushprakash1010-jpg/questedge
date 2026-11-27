@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
@@ -61,7 +61,6 @@ import { HireDetectionModule } from './modules/hire-detection/hire-detection.mod
 import { AssessmentEngineModule } from './modules/assessment-engine/assessment-engine.module';
 import { ExternalJobsModule } from './modules/external-jobs/external-jobs.module';
 import { ResumeRankingModule } from './modules/resume-ranking/resume-ranking.module';
-import { DemoRoleInterceptor } from './auth/interceptors/demo-role.interceptor';
 import { PrismaService } from './prisma/prisma.service';
 @Module({
   imports: [
@@ -145,11 +144,6 @@ import { PrismaService } from './prisma/prisma.service';
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
-    },
-    // Demo role switcher � overrides req.user for demo accounts only
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: DemoRoleInterceptor,
     },
     PrismaService,
   ],

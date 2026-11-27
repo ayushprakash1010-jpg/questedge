@@ -11,6 +11,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { Prisma, Role } from '@prisma/client';
+import { Auth0JwtStrategy } from '../auth/strategies/auth0-jwt.strategy';
 
 @Injectable()
 export class UsersService {
@@ -63,9 +64,10 @@ export class UsersService {
   }
 
   async create(orgId: string, dto: CreateUserDto) {
-    // Check if email already exists in this org
+    const cleanEmail = dto.email.trim().toLowerCase();
+    // Check if email already exists
     const existing = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+      where: { email: cleanEmail },
     });
 
     if (existing) {
@@ -73,20 +75,26 @@ export class UsersService {
     }
 
     // Create user in Auth0 (sends password reset email)
-    const auth0Sub = await this.auth0Management.createUser(dto.email, dto.name);
+    const auth0Sub = await this.auth0Management.createUser(cleanEmail, dto.name);
 
-    // Create local user record
-    const user = await this.prisma.user.create({
-      data: {
-        orgId,
-        email: dto.email,
-        name: dto.name,
-        role: dto.role,
-        auth0Sub,
-      },
-    });
+    // Create local user record (clean up Auth0 user if DB insert fails)
+    let user;
+    try {
+      user = await this.prisma.user.create({
+        data: {
+          orgId,
+          email: cleanEmail,
+          name: dto.name,
+          role: dto.role,
+          auth0Sub,
+        },
+      });
+    } catch (err) {
+      await this.auth0Management.blockUser(auth0Sub).catch(() => null);
+      throw err;
+    }
 
-    this.logger.log(`Invited user ${dto.email} with role ${dto.role}`);
+    this.logger.log(`Invited user ${cleanEmail} with role ${dto.role}`);
 
     return user;
   }
@@ -160,6 +168,11 @@ export class UsersService {
       data: dto,
     });
 
+    Auth0JwtStrategy.invalidateCache(updated.auth0Sub);
+    if (dto.isActive === false) {
+      await this.auth0Management.blockUser?.(updated.auth0Sub)?.catch?.(() => null);
+    }
+
     this.logger.log(`Updated user ${updated.email}: ${JSON.stringify(dto)}`);
 
     return updated;
@@ -194,6 +207,7 @@ export class UsersService {
       where: { id: userId },
       data: { isActive: false },
     });
+    Auth0JwtStrategy.invalidateCache(user.auth0Sub);
 
     // Block in Auth0
     await this.auth0Management.blockUser(user.auth0Sub);

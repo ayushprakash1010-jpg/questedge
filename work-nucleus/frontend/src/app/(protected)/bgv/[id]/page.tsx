@@ -123,6 +123,28 @@ export default function BgvDetailPage() {
     setOverrideCheckId(checkId);
   }
 
+  const [cancelOpen, setCancelOpen] = useState(false);
+
+  async function submitCancel(reason?: string) {
+    if (!reason || reason.trim().length < 3) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/v2/bgv/${id}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: reason.trim() }),
+      });
+      if (!res.ok) throw new Error(await readResponseError(res, "Cancellation failed"));
+      setCancelOpen(false);
+      await refresh();
+      toast.success("BGV profile cancelled");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Cancellation failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function submitOverride(finding?: string, justification?: string) {
     if (!overrideCheckId || !finding || !justification) return;
     setBusy(true);
@@ -207,6 +229,17 @@ export default function BgvDetailPage() {
               }}
             >
               Copy Consent Link
+            </Button>
+          )}
+          {data.status !== "CANCELLED" && data.status !== "COMPLETED" && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-rose-200 text-rose-700 hover:bg-rose-50"
+              onClick={() => setCancelOpen(true)}
+              disabled={busy}
+            >
+              Cancel BGV
             </Button>
           )}
         </div>
@@ -449,6 +482,23 @@ export default function BgvDetailPage() {
           required: true,
           minLength: 5,
           placeholder: "Provide evidence or reason for manual override (min 5 characters)...",
+        }}
+      />
+      <ConfirmDialog
+        open={cancelOpen}
+        onClose={() => setCancelOpen(false)}
+        onConfirm={submitCancel}
+        title="Cancel Background Verification"
+        description="This stops pending vendor checks and marks the BGV profile as CANCELLED. You can re-initiate a fresh verification later if needed."
+        confirmLabel="Cancel BGV"
+        variant="danger"
+        loading={busy}
+        input={{
+          label: "Cancellation reason",
+          type: "textarea",
+          required: true,
+          minLength: 3,
+          placeholder: "e.g., Candidate withdrew offer",
         }}
       />
     </div>

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsInt, IsUUID, IsArray, IsObject, IsBoolean } from 'class-validator';
+import { IsString, IsOptional, IsInt, IsUUID, IsArray, IsObject, IsBoolean, IsNumber, Min, Max, IsIn, IsNotEmpty } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SubmitQuizResponseDto {
@@ -90,6 +90,99 @@ export class SendAssessmentInviteDto {
   @IsBoolean()
   @IsOptional()
   allowRetake?: boolean;
+}
+
+export class ScheduleVideoInterviewDto {
+  @IsUUID()
+  @IsOptional()
+  candidateId?: string;
+
+  @IsString()
+  @IsOptional()
+  candidateEmail?: string;
+
+  @IsString()
+  @IsOptional()
+  candidateName?: string;
+
+  @IsUUID()
+  @IsOptional()
+  applicationId?: string;
+
+  @IsUUID()
+  @IsOptional()
+  interviewerId?: string;
+
+  @IsUUID()
+  @IsOptional()
+  pipelineStageId?: string;
+
+  @IsUUID()
+  @IsOptional()
+  mandateId?: string;
+
+  @IsString()
+  @IsOptional()
+  scheduledAt?: string;
+}
+
+export class SubmitVideoFeedbackDto {
+  @IsNumber()
+  @Min(1)
+  @Max(10)
+  @IsOptional()
+  technicalScore?: number;
+
+  @IsNumber()
+  @Min(1)
+  @Max(10)
+  @IsOptional()
+  communicationScore?: number;
+
+  @IsNumber()
+  @Min(1)
+  @Max(10)
+  @IsOptional()
+  cultureFitScore?: number;
+
+  @IsNumber()
+  @Min(1)
+  @Max(10)
+  @IsOptional()
+  leadershipScore?: number;
+
+  @IsNumber()
+  @Min(1)
+  @Max(5)
+  @IsOptional()
+  overallRating?: number;
+
+  @IsString()
+  @IsOptional()
+  recommendation?: string;
+
+  @IsString()
+  @IsOptional()
+  notes?: string;
+
+  @IsString()
+  @IsOptional()
+  strengths?: string;
+
+  @IsString()
+  @IsOptional()
+  weaknesses?: string;
+}
+
+export class SendSignalDto {
+  @IsIn(['interviewer', 'candidate'])
+  sender: 'interviewer' | 'candidate';
+
+  @IsIn(['ready', 'offer', 'answer', 'candidate', 'bye', 'chat'])
+  type: 'ready' | 'offer' | 'answer' | 'candidate' | 'bye' | 'chat';
+
+  @IsNotEmpty()
+  payload: any;
 }
 
 export class PublicSelfRegisterDto {

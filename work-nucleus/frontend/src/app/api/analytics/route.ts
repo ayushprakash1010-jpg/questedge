@@ -1,8 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
-import { getApiUrl, getDemoRoleHeader } from "@/lib/api-url";
+import {
+  forwardUpstreamResponse,
+  getApiUrl,
+  getDemoRoleHeader,
+} from "@/lib/api-url";
 
 export const dynamic = "force-dynamic";
+
+const ALLOWED_ANALYTICS_TYPES = new Set([
+  "overview",
+  "funnel",
+  "time-to-hire",
+  "cost",
+  "interviewers",
+  "progress",
+  "sources",
+]);
 
 // GET /api/analytics?type=overview|funnel|time-to-hire|cost|interviewers|progress|sources
 export async function GET(req: NextRequest) {
@@ -12,6 +26,10 @@ export async function GET(req: NextRequest) {
     const { token: accessToken } = await auth0.getAccessToken();
 
     const type = req.nextUrl.searchParams.get("type") || "overview";
+    if (!ALLOWED_ANALYTICS_TYPES.has(type)) {
+      return NextResponse.json({ error: "Invalid analytics type" }, { status: 400 });
+    }
+
     const params = new URLSearchParams();
 
     // Forward query params
@@ -28,20 +46,11 @@ export async function GET(req: NextRequest) {
       cache: "no-store",
     });
 
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      return NextResponse.json(
-        { error: `Backend analytics error (${res.status})`, endpoint, details: text },
-        { status: res.status }
-      );
-    }
-
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
-  } catch (err: any) {
+    return forwardUpstreamResponse(res, "Failed to load analytics");
+  } catch {
     return NextResponse.json(
-      { error: "Failed to connect to backend analytics", apiUrl: getApiUrl(), details: err?.message },
-      { status: 500 }
+      { error: "Failed to connect to backend analytics" },
+      { status: 500 },
     );
   }
 }
@@ -57,17 +66,15 @@ export async function POST(req: NextRequest) {
     const res = await fetch(`${apiUrl}/api/v1/analytics/insights`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
         ...getDemoRoleHeader(req),
       },
     });
-    const data = await res.json().catch(() => ({}));
-    return NextResponse.json(data, { status: res.status });
-  } catch (err: any) {
+    return forwardUpstreamResponse(res, "Failed to generate insights");
+  } catch {
     return NextResponse.json(
-      { error: "Failed to generate insights: " + err?.message },
-      { status: 500 }
+      { error: "Failed to generate insights" },
+      { status: 500 },
     );
   }
 }

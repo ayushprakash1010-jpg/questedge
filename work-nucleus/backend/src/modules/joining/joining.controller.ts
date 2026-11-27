@@ -82,4 +82,14 @@ export class JoiningController {
   ) {
     return this.service.reviewItem(orgId, id, dto);
   }
+
+  @Get(':id/documents/:itemKey')
+  @ApiOperation({ summary: 'Get a signed download URL for an uploaded onboarding document' })
+  getDocumentUrl(
+    @CurrentUser('orgId') orgId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('itemKey') itemKey: string,
+  ) {
+    return this.service.getDocumentUrl(orgId, id, itemKey);
+  }
 }

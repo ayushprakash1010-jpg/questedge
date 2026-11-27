@@ -35,27 +35,11 @@ export class ReferralsService {
         : { auth0Sub: recruiterIdOrAuth0Sub },
     });
 
-    if (!recruiter) {
+    const demoSub = process.env.DEMO_AUTH0_SUB?.trim();
+    if (!recruiter && demoSub && recruiterIdOrAuth0Sub === demoSub) {
       recruiter = await this.prisma.recruiterProfile.findFirst({
-        where: {
-          OR: [
-            { isDemoAccount: true },
-            { email: { contains: 'growytvercel' } },
-            { email: { contains: 'recruiter' } },
-          ],
-        },
+        where: { isDemoAccount: true },
       });
-
-      if (recruiter && recruiterIdOrAuth0Sub) {
-        try {
-          recruiter = await this.prisma.recruiterProfile.update({
-            where: { id: recruiter.id },
-            data: { auth0Sub: recruiterIdOrAuth0Sub, isDemoAccount: true },
-          });
-        } catch {
-          // Ignore unique constraint violation
-        }
-      }
     }
 
     return recruiter;
@@ -89,24 +73,15 @@ export class ReferralsService {
       .update(cleanEmail)
       .digest('hex');
 
-    const isDemoEmail =
-      cleanEmail === 'growytvercel@gmail.com' ||
-      cleanEmail === 'growytvercel+candidate@gmail.com' ||
-      (process.env.DEMO_EMAIL &&
-        cleanEmail === process.env.DEMO_EMAIL.trim().toLowerCase());
+    const demoEmailEnv = process.env.DEMO_EMAIL?.trim().toLowerCase();
+    const isDemoEmail = Boolean(demoEmailEnv && cleanEmail === demoEmailEnv);
 
     let candidate = await this.prisma.candidateProfile.findFirst({
       where: {
         OR: [
           { emailHash },
           { email: { equals: cleanEmail, mode: 'insensitive' } },
-          ...(isDemoEmail
-            ? [
-                { email: 'growytvercel+candidate@gmail.com' },
-                { email: 'growytvercel@gmail.com' },
-                { isDemoAccount: true },
-              ]
-            : []),
+          ...(isDemoEmail ? [{ isDemoAccount: true }] : []),
         ],
       },
       orderBy: { auth0Sub: 'desc' },

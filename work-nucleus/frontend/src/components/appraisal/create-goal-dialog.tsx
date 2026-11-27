@@ -61,7 +61,7 @@ export function CreateGoalDialog({
 
   const [cycleId, setCycleId] = useState(defaultCycleId || cycles[0]?.id || "");
   const [employeeId, setEmployeeId] = useState(currentUserId || "");
-  const [managerId, setManagerId] = useState(currentUserId || "");
+  const [managerId, setManagerId] = useState("");
   const [type, setType] = useState<string>("OKR");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -73,7 +73,6 @@ export function CreateGoalDialog({
     setCycleId(defaultCycleId || cycles[0]?.id || "");
     if (currentUserId) {
       setEmployeeId((prev) => prev || currentUserId);
-      setManagerId((prev) => prev || currentUserId);
     }
     setError(null);
     setLoadingMembers(true);
@@ -89,9 +88,14 @@ export function CreateGoalDialog({
         const fallbackUserId = currentUserId || arr[0]?.id || "";
         setEmployeeId((prev) => prev || fallbackUserId);
         const defaultMgr =
-          arr.find((m) => m.id !== fallbackUserId && (m.role === "ADMIN" || m.role === "HR" || m.role === "HIRING_MANAGER"))?.id ||
-          fallbackUserId;
-        setManagerId((prev) => prev || defaultMgr);
+          arr.find(
+            (m) =>
+              m.id !== fallbackUserId &&
+              (m.role === "ADMIN" || m.role === "HR" || m.role === "HIRING_MANAGER"),
+          )?.id ||
+          arr.find((m) => m.id !== fallbackUserId)?.id ||
+          "";
+        setManagerId((prev) => (prev && prev !== fallbackUserId ? prev : defaultMgr));
       })
       .catch((err) => {
         setError(err instanceof Error ? err.message : "Failed to load team directory");
@@ -101,6 +105,15 @@ export function CreateGoalDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const effectiveEmployeeId = canAssignOther ? employeeId : currentUserId || employeeId;
+    if (!managerId) {
+      setError("Please select a reporting manager or reviewer.");
+      return;
+    }
+    if (effectiveEmployeeId && managerId === effectiveEmployeeId) {
+      setError("Employee and reviewer/manager cannot be the same person.");
+      return;
+    }
     const numericWeight = parseInt(weight, 10);
     if (Number.isNaN(numericWeight) || numericWeight < 0 || numericWeight > 100) {
       setError("Weight must be an integer between 0 and 100.");
@@ -115,7 +128,7 @@ export function CreateGoalDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           cycleId,
-          employeeId: canAssignOther ? employeeId : currentUserId || employeeId,
+          employeeId: effectiveEmployeeId,
           managerId,
           type,
           title: title.trim(),

@@ -17,6 +17,7 @@ describe('PlatformUsersService - Admin Role Management', () => {
         findFirst: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
+        count: jest.fn().mockResolvedValue(2),
       },
       organization: {
         findFirst: jest.fn(),
@@ -41,6 +42,8 @@ describe('PlatformUsersService - Admin Role Management', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    delete process.env.SUPPORT_ADMIN_EMAILS;
+    delete process.env.SUPPORT_ADMIN_SUBS;
   });
 
   describe('addSupportAdmin', () => {
@@ -174,9 +177,10 @@ describe('PlatformUsersService - Admin Role Management', () => {
     });
 
     it('protects root owner from being demoted', async () => {
+      process.env.SUPPORT_ADMIN_EMAILS = 'root-owner@questedge.in';
       prismaMock.user.findUnique.mockResolvedValueOnce({
         id: 'root-owner-id',
-        email: 'ayushprakash1110@gmail.com',
+        email: 'root-owner@questedge.in',
         role: Role.SUPPORT_ADMIN,
       });
 

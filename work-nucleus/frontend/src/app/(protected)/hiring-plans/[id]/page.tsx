@@ -105,7 +105,12 @@ export default function HiringPlanDetailPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const appId = new URLSearchParams(window.location.search).get("appId");
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get("tab");
+    if (tabParam && ["overview", "jd", "pipeline", "decisions"].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+    const appId = params.get("appId");
     if (appId) {
       setActiveTab("pipeline");
       setSelectedAppId(appId);

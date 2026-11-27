@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "@/components/ui/toaster";
 import { PageHeader } from "@/components/shared/page-header";
+import { useProfile } from "@/hooks/use-profile";
 
 interface Template {
   id: string;
@@ -32,6 +33,8 @@ const STARTER_BODY = `<p>This letter confirms our offer to {{candidate.name}} fo
 <p>We look forward to welcoming you to the team.</p>`;
 
 export default function OfferTemplatesPage() {
+  const { profile } = useProfile();
+  const canManage = profile?.role === "ADMIN" || profile?.role === "HR";
   const [templates, setTemplates] = useState<Template[]>([]);
   const [editing, setEditing] = useState<Partial<Template> | null>(null);
   const [busy, setBusy] = useState(false);
@@ -80,7 +83,7 @@ export default function OfferTemplatesPage() {
         title="Offer Letter Templates"
         subtitle="Reusable templates with variables that fill from offer + candidate data."
         actions={
-          !editing ? (
+          canManage && !editing ? (
             <Button
               size="sm"
               onClick={() =>
@@ -93,7 +96,7 @@ export default function OfferTemplatesPage() {
         }
       />
 
-      {editing ? (
+      {editing && canManage ? (
         <Card>
           <CardHeader>
             <CardTitle>
@@ -140,16 +143,18 @@ export default function OfferTemplatesPage() {
         <EmptyState
           icon={<FileText className="h-6 w-6" />}
           title="No templates yet"
-          description="Create one to start sending offer letters."
+          description={canManage ? "Create one to start sending offer letters." : "Contact HR or Admin to create offer letter templates."}
           action={
-            <Button
-              size="sm"
-              onClick={() =>
-                setEditing({ name: "", body: STARTER_BODY, variables: [] })
-              }
-            >
-              <Plus className="h-4 w-4" /> New template
-            </Button>
+            canManage ? (
+              <Button
+                size="sm"
+                onClick={() =>
+                  setEditing({ name: "", body: STARTER_BODY, variables: [] })
+                }
+              >
+                <Plus className="h-4 w-4" /> New template
+              </Button>
+            ) : undefined
           }
         />
       ) : (
@@ -157,8 +162,8 @@ export default function OfferTemplatesPage() {
           {templates.map((t) => (
             <Card
               key={t.id}
-              className="card-hover cursor-pointer"
-              onClick={() => setEditing(t)}
+              className={canManage ? "card-hover cursor-pointer" : undefined}
+              onClick={canManage ? () => setEditing(t) : undefined}
             >
               <CardContent className="p-5">
                 <div className="flex items-start justify-between gap-3">

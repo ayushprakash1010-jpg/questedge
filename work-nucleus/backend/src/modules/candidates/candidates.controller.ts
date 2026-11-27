@@ -29,6 +29,7 @@ export class CandidatesController {
   ) {}
 
   @Post()
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER)
   @ApiOperation({ summary: 'Create a candidate' })
   create(@CurrentUser('orgId') orgId: string, @Body() dto: CreateCandidateDto) {
     return this.candidatesService.create(orgId, dto);
@@ -53,6 +54,7 @@ export class CandidatesController {
   }
 
   @Patch(':id')
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER)
   @ApiOperation({ summary: 'Update a candidate' })
   update(
     @CurrentUser('orgId') orgId: string,
@@ -65,10 +67,10 @@ export class CandidatesController {
   @Post('trigger-scoring')
   @Roles(Role.ADMIN, Role.HR)
   @ApiOperation({
-    summary: 'Manually trigger AI resume scoring for all unscored applications',
+    summary: 'Manually trigger AI resume scoring for unscored org applications',
   })
-  async triggerScoring() {
-    const jobId = await this.queue.enqueue('resume-scoring-nightly', {});
+  async triggerScoring(@CurrentUser('orgId') orgId: string) {
+    const jobId = await this.queue.enqueue('resume-scoring-nightly', { orgId });
     return { message: 'Resume scoring triggered', jobId };
   }
 }

@@ -19,6 +19,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { BrandLoader } from "@/components/ui/brand-loader";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "@/components/ui/toaster";
 import { PageHeader } from "@/components/shared/page-header";
@@ -51,6 +52,30 @@ const categoryLabels: Record<string, string> = {
   HIRING_PROCESS: "Process",
 };
 
+function renderInlineMarkdown(text: string): React.ReactNode {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+  return parts.map((part, idx) => {
+    if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
+      return (
+        <strong key={idx} className="font-semibold text-slate-900">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (part.startsWith("`") && part.endsWith("`") && part.length > 2) {
+      return (
+        <code
+          key={idx}
+          className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-800"
+        >
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    return part;
+  });
+}
+
 function renderMarkdownLines(md: string) {
   return md.split("\n").map((line, i) => {
     const trimmed = line.trim();
@@ -58,34 +83,34 @@ function renderMarkdownLines(md: string) {
     if (trimmed.startsWith("### ")) {
       return (
         <h4 key={i} className="text-sm font-semibold text-slate-900 mt-3">
-          {trimmed.slice(4)}
+          {renderInlineMarkdown(trimmed.slice(4))}
         </h4>
       );
     }
     if (trimmed.startsWith("## ")) {
       return (
         <h3 key={i} className="text-base font-bold text-slate-900 mt-4">
-          {trimmed.slice(3)}
+          {renderInlineMarkdown(trimmed.slice(3))}
         </h3>
       );
     }
     if (trimmed.startsWith("# ")) {
       return (
         <h2 key={i} className="text-lg font-bold text-slate-900 mt-2">
-          {trimmed.slice(2)}
+          {renderInlineMarkdown(trimmed.slice(2))}
         </h2>
       );
     }
     if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
       return (
         <li key={i} className="ml-5 list-disc text-sm text-slate-700 leading-relaxed">
-          {trimmed.slice(2)}
+          {renderInlineMarkdown(trimmed.slice(2))}
         </li>
       );
     }
     return (
       <p key={i} className="text-sm text-slate-700 leading-relaxed">
-        {trimmed}
+        {renderInlineMarkdown(trimmed)}
       </p>
     );
   });
@@ -98,6 +123,8 @@ export default function TrainingPage() {
 
   const [modules, setModules] = useState<TrainingModuleItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [completing, setCompleting] = useState(false);
   const [seeding, setSeeding] = useState(false);
@@ -221,17 +248,22 @@ export default function TrainingPage() {
     }
   };
 
-  const handleDeleteModule = async (moduleId: string) => {
+  const handleDeleteModule = async () => {
+    if (!deleteTargetId) return;
+    setDeleting(true);
     try {
-      const res = await fetch(`/api/training-modules/${moduleId}`, {
+      const res = await fetch(`/api/training-modules/${deleteTargetId}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error(await readResponseError(res, "Failed to delete module"));
       toast.success("Module deleted");
-      if (readingModule?.id === moduleId) setReadingModule(null);
+      if (readingModule?.id === deleteTargetId) setReadingModule(null);
+      setDeleteTargetId(null);
       await fetchModules();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to delete module");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -356,7 +388,7 @@ export default function TrainingPage() {
                       <Button
                         size="icon-sm"
                         variant="ghost"
-                        onClick={() => handleDeleteModule(mod.id)}
+                        onClick={() => setDeleteTargetId(mod.id)}
                         title="Delete module"
                       >
                         <Trash2 className="h-3.5 w-3.5 text-rose-500" />
@@ -493,6 +525,17 @@ export default function TrainingPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(deleteTargetId)}
+        onClose={() => setDeleteTargetId(null)}
+        onConfirm={handleDeleteModule}
+        title="Delete Training Module"
+        description="Are you sure you want to delete this training module? Completed progress records for this module will also be removed."
+        confirmLabel="Delete Module"
+        variant="danger"
+        loading={deleting}
+      />
     </div>
   );
 }

@@ -95,7 +95,7 @@ export class ExternalJobsController {
   }
 
   @Post('sync')
-  @UserTypes('CANDIDATE', 'RECRUITER', 'PLATFORM_ADMIN')
+  @UserTypes('PLATFORM_ADMIN')
   async triggerSync() {
     return this.service.triggerManualSync();
   }

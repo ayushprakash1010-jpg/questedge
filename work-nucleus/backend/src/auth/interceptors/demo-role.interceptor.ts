@@ -34,18 +34,22 @@ export class DemoRoleInterceptor implements NestInterceptor {
     context: ExecutionContext,
     next: CallHandler,
   ): Promise<Observable<any>> {
+    await this.applyOverride(context);
+    return next.handle();
+  }
+
+  async applyOverride(context: ExecutionContext): Promise<void> {
     const req = context.switchToHttp().getRequest();
     const user = req.user;
 
+    const demoEmailEnv = process.env.DEMO_EMAIL?.trim().toLowerCase();
     const isDemo =
       user?.isDemoAccount === true ||
-      user?.email?.toLowerCase() === 'growytvercel@gmail.com' ||
-      (process.env.DEMO_EMAIL &&
-        user?.email?.toLowerCase() === process.env.DEMO_EMAIL.trim().toLowerCase());
+      Boolean(demoEmailEnv && user?.email?.toLowerCase() === demoEmailEnv);
 
     // Only act when the caller is a provisioned demo account
     if (!isDemo || !user?.auth0Sub) {
-      return next.handle();
+      return;
     }
 
     let demoRole = (req.headers['x-demo-role'] as string | undefined)
@@ -153,7 +157,7 @@ export class DemoRoleInterceptor implements NestInterceptor {
     }
 
     if (!demoRole || !['COMPANY', 'RECRUITER', 'CANDIDATE'].includes(demoRole)) {
-      return next.handle();
+      return;
     }
 
     const auth0Sub: string = user.auth0Sub;
@@ -164,7 +168,7 @@ export class DemoRoleInterceptor implements NestInterceptor {
         where: { auth0Sub },
         include: { organization: true },
       });
-      if (overrideProfile) {
+      if (overrideProfile && overrideProfile.isActive !== false) {
         const companyUserType =
           overrideProfile.role === 'ADMIN' ? 'COMPANY_ADMIN' : 'COMPANY_USER';
         req.user = {
@@ -179,7 +183,7 @@ export class DemoRoleInterceptor implements NestInterceptor {
       overrideProfile = await this.prisma.recruiterProfile.findUnique({
         where: { auth0Sub },
       });
-      if (overrideProfile) {
+      if (overrideProfile && overrideProfile.isActive !== false) {
         req.user = {
           ...overrideProfile,
           userType: 'RECRUITER',
@@ -192,7 +196,7 @@ export class DemoRoleInterceptor implements NestInterceptor {
       overrideProfile = await this.prisma.candidateProfile.findUnique({
         where: { auth0Sub },
       });
-      if (overrideProfile) {
+      if (overrideProfile && overrideProfile.isActive !== false) {
         req.user = {
           ...overrideProfile,
           userType: 'CANDIDATE',
@@ -202,7 +206,5 @@ export class DemoRoleInterceptor implements NestInterceptor {
         this.logger.debug(`Demo role override → CANDIDATE for ${auth0Sub}`);
       }
     }
-
-    return next.handle();
   }
 }

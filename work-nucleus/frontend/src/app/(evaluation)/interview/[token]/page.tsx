@@ -44,12 +44,38 @@ export default function CandidateInterviewJoinPage() {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
         <div className="bg-slate-900 rounded-3xl max-w-md w-full p-8 shadow-2xl border border-slate-800 text-center space-y-4 text-white">
+          <div className="h-12 w-12 rounded-full bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto border border-rose-500/30">
+            <AlertTriangle className="h-6 w-6" />
+          </div>
+          <h2 className="text-xl font-bold">Unable to Load Interview</h2>
+          <p className="text-sm text-slate-400 leading-relaxed">
+            {error || "This interview link could not be verified or may have expired."}
+          </p>
+          <Link
+            href="/"
+            className="inline-block text-xs font-semibold text-sky-400 hover:underline pt-2"
+          >
+            Return to QuestEdge Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (roomInfo.status === "COMPLETED" || roomInfo.status === "CANCELLED") {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+        <div className="bg-slate-900 rounded-3xl max-w-md w-full p-8 shadow-2xl border border-slate-800 text-center space-y-4 text-white">
           <div className="h-12 w-12 rounded-full bg-slate-800 text-emerald-400 flex items-center justify-center mx-auto border border-slate-700">
             <CheckCircle2 className="h-6 w-6" />
           </div>
-          <h2 className="text-xl font-bold">Interview Concluded</h2>
+          <h2 className="text-xl font-bold">
+            {roomInfo.status === "CANCELLED" ? "Interview Cancelled" : "Interview Concluded"}
+          </h2>
           <p className="text-sm text-slate-400 leading-relaxed">
-            This interview session has already ended. Your evaluation has been submitted by the hiring team.
+            {roomInfo.status === "CANCELLED"
+              ? "This interview session was cancelled. Please check with the hiring team for an updated invite."
+              : "This interview session has already ended. Your evaluation has been submitted by the hiring team."}
           </p>
           <Link
             href="/"

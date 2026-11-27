@@ -97,6 +97,7 @@ export default function OfferDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [aiBody, setAiBody] = useState<string | null>(null);
+  const [revokeOpen, setRevokeOpen] = useState(false);
 
   async function refresh() {
     setError(null);
@@ -186,7 +187,24 @@ export default function OfferDetailPage() {
           action("/approve", { decision, comment })
         }
         onRefreshEsign={() => action("/refresh-esign")}
-        onRender={() => action("/render")}
+        onRender={() =>
+          action("/render", aiBody !== null ? { customBody: aiBody } : undefined)
+        }
+        onDownload={async () => {
+          setBusy(true);
+          try {
+            const res = await fetch(`/api/v2/offers/${id}/document`);
+            if (!res.ok) throw new Error(await readResponseError(res, "Failed to get offer document"));
+            const d = await res.json();
+            if (!d?.url) throw new Error("No document link returned");
+            window.open(d.url, "_blank", "noopener,noreferrer");
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Download failed");
+          } finally {
+            setBusy(false);
+          }
+        }}
+        onRevoke={() => setRevokeOpen(true)}
       />
 
       {/* ── Letter preview ──────────────────────────────────────── */}
@@ -194,6 +212,21 @@ export default function OfferDetailPage() {
         offer={offer}
         aiBody={aiBody}
         onChangeAiBody={setAiBody}
+      />
+
+      <ConfirmDialog
+        open={revokeOpen}
+        onClose={() => setRevokeOpen(false)}
+        onConfirm={async () => {
+          await action("/revoke");
+          setRevokeOpen(false);
+          toast.success("Offer revoked");
+        }}
+        variant="danger"
+        title="Revoke offer letter?"
+        description="This immediately withdraws the offer from the candidate and invalidates pending e-signature acceptance."
+        confirmLabel="Revoke Offer"
+        loading={busy}
       />
     </div>
   );
@@ -213,6 +246,8 @@ function FormColumn({
   onApprove,
   onRefreshEsign,
   onRender,
+  onDownload,
+  onRevoke,
 }: {
   offer: OfferDetail;
   busy: boolean;
@@ -226,6 +261,8 @@ function FormColumn({
   ) => void;
   onRefreshEsign: () => void;
   onRender: () => void;
+  onDownload: () => void;
+  onRevoke: () => void;
 }) {
   const c = offer.application.candidate;
   const plan = offer.application.hiringPlan;
@@ -392,27 +429,16 @@ function FormColumn({
           Draft body with AI
         </Button>
         <div className="flex gap-2">
-          {offer.generatedDocUrl ? (
-            <a
-              href={offer.generatedDocUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-[var(--shadow-xs)] transition-colors hover:bg-slate-50"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Download PDF
-            </a>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled
-              className="flex-1 justify-center"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Download PDF
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onDownload}
+            disabled={busy}
+            className="flex-1 justify-center"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Download Offer
+          </Button>
 
           {offer.status === "DRAFT" && (
             <Button
@@ -446,6 +472,19 @@ function FormColumn({
             </Button>
           )}
         </div>
+        {offer.status !== "ACCEPTED" &&
+          offer.status !== "REVOKED" &&
+          offer.status !== "DECLINED" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onRevoke}
+              disabled={busy}
+              className="w-full justify-center text-rose-600 hover:bg-rose-50 hover:text-rose-700 border-rose-200"
+            >
+              Revoke Offer
+            </Button>
+          )}
         {candidateUrl && (
           <Link
             href={candidateUrl}

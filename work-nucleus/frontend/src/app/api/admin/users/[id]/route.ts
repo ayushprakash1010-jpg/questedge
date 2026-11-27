@@ -1,14 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
-import { getApiUrl, getDemoRoleHeader } from "@/lib/api-url";
+import {
+  forwardUpstreamResponse,
+  getApiUrl,
+  getDemoRoleHeader,
+  isValidId,
+} from "@/lib/api-url";
 
-const API_URL = getApiUrl();
+export const dynamic = "force-dynamic";
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    if (!isValidId(params.id)) {
+      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
+    }
     const session = await auth0.getSession();
     if (!session) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -17,18 +25,20 @@ export async function PATCH(
     const { token: accessToken } = await auth0.getAccessToken();
     const body = await req.json();
 
-    const res = await fetch(`${API_URL}/api/v1/admin/users/${params.id}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-        ...getDemoRoleHeader(req),
+    const res = await fetch(
+      `${getApiUrl()}/api/v1/admin/users/${encodeURIComponent(params.id)}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+          ...getDemoRoleHeader(req),
+        },
+        body: JSON.stringify(body),
       },
-      body: JSON.stringify(body),
-    });
+    );
 
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
+    return forwardUpstreamResponse(res, "Failed to update user");
   } catch {
     return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
   }
@@ -39,6 +49,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    if (!isValidId(params.id)) {
+      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
+    }
     const session = await auth0.getSession();
     if (!session) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -46,13 +59,15 @@ export async function DELETE(
 
     const { token: accessToken } = await auth0.getAccessToken();
 
-    const res = await fetch(`${API_URL}/api/v1/admin/users/${params.id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${accessToken}`, ...getDemoRoleHeader(req) },
-    });
+    const res = await fetch(
+      `${getApiUrl()}/api/v1/admin/users/${encodeURIComponent(params.id)}`,
+      {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${accessToken}`, ...getDemoRoleHeader(req) },
+      },
+    );
 
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
+    return forwardUpstreamResponse(res, "Failed to delete user");
   } catch {
     return NextResponse.json({ error: "Failed to delete user" }, { status: 500 });
   }

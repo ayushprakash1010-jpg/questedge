@@ -4,10 +4,13 @@ import {
   Logger,
   NotFoundException,
   OnModuleInit,
+  Optional,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { JoiningStatus, OfferStatus } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { FileUploadService } from '../file-upload/file-upload.service';
 import { JobQueueService } from '../job-queue/job-queue.service';
 import { CreateChecklistDto } from './dto/checklist.dto';
 import {
@@ -82,6 +85,7 @@ export class JoiningService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly queue: JobQueueService,
+    @Optional() private readonly fileUpload?: FileUploadService,
   ) {}
 
   async onModuleInit() {
@@ -226,7 +230,26 @@ export class JoiningService implements OnModuleInit {
   async findByCandidateApp(orgId: string, applicationId: string) {
     return this.prisma.candidateJoining.findFirst({
       where: { offer: { orgId, applicationId } },
-      include: { offer: true, checklist: true },
+      include: {
+        checklist: true,
+        offer: {
+          include: {
+            application: {
+              include: {
+                candidate: { select: { id: true, name: true, email: true } },
+                hiringPlan: {
+                  select: {
+                    id: true,
+                    title: true,
+                    designation: true,
+                    department: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     });
   }
 
@@ -340,5 +363,30 @@ export class JoiningService implements OnModuleInit {
         if (i.owner === 'CANDIDATE') return s.reviewStatus === 'APPROVED';
         return s.status === 'COMPLETED' || s.reviewStatus === 'APPROVED';
       });
+  }
+
+  async uploadDocument(token: string, file: Express.Multer.File) {
+    await this.findByToken(token);
+    if (!this.fileUpload) {
+      throw new ServiceUnavailableException('File upload service is not configured');
+    }
+    const key = await this.fileUpload.uploadOnboardingDoc(file, token);
+    return { key, fileUrl: key };
+  }
+
+  async getDocumentUrl(orgId: string, joiningId: string, itemKey: string) {
+    const rec = await this.findOneForOrg(orgId, joiningId);
+    const submissions = (rec.submissions as Record<string, any>) ?? {};
+    const fileUrl: string | undefined = submissions[itemKey]?.fileUrl;
+    if (!fileUrl || fileUrl.startsWith('pending-upload://')) {
+      throw new NotFoundException('No uploaded document found for this item');
+    }
+    if (/^https?:\/\//i.test(fileUrl)) {
+      return { url: fileUrl };
+    }
+    if (!this.fileUpload) {
+      throw new ServiceUnavailableException('File storage service is not configured');
+    }
+    return { url: await this.fileUpload.getPresignedUrl(fileUrl) };
   }
 }

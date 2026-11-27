@@ -58,9 +58,21 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       algorithms: ['RS256'],
       passReqToCallback: true,
     });
+    Auth0JwtStrategy.activeInstances.add(this);
   }
 
+  private static activeInstances = new Set<Auth0JwtStrategy>();
   private authCache = new Map<string, { profile: any; expiry: number }>();
+
+  public static invalidateCache(auth0Sub?: string) {
+    for (const instance of Auth0JwtStrategy.activeInstances) {
+      if (auth0Sub) {
+        instance.authCache.delete(auth0Sub);
+      } else {
+        instance.authCache.clear();
+      }
+    }
+  }
 
   async validate(req: any, payload: Auth0JwtPayload) {
     const auth0Sub = payload.sub?.trim();
@@ -136,9 +148,7 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     // Only strictly verified email (email_verified === true) or immutable sub can qualify for admin privileges
     let isDesignatedAdmin =
       supportAdminSubs.includes(auth0Sub) ||
-      (Boolean(verifiedEmail) &&
-        (verifiedEmail === 'ayushprakash1110@gmail.com' ||
-         supportAdminEmails.includes(verifiedEmail)));
+      (Boolean(verifiedEmail) && supportAdminEmails.includes(verifiedEmail));
 
     // Check if user was pre-provisioned in database with a support role
     if (!isDesignatedAdmin && verifiedEmail) {
@@ -154,10 +164,11 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       }
     }
 
+    const demoEmailEnv = process.env.DEMO_EMAIL?.trim().toLowerCase();
     const isDemoAccount =
-      rawEmail === 'growytvercel@gmail.com' ||
-      (process.env.DEMO_EMAIL &&
-        rawEmail === process.env.DEMO_EMAIL.trim().toLowerCase());
+      (demoEmailEnv ? rawEmail === demoEmailEnv : false) ||
+      (process.env.DEMO_AUTH0_SUB &&
+        auth0Sub === process.env.DEMO_AUTH0_SUB.trim());
 
     // Check cache (bypassed for demo accounts and designated admins for instant updates)
     if (!isDemoAccount && !isDesignatedAdmin) {
@@ -247,14 +258,14 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         });
       }
 
-      // Safety check: ONLY clear if the record was Ayush Prakash's designated admin account contaminated by another sub!
+      // Safety check: protect configured support admins from accidental auth0Sub hijack
       if (
         resolvedProfile &&
         rawEmail &&
         !rawEmail.includes('@placeholder.com') &&
         resolvedProfile.email &&
         resolvedProfile.email.toLowerCase() !== rawEmail &&
-        resolvedProfile.email.toLowerCase() === 'ayushprakash1110@gmail.com'
+        supportAdminEmails.includes(resolvedProfile.email.toLowerCase())
       ) {
         this.logger.warn(
           `Sub mismatch in strategy: admin record ${resolvedProfile.email} does not match token email ${rawEmail}. Clearing.`,
@@ -277,40 +288,54 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       }
 
       if (!resolvedProfile) {
-        const recruiterProfile = await this.prisma.recruiterProfile.findUnique({
-          where: { auth0Sub },
-        });
-        if (
-          recruiterProfile &&
-          (!rawEmail ||
-           recruiterProfile.email?.includes('@placeholder.com') ||
-           rawEmail.includes('@placeholder.com') ||
-           recruiterProfile.email?.toLowerCase() === rawEmail)
-        ) {
+        const portalHint = (
+          (req?.headers?.['x-demo-role'] || req?.headers?.['x-portal-role']) as string | undefined
+        )
+          ?.toUpperCase()
+          ?.trim();
+        const preferCandidate = portalHint === 'CANDIDATE';
+
+        const tryRecruiter = async () => {
+          const recruiterProfile = await this.prisma.recruiterProfile.findUnique({
+            where: { auth0Sub },
+          });
           if (
-            rawEmail &&
-            !rawEmail.includes('@placeholder.com') &&
-            recruiterProfile.email?.includes('@placeholder.com')
+            recruiterProfile &&
+            (!rawEmail ||
+              recruiterProfile.email?.includes('@placeholder.com') ||
+              rawEmail.includes('@placeholder.com') ||
+              recruiterProfile.email?.toLowerCase() === rawEmail)
           ) {
-            recruiterProfile.email = rawEmail;
-            await this.prisma.recruiterProfile.update({
-              where: { id: recruiterProfile.id },
-              data: { email: rawEmail },
-            }).catch(() => null);
+            if (
+              rawEmail &&
+              !rawEmail.includes('@placeholder.com') &&
+              recruiterProfile.email?.includes('@placeholder.com')
+            ) {
+              recruiterProfile.email = rawEmail;
+              await this.prisma.recruiterProfile
+                .update({
+                  where: { id: recruiterProfile.id },
+                  data: { email: rawEmail },
+                })
+                .catch(() => null);
+            }
+            resolvedProfile = recruiterProfile;
+            actualUserType = 'RECRUITER';
+            return true;
           }
-          resolvedProfile = recruiterProfile;
-          actualUserType = 'RECRUITER';
-        } else {
-          const candidateProfile =
-            await this.prisma.candidateProfile.findUnique({
-              where: { auth0Sub },
-            });
+          return false;
+        };
+
+        const tryCandidate = async () => {
+          const candidateProfile = await this.prisma.candidateProfile.findUnique({
+            where: { auth0Sub },
+          });
           if (
             candidateProfile &&
             (!rawEmail ||
-             candidateProfile.email?.includes('@placeholder.com') ||
-             rawEmail.includes('@placeholder.com') ||
-             candidateProfile.email?.toLowerCase() === rawEmail)
+              candidateProfile.email?.includes('@placeholder.com') ||
+              rawEmail.includes('@placeholder.com') ||
+              candidateProfile.email?.toLowerCase() === rawEmail)
           ) {
             if (
               rawEmail &&
@@ -318,13 +343,27 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
               candidateProfile.email?.includes('@placeholder.com')
             ) {
               candidateProfile.email = rawEmail;
-              await this.prisma.candidateProfile.update({
-                where: { id: candidateProfile.id },
-                data: { email: rawEmail },
-              }).catch(() => null);
+              await this.prisma.candidateProfile
+                .update({
+                  where: { id: candidateProfile.id },
+                  data: { email: rawEmail },
+                })
+                .catch(() => null);
             }
             resolvedProfile = candidateProfile;
             actualUserType = 'CANDIDATE';
+            return true;
+          }
+          return false;
+        };
+
+        if (preferCandidate) {
+          if (!(await tryCandidate())) {
+            await tryRecruiter();
+          }
+        } else {
+          if (!(await tryRecruiter())) {
+            await tryCandidate();
           }
         }
       }
@@ -350,12 +389,12 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         });
       }
 
-      const adminEmail = verifiedEmail || 'ayushprakash1110@gmail.com';
+      const adminEmail = verifiedEmail || `${auth0Sub}@placeholder.com`;
       const adminName =
         payload['https://api.questedge.com/name'] ||
         payload.name ||
         (isDev ? req?.headers?.['x-user-name'] : undefined) ||
-        'Ayush Prakash';
+        'Platform Admin';
 
       if (resolvedProfile && 'role' in resolvedProfile) {
         if (resolvedProfile.isActive === false) {

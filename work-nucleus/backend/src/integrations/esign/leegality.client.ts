@@ -20,6 +20,9 @@ export class LeegalityClient implements IESignProvider {
   constructor(private readonly config: ConfigService) {}
 
   async createSignRequest(input: ESignCreateInput): Promise<ESignCreateResult> {
+    if (process.env.NODE_ENV === 'production') {
+      throw new NotImplementedException('Leegality e-sign integration is not yet implemented for production');
+    }
     this.logger.warn('Leegality not yet implemented — returning dev fake id');
     return {
       providerReqId: `dev-leegality-${Date.now()}`,

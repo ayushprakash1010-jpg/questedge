@@ -9,9 +9,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ProvisionDto } from './dto/provision.dto';
 import { SyncDto } from './dto/sync.dto';
 import { Role, UserType } from '@prisma/client';
-import { createHash } from 'crypto';
+import { createHash, timingSafeEqual } from 'crypto';
 import { DemoProvisionDto } from './dto/demo-provision.dto';
 import { DemoRoleTarget } from './dto/demo-switch-role.dto';
+import { Auth0JwtStrategy } from './strategies/auth0-jwt.strategy';
 
 @Injectable()
 export class AuthService {
@@ -64,7 +65,7 @@ export class AuthService {
       const user = await tx.user.create({
         data: {
           orgId: organization.id,
-          email,
+          email: normalizedEmail,
           auth0Sub,
           name: dto.name,
           role: Role.ADMIN,
@@ -74,6 +75,8 @@ export class AuthService {
       return { user, organization };
     });
 
+    Auth0JwtStrategy.invalidateCache(auth0Sub);
+
     this.logger.log(
       `Provisioned org "${result.organization.name}" with admin user "${result.user.email}"`,
     );
@@ -81,31 +84,26 @@ export class AuthService {
     return result;
   }
 
-    async resetRole(auth0Sub: string) {
+  async resetRole(auth0Sub: string) {
     try {
+      Auth0JwtStrategy.invalidateCache(auth0Sub);
       // 1. Attempt to cleanup / delete Company user
       const user = await this.prisma.user.findUnique({
         where: { auth0Sub },
         include: { organization: true },
       });
       if (user) {
-        // Clean up unconstrained user-owned logs first to prevent FK blocks
-        await this.prisma.userNotificationPref.deleteMany({
-          where: { userId: user.id },
-        }).catch(() => null);
-        await this.prisma.notificationLog.deleteMany({
-          where: { userId: user.id },
-        }).catch(() => null);
-        await this.prisma.auditLog.deleteMany({
-          where: { userId: user.id },
-        }).catch(() => null);
-
-        // Delete user record or unlink if FK prevents delete
+        // Delete user record cleanly only if no audit/referential history exists; otherwise unlink both sub & email so re-onboarding doesn't 409 and audit logs remain intact
         await this.prisma.user.delete({ where: { id: user.id } }).catch(async (e) => {
-          this.logger.warn(`Could not hard-delete user ${user.id}, unlinking auth0Sub: ${e.message}`);
+          this.logger.warn(`Could not hard-delete user ${user.id}, unlinking auth0Sub & email: ${e.message}`);
+          const suffix = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
           await this.prisma.user.update({
             where: { id: user.id },
-            data: { auth0Sub: `unlinked_${Date.now()}_${Math.random().toString(36).substring(7)}`, isActive: false },
+            data: {
+              auth0Sub: `unlinked_${suffix}`,
+              email: `unlinked_${suffix}_${user.email}`,
+              isActive: false,
+            },
           });
         });
 
@@ -275,14 +273,14 @@ export class AuthService {
     }
 
     // 3. Safety guard against admin sub corruption:
-    // ONLY unlink if the database user is Ayush Prakash's designated admin account
-    // but the token email is someone else!
+    // Unlink if the database record belongs to a configured support admin email
+    // but the authenticated token email does not match
     if (
       user &&
       normalizedCallerEmail &&
       !normalizedCallerEmail.includes('@placeholder.com') &&
       user.email?.toLowerCase() !== normalizedCallerEmail &&
-      user.email?.toLowerCase() === 'ayushprakash1110@gmail.com'
+      supportAdminEmails.includes(user.email?.toLowerCase() || '')
     ) {
       this.logger.warn(
         `Auth0 sub mismatch on admin account (${user.email}) for token (${normalizedCallerEmail}). Unlinking sub.`,
@@ -300,8 +298,7 @@ export class AuthService {
       let isDesignatedAdmin =
         supportAdminSubs.includes(auth0Sub) ||
         (isEmailVerified === true &&
-          (normalizedCallerEmail === 'ayushprakash1110@gmail.com' ||
-            supportAdminEmails.includes(normalizedCallerEmail)));
+          supportAdminEmails.includes(normalizedCallerEmail));
 
       let preProvisionedRole: Role | null = null;
       if (!isDesignatedAdmin && isEmailVerified === true) {
@@ -351,8 +348,7 @@ export class AuthService {
     const isDesignatedAdmin =
       supportAdminSubs.includes(auth0Sub) ||
       (isEmailVerified === true &&
-        (user.email?.toLowerCase() === 'ayushprakash1110@gmail.com' ||
-          (user.email && supportAdminEmails.includes(user.email.toLowerCase()))));
+        Boolean(user.email && supportAdminEmails.includes(user.email.toLowerCase())));
 
     if (isDesignatedAdmin && user.role !== Role.SUPPORT_ADMIN) {
       user = await this.prisma.user.update({
@@ -455,12 +451,20 @@ export class AuthService {
   }
 
   async syncFromAuth0(dto: SyncDto, webhookSecret: string) {
-    if (!this.syncSecret || webhookSecret !== this.syncSecret) {
+    if (!this.syncSecret || !webhookSecret) {
+      throw new UnauthorizedException('Invalid webhook secret');
+    }
+    const providedBuf = Buffer.from(webhookSecret, 'utf8');
+    const expectedBuf = Buffer.from(this.syncSecret, 'utf8');
+    if (
+      providedBuf.length !== expectedBuf.length ||
+      !timingSafeEqual(providedBuf, expectedBuf)
+    ) {
       throw new UnauthorizedException('Invalid webhook secret');
     }
 
     const updateData: Record<string, string> = {};
-    if (dto.email) updateData.email = dto.email;
+    if (dto.email) updateData.email = dto.email.trim().toLowerCase();
     if (dto.name) updateData.name = dto.name;
     if (dto.avatarUrl) updateData.avatarUrl = dto.avatarUrl;
 
@@ -468,14 +472,34 @@ export class AuthService {
       return { updated: false };
     }
 
-    const user = await this.prisma.user.update({
-      where: { auth0Sub: dto.auth0Sub },
-      data: updateData,
-    });
+    const [userRes, recRes, candRes] = await Promise.all([
+      this.prisma.user.updateMany({
+        where: { auth0Sub: dto.auth0Sub },
+        data: updateData,
+      }),
+      this.prisma.recruiterProfile.updateMany({
+        where: { auth0Sub: dto.auth0Sub },
+        data: {
+          ...(updateData.email ? { email: updateData.email } : {}),
+          ...(updateData.name ? { name: updateData.name } : {}),
+          ...(updateData.avatarUrl ? { avatarUrl: updateData.avatarUrl } : {}),
+        },
+      }),
+      this.prisma.candidateProfile.updateMany({
+        where: { auth0Sub: dto.auth0Sub },
+        data: {
+          ...(updateData.email ? { email: updateData.email } : {}),
+          ...(updateData.name ? { name: updateData.name } : {}),
+        },
+      }),
+    ]);
 
-    this.logger.log(`Synced Auth0 profile for user "${user.email}"`);
+    Auth0JwtStrategy.invalidateCache(dto.auth0Sub);
 
-    return { updated: true, userId: user.id };
+    const updatedCount = userRes.count + recRes.count + candRes.count;
+    this.logger.log(`Synced Auth0 profile for sub "${dto.auth0Sub}" (${updatedCount} profile(s))`);
+
+    return { updated: updatedCount > 0, updatedCount };
   }
 
   // -------------------------------------------------------------------------

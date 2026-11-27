@@ -138,25 +138,38 @@ export class CompBudgetService {
    * later if not caught. Conservative rules: pool ≥ 0, splits sum within ±1%
    * of pool, matrix keys monotonic non-decreasing, all percents non-negative.
    */
+  private validateRatingPercentMatrix(
+    matrix: Record<string, number> | undefined,
+    label: string,
+  ) {
+    if (!matrix || typeof matrix !== 'object' || Array.isArray(matrix)) {
+      throw new BadRequestException(`${label} must be an object`);
+    }
+    const keys = Object.keys(matrix)
+      .map(Number)
+      .filter((n) => Number.isFinite(n))
+      .sort((a, b) => a - b);
+    const values = keys.map((k) => Number(matrix[String(k)]));
+    if (values.some((v) => !Number.isFinite(v) || v < 0)) {
+      throw new BadRequestException(`${label} percents must be non-negative numbers`);
+    }
+    for (let i = 1; i < values.length; i++) {
+      if (values[i] < values[i - 1]) {
+        throw new BadRequestException(
+          `${label} not monotonic at rating ${keys[i]}: ${values[i]} < ${values[i - 1]}`,
+        );
+      }
+    }
+  }
+
   private validateBudget(dto: CreateBudgetDto) {
     if (dto.hikePoolINR < 0 || dto.bonusPoolINR < 0) {
       throw new BadRequestException('Pools cannot be negative');
     }
 
-    const matrixKeys = Object.keys(dto.matrix)
-      .map(Number)
-      .filter((n) => Number.isFinite(n))
-      .sort((a, b) => a - b);
-    const matrixValues = matrixKeys.map((k) => dto.matrix[String(k)]);
-    if (matrixValues.some((v) => v < 0)) {
-      throw new BadRequestException('Matrix percents must be non-negative');
-    }
-    for (let i = 1; i < matrixValues.length; i++) {
-      if (matrixValues[i] < matrixValues[i - 1]) {
-        throw new BadRequestException(
-          `Matrix not monotonic at rating ${matrixKeys[i]}: ${matrixValues[i]} < ${matrixValues[i - 1]}`,
-        );
-      }
+    this.validateRatingPercentMatrix(dto.matrix, 'Matrix');
+    if (dto.bonusMatrix !== undefined) {
+      this.validateRatingPercentMatrix(dto.bonusMatrix, 'Bonus matrix');
     }
 
     if (dto.splits && dto.splits.length > 0) {

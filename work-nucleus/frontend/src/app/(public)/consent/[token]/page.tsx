@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { respondToConsent } from "@/lib/marketplace-api";
+import { getClientApiUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { BrandLoader } from "@/components/ui/brand-loader";
 import {
@@ -58,7 +59,7 @@ export default function ConsentPage() {
     (async () => {
       try {
         // Public endpoint — no auth needed
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"}/api/v1/candidate/consents/${token}/preview`);
+        const res = await fetch(`${getClientApiUrl()}/api/v1/candidate/consents/${encodeURIComponent(token)}/preview`);
         if (res.ok) {
           const data = await res.json();
           setConsent(data);
@@ -70,28 +71,7 @@ export default function ConsentPage() {
           setError("Something went wrong. Please try again.");
         }
       } catch {
-        // For demo purposes, show a mock consent
-        setConsent({
-          id: "demo",
-          status: "PENDING",
-          expiresAt: new Date(Date.now() + 86400000 * 5).toISOString(),
-          referral: {
-            recruiterNote: "Hi! I came across your profile and think you'd be a great fit for this role. The team is exceptional and the work is impactful. Would love to know if you're open to exploring this.",
-            recruiter: {
-              name: "Pro Recruiter 1",
-              headline: "Technical Talent Acquisition Specialist",
-              isVerified: true,
-            },
-            mandate: {
-              title: "Senior Backend Engineer",
-              department: "Engineering",
-              location: "San Francisco, CA",
-              workModel: "Hybrid",
-              referralRewardAmount: 5000,
-              organization: { name: "TechCorp Global" },
-            },
-          },
-        });
+        setError("Unable to load consent details right now. Please check your connection and try again.");
       } finally {
         setLoading(false);
       }

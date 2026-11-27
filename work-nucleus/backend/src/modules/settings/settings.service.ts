@@ -132,6 +132,30 @@ export class SettingsService {
       );
     }
 
+    if (filtered.bgvProvider !== undefined) {
+      const normalized = String(filtered.bgvProvider).trim().toLowerCase();
+      if (!['authbridge', 'ongrid', 'idfy'].includes(normalized)) {
+        throw new BadRequestException(
+          'bgvProvider must be one of authbridge, ongrid, or idfy',
+        );
+      }
+      filtered.bgvProvider = normalized;
+    }
+
+    if (filtered.notificationPreferences !== undefined) {
+      const prefs = filtered.notificationPreferences;
+      if (
+        !prefs ||
+        typeof prefs !== 'object' ||
+        Array.isArray(prefs) ||
+        Object.values(prefs).some((v) => typeof v !== 'boolean')
+      ) {
+        throw new BadRequestException(
+          'notificationPreferences must be a boolean map',
+        );
+      }
+    }
+
     if (filtered.defaultPipelineStages !== undefined) {
       if (
         !Array.isArray(filtered.defaultPipelineStages) ||

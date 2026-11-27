@@ -493,27 +493,11 @@ export class RecruiterService {
         : { auth0Sub: idOrAuth0Sub },
     });
 
-    if (!profile) {
+    const demoSub = process.env.DEMO_AUTH0_SUB?.trim();
+    if (!profile && demoSub && idOrAuth0Sub === demoSub) {
       profile = await this.prisma.recruiterProfile.findFirst({
-        where: {
-          OR: [
-            { isDemoAccount: true },
-            { email: { contains: 'growytvercel' } },
-            { email: { contains: 'recruiter' } },
-          ],
-        },
+        where: { isDemoAccount: true },
       });
-
-      if (profile && idOrAuth0Sub) {
-        try {
-          profile = await this.prisma.recruiterProfile.update({
-            where: { id: profile.id },
-            data: { auth0Sub: idOrAuth0Sub, isDemoAccount: true },
-          });
-        } catch {
-          // Ignore unique constraint violation
-        }
-      }
     }
 
     if (!profile) throw new NotFoundException('Recruiter profile not found.');

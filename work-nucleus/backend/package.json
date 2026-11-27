@@ -11,7 +11,9 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "npx prisma db push --skip-generate && node dist/main",
+    "start:prod": "node prisma/ensure-baseline.js && npx prisma migrate deploy && node dist/main",
+    "migrate:deploy": "prisma migrate deploy",
+    "migrate:baseline": "prisma migrate resolve --applied 0001_baseline",
     "seed:demo": "ts-node prisma/seed/demo-account.seed.ts",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
@@ -87,6 +89,10 @@
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "^jwks-rsa$": "<rootDir>/../test/mocks/jwks-rsa.js",
+      "^pg-boss$": "<rootDir>/../test/mocks/pg-boss.js"
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"

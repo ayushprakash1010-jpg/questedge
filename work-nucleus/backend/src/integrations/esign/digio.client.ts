@@ -46,16 +46,22 @@ export class DigioClient implements IESignProvider {
   }
 
   async createSignRequest(input: ESignCreateInput): Promise<ESignCreateResult> {
-    if (this.sandbox && !this.clientId) {
-      // Local dev fallback so the flow is testable end-to-end without sandbox creds
-      const fakeId = `dev-digio-${Date.now()}`;
-      this.logger.warn(
-        `Digio sandbox stubbed (no clientId) — issuing fake reqId ${fakeId}`,
+    const isProd = process.env.NODE_ENV === 'production';
+    if (!this.clientId || !this.clientSecret) {
+      if (!isProd && this.sandbox) {
+        // Local dev fallback so non-prod environments stay testable without creds
+        const fakeId = `dev-digio-${Date.now()}`;
+        this.logger.warn(
+          `Digio sandbox stubbed (no clientId) — issuing fake reqId ${fakeId}`,
+        );
+        return {
+          providerReqId: fakeId,
+          signUrl: `https://digio.example/sign/${fakeId}`,
+        };
+      }
+      throw new Error(
+        'Digio e-sign is not configured (DIGIO_CLIENT_ID / DIGIO_CLIENT_SECRET missing)',
       );
-      return {
-        providerReqId: fakeId,
-        signUrl: `https://digio.example/sign/${fakeId}`,
-      };
     }
 
     const body = {
@@ -122,7 +128,7 @@ export class DigioClient implements IESignProvider {
   ): boolean {
     const sig = (headers['x-digio-signature'] ||
       headers['X-Digio-Signature']) as string | undefined;
-    if (!sig) return false;
+    if (!this.webhookSecret || !sig) return false;
     const expected = createHmac('sha256', this.webhookSecret)
       .update(rawBody)
       .digest('hex');

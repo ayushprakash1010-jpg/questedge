@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
-import { getApiUrl, getProxyHeaders } from "@/lib/api-url";
+import { forwardUpstreamResponse, getApiUrl, getProxyHeaders } from "@/lib/api-url";
 
-const API_URL = getApiUrl();
+export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,12 +13,11 @@ export async function GET(req: NextRequest) {
 
     const { token: accessToken } = await auth0.getAccessToken();
 
-    const res = await fetch(`${API_URL}/api/v1/hiring-plans/stats`, {
+    const res = await fetch(`${getApiUrl()}/api/v1/hiring-plans/stats`, {
       headers: getProxyHeaders(req, accessToken),
     });
 
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
+    return forwardUpstreamResponse(res, "Failed to fetch stats");
   } catch {
     return NextResponse.json({ error: "Failed to fetch stats" }, { status: 500 });
   }

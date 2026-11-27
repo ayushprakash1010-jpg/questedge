@@ -168,6 +168,17 @@ export async function updateAssessment(id: string, data: Partial<HiringAssessmen
   return handleResponse<HiringAssessment>(res);
 }
 
+export async function fetchCodingExecutionStatus(): Promise<{ enabled: boolean }> {
+  try {
+    const res = await fetch('/api/v2/assessment-take/coding-status', { cache: 'no-store' });
+    if (!res.ok) return { enabled: false };
+    const data = await res.json().catch(() => null);
+    return { enabled: Boolean(data?.enabled) };
+  } catch {
+    return { enabled: false };
+  }
+}
+
 export async function deleteAssessment(id: string): Promise<void> {
   const res = await fetch(`/api/v2/assessments/${id}`, { method: 'DELETE' });
   return handleResponse<void>(res);

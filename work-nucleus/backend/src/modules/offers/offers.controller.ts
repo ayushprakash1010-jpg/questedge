@@ -112,6 +112,7 @@ export class OffersController {
   async approve(
     @CurrentUser('orgId') orgId: string,
     @CurrentUser('id') userId: string,
+    @CurrentUser('role') userRole: Role,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ApproveOfferDto,
   ) {
@@ -121,6 +122,7 @@ export class OffersController {
       userId,
       dto.decision,
       dto.comment,
+      userRole,
     );
     await this.audit?.logSafe({
       orgId,
@@ -140,9 +142,24 @@ export class OffersController {
   async renderDoc(
     @CurrentUser('orgId') orgId: string,
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() body?: { customBody?: string },
   ) {
     await this.service.findOne(orgId, id);
-    return this.render.render(id);
+    return this.render.render(id, body?.customBody);
+  }
+
+  @Get(':id/document')
+  @ApiOperation({ summary: 'Get a signed download URL for the rendered offer' })
+  async getDocument(
+    @CurrentUser('orgId') orgId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    const offer = await this.service.findOne(orgId, id);
+    if (!offer.generatedDocUrl) {
+      const rendered = await this.render.render(id);
+      return { url: rendered.pdfUrl };
+    }
+    return { url: await this.render.signedUrl(offer.generatedDocUrl) };
   }
 
   @Post(':id/draft-body')

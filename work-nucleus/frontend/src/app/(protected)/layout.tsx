@@ -117,10 +117,7 @@ export default function ProtectedLayout({
     }
 
     // Check if demo user
-    const isDemo =
-      Boolean((profile as any)?.isDemoAccount) ||
-      user?.email?.toLowerCase() === "growytvercel@gmail.com" ||
-      user?.name?.toLowerCase() === "growytvercel@gmail.com";
+    const isDemo = Boolean((profile as any)?.isDemoAccount);
 
     // Logged in but explicitly verified as NOT provisioned in database
     if (profile && profile.isProvisioned === false) {
@@ -204,10 +201,7 @@ export default function ProtectedLayout({
     return <BrandLoader message="Synchronizing workspace..." />;
   }
 
-  const isDemo =
-    Boolean((profile as any)?.isDemoAccount) ||
-    user?.email?.toLowerCase() === "growytvercel@gmail.com" ||
-    user?.name?.toLowerCase() === "growytvercel@gmail.com";
+  const isDemo = Boolean((profile as any)?.isDemoAccount);
 
   const isRecruiterOrCandidate =
     (profile as any)?.userType === "RECRUITER" ||

@@ -505,6 +505,9 @@ export class AnalyticsService {
     orgId: string,
     groupBy: 'role' | 'department' | 'quarter' = 'department',
   ) {
+    if (!orgId) {
+      return { byGroup: [], trend: [] };
+    }
     return this.cached(`tth:${orgId}:${groupBy}`, async () => {
       const [apps, hiredRefs] = await Promise.all([
         this.prisma.candidateApplication.findMany({
@@ -1044,7 +1047,7 @@ Do not return any markdown formatting outside of the JSON block.`;
     const company = payload.companyName || 'Quest';
     const overview = payload.overview || {};
     const funnel = Array.isArray(payload.funnel) ? payload.funnel : [];
-    const inPipeline = overview.inPipeline || 0;
+    const inPipeline = overview.pipelineCandidates || overview.inPipeline || 0;
     const activeMandates = overview.activeMandates || 0;
     const openRoles = overview.openRoles || 0;
     const avgTimeToHire = overview.avgTimeToHire || 0;
@@ -1055,16 +1058,18 @@ Do not return any markdown formatting outside of the JSON block.`;
     // 1. Funnel & Stage Analysis
     if (funnel.length > 0 && inPipeline > 0) {
       const sortedStages = [...funnel].sort(
-        (a, b) => (b.count || 0) - (a.count || 0),
+        (a, b) => (b.entered ?? b.count ?? 0) - (a.entered ?? a.count ?? 0),
       );
       const topStage = sortedStages[0];
-      const topPercent = Math.round(((topStage.count || 0) / inPipeline) * 100);
+      const topCount = topStage.entered ?? topStage.count ?? 0;
+      const topName = topStage.name || topStage.stage || 'Screening';
+      const topPercent = Math.round((topCount / inPipeline) * 100);
       insights.push({
-        title: `${topStage.stage} Stage Pipeline Concentration`,
-        description: `${topPercent}% of active candidates (${topStage.count} of ${inPipeline}) are currently in the ${topStage.stage} stage. Streamlining initial evaluation throughput will directly accelerate time-to-offer.`,
+        title: `${topName} Stage Pipeline Concentration`,
+        description: `${topPercent}% of active candidates (${topCount} of ${inPipeline}) are currently in the ${topName} stage. Streamlining initial evaluation throughput will directly accelerate time-to-offer.`,
         severity: topPercent > 60 ? 'warning' : 'info',
         category: 'funnel',
-        recommendation: `Schedule next-stage evaluations for candidates currently in ${topStage.stage} to maintain pipeline velocity.`,
+        recommendation: `Schedule next-stage evaluations for candidates currently in ${topName} to maintain pipeline velocity.`,
       });
     } else if (inPipeline === 0) {
       insights.push({

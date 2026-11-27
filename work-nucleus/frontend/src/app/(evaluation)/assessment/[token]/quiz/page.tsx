@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import {
@@ -11,7 +11,7 @@ import {
 } from "@/lib/assessment-api";
 import { AntiCheatWrapper } from "@/components/assessments/anti-cheat-wrapper";
 import { TimerBar } from "@/components/assessments/timer-bar";
-import { QuizPlayer } from "@/components/assessments/quiz-player";
+import { QuizPlayer, QuizPlayerHandle } from "@/components/assessments/quiz-player";
 import { toast } from "@/components/ui/toaster";
 
 export default function CandidateQuizPage() {
@@ -22,6 +22,7 @@ export default function CandidateQuizPage() {
   const [attempt, setAttempt] = useState<AssessmentAttempt | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const quizPlayerRef = useRef<QuizPlayerHandle | null>(null);
 
   useEffect(() => {
     fetchCandidateAttempt(token)
@@ -64,10 +65,13 @@ export default function CandidateQuizPage() {
   );
 
   const handleTimerExpire = useCallback(() => {
-    // Automatically submit with empty/current answers when timer hits 0
     if (!isSubmitting) {
       toast.warning("Time limit reached! Submitting your answers now.");
-      handleSubmit([]);
+      if (quizPlayerRef.current) {
+        void quizPlayerRef.current.submitNow();
+      } else {
+        void handleSubmit([]);
+      }
     }
   }, [handleSubmit, isSubmitting]);
 
@@ -92,6 +96,7 @@ export default function CandidateQuizPage() {
       />
 
       <QuizPlayer
+        ref={quizPlayerRef}
         questions={attempt.assessment.questions || []}
         onSubmit={handleSubmit}
         isSubmitting={isSubmitting}

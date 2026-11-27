@@ -26,6 +26,11 @@ export class QueryCandidatesDto {
   @IsString()
   hiringPlanId?: string;
 
+  @ApiPropertyOptional({ description: 'Filter by mandate ID' })
+  @IsOptional()
+  @IsString()
+  mandateId?: string;
+
   @ApiPropertyOptional({ description: 'Filter by application or review status' })
   @IsOptional()
   @IsString()

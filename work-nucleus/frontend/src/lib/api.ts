@@ -106,5 +106,17 @@ export async function apiClient<T = unknown>(
     throw err;
   }
 
-  return res.json();
+  if (
+    res.status === 204 ||
+    res.status === 205 ||
+    res.headers.get("content-length") === "0"
+  ) {
+    return undefined as T;
+  }
+
+  const text = await res.text().catch(() => "");
+  if (!text) {
+    return undefined as T;
+  }
+  return JSON.parse(text) as T;
 }

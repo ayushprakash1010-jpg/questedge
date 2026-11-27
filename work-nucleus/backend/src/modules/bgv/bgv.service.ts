@@ -3,6 +3,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import {
   BgvCheckStatus,
@@ -17,6 +18,7 @@ import {
 import { createHash, randomBytes, randomInt } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BgvVendorRouter } from '../../integrations/bgv/bgv.service';
+import { EmailService } from '../email/email.service';
 import { JobQueueService } from '../job-queue/job-queue.service';
 import { InitiateBgvDto } from './dto/initiate-bgv.dto';
 import {
@@ -34,6 +36,7 @@ export class BgvService {
     private readonly router: BgvVendorRouter,
     private readonly queue: JobQueueService,
     private readonly ai: BgvAiService,
+    @Optional() private readonly email?: EmailService,
   ) {}
 
   // ── Profile lifecycle ─────────────────────────────────────────
@@ -44,11 +47,19 @@ export class BgvService {
     });
     if (!candidate) throw new NotFoundException('Candidate not found');
 
+    if (dto.offerId) {
+      const offer = await this.prisma.offer.findFirst({
+        where: { id: dto.offerId, orgId },
+      });
+      if (!offer) throw new NotFoundException('Offer not found');
+    }
+
     const existing = await this.prisma.bgvProfile.findFirst({
       where: {
         orgId,
         candidateId: dto.candidateId,
         offerId: dto.offerId ?? null,
+        status: { not: BgvProfileStatus.CANCELLED },
       },
     });
     if (existing) {
@@ -170,9 +181,41 @@ export class BgvService {
       where: { id: p.id },
       data: { consentOtp: otp, consentOtpExp: exp },
     });
-    // TODO: send via MSG91 once Phase 5C lands; for now log so devs can grab in console
+
+    const hasEmailChannel =
+      Boolean(
+        process.env.RESEND_API_KEY?.trim() ||
+          process.env.SENDGRID_API_KEY?.trim(),
+      ) && Boolean(this.email);
+    const isProd = process.env.NODE_ENV === 'production';
+
+    if (hasEmailChannel && this.email) {
+      const safeName = String(p.candidate.name || 'Candidate')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      await this.email.sendEmail(
+        p.candidate.email,
+        'Your Background Verification Consent OTP',
+        `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:24px;border:1px solid #e2e8f0;border-radius:10px;">
+          <h2 style="margin:0 0 12px;color:#0f172a;">Background Verification Consent</h2>
+          <p style="color:#475569;font-size:15px;">Hi ${safeName},</p>
+          <p style="color:#475569;font-size:15px;">Use the following one-time passcode to authorize your background verification checks. This code expires in 10 minutes.</p>
+          <div style="margin:20px 0;padding:14px 20px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;font-size:24px;font-weight:700;letter-spacing:4px;color:#0f172a;text-align:center;">${otp}</div>
+          <p style="color:#64748b;font-size:12px;">If you did not initiate this request${ipAddress ? ` (IP: ${ipAddress})` : ''}, you can ignore this email.</p>
+        </div>`,
+      );
+      return { sent: true, channel: 'email', expiresInSec: 600 };
+    }
+
+    if (isProd) {
+      throw new BadRequestException(
+        'BGV consent OTP delivery is not configured for production (missing SENDGRID_API_KEY or RESEND_API_KEY).',
+      );
+    }
+
     this.logger.warn(
-      `[BGV consent OTP] candidate=${p.candidate.email} otp=${otp}`,
+      `[BGV consent OTP dev] candidate=${p.candidate.email} otp=${otp}`,
     );
     return { sent: true, channel: 'console-dev', expiresInSec: 600 };
   }
@@ -361,11 +404,7 @@ export class BgvService {
         c.status === BgvCheckStatus.CANCELLED,
     );
     if (!allTerminal) return;
-    if (
-      profile.status === BgvProfileStatus.COMPLETED ||
-      profile.status === BgvProfileStatus.CANCELLED
-    )
-      return;
+    if (profile.status === BgvProfileStatus.CANCELLED) return;
 
     const discrepancyCount = profile.checks.filter(
       (c) => c.finding === BgvFinding.DISCREPANCY,

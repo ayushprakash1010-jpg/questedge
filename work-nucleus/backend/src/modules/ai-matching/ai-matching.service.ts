@@ -272,7 +272,10 @@ export class AiMatchingService {
   }
 
   // ── 5. Preflight Check (Ad-hoc form check) ───────────────────────
-  async preflightCheck(dto: PreflightCheckDto): Promise<MatchEvaluationResult> {
+  async preflightCheck(
+    dto: PreflightCheckDto,
+    actor?: { orgId?: string; userType?: string },
+  ): Promise<MatchEvaluationResult> {
     const mandate = await this.prisma.mandate.findUnique({
       where: { id: dto.mandateId },
       include: { organization: { select: { id: true, name: true } } },
@@ -281,16 +284,13 @@ export class AiMatchingService {
     if (!mandate) {
       throw new NotFoundException(`Job mandate ${dto.mandateId} not found`);
     }
-
-    let candidateData: any;
-
-    if (dto.candidateProfileId) {
-      candidateData = await this.prisma.candidateProfile.findUnique({
-        where: { id: dto.candidateProfileId },
-      });
+    if (actor?.userType?.startsWith('COMPANY') && actor.orgId && mandate.orgId !== actor.orgId) {
+      throw new NotFoundException(`Job mandate ${dto.mandateId} not found`);
     }
 
-    if (!candidateData && dto.candidateEmail) {
+    let candidateData: any = null;
+
+    if (dto.candidateEmail && (!actor || actor.userType !== 'CANDIDATE')) {
       const cleanEmail = dto.candidateEmail.toLowerCase().trim();
       const emailHash = createHash('sha256').update(cleanEmail).digest('hex');
       candidateData = await this.prisma.candidateProfile.findFirst({
@@ -298,31 +298,9 @@ export class AiMatchingService {
           OR: [
             { email: { equals: cleanEmail, mode: 'insensitive' } },
             { emailHash },
-            { email: { contains: cleanEmail } },
-            ...(cleanEmail.includes('growytvercel')
-              ? [
-                  { email: 'growytvercel@gmail.com' },
-                  { email: 'growytvercel+candidate@gmail.com' },
-                  { isDemoAccount: true },
-                ]
-              : []),
           ],
         },
       });
-    }
-
-    if (!candidateData && dto.candidateName) {
-      const cleanName = dto.candidateName.trim();
-      if (cleanName.length >= 3) {
-        candidateData = await this.prisma.candidateProfile.findFirst({
-          where: {
-            OR: [
-              { name: { contains: cleanName, mode: 'insensitive' } },
-              { headline: { contains: cleanName, mode: 'insensitive' } },
-            ],
-          },
-        });
-      }
     }
 
     if (candidateData) {
@@ -360,19 +338,37 @@ export class AiMatchingService {
   }
 
   // ── 6. Sync Match Score to Referral ─────────────────────────────
-  async syncReferralMatchScore(referralId: string): Promise<any> {
+  async syncReferralMatchScore(
+    referralId: string,
+    actor?: { orgId?: string; userType?: string; auth0Sub?: string; id?: string },
+  ): Promise<any> {
     const referral = await this.prisma.referral.findUnique({
       where: { id: referralId },
       include: {
         mandate: {
           include: { organization: { select: { id: true, name: true } } },
         },
+        recruiter: { select: { id: true, auth0Sub: true } },
         candidateProfile: true,
       },
     });
 
     if (!referral) {
       throw new NotFoundException(`Referral ${referralId} not found`);
+    }
+    if (actor) {
+      const isCompany = actor.userType?.startsWith('COMPANY');
+      const isRecruiter = actor.userType === 'RECRUITER';
+      if (isCompany && referral.mandate?.orgId !== actor.orgId) {
+        throw new NotFoundException(`Referral ${referralId} not found`);
+      }
+      if (
+        isRecruiter &&
+        referral.recruiter?.id !== actor.id &&
+        referral.recruiter?.auth0Sub !== actor.auth0Sub
+      ) {
+        throw new NotFoundException(`Referral ${referralId} not found`);
+      }
     }
 
     const evaluation = await this.evaluateCandidateAgainstMandate(

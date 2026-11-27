@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
-import { getApiUrl, getProxyHeaders } from "@/lib/api-url";
+import {
+  forwardUpstreamResponse,
+  getApiUrl,
+  getProxyHeaders,
+} from "@/lib/api-url";
 
-const API_URL = getApiUrl();
+export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
@@ -11,7 +15,7 @@ export async function GET(req: NextRequest) {
     const { token: accessToken } = await auth0.getAccessToken();
 
     const type = req.nextUrl.searchParams.get("type");
-    let endpoint = `${API_URL}/api/v1/notifications`;
+    let endpoint = `${getApiUrl()}/api/v1/notifications`;
 
     if (type === "unread-count") {
       endpoint += "/unread-count";
@@ -33,10 +37,9 @@ export async function GET(req: NextRequest) {
       headers: getProxyHeaders(req, accessToken),
       cache: "no-store",
     });
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
+    return forwardUpstreamResponse(res, "Failed to load notifications");
   } catch {
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to load notifications" }, { status: 500 });
   }
 }
 
@@ -47,7 +50,7 @@ export async function POST(req: NextRequest) {
     const { token: accessToken } = await auth0.getAccessToken();
 
     const action = req.nextUrl.searchParams.get("action");
-    let endpoint = `${API_URL}/api/v1/notifications`;
+    let endpoint = `${getApiUrl()}/api/v1/notifications`;
     let body: string | undefined;
 
     if (action === "mark-all-read") {
@@ -55,16 +58,17 @@ export async function POST(req: NextRequest) {
     } else if (action === "mark-read") {
       endpoint += "/mark-read";
       body = JSON.stringify(await req.json());
+    } else {
+      return NextResponse.json({ error: "Invalid notifications action" }, { status: 400 });
     }
 
     const res = await fetch(endpoint, {
       method: "POST",
-      headers: getProxyHeaders(req, accessToken, "application/json"),
+      headers: getProxyHeaders(req, accessToken, body ? "application/json" : undefined),
       ...(body ? { body } : {}),
     });
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
+    return forwardUpstreamResponse(res, "Failed to update notifications");
   } catch {
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to update notifications" }, { status: 500 });
   }
 }

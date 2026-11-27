@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getCompanyRewards, approveReward } from "@/lib/marketplace-api";
+import {
+  getCompanyRewards,
+  approveReward,
+  resolveRewardDispute,
+  type DisputeResolutionPayload,
+} from "@/lib/marketplace-api";
 import {
   Loader2,
   ShieldCheck,
@@ -24,6 +29,11 @@ export default function CompanyFinancialsPage() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [auditRewardId, setAuditRewardId] = useState<string | null>(null);
   const [disputeReward, setDisputeReward] = useState<any | null>(null);
+  const [resolveTarget, setResolveTarget] = useState<any | null>(null);
+  const [resolveDecision, setResolveDecision] = useState<DisputeResolutionPayload["decision"]>("REJECTED");
+  const [resolveNotes, setResolveNotes] = useState("");
+  const [settlementAmount, setSettlementAmount] = useState("");
+  const [resolving, setResolving] = useState(false);
 
   const exportLedgerCsv = () => {
     const header = ["Date", "Candidate", "Mandate", "Recruiter", "AmountINR", "Status"];
@@ -91,6 +101,44 @@ export default function CompanyFinancialsPage() {
     }
   };
 
+  const handleResolveDispute = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resolveTarget || resolveNotes.trim().length < 5) {
+      toast.error("Please provide at least 5 characters of resolution notes.");
+      return;
+    }
+    if (resolveDecision === "SETTLED") {
+      const amt = Number(settlementAmount);
+      if (!Number.isFinite(amt) || amt < 0) {
+        toast.error("Enter a valid non-negative settlement amount.");
+        return;
+      }
+    }
+    try {
+      setResolving(true);
+      const tokenRes = await fetch("/api/auth/token");
+      if (!tokenRes.ok) {
+        throw new Error("Unable to authenticate session");
+      }
+      const { accessToken } = await tokenRes.json();
+      await resolveRewardDispute(accessToken, resolveTarget.id, {
+        decision: resolveDecision,
+        resolutionNotes: resolveNotes.trim(),
+        settlementAmount:
+          resolveDecision === "SETTLED" ? Number(settlementAmount) : undefined,
+      });
+      toast.success("Dispute resolved cleanly");
+      setResolveTarget(null);
+      setResolveNotes("");
+      setSettlementAmount("");
+      await fetchData();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to resolve dispute");
+    } finally {
+      setResolving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -101,16 +149,18 @@ export default function CompanyFinancialsPage() {
 
   // Aggregate stats safely using Number() on Prisma Decimal values
   const totalPaid = rewards
-    .filter((r) => r.status === "PAID" || r.status === "APPROVED")
+    .filter((r) => r.status === "PAID")
+    .reduce((sum, r) => sum + Number(r.rewardAmount || 0), 0);
+  const totalApprovedPending = rewards
+    .filter((r) => r.status === "APPROVED")
     .reduce((sum, r) => sum + Number(r.rewardAmount || 0), 0);
   const totalInEscrow = rewards
-    .filter(
-      (r) =>
-        r.status !== "PAID" &&
-        r.status !== "APPROVED" &&
-        r.status !== "CANCELLED",
+    .filter((r) =>
+      ["ELIGIBLE", "PENDING_APPROVAL", "APPROVED"].includes(r.status)
     )
     .reduce((sum, r) => sum + Number(r.rewardAmount || 0), 0);
+  const formatMoney = (val: number) =>
+    `₹${Math.round(val).toLocaleString("en-IN")}`;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-8">
@@ -161,9 +211,13 @@ export default function CompanyFinancialsPage() {
               <ShieldCheck className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
             </div>
             <div>
-              <p className="text-slate-500 dark:text-slate-400 font-medium mb-1">Funds in Escrow</p>
-              <h2 className="text-4xl font-bold text-slate-900 dark:text-slate-100">₹{(totalInEscrow / 1000).toFixed(0)}K</h2>
-              <p className="text-sm text-slate-400 mt-1">Locked for pending hires</p>
+              <p className="text-slate-500 dark:text-slate-400 font-medium mb-1">Committed Payouts Queue</p>
+              <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-slate-100">{formatMoney(totalInEscrow)}</h2>
+              <p className="text-sm text-slate-400 mt-1">
+                {totalApprovedPending > 0
+                  ? `${formatMoney(totalApprovedPending)} approved & awaiting transfer`
+                  : "Eligible & pending approval bounties"}
+              </p>
             </div>
           </div>
 
@@ -173,8 +227,8 @@ export default function CompanyFinancialsPage() {
             </div>
             <div>
               <p className="text-slate-500 dark:text-slate-400 font-medium mb-1">Total Payouts Released</p>
-              <h2 className="text-4xl font-bold text-slate-900 dark:text-slate-100">₹{(totalPaid / 1000).toFixed(0)}K</h2>
-              <p className="text-sm text-slate-400 mt-1">Successfully transferred to recruiters</p>
+              <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-slate-100">{formatMoney(totalPaid)}</h2>
+              <p className="text-sm text-slate-400 mt-1">Settled to recruiter accounts</p>
             </div>
           </div>
         </div>
@@ -235,10 +289,24 @@ export default function CompanyFinancialsPage() {
                           </button>
 
                           {reward.status === "DISPUTED" ? (
-                            <span className="text-xs font-semibold bg-amber-50 text-amber-800 px-2.5 py-1.5 rounded-lg border border-amber-200 flex items-center gap-1">
-                              <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                              Disputed
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold bg-amber-50 text-amber-800 px-2.5 py-1.5 rounded-lg border border-amber-200 flex items-center gap-1">
+                                <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                                Disputed
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setResolveTarget(reward);
+                                  setResolveDecision("REJECTED");
+                                  setResolveNotes("");
+                                  setSettlementAmount(String(Number(reward.rewardAmount || 0)));
+                                }}
+                                className="text-xs font-semibold bg-slate-900 text-white px-2.5 py-1.5 rounded-lg hover:bg-slate-800 transition-colors"
+                              >
+                                Resolve
+                              </button>
+                            </div>
                           ) : reward.status !== "CANCELLED" && (
                             <button
                               onClick={() =>
@@ -298,6 +366,86 @@ export default function CompanyFinancialsPage() {
         onClose={() => setDisputeReward(null)}
         onDisputeRaised={() => fetchData()}
       />
+
+      {resolveTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Resolve reward dispute"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+              Resolve Reward Dispute
+            </h3>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              {resolveTarget.referral?.candidateProfile?.name || "Candidate"} · Original bounty ₹
+              {Number(resolveTarget.rewardAmount || 0).toLocaleString("en-IN")}
+            </p>
+            <form onSubmit={handleResolveDispute} className="mt-4 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">
+                  Resolution Outcome
+                </label>
+                <select
+                  value={resolveDecision}
+                  onChange={(e) =>
+                    setResolveDecision(e.target.value as DisputeResolutionPayload["decision"])
+                  }
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                >
+                  <option value="REJECTED">Dismiss Dispute &amp; Approve Payout</option>
+                  <option value="SETTLED">Settle Revised Amount</option>
+                  <option value="UPHELD">Uphold Clawback &amp; Cancel Reward</option>
+                </select>
+              </div>
+              {resolveDecision === "SETTLED" && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">
+                    Settlement Amount (INR)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step="1"
+                    required
+                    value={settlementAmount}
+                    onChange={(e) => setSettlementAmount(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  />
+                </div>
+              )}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">
+                  Resolution Notes *
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  minLength={5}
+                  value={resolveNotes}
+                  onChange={(e) => setResolveNotes(e.target.value)}
+                  placeholder="Document evidence and final mediation decision..."
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setResolveTarget(null)}
+                  disabled={resolving}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={resolving}>
+                  {resolving ? "Saving..." : "Confirm Resolution"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

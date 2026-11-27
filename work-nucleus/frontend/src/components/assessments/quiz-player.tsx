@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useImperativeHandle, forwardRef, useCallback } from "react";
 import {
   CheckCircle2,
   ChevronLeft,
@@ -13,6 +13,10 @@ import {
 } from "lucide-react";
 import { AssessmentQuestion } from "@/lib/assessment-api";
 
+export interface QuizPlayerHandle {
+  submitNow: () => Promise<void>;
+}
+
 interface QuizPlayerProps {
   questions: AssessmentQuestion[];
   onSubmit: (responses: Array<{
@@ -24,7 +28,8 @@ interface QuizPlayerProps {
   isSubmitting?: boolean;
 }
 
-export function QuizPlayer({ questions, onSubmit, isSubmitting }: QuizPlayerProps) {
+export const QuizPlayer = forwardRef<QuizPlayerHandle, QuizPlayerProps>(
+  function QuizPlayer({ questions, onSubmit, isSubmitting }, ref) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, { selectedOptions: string[]; textAnswer?: string }>>({});
   const [flagged, setFlagged] = useState<Record<string, boolean>>({});
@@ -89,7 +94,7 @@ export function QuizPlayer({ questions, onSubmit, isSubmitting }: QuizPlayerProp
     (k) => (answers[k]?.selectedOptions?.length || 0) > 0 || (answers[k]?.textAnswer?.trim()?.length || 0) > 0
   ).length;
 
-  const handleSubmitAttempt = async () => {
+  const handleSubmitAttempt = useCallback(async () => {
     const formatted = questions.map((q) => {
       const ans = answers[q.id];
       const start = questionStartTimes[q.id];
@@ -103,7 +108,11 @@ export function QuizPlayer({ questions, onSubmit, isSubmitting }: QuizPlayerProp
     });
 
     await onSubmit(formatted);
-  };
+  }, [questions, answers, questionStartTimes, onSubmit]);
+
+  useImperativeHandle(ref, () => ({
+    submitNow: handleSubmitAttempt,
+  }), [handleSubmitAttempt]);
 
   if (!currentQuestion) {
     return (
@@ -337,5 +346,5 @@ export function QuizPlayer({ questions, onSubmit, isSubmitting }: QuizPlayerProp
       )}
     </div>
   );
-}
+});
 

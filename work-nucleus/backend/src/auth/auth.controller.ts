@@ -60,11 +60,10 @@ export class AuthController {
       throw new BadRequestException('Auth0 identity not found in token');
     }
 
+    const demoEmailEnv = process.env.DEMO_EMAIL?.trim().toLowerCase();
     const isDemo =
       user.isDemoAccount === true ||
-      user.email?.toLowerCase() === 'growytvercel@gmail.com' ||
-      (process.env.DEMO_EMAIL &&
-        user.email?.toLowerCase() === process.env.DEMO_EMAIL.trim().toLowerCase());
+      Boolean(demoEmailEnv && user.email?.toLowerCase() === demoEmailEnv);
 
     // If demo account with role context specified by DemoRoleInterceptor
     if (isDemo && user.userType) {

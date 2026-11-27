@@ -25,7 +25,9 @@ export interface UserProfile {
   isVerified?: boolean;
 }
 
-const IS_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+const IS_MOCK =
+  process.env.NODE_ENV !== "production" &&
+  process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
 
 export function useProfile() {
   const { user, isLoading: auth0Loading } = useUser();
@@ -54,10 +56,13 @@ export function useProfile() {
   }, []);
 
   useEffect(() => {
-    // In mock mode, fetch profile directly (no Auth0 user needed)
+    // In mock mode (development only), fetch mock profile directly
     if (IS_MOCK) {
       fetch("/api/profile")
-        .then((res) => res.json())
+        .then(async (res) => {
+          if (!res.ok) throw new Error("Failed to fetch mock profile");
+          return res.json();
+        })
         .then((data) => setProfile(data))
         .catch(() => setProfile(null))
         .finally(() => setIsLoading(false));

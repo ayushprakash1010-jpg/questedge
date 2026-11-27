@@ -1,9 +1,10 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { OfferStatus } from '@prisma/client';
+import { OfferStatus, Role } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 
 export interface ApprovalStep {
@@ -72,6 +73,7 @@ export class OfferApprovalService {
     actorUserId: string,
     decision: 'APPROVED' | 'CHANGES_REQUESTED' | 'REJECTED',
     comment?: string,
+    actorRole?: Role,
   ) {
     const offer = await this.prisma.offer.findFirst({
       where: { id: offerId, orgId },
@@ -88,9 +90,25 @@ export class OfferApprovalService {
 
     const step = chain[idx];
     if (step.userId && step.userId !== actorUserId) {
-      throw new BadRequestException(
+      throw new ForbiddenException(
         'You are not the assigned approver for this step',
       );
+    }
+    if (actorRole && actorRole !== Role.ADMIN) {
+      const reqRole = (step.role || '').toUpperCase();
+      const allowed =
+        (reqRole === 'HIRING_MANAGER' && actorRole === Role.HIRING_MANAGER) ||
+        (reqRole === 'HR' && actorRole === Role.HR);
+      if (!allowed) {
+        throw new ForbiddenException(
+          `Approval step requires ${reqRole || 'ADMIN'} role`,
+        );
+      }
+      if (chain.some((s) => s.status === 'APPROVED' && s.actorUserId === actorUserId)) {
+        throw new ForbiddenException(
+          'You have already approved an earlier step in this chain',
+        );
+      }
     }
 
     chain[idx] = {

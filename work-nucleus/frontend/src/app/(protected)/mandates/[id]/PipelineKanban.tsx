@@ -100,20 +100,43 @@ export function PipelineKanban({ mandateId }: PipelineKanbanProps) {
     e.preventDefault();
     if (!draggedAppId) return;
 
-    const draggedItem = applications.find(a => a.id === draggedAppId);
+    const draggedItem = applications.find((a) => a.id === draggedAppId);
+    if (!draggedItem || draggedItem.currentStage?.id === targetStageId) {
+      setDraggedAppId(null);
+      return;
+    }
+
+    const isUuidStage =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        targetStageId
+      );
+
+    // Direct applications on synthetic DEFAULT_STAGES columns can only update final status
+    if (!draggedItem.isReferral && !draggedItem.referral && !isUuidStage && targetStageId !== "offer") {
+      toast.info("Intermediate stage moves require a linked Hiring Plan pipeline.");
+      setDraggedAppId(null);
+      return;
+    }
 
     // Optimistic UI update
-    setApplications(prev => prev.map(app => 
-      app.id === draggedAppId 
-        ? { ...app, currentStage: (stages.find(s => s.id === targetStageId) || DEFAULT_STAGES.find(s => s.id === targetStageId) || app.currentStage) as any } 
-        : app
-    ));
+    setApplications((prev) =>
+      prev.map((app) =>
+        app.id === draggedAppId
+          ? {
+              ...app,
+              currentStage: (stages.find((s) => s.id === targetStageId) ||
+                DEFAULT_STAGES.find((s) => s.id === targetStageId) ||
+                app.currentStage) as any,
+            }
+          : app
+      )
+    );
 
     try {
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
 
-      if (draggedItem?.isReferral || draggedItem?.referral) {
+      if (draggedItem.isReferral || draggedItem.referral) {
         // Map targetStageId to Referral status
         const stageToStatusMap: Record<string, string> = {
           sourced: "ACTIVATED",
@@ -129,6 +152,12 @@ export function PipelineKanban({ mandateId }: PipelineKanbanProps) {
           method: "PATCH",
           token: accessToken,
           body: JSON.stringify({ status: newStatus }),
+        });
+      } else if (!isUuidStage && targetStageId === "offer") {
+        await apiClient(`/api/v1/applications/${draggedAppId}/status`, {
+          method: "PATCH",
+          token: accessToken,
+          body: JSON.stringify({ status: "SELECTED" }),
         });
       } else {
         await apiClient(`/api/v1/applications/${draggedAppId}/move`, {

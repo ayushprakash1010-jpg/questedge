@@ -33,9 +33,10 @@ export class PeerFeedbackController {
   nominate(
     @CurrentUser('orgId') orgId: string,
     @CurrentUser('id') userId: string,
+    @CurrentUser('role') userRole: Role,
     @Body() dto: NominatePeersDto,
   ) {
-    return this.service.nominate(orgId, userId, dto);
+    return this.service.nominate(orgId, userId, dto, userRole);
   }
 
   @Get('subject')

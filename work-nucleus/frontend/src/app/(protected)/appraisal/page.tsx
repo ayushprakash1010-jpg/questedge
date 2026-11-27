@@ -304,7 +304,7 @@ export default function AppraisalHomePage() {
                 </Button>
               </Link>
             )}
-            {!cycle && (
+            {!cycle && (profile?.role === "ADMIN" || profile?.role === "HR") && (
               <Link href="/appraisal/cycles/new">
                 <Button variant="default" size="sm">
                   <ArrowRight className="h-4 w-4" />
@@ -436,7 +436,7 @@ export default function AppraisalHomePage() {
             badge={stats.selfAssessmentsPending > 0 ? "Action needed" : undefined}
             badgeClass="bg-amber-50 text-amber-700"
           />
-        ) : (
+        ) : profile?.role === "ADMIN" || profile?.role === "HR" ? (
           <LinkCard
             href="/appraisal/cycles/new"
             icon={Plus}
@@ -444,6 +444,15 @@ export default function AppraisalHomePage() {
             iconColor="text-indigo-600 dark:text-indigo-400"
             title="Start New Cycle"
             subtitle="Set timeline and launch goal setting"
+          />
+        ) : (
+          <LinkCard
+            href="#my-goals"
+            icon={ListChecks}
+            iconBg="bg-indigo-50 dark:bg-indigo-950/60"
+            iconColor="text-indigo-600 dark:text-indigo-400"
+            title="Awaiting Cycle Launch"
+            subtitle="HR or Admin will open the next appraisal cycle soon"
           />
         )}
         <LinkCard
@@ -973,8 +982,9 @@ function computeStats(data: HomeData | null): {
   const selfAssessmentsPending = data.assessments.filter(
     (a) =>
       a.type.toUpperCase().includes("SELF") &&
-      a.status !== "COMPLETED" &&
-      a.status !== "ACKNOWLEDGED"
+      a.status !== "SUBMITTED" &&
+      a.status !== "REVIEWED" &&
+      a.status !== "FINALISED"
   ).length;
 
   const latestRated = [...data.assessments]

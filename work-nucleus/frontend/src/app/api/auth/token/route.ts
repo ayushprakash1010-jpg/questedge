@@ -1,6 +1,8 @@
 import { auth0 } from "@/lib/auth0";
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const { token } = await auth0.getAccessToken();

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
-import { getApiUrl, getProxyHeaders } from "@/lib/api-url";
+import { forwardUpstreamResponse, getApiUrl, getProxyHeaders } from "@/lib/api-url";
 
-const API_URL = getApiUrl();
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,18 +13,16 @@ export async function POST(req: NextRequest) {
     const { token: accessToken } = await auth0.getAccessToken();
     const body = await req.json();
 
-    const res = await fetch(`${API_URL}/api/v1/candidate/profile/parse-resume`, {
+    const res = await fetch(`${getApiUrl()}/api/v1/candidate/profile/parse-resume`, {
       method: "POST",
       headers: getProxyHeaders(req, accessToken, "application/json"),
       body: JSON.stringify(body),
     });
 
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
-  } catch (error: any) {
-    console.error("Error in /api/resume-ranking/parse-resume proxy:", error);
+    return forwardUpstreamResponse(res, "Failed to parse resume text");
+  } catch {
     return NextResponse.json(
-      { error: error?.message || "Failed to parse resume text" },
+      { error: "Failed to parse resume text" },
       { status: 500 }
     );
   }

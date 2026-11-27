@@ -384,9 +384,21 @@ export class FeedbackService {
 
     const rawKey = this.config.get<string>('GEMINI_API_KEY');
     const trimmedKey = rawKey ? rawKey.trim() : null;
+    const isProd = this.config.get<string>('NODE_ENV') === 'production';
     let scoreResult: any = {};
     if (!trimmedKey) {
-      scoreResult = { score: 85, reasoning: 'Mock score' };
+      if (isProd) {
+        throw new BadRequestException('AI scoring is unavailable: GEMINI_API_KEY not configured');
+      }
+      const avgRating =
+        feedbacks.reduce((sum, f) => sum + f.overallRating, 0) / feedbacks.length;
+      scoreResult = {
+        score: Math.round((avgRating / 5) * 100),
+        reasoning: 'Calculated from average interviewer ratings (offline mode).',
+        confidence: 'LOW',
+        breakdown: [],
+        keyFactors: ['Average interviewer rating'],
+      };
     } else {
       const { GoogleGenAI } = require('@google/genai');
       const ai = new GoogleGenAI({ apiKey: trimmedKey });
@@ -430,7 +442,7 @@ export class FeedbackService {
         scoringWeights,
       };
 
-      const prompt = `Calculate a final objective score (0-100) for this candidate based on the feedback and scoring weights. Return JSON with a "score" number and "reasoning" string. Context: ${JSON.stringify(payload)}`;
+      const prompt = `Calculate a final objective score (0-100) for this candidate based on the feedback and scoring weights. Return JSON with: "score" (number 0-100), "confidence" ("HIGH"|"MEDIUM"|"LOW"), "reasoning" (string), "breakdown" (array of { "category", "score" (1-5), "weight" (number), "weightedScore" (number) }), and "keyFactors" (array of concise factor strings). Context: ${JSON.stringify(payload)}`;
       const model =
         this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
       const startedAtMs = Date.now();

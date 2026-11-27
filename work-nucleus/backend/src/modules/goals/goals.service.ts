@@ -20,17 +20,38 @@ export class GoalsService {
     userRole: Role,
     dto: CreateGoalDto,
   ) {
+    const isHrOrAdmin = userRole === Role.ADMIN || userRole === Role.HR;
     if (
       dto.employeeId !== userId &&
-      userRole !== Role.ADMIN &&
-      userRole !== Role.HR &&
+      !isHrOrAdmin &&
       userRole !== Role.HIRING_MANAGER
     ) {
       throw new ForbiddenException(
         'Only ADMIN, HR, or HIRING_MANAGER can create goals for another employee',
       );
     }
+    if (dto.employeeId === dto.managerId && !isHrOrAdmin) {
+      throw new ForbiddenException(
+        'You cannot assign yourself as your own goal reviewer/manager',
+      );
+    }
     await this.assertCycleInOrg(orgId, dto.cycleId);
+    const memberIds = Array.from(new Set([dto.employeeId, dto.managerId]));
+    const memberCount = await this.prisma.user.count({
+      where: { id: { in: memberIds }, orgId, isActive: true },
+    });
+    if (memberCount !== memberIds.length) {
+      throw new NotFoundException('Employee or manager not found in organization');
+    }
+    if (dto.alignedToOrgGoalId) {
+      const orgGoal = await this.prisma.orgGoal.findFirst({
+        where: { id: dto.alignedToOrgGoalId, orgId },
+        select: { id: true },
+      });
+      if (!orgGoal) {
+        throw new NotFoundException('Aligned org goal not found in organization');
+      }
+    }
     await this.assertWeightCapacity(dto.cycleId, dto.employeeId, dto.weight);
     return this.prisma.goal.create({ data: { ...dto } });
   }
@@ -91,17 +112,10 @@ export class GoalsService {
     if (!isHrOrAdmin && !isManager && !isEmployee) {
       throw new ForbiddenException('You are not authorized to update this goal');
     }
-    if (isEmployee && !isManager && !isHrOrAdmin) {
-      if (
-        dto.managerRating !== undefined ||
-        dto.managerComment !== undefined ||
-        dto.managerId !== undefined ||
-        dto.employeeId !== undefined
-      ) {
-        throw new ForbiddenException(
-          'Employees cannot modify manager ratings, comments, or ownership',
-        );
-      }
+    if ((isEmployee && !isHrOrAdmin) && (dto.managerRating !== undefined || dto.managerComment !== undefined || dto.managerId !== undefined || dto.employeeId !== undefined)) {
+      throw new ForbiddenException(
+        'Employees cannot modify manager ratings, comments, or ownership on their own goals',
+      );
     }
     if (dto.weight !== undefined && dto.weight !== goal.weight) {
       await this.assertWeightCapacity(
@@ -119,11 +133,11 @@ export class GoalsService {
       where: { id, cycle: { orgId } },
     });
     if (!g) throw new NotFoundException('Goal not found');
-    if (
-      g.managerId !== userId &&
-      userRole !== Role.ADMIN &&
-      userRole !== Role.HR
-    ) {
+    const isHrOrAdmin = userRole === Role.ADMIN || userRole === Role.HR;
+    if (g.employeeId === userId && !isHrOrAdmin) {
+      throw new ForbiddenException('Employees cannot self-approve their own goals');
+    }
+    if (g.managerId !== userId && !isHrOrAdmin) {
       throw new ForbiddenException(
         'Only the assigned manager, ADMIN, or HR can agree to a goal',
       );

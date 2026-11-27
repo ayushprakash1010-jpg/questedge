@@ -18,9 +18,11 @@ export class NotificationsController {
     @Query('unreadOnly') unreadOnly?: string,
     @Query('type') type?: string,
   ) {
+    const safePage = Math.max(1, parseInt(page || '1', 10) || 1);
+    const safeLimit = Math.min(100, Math.max(1, parseInt(limit || '20', 10) || 20));
     return this.notificationsService.findAll(user, {
-      page: page ? parseInt(page, 10) : undefined,
-      limit: limit ? parseInt(limit, 10) : undefined,
+      page: safePage,
+      limit: safeLimit,
       unreadOnly: unreadOnly === 'true',
       type,
     });
@@ -35,7 +37,10 @@ export class NotificationsController {
   @Post('mark-read')
   @ApiOperation({ summary: 'Mark specific notifications as read' })
   markAsRead(@CurrentUser() user: any, @Body() body: { ids: string[] }) {
-    return this.notificationsService.markAsRead(user, body.ids || []);
+    const safeIds = Array.isArray(body?.ids)
+      ? body.ids.filter((id) => typeof id === 'string' && id.length <= 128).slice(0, 100)
+      : [];
+    return this.notificationsService.markAsRead(user, safeIds);
   }
 
   @Post('mark-all-read')

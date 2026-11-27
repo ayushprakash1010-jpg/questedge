@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BrandLoader } from "@/components/ui/brand-loader";
 import { Progress } from "@/components/ui/progress";
+import { readResponseError } from "@/lib/api";
 
 interface CostByType {
   type: string;
@@ -130,47 +131,44 @@ function formatCurrency(amountRupees: number): string {
 export default function BgvCostReportPage() {
   const [data, setData] = useState<CostReportData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<"all" | "30d" | "90d" | "365d">("all");
 
-  useEffect(() => {
-    async function fetchCost() {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams();
-        if (timeRange !== "all") {
-          const now = new Date();
-          const days = timeRange === "30d" ? 30 : timeRange === "90d" ? 90 : 365;
-          const from = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-          params.set("from", from.toISOString());
-        }
-
-        const res = await fetch(`/api/v2/bgv/cost-report?${params.toString()}`);
-        if (res.ok) {
-          const json = await res.json();
-          setData(json);
-        } else {
-          // If no checks completed yet, set fallback zero state
-          setData({
-            currency: "INR",
-            totalPaise: 0,
-            totalRupees: 0,
-            byType: [],
-            candidatesCount: 0,
-          });
-        }
-      } catch {
-        setData({
-          currency: "INR",
-          totalPaise: 0,
-          totalRupees: 0,
-          byType: [],
-          candidatesCount: 0,
-        });
-      } finally {
-        setLoading(false);
+  const fetchCost = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (timeRange !== "all") {
+        const now = new Date();
+        const days = timeRange === "30d" ? 30 : timeRange === "90d" ? 90 : 365;
+        const from = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+        params.set("from", from.toISOString());
       }
+
+      const res = await fetch(`/api/v2/bgv/cost-report?${params.toString()}`);
+      if (!res.ok) {
+        throw new Error(await readResponseError(res, "Failed to load BGV cost report"));
+      }
+      const json = await res.json();
+      setData(json);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load BGV cost report");
+      setData({
+        currency: "INR",
+        totalPaise: 0,
+        totalRupees: 0,
+        byType: [],
+        candidatesCount: 0,
+      });
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
     fetchCost();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeRange]);
 
   const totalSpend = data?.totalRupees ?? 0;
@@ -270,6 +268,14 @@ export default function BgvCostReportPage() {
         <BrandLoader fullscreen={false} message="Loading BGV cost analytics..." />
       ) : (
         <>
+          {error && (
+            <div className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+              <span>{error}</span>
+              <Button variant="outline" size="sm" onClick={fetchCost}>
+                Retry
+              </Button>
+            </div>
+          )}
           {/* Top KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="border-slate-200">
@@ -333,13 +339,13 @@ export default function BgvCostReportPage() {
               <CardContent className="p-5 flex items-start justify-between">
                 <div>
                   <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Active Check Types
+                    Check Types Billed
                   </p>
                   <p className="text-2xl font-bold text-slate-900 mt-1">
                     {totalChecks}
                   </p>
                   <p className="text-xs text-slate-400 mt-1">
-                    Integrated vendor checks
+                    Distinct verified check types
                   </p>
                 </div>
                 <div className="h-10 w-10 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600">

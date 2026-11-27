@@ -34,12 +34,18 @@ export async function GET(req: NextRequest) {
       const text = await res.text().catch(() => "");
       console.error(`[API /profile] Backend returned ${res.status} from ${apiUrl}/api/v1/auth/me:`, text);
       return NextResponse.json(
-        { error: "Backend error", status: res.status, apiUrl, details: text },
+        { error: "Failed to load profile", status: res.status },
         { status: res.status }
       );
     }
 
-    const data = await res.json();
+    const data = await res.json().catch(() => null);
+    if (!data || typeof data !== "object") {
+      return NextResponse.json(
+        { error: "Unexpected upstream response format" },
+        { status: 502 }
+      );
+    }
     const email =
       !data.email || data.email.includes("@placeholder.com")
         ? session.user?.email || data.email
@@ -48,10 +54,9 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ ...data, email, name });
   } catch (err: any) {
-    const apiUrl = getApiUrl();
-    console.error(`[API /profile] Failed to connect to backend at ${apiUrl}:`, err);
+    console.error("[API /profile] Failed to connect to backend:", err?.message);
     return NextResponse.json(
-      { error: "Failed to connect to backend", apiUrl, details: err?.message },
+      { error: "Failed to connect to backend" },
       { status: 500 }
     );
   }

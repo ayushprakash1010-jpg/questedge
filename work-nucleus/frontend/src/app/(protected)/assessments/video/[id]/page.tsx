@@ -205,9 +205,9 @@ export default function InterviewerVideoRoomPage() {
             </div>
             <div className="text-xs text-slate-500">{interview.candidateProfile?.email}</div>
 
-            {interview.candidateProfile?.resumeUrl && (
+            {interview.candidateProfile?.resumeUrl && interview.candidateProfile?.id && (
               <a
-                href={interview.candidateProfile.resumeUrl}
+                href={`/resume-viewer?candidateId=${encodeURIComponent(interview.candidateProfile.id)}&name=${encodeURIComponent(interview.candidateProfile.name || "Candidate")}`}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline pt-1 font-semibold"

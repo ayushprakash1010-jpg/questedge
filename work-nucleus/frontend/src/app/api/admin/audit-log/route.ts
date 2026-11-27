@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
-import { getApiUrl, getDemoRoleHeader } from "@/lib/api-url";
+import {
+  forwardUpstreamResponse,
+  getApiUrl,
+  getDemoRoleHeader,
+} from "@/lib/api-url";
 
-const API_URL = getApiUrl();
+export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
@@ -12,12 +16,12 @@ export async function GET(req: NextRequest) {
 
     const params = new URLSearchParams(req.nextUrl.searchParams.toString());
 
-    const res = await fetch(`${API_URL}/api/v1/admin/audit-log?${params}`, {
+    const res = await fetch(`${getApiUrl()}/api/v1/admin/audit-log?${params}`, {
       headers: { Authorization: `Bearer ${accessToken}`, ...getDemoRoleHeader(req) },
+      cache: "no-store",
     });
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
+    return forwardUpstreamResponse(res, "Failed to load audit log");
   } catch {
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to load audit log" }, { status: 500 });
   }
 }

@@ -109,14 +109,21 @@ export class HireDetectionController {
   @Roles(Role.SUPPORT_REP, Role.SUPPORT_ADMIN, Role.ADMIN)
   @Get(['bypass-flags', 'support/bypass-flags'])
   async getBypassFlags(
+    @CurrentUser() user: any,
     @Query('orgId') orgId?: string,
     @Query('riskLevel') riskLevel?: string,
     @Query('isResolved') isResolved?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
+    const isPlatformRole =
+      user.role === Role.SUPPORT_REP || user.role === Role.SUPPORT_ADMIN;
+    const scopedOrgId = isPlatformRole ? orgId : user.orgId;
+    if (!isPlatformRole && !scopedOrgId) {
+      return { data: [], meta: { total: 0, page: 1, limit: 20, totalPages: 0 } };
+    }
     return this.hireDetection.getBypassFlags({
-      orgId,
+      orgId: scopedOrgId,
       riskLevel: riskLevel as any,
       isResolved: isResolved === 'true',
       limit: limit ? parseInt(limit) : undefined,
@@ -126,8 +133,10 @@ export class HireDetectionController {
 
   @Roles(Role.SUPPORT_REP, Role.SUPPORT_ADMIN, Role.ADMIN)
   @Get(['bypass-flags/stats', 'support/bypass-flags/stats'])
-  async getBypassStats() {
-    return this.hireDetection.getBypassStats();
+  async getBypassStats(@CurrentUser() user: any) {
+    const isPlatformRole =
+      user.role === Role.SUPPORT_REP || user.role === Role.SUPPORT_ADMIN;
+    return this.hireDetection.getBypassStats(isPlatformRole ? undefined : user.orgId);
   }
 
   @Roles(Role.SUPPORT_ADMIN)

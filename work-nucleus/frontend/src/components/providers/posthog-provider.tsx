@@ -24,13 +24,10 @@ function PostHogPageViewTracker() {
     }
   }, [pathname, searchParams]);
 
-  // Identify user in PostHog when logged in via Auth0
+  // Identify user in PostHog by opaque Auth0 subject ID only (avoid transmitting PII)
   useEffect(() => {
     if (user && user.sub) {
-      posthog.identify(user.sub, {
-        email: user.email,
-        name: user.name,
-      });
+      posthog.identify(user.sub);
     }
   }, [user]);
 
@@ -51,9 +48,12 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
         capture_pageleave: true,
         autocapture: true, // Automatically captures clicks, button interactions, form submits
         session_recording: {
-          maskAllInputs: false,
+          maskAllInputs: true,
+          maskTextSelector: "[data-ph-mask]",
           maskInputOptions: {
             password: true,
+            email: true,
+            tel: true,
           },
         },
       });

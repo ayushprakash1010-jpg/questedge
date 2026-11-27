@@ -2,10 +2,10 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ServiceUnavailableException,
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { spawnSync } from 'child_process';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateCodingChallengeDto, RunCodeDto, SubmitCodeDto } from '../dto';
 
@@ -140,6 +140,11 @@ export class CodingService {
   // ── Code Execution (Judge0) ───────────────────────────────────
 
   async runCode(token: string, dto: RunCodeDto) {
+    if (!this.isExecutionEnabled()) {
+      throw new ServiceUnavailableException(
+        'Live code execution is currently disabled until Judge0 sandbox credentials are configured.',
+      );
+    }
     const attempt = await this.prisma.assessmentAttempt.findFirst({
       where: { accessToken: token, status: { in: ['NOT_STARTED', 'IN_PROGRESS'] } },
     });
@@ -152,7 +157,7 @@ export class CodingService {
     }
 
     const challenge = await this.prisma.codingChallenge.findFirst({
-      where: { id: dto.challengeId },
+      where: { id: dto.challengeId, assessmentId: attempt.assessmentId },
     });
     if (!challenge) throw new NotFoundException('Challenge not found');
 
@@ -195,6 +200,11 @@ export class CodingService {
   }
 
   async submitCode(token: string, dto: SubmitCodeDto) {
+    if (!this.isExecutionEnabled()) {
+      throw new ServiceUnavailableException(
+        'Live code execution is currently disabled until Judge0 sandbox credentials are configured.',
+      );
+    }
     const attempt = await this.prisma.assessmentAttempt.findFirst({
       where: { accessToken: token, status: { in: ['NOT_STARTED', 'IN_PROGRESS'] } },
     });
@@ -207,7 +217,7 @@ export class CodingService {
     }
 
     const challenge = await this.prisma.codingChallenge.findFirst({
-      where: { id: dto.challengeId },
+      where: { id: dto.challengeId, assessmentId: attempt.assessmentId },
     });
     if (!challenge) throw new NotFoundException('Challenge not found');
 
@@ -240,6 +250,12 @@ export class CodingService {
     const allPassed = totalPassed === allTests.length;
     const status = allPassed ? 'PASSED' : totalPassed > 0 ? 'PARTIAL' : 'FAILED';
 
+    // Supersede any prior final submissions for this challenge so repeat clicks cannot stack scores
+    await this.prisma.codeSubmission.updateMany({
+      where: { attemptId: attempt.id, challengeId: dto.challengeId, isFinalSubmit: true },
+      data: { isFinalSubmit: false },
+    });
+
     const submission = await this.prisma.codeSubmission.create({
       data: {
         attemptId: attempt.id,
@@ -258,7 +274,7 @@ export class CodingService {
       },
     });
 
-    // Update attempt score (sum of all final submissions for this attempt)
+    // Update attempt score (sum of latest final submission per challenge)
     const allFinalSubmissions = await this.prisma.codeSubmission.findMany({
       where: { attemptId: attempt.id, isFinalSubmit: true },
     });
@@ -268,7 +284,7 @@ export class CodingService {
       _sum: { maxScore: true },
     });
     const maxScore = totalMaxScore._sum.maxScore || 100;
-    const percentage = (totalScore / maxScore) * 100;
+    const percentage = Math.min(100, (totalScore / maxScore) * 100);
 
     await this.prisma.assessmentAttempt.update({
       where: { id: attempt.id },
@@ -354,128 +370,23 @@ export class CodingService {
     return results;
   }
 
+  isExecutionEnabled(): boolean {
+    return Boolean(this.judge0ApiKey && this.judge0ApiKey.trim().length > 0);
+  }
+
   private async executeCode(
     sourceCode: string,
     languageId: number,
     stdin: string,
     timeLimitSeconds: number,
   ): Promise<Judge0Result> {
-    if (this.judge0ApiKey) {
-      try {
-        return await this.executeWithJudge0(sourceCode, languageId, stdin, timeLimitSeconds);
-      } catch (error) {
-        this.logger.warn(`Judge0 execution failed, using local sandbox: ${error.message}`);
-      }
+    if (!this.isExecutionEnabled()) {
+      throw new ServiceUnavailableException(
+        'Live code execution is currently disabled until Judge0 sandbox credentials are configured.',
+      );
     }
 
-    return this.executeLocalSandbox(sourceCode, languageId, stdin, timeLimitSeconds);
-  }
-
-  private executeLocalSandbox(
-    sourceCode: string,
-    languageId: number,
-    stdin: string,
-    timeLimitSeconds: number,
-  ): Judge0Result {
-    const startTime = Date.now();
-    const timeoutMs = Math.max(1, timeLimitSeconds) * 1000;
-
-    // Language 71 = Python (3.8+)
-    if (languageId === 71) {
-      const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
-      const res = spawnSync(pythonCmd, ['-c', sourceCode], {
-        input: stdin,
-        encoding: 'utf-8',
-        timeout: timeoutMs,
-        maxBuffer: 1024 * 1024,
-      });
-
-      const elapsed = ((Date.now() - startTime) / 1000).toFixed(3);
-
-      if (res.error && (res.error as any).code === 'ETIMEDOUT') {
-        return {
-          stdout: null,
-          stderr: 'Time Limit Exceeded',
-          compile_output: null,
-          status: { id: 5, description: 'Time Limit Exceeded' },
-          time: elapsed,
-          memory: 12000,
-        };
-      }
-
-      if (res.status !== 0) {
-        return {
-          stdout: res.stdout || null,
-          stderr: res.stderr || 'Runtime error',
-          compile_output: null,
-          status: { id: 11, description: 'Runtime Error (NZEC)' },
-          time: elapsed,
-          memory: 15000,
-        };
-      }
-
-      return {
-        stdout: res.stdout || '',
-        stderr: res.stderr || null,
-        compile_output: null,
-        status: { id: 3, description: 'Accepted' },
-        time: elapsed,
-        memory: 15000,
-      };
-    }
-
-    // Language 63 = Node.js JavaScript, Language 74 = TypeScript
-    if (languageId === 63 || languageId === 74) {
-      const res = spawnSync('node', ['-e', sourceCode], {
-        input: stdin,
-        encoding: 'utf-8',
-        timeout: timeoutMs,
-        maxBuffer: 1024 * 1024,
-      });
-
-      const elapsed = ((Date.now() - startTime) / 1000).toFixed(3);
-
-      if (res.error && (res.error as any).code === 'ETIMEDOUT') {
-        return {
-          stdout: null,
-          stderr: 'Time Limit Exceeded',
-          compile_output: null,
-          status: { id: 5, description: 'Time Limit Exceeded' },
-          time: elapsed,
-          memory: 20000,
-        };
-      }
-
-      if (res.status !== 0) {
-        return {
-          stdout: res.stdout || null,
-          stderr: res.stderr || 'Runtime error',
-          compile_output: null,
-          status: { id: 11, description: 'Runtime Error (NZEC)' },
-          time: elapsed,
-          memory: 25000,
-        };
-      }
-
-      return {
-        stdout: res.stdout || '',
-        stderr: res.stderr || null,
-        compile_output: null,
-        status: { id: 3, description: 'Accepted' },
-        time: elapsed,
-        memory: 25000,
-      };
-    }
-
-    // Fallback for other languages when Judge0 API key is not configured
-    return {
-      stdout: null,
-      stderr: `Live execution for this language requires JUDGE0_API_KEY. Python (3.8+) and JavaScript (Node.js) are supported with the built-in execution sandbox.`,
-      compile_output: null,
-      status: { id: 6, description: 'Compilation Error' },
-      time: '0.000',
-      memory: 0,
-    };
+    return this.executeWithJudge0(sourceCode, languageId, stdin, timeLimitSeconds);
   }
 
   private async executeWithJudge0(

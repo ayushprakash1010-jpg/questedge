@@ -3,6 +3,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ESignProvider, ESignStatus, OfferStatus } from '@prisma/client';
 import { FileUploadService } from '../../file-upload/file-upload.service';
@@ -60,10 +61,15 @@ export class OfferESignService {
 
     let pdfBuffer: Buffer;
     try {
-      pdfBuffer = await this.fileUpload.getFileBuffer(s3Key);
+      pdfBuffer = await this.render.getBuffer(s3Key);
     } catch (err) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new ServiceUnavailableException(
+          'Rendered offer document could not be fetched from storage for e-sign dispatch',
+        );
+      }
       this.logger.warn(
-        `Could not fetch doc buffer (${err}); using placeholder`,
+        `Could not fetch doc buffer (${err}); using dev placeholder`,
       );
       pdfBuffer = Buffer.from(`Offer ${offerId}`, 'utf-8');
     }

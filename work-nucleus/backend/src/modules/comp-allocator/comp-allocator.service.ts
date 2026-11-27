@@ -250,18 +250,30 @@ export class CompAllocatorService {
     });
     const map = new Map(existing.map((r) => [r.employeeId, r]));
 
-    return assessments.map((a) => {
+    const missingCompIds: string[] = [];
+    const enriched = assessments.map((a) => {
       const prior = map.get(a.employeeId);
+      if (!prior) {
+        missingCompIds.push(a.employeeId);
+      }
       const scope = prior?.scopeKey ? parseScopeKey(prior.scopeKey) : {};
       return {
         employeeId: a.employeeId,
         rating: a.finalRating ? Number(a.finalRating) : 3,
-        currentFixed: prior ? Number(prior.currentFixed) : 1_000_000,
+        currentFixed: prior ? Number(prior.currentFixed) : 0,
         currentVariable: prior ? Number(prior.currentVariable) : 0,
         scope,
         retentionRiskTier: prior?.retentionTier ?? undefined,
       };
     });
+
+    if (missingCompIds.length > 0) {
+      throw new BadRequestException(
+        `Missing baseline compensation (currentFixed) for employee(s): ${missingCompIds.slice(0, 5).join(', ')}`,
+      );
+    }
+
+    return enriched;
   }
 
   private toBudgetMatrix(budget: {

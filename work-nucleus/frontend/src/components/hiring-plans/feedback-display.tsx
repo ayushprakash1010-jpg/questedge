@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { toast } from "@/components/ui/toaster";
+import { readResponseError } from "@/lib/api";
 import {
   Star, ChevronDown, ChevronUp, MessageSquare, Brain,
   BarChart3, RefreshCw, AlertTriangle, CheckCircle2, XCircle,
@@ -136,9 +138,12 @@ export function FeedbackDisplay({
       if (res.ok) {
         const data = await res.json();
         setSummary(data);
+        toast.success("AI summary generated");
+      } else {
+        toast.error(await readResponseError(res, "Failed to generate AI summary"));
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate AI summary");
     } finally {
       setSummarizing(false);
     }
@@ -154,9 +159,12 @@ export function FeedbackDisplay({
       if (res.ok) {
         const data = await res.json();
         setScore(data);
+        toast.success("AI score calculated");
+      } else {
+        toast.error(await readResponseError(res, "Failed to calculate AI score"));
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to calculate AI score");
     } finally {
       setScoring(false);
     }
@@ -362,25 +370,29 @@ export function FeedbackDisplay({
               </div>
 
               <div className="flex gap-2">
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "text-xs",
-                    summary.recommendation === "hire"
-                      ? "bg-green-50 text-green-700"
-                      : summary.recommendation === "conditional_hire"
-                        ? "bg-amber-50 text-amber-700"
-                        : "bg-red-50 text-red-700"
-                  )}
-                >
-                  {summary.recommendation.replace("_", " ").toUpperCase()}
-                </Badge>
-                <Badge variant="outline" className="text-xs">
-                  Confidence: {summary.confidence}
-                </Badge>
+                {summary.recommendation && (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-xs",
+                      summary.recommendation === "hire"
+                        ? "bg-green-50 text-green-700"
+                        : summary.recommendation === "conditional_hire"
+                          ? "bg-amber-50 text-amber-700"
+                          : "bg-red-50 text-red-700"
+                    )}
+                  >
+                    {summary.recommendation.replace(/_/g, " ").toUpperCase()}
+                  </Badge>
+                )}
+                {summary.confidence && (
+                  <Badge variant="outline" className="text-xs">
+                    Confidence: {summary.confidence}
+                  </Badge>
+                )}
               </div>
 
-              {summary.keyStrengths.length > 0 && (
+              {(summary.keyStrengths?.length ?? 0) > 0 && (
                 <div>
                   <p className="text-xs font-medium text-green-700">Key Strengths</p>
                   <ul className="mt-1 space-y-1">
@@ -394,7 +406,7 @@ export function FeedbackDisplay({
                 </div>
               )}
 
-              {summary.areasOfConcern.length > 0 && (
+              {(summary.areasOfConcern?.length ?? 0) > 0 && (
                 <div>
                   <p className="text-xs font-medium text-red-700">Areas of Concern</p>
                   <ul className="mt-1 space-y-1">
@@ -408,7 +420,7 @@ export function FeedbackDisplay({
                 </div>
               )}
 
-              {summary.riskFactors.length > 0 && (
+              {(summary.riskFactors?.length ?? 0) > 0 && (
                 <div>
                   <p className="text-xs font-medium text-amber-700">Risk Factors</p>
                   <ul className="mt-1 space-y-1">
@@ -462,13 +474,15 @@ export function FeedbackDisplay({
                 </span>
                 <div>
                   <p className="text-sm text-slate-600">out of 100</p>
-                  <Badge variant="outline" className="text-xs">
-                    Confidence: {score.confidence}
-                  </Badge>
+                  {score.confidence && (
+                    <Badge variant="outline" className="text-xs">
+                      Confidence: {score.confidence}
+                    </Badge>
+                  )}
                 </div>
               </div>
 
-              {score.breakdown.length > 0 && (
+              {(score.breakdown?.length ?? 0) > 0 && (
                 <div className="space-y-2">
                   {score.breakdown.map((b) => (
                     <div key={b.category}>
@@ -492,7 +506,11 @@ export function FeedbackDisplay({
                 </div>
               )}
 
-              {score.keyFactors.length > 0 && (
+              {(score as any).reasoning && (
+                <p className="text-xs text-slate-600 leading-relaxed">{(score as any).reasoning}</p>
+              )}
+
+              {(score.keyFactors?.length ?? 0) > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {score.keyFactors.map((f, i) => (
                     <Badge key={i} variant="secondary" className="text-xs">

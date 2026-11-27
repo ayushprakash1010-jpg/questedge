@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
+import { PrismaService } from '../../../prisma/prisma.service';
 
 export interface SignalMessage {
   id: number;
@@ -14,21 +15,54 @@ interface RoomSignalState {
   messages: SignalMessage[];
 }
 
+const MAX_ROOMS = 500;
+const ALLOWED_SENDERS = new Set(['interviewer', 'candidate']);
+const ALLOWED_TYPES = new Set(['ready', 'offer', 'answer', 'candidate', 'bye', 'chat']);
+
 @Injectable()
 export class WebRtcSignalingService {
   private readonly logger = new Logger(WebRtcSignalingService.name);
   private rooms = new Map<string, RoomSignalState>();
 
-  constructor() {
+  constructor(@Optional() private readonly prisma?: PrismaService) {
     // Periodically clean up inactive rooms (> 2 hours old)
     const timer = setInterval(() => this.cleanup(), 10 * 60 * 1000);
     if (timer.unref) timer.unref();
   }
 
-  sendSignal(roomId: string, sender: string, type: string, payload: any): { ok: boolean; id: number } {
-    const cleanRoom = roomId.toLowerCase().trim();
+  private async assertValidRoom(cleanRoom: string) {
+    if (!cleanRoom || !/^[a-z0-9_-]{4,80}$/.test(cleanRoom)) {
+      throw new BadRequestException('Invalid video room identifier');
+    }
+    if (this.prisma && !this.rooms.has(cleanRoom)) {
+      const exists = await this.prisma.videoInterview.findFirst({
+        where: {
+          roomName: cleanRoom,
+          status: { notIn: ['CANCELLED', 'COMPLETED'] },
+        },
+        select: { id: true },
+      });
+      if (!exists) {
+        throw new NotFoundException('Active video room not found');
+      }
+    }
+  }
+
+  async sendSignal(roomId: string, sender: string, type: string, payload: any): Promise<{ ok: boolean; id: number }> {
+    if (!ALLOWED_SENDERS.has(sender) || !ALLOWED_TYPES.has(type)) {
+      throw new BadRequestException('Invalid signal sender or type');
+    }
+    const cleanRoom = (roomId || '').toLowerCase().trim();
+    await this.assertValidRoom(cleanRoom);
     let room = this.rooms.get(cleanRoom);
     if (!room) {
+      if (this.rooms.size >= MAX_ROOMS) {
+        this.cleanup();
+        if (this.rooms.size >= MAX_ROOMS) {
+          const oldestKey = this.rooms.keys().next().value;
+          if (oldestKey) this.rooms.delete(oldestKey);
+        }
+      }
       room = { lastActive: Date.now(), seq: 0, messages: [] };
       this.rooms.set(cleanRoom, room);
     }

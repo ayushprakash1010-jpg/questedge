@@ -1,4 +1,73 @@
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
+
+export function isValidId(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= 128 &&
+    /^[a-zA-Z0-9_-]+$/.test(value)
+  );
+}
+
+export async function forwardUpstreamResponse(
+  upstream: Response,
+  fallbackError = "Upstream request failed",
+): Promise<NextResponse> {
+  if (
+    upstream.status === 204 ||
+    upstream.status === 205 ||
+    upstream.status === 304
+  ) {
+    return new NextResponse(null, { status: upstream.status });
+  }
+
+  const contentType = upstream.headers.get("content-type") || "";
+  if (
+    contentType &&
+    !contentType.includes("application/json") &&
+    !contentType.startsWith("text/")
+  ) {
+    const buf = await upstream.arrayBuffer();
+    return new NextResponse(buf, {
+      status: upstream.status,
+      headers: {
+        "content-type": contentType,
+        ...(upstream.headers.get("content-disposition")
+          ? {
+              "content-disposition": upstream.headers.get(
+                "content-disposition",
+              )!,
+            }
+          : {}),
+      },
+    });
+  }
+
+  const text = await upstream.text().catch(() => "");
+  if (!text) {
+    return new NextResponse(null, { status: upstream.status });
+  }
+
+  try {
+    const data = JSON.parse(text);
+    return NextResponse.json(data, { status: upstream.status });
+  } catch {
+    if (upstream.ok && contentType.startsWith("text/")) {
+      return new NextResponse(text, {
+        status: upstream.status,
+        headers: { "content-type": contentType },
+      });
+    }
+    return NextResponse.json(
+      {
+        error: upstream.ok
+          ? "Unexpected upstream response format"
+          : text.slice(0, 300) || upstream.statusText || fallbackError,
+      },
+      { status: upstream.status || 502 },
+    );
+  }
+}
 
 /**
  * Returns the backend API base URL for server-side usage.

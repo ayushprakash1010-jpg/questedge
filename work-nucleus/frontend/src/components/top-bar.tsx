@@ -65,11 +65,7 @@ export function TopBar() {
   const PortalIcon = config.PortalIcon;
   const breadcrumb = resolveNavContext(portalRole, pathname || "/dashboard", searchString);
 
-  const isDemo =
-    Boolean((profile as any)?.isDemoAccount) ||
-    user?.email?.toLowerCase() === "growytvercel@gmail.com" ||
-    user?.name?.toLowerCase() === "growytvercel@gmail.com" ||
-    displayName?.toLowerCase() === "growytvercel@gmail.com";
+  const isDemo = Boolean((profile as any)?.isDemoAccount);
 
   const isSuperAdmin =
     profile?.role === "SUPPORT_ADMIN" ||
@@ -121,6 +117,7 @@ export function TopBar() {
             type="button"
             onClick={shell.toggleMobileOpen}
             aria-label="Open navigation menu"
+            aria-expanded={shell.isMobileOpen}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 lg:hidden dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
           >
             <Menu className="h-4 w-4" />

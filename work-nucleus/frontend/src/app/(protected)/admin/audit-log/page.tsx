@@ -110,9 +110,15 @@ export default function AuditLogPage() {
           <option value="ORG_SETTINGS">Org Settings</option>
           <option value="MANDATE">Mandate</option>
           <option value="OFFER">Offer</option>
+          <option value="OFFER_APPROVAL">Offer Approval</option>
           <option value="BGV_PROFILE">BGV Profile</option>
+          <option value="BGV_CHECK">BGV Check</option>
+          <option value="APPRAISAL_CYCLE">Appraisal Cycle</option>
+          <option value="GOAL">Goal</option>
+          <option value="COMP_REVISION">Comp Revision</option>
           <option value="TRAINING_MODULE">Training</option>
-          <option value="REPORT">Report</option>
+          <option value="REPORT_DEFINITION">Report Definition</option>
+          <option value="REWARD_TRACKING">Reward Dispute</option>
           <option value="REWARD">Reward</option>
         </Select>
         <Input

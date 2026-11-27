@@ -1,25 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getApiUrl } from "@/lib/api-url";
+import { forwardUpstreamResponse, getApiUrl, isValidId } from "@/lib/api-url";
 
-const API_URL = getApiUrl();
+export const dynamic = "force-dynamic";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: { slug: string } }
 ) {
   try {
+    if (!isValidId(params.slug)) {
+      return NextResponse.json({ error: "Invalid job slug" }, { status: 400 });
+    }
     const formData = await req.formData();
 
     const res = await fetch(
-      `${API_URL}/api/v1/public/jobs/${params.slug}/apply`,
+      `${getApiUrl()}/api/v1/public/jobs/${encodeURIComponent(params.slug)}/apply`,
       {
         method: "POST",
         body: formData,
       }
     );
 
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
+    return forwardUpstreamResponse(res, "Failed to submit application");
   } catch {
     return NextResponse.json(
       { error: "Failed to submit application" },

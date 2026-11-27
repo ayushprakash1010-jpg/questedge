@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from '../../auth/decorators/public.decorator';
 import { SubmitDocumentDto } from './dto/submit-document.dto';
@@ -14,6 +23,16 @@ export class JoiningPublicController {
   @ApiOperation({ summary: 'Fetch joining record by candidate token' })
   get(@Param('token') token: string) {
     return this.service.findByToken(token);
+  }
+
+  @Post(':token/upload')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Upload an onboarding document for a checklist item' })
+  upload(
+    @Param('token') token: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.service.uploadDocument(token, file);
   }
 
   @Post(':token/submit')

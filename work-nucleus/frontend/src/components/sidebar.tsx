@@ -615,6 +615,17 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
     shell?.setMobileOpen(false);
   }, [shell]);
 
+  useEffect(() => {
+    if (!isMobileOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        closeMobile();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isMobileOpen, closeMobile]);
+
   const isSectionCollapsed = useCallback(
     (title: string) => {
       if (shell) return shell.isSectionCollapsed(title);

@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
-import { getApiUrl, getProxyHeaders } from "@/lib/api-url";
+import {
+  forwardUpstreamResponse,
+  getApiUrl,
+  getProxyHeaders,
+  isValidId,
+} from "@/lib/api-url";
 
-const API_URL = getApiUrl();
+export const dynamic = "force-dynamic";
 
 // GET /api/applications/:appId/feedback — get all feedback for application
 // GET /api/applications/:appId/feedback?matrix=true — get skill matrix
@@ -11,22 +16,26 @@ export async function GET(
   { params }: { params: { appId: string } }
 ) {
   try {
+    if (!isValidId(params.appId)) {
+      return NextResponse.json({ error: "Invalid application ID" }, { status: 400 });
+    }
     const session = await auth0.getSession();
     if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     const { token: accessToken } = await auth0.getAccessToken();
 
+    const appId = encodeURIComponent(params.appId);
     const isMatrix = req.nextUrl.searchParams.get("matrix") === "true";
     const endpoint = isMatrix
-      ? `${API_URL}/api/v1/applications/${params.appId}/feedback/matrix`
-      : `${API_URL}/api/v1/applications/${params.appId}/feedback`;
+      ? `${getApiUrl()}/api/v1/applications/${appId}/feedback/matrix`
+      : `${getApiUrl()}/api/v1/applications/${appId}/feedback`;
 
     const res = await fetch(endpoint, {
       headers: getProxyHeaders(req, accessToken),
+      cache: "no-store",
     });
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
+    return forwardUpstreamResponse(res, "Failed to fetch feedback");
   } catch {
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch feedback" }, { status: 500 });
   }
 }
 
@@ -39,35 +48,42 @@ export async function POST(
   { params }: { params: { appId: string } }
 ) {
   try {
+    if (!isValidId(params.appId)) {
+      return NextResponse.json({ error: "Invalid application ID" }, { status: 400 });
+    }
     const session = await auth0.getSession();
     if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     const { token: accessToken } = await auth0.getAccessToken();
 
+    const apiUrl = getApiUrl();
+    const appId = encodeURIComponent(params.appId);
     const action = req.nextUrl.searchParams.get("action");
 
     let endpoint: string;
     let body: string | undefined;
 
     if (action === "summarize") {
-      endpoint = `${API_URL}/api/v1/applications/${params.appId}/feedback/summarize`;
+      endpoint = `${apiUrl}/api/v1/applications/${appId}/feedback/summarize`;
     } else if (action === "score") {
-      endpoint = `${API_URL}/api/v1/applications/${params.appId}/score`;
+      endpoint = `${apiUrl}/api/v1/applications/${appId}/score`;
     } else if (action === "submit") {
       const feedbackId = req.nextUrl.searchParams.get("feedbackId");
-      endpoint = `${API_URL}/api/v1/feedback/${feedbackId}/submit`;
+      if (!isValidId(feedbackId) || feedbackId === "null" || feedbackId === "undefined") {
+        return NextResponse.json({ error: "Invalid feedbackId" }, { status: 400 });
+      }
+      endpoint = `${apiUrl}/api/v1/feedback/${encodeURIComponent(feedbackId)}/submit`;
     } else {
-      endpoint = `${API_URL}/api/v1/applications/${params.appId}/feedback`;
+      endpoint = `${apiUrl}/api/v1/applications/${appId}/feedback`;
       body = JSON.stringify(await req.json());
     }
 
     const res = await fetch(endpoint, {
       method: "POST",
-      headers: getProxyHeaders(req, accessToken, "application/json"),
+      headers: getProxyHeaders(req, accessToken, body ? "application/json" : undefined),
       ...(body ? { body } : {}),
     });
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
+    return forwardUpstreamResponse(res, "Failed to process feedback");
   } catch {
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to process feedback" }, { status: 500 });
   }
 }

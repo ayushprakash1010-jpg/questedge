@@ -15,6 +15,7 @@ import {
   Mail,
   Video,
 } from "lucide-react";
+import { fetchCodingExecutionStatus } from "@/lib/assessment-api";
 
 interface PublicAssessmentInfo {
   id: string;
@@ -41,14 +42,20 @@ export default function PublicAssessmentRegistrationPage() {
   const [email, setEmail] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
   const [regError, setRegError] = useState<string | null>(null);
+  const [codingEnabled, setCodingEnabled] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/v2/assessment-take/public/${assessmentId}`)
-      .then(async (res) => {
+    Promise.all([
+      fetch(`/api/v2/assessment-take/public/${assessmentId}`).then(async (res) => {
         if (!res.ok) throw new Error("Assessment not found or no longer available.");
         return res.json();
+      }),
+      fetchCodingExecutionStatus(),
+    ])
+      .then(([data, status]) => {
+        setCodingEnabled(status.enabled);
+        setInfo(data);
       })
-      .then((data) => setInfo(data))
       .catch((err) => setError(err.message || "Failed to load assessment"))
       .finally(() => setIsLoading(false));
   }, [assessmentId]);
@@ -96,21 +103,26 @@ export default function PublicAssessmentRegistrationPage() {
     );
   }
 
-  if (error || !info) {
+  if (error || !info || (info.type === "CODING" && !codingEnabled)) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl border border-rose-200 p-8 max-w-md w-full text-center shadow-lg">
           <AlertTriangle className="h-10 w-10 text-rose-500 mx-auto mb-3" />
           <h2 className="text-lg font-bold text-slate-900 mb-2">Assessment Unavailable</h2>
-          <p className="text-sm text-slate-500">{error || "This assessment link is no longer active."}</p>
+          <p className="text-sm text-slate-500">
+            {info?.type === "CODING" && !codingEnabled
+              ? "Live coding evaluations are temporarily unavailable while compiler infrastructure is offline."
+              : error || "This assessment link is no longer active."}
+          </p>
         </div>
       </div>
     );
   }
 
-  const typeIcon = info.type === "CODING" ? <Code2 className="h-5 w-5" /> : info.type === "VIDEO" ? <Video className="h-5 w-5" /> : <FileQuestion className="h-5 w-5" />;
-  const typeLabel = info.type === "CODING" ? "Coding Challenge" : info.type === "VIDEO" ? "Video Interview" : "MCQ / Quiz";
-  const typeColor = info.type === "CODING" ? "text-blue-600 bg-blue-50 border-blue-200" : info.type === "VIDEO" ? "text-purple-600 bg-purple-50 border-purple-200" : "text-amber-600 bg-amber-50 border-amber-200";
+  const isVideoType = info.type === "VIDEO" || info.type === "VIDEO_INTERVIEW";
+  const typeIcon = info.type === "CODING" ? <Code2 className="h-5 w-5" /> : isVideoType ? <Video className="h-5 w-5" /> : <FileQuestion className="h-5 w-5" />;
+  const typeLabel = info.type === "CODING" ? "Coding Challenge" : isVideoType ? "Video Interview" : "MCQ / Quiz";
+  const typeColor = info.type === "CODING" ? "text-blue-600 bg-blue-50 border-blue-200" : isVideoType ? "text-purple-600 bg-purple-50 border-purple-200" : "text-amber-600 bg-amber-50 border-amber-200";
 
   const itemCount = info.type === "CODING" ? info._count.codingChallenges : info._count.questions;
   const itemLabel = info.type === "CODING" ? "Coding Problems" : "Questions";

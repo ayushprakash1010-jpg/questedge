@@ -46,7 +46,8 @@ export default function HRCandidateJoiningPage() {
       if (!res.ok) {
         throw new Error(await readResponseError(res, "Failed to load joining record"));
       }
-      const j = await res.json();
+      const text = await res.text();
+      const j = text ? JSON.parse(text) : null;
       setData(j ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load joining record");
@@ -67,6 +68,27 @@ export default function HRCandidateJoiningPage() {
       return;
     }
     await submitReview(itemKey, decision);
+  }
+
+  async function openSubmittedDoc(itemKey: string, fileUrl: string) {
+    if (!data) return;
+    if (/^https?:\/\//i.test(fileUrl)) {
+      window.open(fileUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+    try {
+      const res = await fetch(
+        `/api/v2/joining/${data.id}/documents/${encodeURIComponent(itemKey)}`
+      );
+      if (!res.ok) {
+        throw new Error(await readResponseError(res, "Unable to load document"));
+      }
+      const j = await res.json();
+      if (!j?.url) throw new Error("No document link returned");
+      window.open(j.url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Unable to load document");
+    }
   }
 
   async function submitReview(
@@ -155,10 +177,14 @@ export default function HRCandidateJoiningPage() {
                     {sub?.status === "SUBMITTED" ? (
                       <p className="text-xs text-slate-600">
                         Submitted ·{" "}
-                        {sub.fileUrl ? (
-                          <a className="text-blue-600 underline" href={sub.fileUrl} target="_blank" rel="noreferrer">
+                        {sub.fileUrl && !sub.fileUrl.startsWith("pending-upload://") ? (
+                          <button
+                            type="button"
+                            className="text-blue-600 underline"
+                            onClick={() => openSubmittedDoc(item.key, sub.fileUrl!)}
+                          >
                             view file
-                          </a>
+                          </button>
                         ) : (
                           "file pending"
                         )}

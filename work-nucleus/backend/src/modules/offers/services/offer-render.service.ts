@@ -24,23 +24,53 @@ export class OfferRenderService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {
-    this.bucket = this.config.get<string>(
-      'S3_OFFERS_BUCKET',
-      'questedge-offers',
+    this.bucket =
+      this.config.get<string>('S3_OFFERS_BUCKET') ||
+      this.config.get<string>('S3_BUCKET') ||
+      this.config.get<string>('AWS_BUCKET_NAME') ||
+      'questedge-offers';
+
+    const accessKeyId =
+      this.config.get<string>('S3_ACCESS_KEY') ||
+      this.config.get<string>('S3_ACCESS_KEY_ID') ||
+      this.config.get<string>('AWS_ACCESS_KEY_ID') ||
+      'minioadmin';
+
+    const secretAccessKey =
+      this.config.get<string>('S3_SECRET_KEY') ||
+      this.config.get<string>('S3_SECRET_ACCESS_KEY') ||
+      this.config.get<string>('AWS_SECRET_ACCESS_KEY') ||
+      'minioadmin';
+
+    const region =
+      this.config.get<string>('S3_REGION') ||
+      this.config.get<string>('AWS_REGION') ||
+      'us-east-1';
+
+    const customEndpoint = this.config.get<string>('S3_ENDPOINT');
+    const isAwsConfig = Boolean(
+      this.config.get<string>('AWS_REGION') ||
+        this.config.get<string>('AWS_ACCESS_KEY_ID'),
     );
-    this.s3 = new S3Client({
-      endpoint: this.config.get<string>('S3_ENDPOINT', 'http://localhost:9000'),
-      region: this.config.get<string>('S3_REGION', 'us-east-1'),
-      credentials: {
-        accessKeyId: this.config.get<string>('S3_ACCESS_KEY', 'minioadmin'),
-        secretAccessKey: this.config.get<string>('S3_SECRET_KEY', 'minioadmin'),
-      },
-      forcePathStyle: true,
-    });
+
+    const s3Config: any = {
+      region,
+      credentials: { accessKeyId, secretAccessKey },
+    };
+    if (customEndpoint) {
+      s3Config.endpoint = customEndpoint;
+      s3Config.forcePathStyle = true;
+    } else if (!isAwsConfig) {
+      s3Config.endpoint = 'http://localhost:9000';
+      s3Config.forcePathStyle = true;
+    }
+
+    this.s3 = new S3Client(s3Config);
   }
 
   async render(
     offerId: string,
+    customBody?: string,
   ): Promise<{ s3Key: string; pdfUrl: string; version: number }> {
     const offer = await this.prisma.offer.findUnique({
       where: { id: offerId },
@@ -73,6 +103,7 @@ export class OfferRenderService {
       org: { name: offer.organization.name },
       offer: {
         expiresAt: offer.expiresAt?.toISOString().slice(0, 10) ?? '',
+        body: customBody?.trim() ?? '',
       },
       compensation: offer.compensation
         ? {
@@ -85,7 +116,24 @@ export class OfferRenderService {
         : null,
     };
 
-    const bodyHtml = renderTemplate(offer.template.body, ctx);
+    const templateHasCustomSlot = /\{\{\s*offer\.body\s*\}\}/.test(
+      offer.template.body,
+    );
+    let bodyHtml = renderTemplate(offer.template.body, ctx);
+    if (customBody?.trim() && !templateHasCustomSlot) {
+      const renderedCustom = renderTemplate(
+        customBody
+          .trim()
+          .split(/\n{2,}/)
+          .map((p) => `<p>${p.replace(/\n/g, '<br />')}</p>`)
+          .join(''),
+        ctx,
+      );
+      const compHtml = offer.compensation
+        ? `<p><strong>Fixed Annual:</strong> ${offer.compensation.currency} ${offer.compensation.fixedAnnual.toString()} | <strong>Variable:</strong> ${offer.compensation.currency} ${offer.compensation.variableAnnual.toString()}</p>`
+        : '';
+      bodyHtml = `${renderedCustom}${compHtml}`;
+    }
     const html = buildOfferHtml({
       bodyHtml,
       branding: (offer.template.brandingJson as any) ?? {},
@@ -124,5 +172,29 @@ export class OfferRenderService {
   async signedUrl(s3Key: string, ttlSeconds = 86400): Promise<string> {
     const cmd = new GetObjectCommand({ Bucket: this.bucket, Key: s3Key });
     return getSignedUrl(this.s3, cmd, { expiresIn: ttlSeconds });
+  }
+
+  async uploadHtml(s3Key: string, html: string): Promise<string> {
+    await this.s3.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: s3Key,
+        Body: Buffer.from(html, 'utf-8'),
+        ContentType: 'text/html; charset=utf-8',
+      }),
+    );
+    return this.signedUrl(s3Key);
+  }
+
+  async getBuffer(s3Key: string): Promise<Buffer> {
+    const response = await this.s3.send(
+      new GetObjectCommand({ Bucket: this.bucket, Key: s3Key }),
+    );
+    const stream = response.Body as NodeJS.ReadableStream;
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks);
   }
 }

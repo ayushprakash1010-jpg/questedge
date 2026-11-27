@@ -38,7 +38,7 @@ import {
   DataTableRow,
 } from "@/components/shared/data-table";
 import { cn } from "@/lib/utils";
-import { readResponseError } from "@/lib/api";
+import { apiClient, readResponseError } from "@/lib/api";
 
 interface Application {
   id: string;
@@ -147,35 +147,35 @@ const KANBAN_COLUMNS: {
   borderClass: string;
   bgClass: string;
 }[] = [
-  {
-    id: "ACTIVE",
-    title: "Applied / Active",
-    badgeClass: "bg-blue-100 text-blue-800",
-    borderClass: "border-blue-200",
-    bgClass: "bg-blue-50/30",
-  },
-  {
-    id: "ON_HOLD",
-    title: "On Hold",
-    badgeClass: "bg-amber-100 text-amber-800",
-    borderClass: "border-amber-200",
-    bgClass: "bg-amber-50/30",
-  },
-  {
-    id: "SELECTED",
-    title: "Selected / Offer",
-    badgeClass: "bg-emerald-100 text-emerald-800",
-    borderClass: "border-emerald-200",
-    bgClass: "bg-emerald-50/30",
-  },
-  {
-    id: "REJECTED",
-    title: "Rejected",
-    badgeClass: "bg-rose-100 text-rose-800",
-    borderClass: "border-rose-200",
-    bgClass: "bg-rose-50/30",
-  },
-];
+    {
+      id: "ACTIVE",
+      title: "Applied / Active",
+      badgeClass: "bg-blue-100 text-blue-800",
+      borderClass: "border-blue-200",
+      bgClass: "bg-blue-50/30",
+    },
+    {
+      id: "ON_HOLD",
+      title: "On Hold",
+      badgeClass: "bg-amber-100 text-amber-800",
+      borderClass: "border-amber-200",
+      bgClass: "bg-amber-50/30",
+    },
+    {
+      id: "SELECTED",
+      title: "Selected / Offer",
+      badgeClass: "bg-emerald-100 text-emerald-800",
+      borderClass: "border-emerald-200",
+      bgClass: "bg-emerald-50/30",
+    },
+    {
+      id: "REJECTED",
+      title: "Rejected",
+      badgeClass: "bg-rose-100 text-rose-800",
+      borderClass: "border-rose-200",
+      bgClass: "bg-rose-50/30",
+    },
+  ];
 
 export default function CandidatesPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -209,6 +209,8 @@ export default function CandidatesPage() {
   const [draggedItem, setDraggedItem] = useState<{
     candidateId: string;
     applicationId: string;
+    hiringPlanId: string;
+    isReferral?: boolean;
     fromStatus: string;
   } | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
@@ -217,12 +219,14 @@ export default function CandidatesPage() {
     e: React.DragEvent,
     candidateId: string,
     applicationId: string,
-    fromStatus: string
+    hiringPlanId: string,
+    fromStatus: string,
+    isReferral?: boolean
   ) => {
-    setDraggedItem({ candidateId, applicationId, fromStatus });
+    setDraggedItem({ candidateId, applicationId, hiringPlanId, isReferral, fromStatus });
     e.dataTransfer.setData(
       "text/plain",
-      JSON.stringify({ candidateId, applicationId, fromStatus })
+      JSON.stringify({ candidateId, applicationId, hiringPlanId, isReferral, fromStatus })
     );
     e.dataTransfer.effectAllowed = "move";
   };
@@ -238,7 +242,14 @@ export default function CandidatesPage() {
     setDragOverCol(null);
     if (!draggedItem || draggedItem.fromStatus === targetStatus) return;
 
-    const { candidateId, applicationId } = draggedItem;
+    const { candidateId, applicationId, hiringPlanId: planOrMandateId, isReferral } = draggedItem;
+
+    if (isReferral && targetStatus === "ON_HOLD") {
+      toast.info("Referral candidates cannot be moved to On Hold from Kanban; use Mandate Referrals to update stage.");
+      setDraggedItem(null);
+      return;
+    }
+
     const prevCandidates = [...candidates];
 
     // Optimistic local update
@@ -257,16 +268,32 @@ export default function CandidatesPage() {
     );
 
     try {
-      const res = await fetch(`/api/applications/${applicationId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: targetStatus }),
-      });
-      if (!res.ok) throw new Error("Failed to update status on server");
+      if (isReferral) {
+        const referralStatusMap: Record<KanbanColumnKey, string> = {
+          ACTIVE: "UNDER_REVIEW",
+          SELECTED: "HIRED",
+          REJECTED: "REJECTED",
+          ON_HOLD: "UNDER_REVIEW",
+        };
+        const tokenRes = await fetch("/api/auth/token");
+        const { accessToken } = await tokenRes.json();
+        await apiClient(`/api/v1/mandates/${planOrMandateId}/referrals/${applicationId}/status`, {
+          method: "PATCH",
+          token: accessToken,
+          body: JSON.stringify({ status: referralStatusMap[targetStatus] }),
+        });
+      } else {
+        const res = await fetch(`/api/applications/${applicationId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: targetStatus }),
+        });
+        if (!res.ok) throw new Error(await readResponseError(res, "Failed to update status on server"));
+      }
       toast.success(`Moved candidate to ${targetStatus.replace("_", " ")}`);
-    } catch {
+    } catch (err) {
       setCandidates(prevCandidates);
-      toast.error("Failed to update candidate status");
+      toast.error(err instanceof Error ? err.message : "Failed to update candidate status");
     } finally {
       setDraggedItem(null);
     }
@@ -603,7 +630,14 @@ export default function CandidatesPage() {
                           draggable={!!mainApp?.id}
                           onDragStart={(e) =>
                             mainApp &&
-                            handleDragStart(e, c.id, mainApp.id, mainApp.status || "ACTIVE")
+                            handleDragStart(
+                              e,
+                              c.id,
+                              mainApp.id,
+                              mainApp.hiringPlanId,
+                              mainApp.status || "ACTIVE",
+                              mainApp.isReferral
+                            )
                           }
                           className={cn(
                             "group relative rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs transition-all hover:shadow-md cursor-grab active:cursor-grabbing",

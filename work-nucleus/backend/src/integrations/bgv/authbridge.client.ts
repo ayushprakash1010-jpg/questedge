@@ -81,12 +81,16 @@ export class AuthBridgeProvider implements IBgvProvider {
     candidate: BgvCandidatePayload;
     orgRefId: string;
   }): Promise<{ vendorRefId: string }> {
-    if (this.sandbox && !this.apiKey) {
-      const fake = `dev-ab-${Date.now()}`;
-      this.logger.warn(
-        `AuthBridge sandbox stubbed (no API key) — issuing fake profile ${fake}`,
-      );
-      return { vendorRefId: fake };
+    const isProd = process.env.NODE_ENV === 'production';
+    if (!this.apiKey) {
+      if (!isProd && this.sandbox) {
+        const fake = `dev-ab-${Date.now()}`;
+        this.logger.warn(
+          `AuthBridge sandbox stubbed (no API key) — issuing fake profile ${fake}`,
+        );
+        return { vendorRefId: fake };
+      }
+      throw new Error('AuthBridge BGV is not configured (AUTHBRIDGE_API_KEY missing)');
     }
     return this.withRetry(async () => {
       const res = await fetch(`${this.baseUrl}/v1/profiles`, {
@@ -176,7 +180,7 @@ export class AuthBridgeProvider implements IBgvProvider {
   ): boolean {
     const sig = (headers['x-authbridge-signature'] ||
       headers['X-AuthBridge-Signature']) as string | undefined;
-    if (!sig) return false;
+    if (!this.webhookSecret || !sig) return false;
     const expected = createHmac('sha256', this.webhookSecret)
       .update(rawBody)
       .digest('hex');

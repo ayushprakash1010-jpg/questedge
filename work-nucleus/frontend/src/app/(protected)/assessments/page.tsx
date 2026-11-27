@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import {
   fetchAssessments,
+  fetchCodingExecutionStatus,
   deleteAssessment,
   fetchVideoInterviews,
   HiringAssessment,
@@ -51,6 +52,7 @@ export default function AssessmentsPage() {
   const [copiedVideoToken, setCopiedVideoToken] = useState<string | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [codingEnabled, setCodingEnabled] = useState(false);
 
   const copyCandidateLink = (token: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -64,12 +66,14 @@ export default function AssessmentsPage() {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const [assessList, videoList] = await Promise.all([
+      const [assessList, videoList, codingStatus] = await Promise.all([
         fetchAssessments(),
         fetchVideoInterviews().catch(() => []),
+        fetchCodingExecutionStatus(),
       ]);
       setAssessments(assessList);
       setInterviews(videoList);
+      setCodingEnabled(codingStatus.enabled);
     } catch (err: any) {
       setLoadError(err?.message || "Failed to load assessments");
     } finally {
@@ -226,17 +230,19 @@ export default function AssessmentsPage() {
             <FileQuestion className="h-3.5 w-3.5 text-amber-500" />
             MCQ / Quiz (MBA)
           </button>
-          <button
-            onClick={() => setActiveTab("CODING")}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
-              activeTab === "CODING"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            <Code2 className="h-3.5 w-3.5 text-indigo-500" />
-            Coding (Eng)
-          </button>
+          {codingEnabled && (
+            <button
+              onClick={() => setActiveTab("CODING")}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                activeTab === "CODING"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Code2 className="h-3.5 w-3.5 text-indigo-500" />
+              Coding (Eng)
+            </button>
+          )}
           <button
             onClick={() => setActiveTab("VIDEO")}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
@@ -352,11 +358,12 @@ export default function AssessmentsPage() {
                       <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => setSelectedForInvite(a)}
-                          className="px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-colors flex items-center gap-1"
-                          title="Invite Candidate"
+                          disabled={a.type === "CODING" && !codingEnabled}
+                          className="px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed text-indigo-700 text-xs font-bold transition-colors flex items-center gap-1"
+                          title={a.type === "CODING" && !codingEnabled ? "Coding execution disabled until post-launch" : "Invite Candidate"}
                         >
                           <Send className="h-3 w-3" />
-                          Invite
+                          {a.type === "CODING" && !codingEnabled ? "Post-Launch" : "Invite"}
                         </button>
 
                         <Link

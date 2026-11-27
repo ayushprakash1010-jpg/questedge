@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Resend } from 'resend';
+import sgMail from '@sendgrid/mail';
 
 function escapeHtml(str: unknown): string {
   if (str === null || str === undefined) return '';
@@ -13,8 +14,11 @@ function escapeHtml(str: unknown): string {
 
 function sanitizeUrl(url?: string): string | null {
   if (!url) return null;
-  // Allow relative URLs starting with / or absolute http/https URLs
-  if (url.startsWith('/') || url.startsWith('http://') || url.startsWith('https://')) {
+  if (url.startsWith('/') && !url.startsWith('//')) {
+    const baseUrl = (process.env.FRONTEND_URL || '').trim().replace(/\/$/, '');
+    return baseUrl ? encodeURI(`${baseUrl}${url}`) : null;
+  }
+  if (url.startsWith('http://') || url.startsWith('https://')) {
     return encodeURI(url);
   }
   return null;
@@ -22,41 +26,75 @@ function sanitizeUrl(url?: string): string | null {
 
 @Injectable()
 export class EmailService {
-  private resend: Resend;
+  private resend: Resend | null = null;
+  private sendGridReady = false;
   private readonly logger = new Logger(EmailService.name);
 
   constructor() {
-    // Safely initialize Resend only if key exists
-    const key = process.env.RESEND_API_KEY;
-    if (key) {
-      this.resend = new Resend(key);
+    const resendKey = process.env.RESEND_API_KEY?.trim();
+    if (resendKey) {
+      this.resend = new Resend(resendKey);
+    }
+    const sendGridKey = process.env.SENDGRID_API_KEY?.trim();
+    if (!this.resend && sendGridKey) {
+      sgMail.setApiKey(sendGridKey);
+      this.sendGridReady = true;
     }
   }
 
   async sendEmail(to: string, subject: string, html: string) {
-    if (!this.resend || !process.env.RESEND_API_KEY) {
-      this.logger.log(`[MOCK EMAIL to ${to}] Subject: ${subject}`);
+    const fromAddress =
+      process.env.RESEND_FROM_EMAIL?.trim() ||
+      process.env.SENDGRID_FROM_EMAIL?.trim() ||
+      'QuestEdge <hello@questedge.com>';
+
+    const resendKey = process.env.RESEND_API_KEY?.trim();
+    if (resendKey) {
+      if (!this.resend) {
+        this.resend = new Resend(resendKey);
+      }
+      try {
+        const { data, error } = await this.resend.emails.send({
+          from: fromAddress,
+          to: [to],
+          subject,
+          html,
+        });
+        if (error) {
+          this.logger.error(`Failed to send email via Resend to ${to}: ${error.message}`);
+        } else {
+          this.logger.log(`Email sent via Resend to ${to} (ID: ${data?.id})`);
+        }
+      } catch (err: any) {
+        this.logger.error(`Exception sending email via Resend: ${err.message}`);
+      }
       return;
     }
 
-    try {
-      const fromAddress =
-        process.env.RESEND_FROM_EMAIL || 'QuestEdge <hello@questedge.com>';
-      const { data, error } = await this.resend.emails.send({
-        from: fromAddress,
-        to: [to],
-        subject,
-        html,
-      });
-
-      if (error) {
-        this.logger.error(`Failed to send email to ${to}: ${error.message}`);
-      } else {
-        this.logger.log(`Email sent to ${to} (ID: ${data?.id})`);
+    const sendGridKey = process.env.SENDGRID_API_KEY?.trim();
+    if (sendGridKey) {
+      if (!this.sendGridReady) {
+        sgMail.setApiKey(sendGridKey);
+        this.sendGridReady = true;
       }
-    } catch (err: any) {
-      this.logger.error(`Exception while sending email: ${err.message}`);
+      try {
+        await sgMail.send({
+          to,
+          from: fromAddress,
+          subject,
+          html,
+        });
+        this.logger.log(`Email sent via SendGrid to ${to}`);
+      } catch (err: any) {
+        const detail = err?.response?.body
+          ? JSON.stringify(err.response.body)
+          : err.message;
+        this.logger.error(`Failed to send email via SendGrid to ${to}: ${detail}`);
+      }
+      return;
     }
+
+    this.logger.log(`[MOCK EMAIL to ${to}] Subject: ${subject}`);
   }
 
   async sendNotificationEmail(

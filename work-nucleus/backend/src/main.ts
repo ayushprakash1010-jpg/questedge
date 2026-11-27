@@ -122,12 +122,17 @@ async function bootstrap() {
         where: { auth0Sub: demoSub },
       });
       if (primaryCandidate) {
+        const candidateEmails: string[] = [];
+        if (demoEmail) {
+          const [local, domain] = demoEmail.split('@');
+          candidateEmails.push(demoEmail);
+          if (local && domain) candidateEmails.push(`${local}+candidate@${domain}`);
+        }
         const dupCandidates = await prisma.candidateProfile.findMany({
           where: {
             id: { not: primaryCandidate.id },
             OR: [
-              { email: 'growytvercel@gmail.com' },
-              { email: 'growytvercel+candidate@gmail.com' },
+              ...candidateEmails.map((email) => ({ email })),
               { isDemoAccount: true },
             ],
           },

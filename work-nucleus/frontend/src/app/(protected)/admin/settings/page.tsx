@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { BrandLoader } from "@/components/ui/brand-loader";
 import { toast } from "@/components/ui/toaster";
 import { PageHeader } from "@/components/shared/page-header";
@@ -16,28 +17,38 @@ interface Settings {
   maxInterviewRounds?: number;
   approvalWorkflowEnabled?: boolean;
   autoTriggerBgvOnOfferAccept?: boolean;
+  bgvProvider?: string;
+  defaultPipelineStages?: string[];
+  notificationPreferences?: Record<string, boolean>;
 }
 
 export default function OrgSettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    async function fetch_() {
-      try {
-        const res = await fetch("/api/admin/settings");
-        if (res.ok) {
-          const data = await res.json();
-          setSettings(data.settings || {});
-        }
-      } catch {
-        // ignore
-      } finally {
-        setLoading(false);
+  const loadSettings = async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const res = await fetch("/api/admin/settings");
+      if (!res.ok) {
+        throw new Error(await readResponseError(res, "Failed to load organization settings"));
       }
+      const data = await res.json();
+      setSettings(data.settings || {});
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to load organization settings";
+      setLoadError(msg);
+      toast.error(msg);
+    } finally {
+      setLoading(false);
     }
-    fetch_();
+  };
+
+  useEffect(() => {
+    loadSettings();
   }, []);
 
   const handleSave = async () => {
@@ -83,6 +94,14 @@ export default function OrgSettingsPage() {
       />
 
       <div className="space-y-6">
+        {loadError && (
+          <div className="flex items-center justify-between gap-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+            <span>{loadError}</span>
+            <Button variant="outline" size="sm" onClick={loadSettings}>
+              Retry
+            </Button>
+          </div>
+        )}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-base">
@@ -215,6 +234,32 @@ export default function OrgSettingsPage() {
                 </p>
               </div>
             </label>
+
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-xl border border-slate-200/80 p-3.5 dark:border-slate-800">
+              <div>
+                <Label htmlFor="bgv-provider" className="font-semibold">
+                  Default BGV Provider
+                </Label>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  Vendor used when initiating new background verification profiles
+                </p>
+              </div>
+              <Select
+                id="bgv-provider"
+                className="w-44 shrink-0"
+                value={settings?.bgvProvider || "authbridge"}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    bgvProvider: e.target.value,
+                  })
+                }
+              >
+                <option value="authbridge">AuthBridge</option>
+                <option value="ongrid">OnGrid</option>
+                <option value="idfy">IDfy</option>
+              </Select>
+            </div>
           </CardContent>
         </Card>
       </div>

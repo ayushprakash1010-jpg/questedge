@@ -93,14 +93,53 @@ export class JobDescriptionsService {
     let startedAtMs = 0;
     const model =
       this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
+    const structuredFallback = {
+      content: {
+        title: plan.designation || plan.title,
+        summary: `We are seeking a ${plan.designation || plan.title} to join the ${plan.department} team at ${plan.organization?.name || 'our company'}.`,
+        responsibilities: [
+          `Lead core deliverables and initiatives within the ${plan.department} function.`,
+          `Collaborate with cross-functional stakeholders and report to ${plan.reportingManagerName || 'the hiring manager'}.`,
+        ],
+        qualifications: {
+          required: plan.skills.map(
+            (s) => `${s.skill.name} (minimum proficiency ${s.minProficiency}/5)`,
+          ),
+          preferred: [],
+        },
+        aboutCompany: `${plan.organization?.name || 'Our organization'} operates in the ${plan.industry} industry.`,
+        workMode: 'Hybrid',
+      },
+      fitmentMapping: {
+        role: plan.title,
+        designation: plan.designation,
+        ctcRange: {
+          min: Number(plan.budgetMin),
+          max: Number(plan.budgetMax),
+          currency: plan.currency,
+        },
+        reportingTo: plan.reportingManagerName,
+        hod: plan.hodName,
+        teamSize: plan.teamSize,
+        teamLevels: plan.teamLevels,
+        industry: plan.industry,
+      },
+      evaluationParameters: {
+        technicalSkills: plan.skills.map((s) => ({
+          name: s.skill.name,
+          proficiencyExpected: s.minProficiency,
+          assessmentCriteria: `Demonstrated practical proficiency in ${s.skill.name}`,
+        })),
+        leadershipSkills: [],
+        behaviouralSkills: [],
+      },
+    };
+
     try {
       const rawKey = this.config.get<string>('GEMINI_API_KEY');
       const trimmedKey = rawKey ? rawKey.trim() : null;
       if (!trimmedKey) {
-        aiResponse = {
-          content:
-            '<h1>Mock Job Description</h1><p>Please configure GEMINI_API_KEY to generate real JDs.</p>',
-        };
+        aiResponse = structuredFallback;
       } else {
         const { GoogleGenAI } = require('@google/genai');
         const ai = new GoogleGenAI({ apiKey: trimmedKey });
@@ -113,7 +152,7 @@ export class JobDescriptionsService {
               role: 'user',
               parts: [
                 {
-                  text: `Generate a structured Job Description JSON based on this context: ${JSON.stringify(aiPayload)}. Output JSON with keys: "content", "fitmentMapping", "evaluationParameters".`,
+                  text: `Generate a structured Job Description JSON based on this context: ${JSON.stringify(aiPayload)}. Output JSON with keys: "content" ({ title, summary, responsibilities[], qualifications: { required[], preferred[] }, aboutCompany, workMode }), "fitmentMapping", "evaluationParameters".`,
                 },
               ],
             },
@@ -145,18 +184,34 @@ export class JobDescriptionsService {
         });
       }
       this.logger.error(`AI generation failed: ${err.message}`);
-      aiResponse = {
-        content: `<h1>${plan.title}</h1><p>Department: ${plan.department}</p><p>Role description generation failed. Please edit manually.</p>`,
-      };
+      aiResponse = structuredFallback;
     }
+
+    const normalizedContent =
+      typeof aiResponse?.content === 'string'
+        ? {
+            ...structuredFallback.content,
+            summary: aiResponse.content.replace(/<[^>]+>/g, ' ').trim(),
+          }
+        : {
+            ...structuredFallback.content,
+            ...(aiResponse?.content || {}),
+          };
 
     const jd = await this.prisma.jobDescription.create({
       data: {
         hiringPlanId,
         version: nextVersion,
-        content: aiResponse.content || {},
-        fitmentMapping: aiResponse.fitmentMapping || {},
-        evaluationParameters: aiResponse.evaluationParameters || {},
+        content: normalizedContent,
+        fitmentMapping:
+          aiResponse?.fitmentMapping && typeof aiResponse.fitmentMapping === 'object'
+            ? aiResponse.fitmentMapping
+            : structuredFallback.fitmentMapping,
+        evaluationParameters:
+          aiResponse?.evaluationParameters &&
+          typeof aiResponse.evaluationParameters === 'object'
+            ? aiResponse.evaluationParameters
+            : structuredFallback.evaluationParameters,
         generatedByAi: true,
         aiPromptUsed: dto.additionalContext || null,
         status: JdStatus.DRAFT,

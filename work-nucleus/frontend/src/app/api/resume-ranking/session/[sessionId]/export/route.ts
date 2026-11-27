@@ -1,27 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
-import { getApiUrl, getProxyHeaders } from "@/lib/api-url";
+import {
+  forwardUpstreamResponse,
+  getApiUrl,
+  getProxyHeaders,
+  isValidId,
+} from "@/lib/api-url";
 
-const API_URL = getApiUrl();
+export const dynamic = "force-dynamic";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: { sessionId: string } }
 ) {
   try {
+    if (!isValidId(params.sessionId)) {
+      return NextResponse.json({ error: "Invalid session ID" }, { status: 400 });
+    }
     const session = await auth0.getSession();
     if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     const { token: accessToken } = await auth0.getAccessToken();
 
     const res = await fetch(
-      `${API_URL}/api/v1/resume-ranking/session/${params.sessionId}/export/csv`,
+      `${getApiUrl()}/api/v1/resume-ranking/session/${encodeURIComponent(params.sessionId)}/export/csv`,
       {
         headers: getProxyHeaders(req, accessToken),
       }
     );
 
     if (!res.ok) {
-      return NextResponse.json({ error: "Failed to export CSV" }, { status: res.status });
+      return forwardUpstreamResponse(res, "Failed to export CSV");
     }
 
     const csv = await res.text();

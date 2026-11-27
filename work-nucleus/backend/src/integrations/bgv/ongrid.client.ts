@@ -19,6 +19,9 @@ export class OnGridProvider implements IBgvProvider {
     candidate: BgvCandidatePayload;
     orgRefId: string;
   }) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new NotImplementedException('OnGrid BGV integration is not yet available in production');
+    }
     return { vendorRefId: `dev-ongrid-${Date.now()}` };
   }
 
@@ -27,6 +30,9 @@ export class OnGridProvider implements IBgvProvider {
     type: BgvCheckType;
     payload: Record<string, unknown>;
   }) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new NotImplementedException('OnGrid BGV integration is not yet available in production');
+    }
     return { vendorCheckRefId: `dev-ongrid-chk-${Date.now()}` };
   }
 

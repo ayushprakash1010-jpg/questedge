@@ -346,10 +346,14 @@ export class CandidatePortalService {
     });
     if (!canonical) return [canonicalId];
 
+    const demoEmailEnv = process.env.DEMO_EMAIL?.trim().toLowerCase();
     const isDemo =
       canonical.isDemoAccount ||
-      canonical.email?.toLowerCase().includes('growytvercel') ||
-      canonical.auth0Sub === process.env.DEMO_AUTH0_SUB?.trim();
+      Boolean(demoEmailEnv && canonical.email?.toLowerCase() === demoEmailEnv) ||
+      Boolean(
+        process.env.DEMO_AUTH0_SUB?.trim() &&
+          canonical.auth0Sub === process.env.DEMO_AUTH0_SUB?.trim(),
+      );
 
     const duplicates = await this.prisma.candidateProfile.findMany({
       where: {
@@ -358,13 +362,7 @@ export class CandidatePortalService {
           ...(canonical.auth0Sub ? [{ auth0Sub: canonical.auth0Sub }] : []),
           { emailHash: canonical.emailHash },
           { email: { equals: canonical.email, mode: 'insensitive' } },
-          ...(isDemo
-            ? [
-                { email: 'growytvercel@gmail.com' },
-                { email: 'growytvercel+candidate@gmail.com' },
-                { isDemoAccount: true },
-              ]
-            : []),
+          ...(isDemo ? [{ isDemoAccount: true }] : []),
         ],
       },
     });
@@ -1015,7 +1013,7 @@ export class CandidatePortalService {
             body: `${consent.referral.candidateProfile?.name} was just referred for ${consent.referral.mandate?.title}. AI Scoring is in progress.`,
             entityType: 'REFERRAL',
             entityId: consent.referral.id,
-            actionUrl: `/company/mandates/${consent.referral.mandate.id}`,
+            actionUrl: `/mandates/${consent.referral.mandate.id}`,
           })
           .catch((err) =>
             console.error('Failed to create admin notification:', err),

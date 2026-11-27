@@ -14,5 +14,8 @@ export {
   UpdateAntiCheatDto,
   SendAssessmentInviteDto,
   PublicSelfRegisterDto,
+  ScheduleVideoInterviewDto,
+  SubmitVideoFeedbackDto,
+  SendSignalDto,
 } from './submit-assessment.dto';
 

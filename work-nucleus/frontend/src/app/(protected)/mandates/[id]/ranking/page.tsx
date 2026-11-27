@@ -19,6 +19,8 @@ import {
 import RankingTrigger, { type CandidateOption } from "@/components/hiring-plans/resume-ranking/RankingTrigger";
 import RankedCandidateCard from "@/components/hiring-plans/resume-ranking/RankedCandidateCard";
 import ComparisonView from "@/components/hiring-plans/resume-ranking/ComparisonView";
+import { toast } from "@/components/ui/toaster";
+import { readResponseError } from "@/lib/api";
 
 interface RankingSession {
   id: string;
@@ -87,13 +89,15 @@ export default function RankingPage() {
     try {
       const [mandateRes, candidatesRes, sessionsRes] = await Promise.all([
         fetch(`/api/mandates/${mandateId}`),
-        fetch(`/api/candidates?hiringPlanId=${mandateId}&limit=100`),
+        fetch(`/api/candidates?mandateId=${mandateId}&limit=100`),
         fetch(`/api/resume-ranking/sessions/${mandateId}`),
       ]);
 
       if (mandateRes.ok) {
         const m = await mandateRes.json();
         setMandate({ id: m.id, title: m.title, department: m.department });
+      } else {
+        toast.error(await readResponseError(mandateRes, "Failed to load mandate details"));
       }
 
       if (candidatesRes.ok) {
@@ -112,6 +116,8 @@ export default function RankingPage() {
           ),
         }));
         setCandidates(candidateList);
+      } else {
+        toast.error(await readResponseError(candidatesRes, "Failed to load candidates for ranking"));
       }
 
       if (sessionsRes.ok) {
@@ -119,7 +125,7 @@ export default function RankingPage() {
         setSessions(sessData.data || []);
       }
     } catch (err) {
-      console.error("Failed to load ranking data:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to load ranking data");
     } finally {
       setLoading(false);
     }

@@ -502,12 +502,11 @@ export class ExternalJobsService {
       if (byId) return byId.id;
     }
 
-    // 5. Demo account fallback
+    // 5. Demo account fallback (strictly for explicitly flagged demo users)
+    const demoEmailEnv = process.env.DEMO_EMAIL?.trim().toLowerCase();
     const isDemo =
-      user.isDemoAccount ||
-      user.email?.toLowerCase() === 'growytvercel@gmail.com' ||
-      (process.env.DEMO_EMAIL &&
-        user.email?.toLowerCase() === process.env.DEMO_EMAIL.trim().toLowerCase());
+      user.isDemoAccount === true ||
+      Boolean(demoEmailEnv && user.email?.toLowerCase() === demoEmailEnv);
 
     if (isDemo) {
       const demoCand = await this.prisma.candidateProfile.findFirst({
@@ -515,12 +514,6 @@ export class ExternalJobsService {
         select: { id: true },
       });
       if (demoCand) return demoCand.id;
-
-      const anyCand = await this.prisma.candidateProfile.findFirst({
-        where: { isActive: true },
-        select: { id: true },
-      });
-      if (anyCand) return anyCand.id;
     }
 
     return user.id || null;

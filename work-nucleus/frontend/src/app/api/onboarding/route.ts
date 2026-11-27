@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
 import { getApiUrl } from "@/lib/api-url";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest) {
   try {
     const session = await auth0.getSession();
@@ -28,29 +30,37 @@ export async function POST(req: NextRequest) {
     let targetEndpoint = `${apiUrl}/api/v1/auth/provision`;
     let payload: any = {};
 
-    if (role === "recruiter") {
-      targetEndpoint = `${apiUrl}/api/v1/recruiter/profile`;
-      payload = {
-        name: body.name || session.user.name || "Recruiter",
-        phone: body.phone || undefined,
-        headline: body.headline || undefined,
-        specializations: body.specializations || [],
-        experienceYears: body.experienceYears ? Number(body.experienceYears) : undefined,
-        bio: body.bio || undefined,
-        linkedinUrl: body.linkedinUrl || undefined,
-      };
-    } else if (role === "candidate") {
-      targetEndpoint = `${apiUrl}/api/v1/candidate/profile`;
-      payload = {
-        name: body.name || session.user.name || "Candidate",
-        headline: body.headline || undefined,
-        currentDesignation: body.currentDesignation || undefined,
-        experienceYears: body.experienceYears ? Number(body.experienceYears) : undefined,
-        skills: body.skills || [],
-        workModel: body.workModel || undefined,
-        fallbackEmail: session.user.email,
-      };
-    } else {
+      const expVal =
+        body.experienceYears !== undefined &&
+        body.experienceYears !== null &&
+        String(body.experienceYears).trim() !== "" &&
+        Number.isFinite(Number(body.experienceYears))
+          ? Number(body.experienceYears)
+          : undefined;
+      if (role === "recruiter") {
+        targetEndpoint = `${apiUrl}/api/v1/recruiter/profile`;
+        payload = {
+          name: body.name || session.user.name || "Recruiter",
+          email: session.user.email,
+          phone: body.phone || undefined,
+          headline: body.headline || undefined,
+          specializations: body.specializations || [],
+          experienceYears: expVal,
+          bio: body.bio || undefined,
+          linkedinUrl: body.linkedinUrl || undefined,
+        };
+      } else if (role === "candidate") {
+        targetEndpoint = `${apiUrl}/api/v1/candidate/profile`;
+        payload = {
+          name: body.name || session.user.name || "Candidate",
+          headline: body.headline || undefined,
+          currentDesignation: body.currentDesignation || undefined,
+          experienceYears: expVal,
+          skills: body.skills || [],
+          workModel: body.workModel || undefined,
+          fallbackEmail: session.user.email,
+        };
+      } else {
       // Company provisioning
       payload = {
         orgName: body.orgName,
@@ -102,9 +112,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, role, data });
   } catch (err: any) {
-    console.error("[Onboarding API] Catch-all error:", err);
+    console.error("[Onboarding API] Catch-all error:", err?.message);
     return NextResponse.json(
-      { error: `Backend connection error (${getApiUrl()}): ${err.message}` },
+      { error: "Unable to complete onboarding request. Please try again." },
       { status: 500 }
     );
   }

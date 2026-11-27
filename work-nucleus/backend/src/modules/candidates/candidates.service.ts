@@ -38,17 +38,9 @@ export class CandidatesService {
   }
 
   async findAll(orgId: string, query: QueryCandidatesDto) {
-    let resolvedOrgId = orgId;
-    if (!resolvedOrgId) {
-      const demoUser = await this.prisma.user.findFirst({
-        where: { OR: [{ isDemoAccount: true }, { email: 'growytvercel@gmail.com' }] },
-      });
-      resolvedOrgId = demoUser?.orgId || '';
-    }
-    if (!resolvedOrgId) {
+    if (!orgId) {
       return { data: [], meta: { total: 0, page: 1, limit: query.limit || 20, totalPages: 0 } };
     }
-    orgId = resolvedOrgId;
 
     const {
       page = 1,
@@ -56,11 +48,14 @@ export class CandidatesService {
       q,
       source,
       hiringPlanId,
+      mandateId,
       status,
       topN,
       sortBy = 'createdAt',
       sortOrder = 'desc',
     } = query;
+
+    const planOrMandateId = mandateId || hiringPlanId;
 
     const appStatusFilter =
       status === 'PENDING_REVIEW'
@@ -77,18 +72,25 @@ export class CandidatesService {
       ];
     }
     if (source) where.source = source;
-    if (hiringPlanId || appStatusFilter) {
+    if (planOrMandateId || appStatusFilter) {
       where.applications = {
         some: {
-          ...(hiringPlanId ? { hiringPlanId } : {}),
+          ...(planOrMandateId
+            ? {
+                OR: [
+                  { hiringPlanId: planOrMandateId },
+                  { mandateId: planOrMandateId },
+                ],
+              }
+            : {}),
           ...(appStatusFilter ? { status: appStatusFilter as any } : {}),
         },
       };
     }
 
     // For topN by AI score, we need a special query
-    if (topN && hiringPlanId) {
-      return this.findTopByAiScore(orgId, hiringPlanId, topN, where);
+    if (topN && planOrMandateId) {
+      return this.findTopByAiScore(orgId, planOrMandateId, topN, where);
     }
 
     // Determine orderBy — if sorting by aiMatchScore, sort via applications
@@ -133,8 +135,8 @@ export class CandidatesService {
     let referralCandidates: any[] = [];
     if (!source || source === 'REFERRAL') {
       const referralWhere: any = { mandate: { orgId } };
-      if (hiringPlanId) {
-        referralWhere.mandateId = hiringPlanId;
+      if (planOrMandateId) {
+        referralWhere.mandateId = planOrMandateId;
       }
       if (status) {
         if (status === 'PENDING_REVIEW') {
@@ -277,7 +279,7 @@ export class CandidatesService {
     // Query applications directly, then map back to candidates
     const topApps = await this.prisma.candidateApplication.findMany({
       where: {
-        hiringPlanId,
+        OR: [{ hiringPlanId }, { mandateId: hiringPlanId }],
         aiMatchScore: { not: null },
         candidate: baseWhere,
       },

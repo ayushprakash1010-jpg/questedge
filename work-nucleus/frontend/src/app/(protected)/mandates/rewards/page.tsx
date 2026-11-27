@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, DollarSign, Clock, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import { CheckCircle2, DollarSign, Clock, AlertCircle, ArrowUpRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toaster";
@@ -73,11 +74,17 @@ export default function CompanyRewardsDashboard() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-8 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Referral Rewards & Payouts</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Referral Rewards &amp; Payouts</h1>
           <p className="text-slate-500">Manage recruiter payouts for successfully hired candidates.</p>
         </div>
+        <Link href="/company/financials">
+          <Button variant="outline" size="sm">
+            Escrow, Disputes &amp; Audit Ledger
+            <ArrowUpRight className="h-4 w-4 ml-1" />
+          </Button>
+        </Link>
       </div>
 
       {/* Metrics Row */}

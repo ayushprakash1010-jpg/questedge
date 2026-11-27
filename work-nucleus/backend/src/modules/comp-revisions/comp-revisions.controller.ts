@@ -80,6 +80,7 @@ export class CompRevisionsController {
   }
 
   @Post('simulate')
+  @Roles(Role.ADMIN, Role.HR)
   @ApiOperation({ summary: 'What-if simulator (no persistence)' })
   simulate(@CurrentUser('orgId') orgId: string, @Body() dto: SimulateDto) {
     return this.allocator.simulate(orgId, dto.cycleId, {
@@ -90,6 +91,7 @@ export class CompRevisionsController {
   }
 
   @Get('equity')
+  @Roles(Role.ADMIN, Role.HR)
   @ApiOperation({ summary: 'Equity-lens diff (median + spread by location)' })
   equity(
     @CurrentUser('orgId') orgId: string,
@@ -99,22 +101,31 @@ export class CompRevisionsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List revisions' })
+  @ApiOperation({ summary: 'List revisions (ADMIN/HR see org; managers see reports)' })
   list(
     @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') userRole: Role,
     @Query('cycleId') cycleId?: string,
     @Query('status') status?: RevisionStatus,
   ) {
-    return this.service.list(orgId, { cycleId, status });
+    const isHrOrAdmin = userRole === Role.ADMIN || userRole === Role.HR;
+    return this.service.list(orgId, {
+      cycleId,
+      status,
+      managerUserId: isHrOrAdmin ? undefined : userId,
+    });
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get revision' })
   findOne(
     @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') userRole: Role,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.service.findOne(orgId, id);
+    return this.service.findOneForActor(orgId, id, userId, userRole);
   }
 
   @Post(':id/override')
@@ -122,10 +133,11 @@ export class CompRevisionsController {
   async override(
     @CurrentUser('orgId') orgId: string,
     @CurrentUser('id') userId: string,
+    @CurrentUser('role') userRole: Role,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: OverrideRevisionDto,
   ) {
-    const result = await this.service.override(orgId, id, userId, dto);
+    const result = await this.service.override(orgId, id, userId, dto, userRole);
     await this.audit?.logSafe({
       orgId,
       userId,
@@ -141,9 +153,11 @@ export class CompRevisionsController {
   @ApiOperation({ summary: 'Submit revision into approval chain' })
   submit(
     @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') userRole: Role,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.service.submitToApproval(orgId, id);
+    return this.service.submitToApproval(orgId, id, userId, userRole);
   }
 
   @Post(':id/act')
@@ -189,6 +203,18 @@ export class CompRevisionsController {
     return this.service.generateLetter(orgId, id);
   }
 
+  @Get(':id/letter')
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER, Role.INTERVIEWER, Role.VIEWER)
+  @ApiOperation({ summary: 'Get a signed download URL for the generated comp revision letter' })
+  getLetter(
+    @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') userRole: Role,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.service.getLetterUrl(orgId, id, userId, userRole);
+  }
+
   @Post(':id/log-1on1')
   @ApiOperation({
     summary: 'Manager logs that the 1-on-1 was conducted (manager-first gate)',
@@ -196,9 +222,10 @@ export class CompRevisionsController {
   logOneOnOne(
     @CurrentUser('orgId') orgId: string,
     @CurrentUser('id') userId: string,
+    @CurrentUser('role') userRole: Role,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.service.markOneOnOne(orgId, id, userId);
+    return this.service.markOneOnOne(orgId, id, userId, userRole);
   }
 
   @Post(':id/deliver')
@@ -232,6 +259,7 @@ export class CompRevisionsController {
   }
 
   @Get('cycles/:cycleId/variance')
+  @Roles(Role.ADMIN, Role.HR)
   @ApiOperation({ summary: 'Variance report for a cycle' })
   variance(
     @CurrentUser('orgId') orgId: string,

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import {
   fetchCandidateAttempt,
+  fetchCodingExecutionStatus,
   startCandidateAttempt,
   completeCandidateCodeAssessment,
   AssessmentAttempt,
@@ -24,16 +25,18 @@ export default function CandidateCodePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [confirmCompleteOpen, setConfirmCompleteOpen] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [codingEnabled, setCodingEnabled] = useState(false);
 
   useEffect(() => {
-    fetchCandidateAttempt(token)
-      .then((data) => {
+    Promise.all([fetchCandidateAttempt(token), fetchCodingExecutionStatus()])
+      .then(([data, status]) => {
+        setCodingEnabled(status.enabled);
         if (data.status === "COMPLETED" || data.status === "TIMED_OUT") {
           router.push(`/assessment/${token}/complete`);
           return;
         }
         setAttempt(data);
-        if (data.status === "NOT_STARTED") {
+        if (data.status === "NOT_STARTED" && status.enabled) {
           startCandidateAttempt(token).catch(console.error);
         }
       })
@@ -81,6 +84,19 @@ export default function CandidateCodePage() {
   }
 
   if (!attempt) return null;
+
+  if (!codingEnabled) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 text-white">
+        <div className="max-w-md w-full bg-slate-800 border border-slate-700 rounded-2xl p-6 text-center space-y-3">
+          <h2 className="text-lg font-bold">Coding Sandbox Temporarily Offline</h2>
+          <p className="text-xs text-slate-300 leading-relaxed">
+            Code execution is disabled until post-launch compiler activation. Please contact the hiring team for next steps.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AntiCheatWrapper token={token} onExceededViolations={handleTimerExpire}>

@@ -21,6 +21,7 @@ import {
   PortalRole,
   useOptionalWorkspaceShell,
 } from "@/components/workspace-shell-context";
+import { useProfile } from "@/hooks/use-profile";
 
 interface SearchResults {
   candidates: { id: string; name: string; email: string; currentRole: string | null }[];
@@ -49,6 +50,8 @@ export function GlobalSearch({ userType = "company" }: { userType?: PortalRole }
   const router = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
   const shell = useOptionalWorkspaceShell();
+  const { profile } = useProfile();
+  const effectiveUserType: PortalRole = shell?.userType ?? userType;
 
   const closeModal = useCallback(() => {
     setOpen(false);
@@ -71,13 +74,13 @@ export function GlobalSearch({ userType = "company" }: { userType?: PortalRole }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k" && !e.shiftKey) {
         e.preventDefault();
         setOpen((prev) => !prev);
-      } else if (e.key === "Escape") {
+      } else if (e.key === "Escape" && open) {
         closeModal();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [closeModal]);
+  }, [open, closeModal]);
 
   useEffect(() => {
     if (open) {
@@ -117,11 +120,19 @@ export function GlobalSearch({ userType = "company" }: { userType?: PortalRole }
   // Filtered quick-jump pages for current portal + workspace commands
   const navEntries = useMemo<PaletteEntry[]>(() => {
     const q = query.trim().toLowerCase();
-    const sections = getPortalNavSections(userType);
+    const sections = getPortalNavSections(effectiveUserType);
     const entries: PaletteEntry[] = [];
 
     sections.forEach((section) => {
       section.items.forEach((item: NavItem) => {
+        if (
+          effectiveUserType === "company" &&
+          profile?.role &&
+          item.roles?.length &&
+          !item.roles.includes(profile.role)
+        ) {
+          return;
+        }
         const haystack = [
           item.label,
           section.title || "",
@@ -199,12 +210,12 @@ export function GlobalSearch({ userType = "company" }: { userType?: PortalRole }
     }
 
     return q ? entries : entries.slice(0, 8);
-  }, [query, userType, shell, resolvedTheme, setTheme, navigate, closeModal]);
+  }, [query, effectiveUserType, profile?.role, shell, resolvedTheme, setTheme, navigate, closeModal]);
 
   const allSelectableEntries = useMemo<PaletteEntry[]>(() => {
     const items: PaletteEntry[] = [];
 
-    if (userType === "company" && results) {
+    if (effectiveUserType === "company" && results) {
       results.candidates.forEach((c) => {
         items.push({
           id: `cand:${c.id}`,

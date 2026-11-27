@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { toast } from "@/components/ui/toaster";
+import { readResponseError } from "@/lib/api";
 import {
   Save,
   Send,
@@ -237,8 +239,8 @@ export function FeedbackForm({
     loadDraft();
   }, [applicationId, stageId]);
 
-  const saveDraft = useCallback(async () => {
-    if (!overallRating || !recommendation || isSubmitted) return;
+  const saveDraft = useCallback(async (): Promise<string | null> => {
+    if (!overallRating || !recommendation || isSubmitted) return null;
     setSaving(true);
     try {
       const body = {
@@ -268,9 +270,11 @@ export function FeedbackForm({
         const data = await res.json();
         setFeedbackId(data.id);
         setLastSaved(new Date());
+        return data.id || null;
       }
+      return null;
     } catch {
-      // Silent save failure
+      return null;
     } finally {
       setSaving(false);
     }
@@ -310,22 +314,26 @@ export function FeedbackForm({
 
   const handleSubmit = async () => {
     if (!overallRating || !recommendation) return;
-    if (!feedbackId) {
-      await saveDraft();
-    }
     setSubmitting(true);
     try {
-      await saveDraft();
+      const resolvedFeedbackId = (await saveDraft()) ?? feedbackId;
+      if (!resolvedFeedbackId) {
+        toast.error("Failed to save feedback draft before submitting");
+        return;
+      }
       const res = await fetch(
-        `/api/applications/${applicationId}/feedback?action=submit&feedbackId=${feedbackId}`,
+        `/api/applications/${applicationId}/feedback?action=submit&feedbackId=${encodeURIComponent(resolvedFeedbackId)}`,
         { method: "POST" }
       );
       if (res.ok) {
         setIsSubmitted(true);
+        toast.success("Feedback submitted");
         onSubmitted?.();
+      } else {
+        toast.error(await readResponseError(res, "Failed to submit feedback"));
       }
-    } catch {
-      // handle error
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to submit feedback");
     } finally {
       setSubmitting(false);
     }

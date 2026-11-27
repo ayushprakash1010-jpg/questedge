@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
-import { getApiUrl, getDemoRoleHeader } from "@/lib/api-url";
+import {
+  forwardUpstreamResponse,
+  getApiUrl,
+  getDemoRoleHeader,
+  isValidId,
+} from "@/lib/api-url";
 
-const API_URL = getApiUrl();
+export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
@@ -10,13 +15,13 @@ export async function GET(req: NextRequest) {
     if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     const { token: accessToken } = await auth0.getAccessToken();
 
-    const res = await fetch(`${API_URL}/api/v1/training-modules`, {
+    const res = await fetch(`${getApiUrl()}/api/v1/training-modules`, {
       headers: { Authorization: `Bearer ${accessToken}`, ...getDemoRoleHeader(req) },
+      cache: "no-store",
     });
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
+    return forwardUpstreamResponse(res, "Failed to load training modules");
   } catch {
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to load training modules" }, { status: 500 });
   }
 }
 
@@ -28,14 +33,17 @@ export async function POST(req: NextRequest) {
     const { token: accessToken } = await auth0.getAccessToken();
 
     const action = req.nextUrl.searchParams.get("action");
-    let endpoint = `${API_URL}/api/v1/training-modules`;
+    let endpoint = `${getApiUrl()}/api/v1/training-modules`;
     let body: string | undefined;
 
     if (action === "seed") {
       endpoint += "/seed-defaults";
     } else if (action === "complete") {
       const moduleId = req.nextUrl.searchParams.get("moduleId");
-      endpoint += `/${moduleId}/complete`;
+      if (!isValidId(moduleId)) {
+        return NextResponse.json({ error: "Invalid moduleId" }, { status: 400 });
+      }
+      endpoint += `/${encodeURIComponent(moduleId)}/complete`;
     } else {
       body = JSON.stringify(await req.json());
     }
@@ -43,15 +51,14 @@ export async function POST(req: NextRequest) {
     const res = await fetch(endpoint, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        ...(body ? { "Content-Type": "application/json" } : {}),
         Authorization: `Bearer ${accessToken}`,
         ...getDemoRoleHeader(req),
       },
       ...(body ? { body } : {}),
     });
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
+    return forwardUpstreamResponse(res, "Training module action failed");
   } catch {
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+    return NextResponse.json({ error: "Training module action failed" }, { status: 500 });
   }
 }

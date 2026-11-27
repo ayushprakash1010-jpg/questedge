@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { toast } from "@/components/ui/toaster";
+import { readResponseError } from "@/lib/api";
 import {
   Sparkles,
   Pencil,
@@ -312,9 +314,12 @@ export function JdTab({ planId }: { planId: string }) {
         const data = await res.json();
         setJd(data);
         setAdditionalContext("");
+        toast.success("Job description generated");
+      } else {
+        toast.error(await readResponseError(res, "Failed to generate job description"));
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate job description");
     } finally {
       setGenerating(false);
     }
@@ -334,9 +339,12 @@ export function JdTab({ planId }: { planId: string }) {
         setJd(data);
         setEditing(false);
         setEditContent(null);
+        toast.success("Job description saved");
+      } else {
+        toast.error(await readResponseError(res, "Failed to save changes"));
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save changes");
     } finally {
       setSaving(false);
     }
@@ -354,9 +362,12 @@ export function JdTab({ planId }: { planId: string }) {
       if (res.ok) {
         const data = await res.json();
         setJd(data);
+        toast.success("Job description approved");
+      } else {
+        toast.error(await readResponseError(res, "Failed to approve job description"));
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to approve job description");
     } finally {
       setApproving(false);
     }
@@ -375,9 +386,12 @@ export function JdTab({ planId }: { planId: string }) {
         const data = await res.json();
         setPublicUrl(data.publicUrl);
         setJd((prev) => (prev ? { ...prev, status: "PUBLISHED" } : prev));
+        toast.success("Job description published");
+      } else {
+        toast.error(await readResponseError(res, "Failed to publish job description"));
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to publish job description");
     } finally {
       setPublishing(false);
     }

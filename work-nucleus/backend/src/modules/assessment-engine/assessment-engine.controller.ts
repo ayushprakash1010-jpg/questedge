@@ -37,6 +37,9 @@ import {
   UpdateAntiCheatDto,
   SendAssessmentInviteDto,
   PublicSelfRegisterDto,
+  ScheduleVideoInterviewDto,
+  SubmitVideoFeedbackDto,
+  SendSignalDto,
 } from './dto';
 import { Request } from 'express';
 
@@ -95,16 +98,7 @@ export class AssessmentEngineController {
   @Post('video-interviews')
   @ApiOperation({ summary: 'Schedule a video interview' })
   scheduleVideoInterview(
-    @Body() data: {
-      candidateId?: string;
-      candidateEmail?: string;
-      candidateName?: string;
-      applicationId?: string;
-      interviewerId?: string;
-      pipelineStageId?: string;
-      mandateId?: string;
-      scheduledAt?: string;
-    },
+    @Body() data: ScheduleVideoInterviewDto,
     @CurrentUser('orgId') orgId: string,
     @CurrentUser('id') userId: string,
   ) {
@@ -138,6 +132,7 @@ export class AssessmentEngineController {
   }
 
   @Patch('video-interviews/:id/start')
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER, Role.INTERVIEWER)
   @ApiOperation({ summary: 'Start a video interview' })
   startVideoInterview(
     @Param('id', ParseUUIDPipe) id: string,
@@ -147,6 +142,7 @@ export class AssessmentEngineController {
   }
 
   @Patch('video-interviews/:id/end')
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER, Role.INTERVIEWER)
   @ApiOperation({ summary: 'End a video interview' })
   endVideoInterview(
     @Param('id', ParseUUIDPipe) id: string,
@@ -156,20 +152,11 @@ export class AssessmentEngineController {
   }
 
   @Patch('video-interviews/:id/feedback')
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER, Role.INTERVIEWER)
   @ApiOperation({ summary: 'Submit feedback for a video interview' })
   submitVideoFeedback(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() feedback: {
-      technicalScore?: number;
-      communicationScore?: number;
-      cultureFitScore?: number;
-      leadershipScore?: number;
-      overallRating?: number;
-      recommendation?: string;
-      notes?: string;
-      strengths?: string;
-      weaknesses?: string;
-    },
+    @Body() feedback: SubmitVideoFeedbackDto,
     @CurrentUser('orgId') orgId: string,
   ) {
     return this.videoService.submitFeedback(id, orgId, feedback);
@@ -344,13 +331,19 @@ export class AssessmentTakeController {
   ) {}
 
   // ── WebRTC Signaling (Direct Peer-to-Peer) ────────────────────
-  @SkipThrottle()
+  @Get('coding-status')
+  @Public()
+  @ApiOperation({ summary: 'Whether Judge0 coding sandbox execution is enabled' })
+  getCodingStatus() {
+    return { enabled: this.codingService.isExecutionEnabled() };
+  }
+
   @Post('video/:roomId/signal')
   @Public()
   @ApiOperation({ summary: 'Send WebRTC signaling message' })
   sendSignal(
     @Param('roomId') roomId: string,
-    @Body() body: { sender: string; type: string; payload: any },
+    @Body() body: SendSignalDto,
   ) {
     return this.signalingService.sendSignal(roomId, body.sender, body.type, body.payload);
   }

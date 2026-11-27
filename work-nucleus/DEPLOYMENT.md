@@ -1,134 +1,92 @@
 # QuestEdge Deployment Runbook
 
-This guide provides step-by-step instructions to deploy the QuestEdge stack (Next.js + NestJS + PostgreSQL + Redis) using free-tier services. We will use Vercel for the frontend, Render for the backend, Neon for PostgreSQL, and Upstash for Redis.
-
-## Prerequisites
-- Your code must be pushed to a **GitHub repository**.
-- You need a configured **Auth0 tenant** with a Single Page Application (SPA) and an API defined.
+Production architecture: **Vercel** (Next.js frontend) + **Render** (NestJS backend + pg-boss background workers) + **Neon** (PostgreSQL) + **S3 / Cloudflare R2** (resumes, joining documents, offer letters, compensation letters) + **Resend** (transactional emails and BGV consent OTPs).
 
 ---
 
-## Step 1: Database (Neon.tech)
-We use Neon to host our serverless PostgreSQL database.
+## Step 1: Database (Neon PostgreSQL)
 
-1. Go to [neon.tech](https://neon.tech/) and sign up.
-2. Click **Create Project**. Name it `questedge-db` and select the region closest to you.
-3. Once created, copy the **Postgres connection string** (e.g., `postgresql://[user]:[password]@[host]/[dbname]?sslmode=require`).
-4. Save this connection string—we will need it for the Backend deployment.
+1. Create a PostgreSQL project on [neon.tech](https://neon.tech/) (`questedge-db`) and copy the pooled / direct `DATABASE_URL` (`postgresql://...sslmode=require`).
+2. Background job queues (`pg-boss`) and transactional persistence both run on Neon PostgreSQL, so no separate Redis service is required.
 
 ---
 
-## Step 2: Redis (Upstash)
-The NestJS backend requires Redis for caching or queues. We will use Upstash's free Serverless Redis.
+## Step 2: Baseline vs. Fresh Schema Migration
 
-1. Go to [upstash.com](https://upstash.com/) and sign up.
-2. Click **Create Database** under the Redis section. Name it `questedge-redis`.
-3. Scroll down to the **Connect to your database** section. Find the **Endpoint** (Host) and **Port**. Also note the **Password** if applicable.
-4. Save the Host and Port—we will need them for the Backend deployment.
+Migration history is stored in `backend/prisma/migrations/0001_baseline`.
+
+- **Fresh Neon database:**
+  ```bash
+  cd backend
+  npx prisma migrate deploy
+  ```
+- **Existing Neon database (previously synced with `prisma db push`):**
+  Mark the baseline applied once without dropping or modifying existing data, then run `migrate deploy`:
+  ```bash
+  cd backend
+  npx prisma migrate resolve --applied 0001_baseline
+  npx prisma migrate deploy
+  ```
 
 ---
 
 ## Step 3: Backend API (Render)
-We use Render to host the NestJS API.
 
-1. Go to [render.com](https://render.com/) and sign up.
-2. Click **New** -> **Web Service**.
-3. Connect your GitHub account and select your `questedge` repository.
-4. Configure the service:
-   - **Name**: `questedge-api` (or similar)
+1. Create a **Web Service** on [render.com](https://render.com/) connected to your repository.
+2. Configure build settings:
    - **Root Directory**: `backend`
-   - **Environment**: `Node`
-   - **Build Command**: `npm install && npx prisma generate && npm run build`
-   - **Start Command**: `npm run start:prod`
-5. Scroll down to **Environment Variables** and add the following:
-   - `DATABASE_URL`: *The Neon Postgres URL from Step 1*
-   - `AUTH0_DOMAIN`: *Your Auth0 tenant domain (e.g., your-tenant.auth0.com)*
-   - `AUTH0_AUDIENCE`: *Your Auth0 API audience identifier*
-   - `AUTH0_MANAGEMENT_CLIENT_ID`: *Auth0 Machine-to-Machine App Client ID*
-   - `AUTH0_MANAGEMENT_CLIENT_SECRET`: *Auth0 Machine-to-Machine App Client Secret*
-   - `AUTH0_SYNC_SECRET`: *Your Auth0 webhook sync secret*
-   - `SUPPORT_ADMIN_SUBS`: *Comma-separated list of Auth0 subject IDs authorized as platform admins*
-   - `FRONTEND_URL`: *Production frontend URL (e.g., https://questedge.vercel.app) for outgoing email links*
-   - `GEMINI_API_KEY`: *Google Gemini API key for AI screening, JD generation, and candidate summaries*
-   - `DIGIO_WEBHOOK_SECRET`: *Unique secret for e-sign webhook verification (never use dev-* placeholders)*
-   - `AUTHBRIDGE_WEBHOOK_SECRET`: *Unique secret for BGV webhook verification (never use dev-* placeholders)*
-   - `MSG91_WEBHOOK_SECRET`: *Unique secret for SMS/WhatsApp webhook verification (never use dev-* placeholders)*
-   - `ENABLE_SWAGGER`: *Optional ("true" or "false") — gates Swagger /api/docs in production (default false)*
-   - `REDIS_HOST`: *Your Upstash Redis Host*
-   - `REDIS_PORT`: *Your Upstash Redis Port*
-   - `REDIS_PASSWORD`: *(If provided by Upstash, otherwise omit or update your backend code to support it)*
-   - `PORT`: `3000`
-   - `NODE_ENV`: `production`
-6. Click **Create Web Service**. Wait for the build to finish.
-7. Once live, copy your **Render URL** (e.g., `https://questedge-api.onrender.com`).
+   - **Build Command**: `npm install --legacy-peer-deps --include=dev && npx prisma generate && npm run build`
+   - **Start Command**: `npm run start:prod` *(runs baseline check, `npx prisma migrate deploy`, and `node dist/main`)*
+3. Set required **Environment Variables**:
+   - `NODE_ENV=production`
+   - `PORT=3000`
+   - `DATABASE_URL` *(Neon connection string)*
+   - `AUTH0_DOMAIN` *(Auth0 tenant or custom domain)*
+   - `AUTH0_AUDIENCE` *(Auth0 API identifier)*
+   - `AUTH0_MANAGEMENT_DOMAIN`, `AUTH0_MANAGEMENT_CLIENT_ID`, `AUTH0_MANAGEMENT_CLIENT_SECRET`
+   - `AUTH0_SYNC_SECRET` *(strong random secret for post-login sync webhook)*
+   - `SUPPORT_ADMIN_SUBS` / `SUPPORT_ADMIN_EMAILS` *(comma-separated allowlist for platform admins)*
+   - `FRONTEND_URL` *(exact production Vercel URL, e.g. `https://app.questedge.in`)*
+   - `EXTRA_CORS_ORIGINS` *(optional comma-separated additional origins)*
+   - `RESEND_API_KEY` and `RESEND_FROM_EMAIL` *(e.g. `QuestEdge <noreply@yourdomain.com>`)*
+   - `GEMINI_API_KEY` *(AI JD generation, match scoring, feedback & BGV summaries)*
+   - `S3_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET`, `S3_OFFERS_BUCKET`
+   - Vendor webhook secrets (unique strong secrets; required if corresponding vendor API key is configured):
+     - `DIGIO_WEBHOOK_SECRET` *(when `DIGIO_CLIENT_ID` / `DIGIO_CLIENT_SECRET` are set)*
+     - `AUTHBRIDGE_WEBHOOK_SECRET` *(when `AUTHBRIDGE_API_KEY` is set)*
+     - `MSG91_WEBHOOK_SECRET` *(when `MSG91_AUTH_KEY` is set)*
+   - Keep `ENABLE_SWAGGER=false` in production.
 
 ---
 
 ## Step 4: Frontend (Vercel)
-We use Vercel to host the Next.js frontend.
 
-1. Go to [vercel.com](https://vercel.com/) and sign up.
-2. Click **Add New Project**.
-3. Import your `questedge` GitHub repository.
-4. Configure the project:
-   - **Root Directory**: Select the `frontend` folder.
-   - **Framework Preset**: Vercel should automatically detect `Next.js`.
-5. Expand the **Environment Variables** section and add:
-   - `AUTH0_SECRET`: *Generate a random 32-character string (e.g., use `openssl rand -hex 32`)*
-   - `AUTH0_DOMAIN`: *Your Auth0 tenant domain*
-   - `AUTH0_CLIENT_ID`: *Your Auth0 SPA Application Client ID*
-   - `AUTH0_CLIENT_SECRET`: *Your Auth0 SPA Application Client Secret*
-   - `AUTH0_AUDIENCE`: *Your Auth0 API audience identifier*
-   - `APP_BASE_URL`: *For now, you can leave this blank or guess your vercel domain. We will update it in Step 6.*
-   - `NEXT_PUBLIC_API_URL`: *The Render URL from Step 3 (e.g., `https://questedge-api.onrender.com`)*
-6. Click **Deploy**.
-7. Once finished, Vercel will give you a public URL for your frontend (e.g., `https://questedge-frontend.vercel.app`).
+1. Create a Vercel project with **Root Directory** set to `frontend`.
+2. Add **Environment Variables**:
+   - `AUTH0_SECRET` *(32+ byte random hex string, e.g. `openssl rand -hex 32`)*
+   - `AUTH0_DOMAIN` *(same Auth0 domain)*
+   - `AUTH0_CLIENT_ID` and `AUTH0_CLIENT_SECRET` *(Auth0 Regular Web / SPA app credentials)*
+   - `AUTH0_AUDIENCE` *(same Auth0 API identifier)*
+   - `APP_BASE_URL` *(production frontend URL, e.g. `https://app.questedge.in`)*
+   - `NEXT_PUBLIC_API_URL` *(Render backend URL, e.g. `https://questedge-api.onrender.com`)*
+   - `NEXT_PUBLIC_POSTHOG_KEY` *(optional PostHog project key)* and `NEXT_PUBLIC_POSTHOG_HOST=/ingest`
 
 ---
 
-## Step 5: Database Setup & Migrations
-Now that the database is live, we need to initialize its schema.
+## Step 5: Auth0 Callback & Origin URLs (v4 SDK)
 
-1. On your local machine, open the `backend/.env` file.
-2. Temporarily replace the local `DATABASE_URL` with your **Neon Postgres connection string**.
-3. Open your terminal, navigate to the backend folder:
-   ```bash
-   cd backend
-   ```
-4. Run the Prisma database push/migration command to create your tables:
-   ```bash
-   npx prisma db push
-   ```
-5. *(Optional)* If you have seed data, run the seed script:
-   ```bash
-   npx prisma db seed
-   ```
-6. **Important:** Change your local `backend/.env` file back to the local database connection string so you don't accidentally develop against production!
+This frontend uses `@auth0/nextjs-auth0` v4 with custom `/auth/*` routes configured in `frontend/src/lib/auth0.ts`.
+
+In the Auth0 Dashboard for your application:
+- **Allowed Callback URLs**: `https://<your-vercel-domain>/auth/callback`
+- **Allowed Logout URLs**: `https://<your-vercel-domain>`
+- **Allowed Web Origins**: `https://<your-vercel-domain>`
 
 ---
 
-## Step 6: Finalize Auth0 & Vercel Configuration
-Auth0 needs to know your live Vercel URL to allow logins, and Vercel needs to know its own URL for Auth0 callbacks.
+## Post-Launch Optional Integrations
 
-1. **Update Vercel Environment Variables:**
-   - Go to your Vercel Project Dashboard -> **Settings** -> **Environment Variables**.
-   - Update `APP_BASE_URL` to be your live Vercel frontend URL (e.g., `https://questedge-frontend.vercel.app`).
-   - Go to **Deployments** and click **Redeploy** on the latest deployment so the new variables take effect.
-
-2. **Update Auth0 Application URLs:**
-   - Go to your Auth0 Dashboard -> **Applications** -> Select your SPA Application.
-   - Update **Allowed Callback URLs**: `https://questedge-frontend.vercel.app/api/auth/callback`
-   - Update **Allowed Logout URLs**: `https://questedge-frontend.vercel.app`
-   - Update **Allowed Web Origins**: `https://questedge-frontend.vercel.app`
-   - Save the changes.
-
----
-
-## Success! 🎉
-Your application is now fully deployed:
-- **Frontend:** Live on Vercel
-- **Backend API:** Live on Render
-- **Database:** Hosted on Neon
-- **Cache:** Hosted on Upstash
-
-You can now visit your Vercel URL and interact with the application!
+The items below are intentionally gated / safe to enable after launch without code changes:
+- **Coding IDE Assessments:** Configure `JUDGE0_API_URL`, `JUDGE0_API_KEY`, and `JUDGE0_API_HOST` on Render. The UI automatically unlocks `CODING` challenge creation and execution once `GET /api/v2/assessment-take/coding-status` reports `enabled: true`.
+- **BGV Consent SMS / WhatsApp OTP (MSG91):** BGV DPDP consent OTPs send via Email (`RESEND_API_KEY`) by default. Add `MSG91_AUTH_KEY`, `MSG91_SMS_SENDER_ID`, and `MSG91_WEBHOOK_SECRET` when ready to enable SMS/WhatsApp channels.
+- **Native Vendor BGV / e-Sign Adapters:** Configure `AUTHBRIDGE_*`, `ONGRID_*`, `IDFY_*`, `DIGIO_*`, or `LEGALITY_*` keys when onboarding commercial accounts; in production without credentials, endpoints fail closed cleanly instead of silently simulating verifications.

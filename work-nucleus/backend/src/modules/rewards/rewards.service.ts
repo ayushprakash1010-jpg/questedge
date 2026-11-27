@@ -74,27 +74,11 @@ export class RewardsService {
         : { auth0Sub: auth0SubOrId },
     });
 
-    if (!recruiter) {
+    const demoSub = process.env.DEMO_AUTH0_SUB?.trim();
+    if (!recruiter && demoSub && auth0SubOrId === demoSub) {
       recruiter = await this.prisma.recruiterProfile.findFirst({
-        where: {
-          OR: [
-            { isDemoAccount: true },
-            { email: { contains: 'growytvercel' } },
-            { email: { contains: 'recruiter' } },
-          ],
-        },
+        where: { isDemoAccount: true },
       });
-
-      if (recruiter && auth0SubOrId) {
-        try {
-          recruiter = await this.prisma.recruiterProfile.update({
-            where: { id: recruiter.id },
-            data: { auth0Sub: auth0SubOrId, isDemoAccount: true },
-          });
-        } catch {
-          // Ignore unique constraint violation if auth0Sub is already linked
-        }
-      }
     }
 
     return recruiter;

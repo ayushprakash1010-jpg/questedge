@@ -16,6 +16,9 @@ export class IDfyProvider implements IBgvProvider {
   readonly name = 'idfy' as const;
 
   async initiateProfile() {
+    if (process.env.NODE_ENV === 'production') {
+      throw new NotImplementedException('IDfy BGV integration is not yet available in production');
+    }
     return { vendorRefId: `dev-idfy-${Date.now()}` };
   }
 
@@ -24,6 +27,9 @@ export class IDfyProvider implements IBgvProvider {
     type: BgvCheckType;
     payload: Record<string, unknown>;
   }) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new NotImplementedException('IDfy BGV integration is not yet available in production');
+    }
     return { vendorCheckRefId: `dev-idfy-chk-${Date.now()}` };
   }
 

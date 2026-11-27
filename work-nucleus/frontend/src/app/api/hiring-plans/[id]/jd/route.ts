@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
-import { getApiUrl, getProxyHeaders } from "@/lib/api-url";
+import {
+  forwardUpstreamResponse,
+  getApiUrl,
+  getProxyHeaders,
+  isValidId,
+} from "@/lib/api-url";
 
-const API_URL = getApiUrl();
+export const dynamic = "force-dynamic";
 
 // GET /api/hiring-plans/:id/jd — get latest JD
 export async function GET(
@@ -10,6 +15,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    if (!isValidId(params.id)) {
+      return NextResponse.json({ error: "Invalid plan ID" }, { status: 400 });
+    }
     const session = await auth0.getSession();
     if (!session) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -18,21 +26,25 @@ export async function GET(
     const { token: accessToken } = await auth0.getAccessToken();
     const url = new URL(req.url);
     const versions = url.searchParams.get("versions");
+    const planId = encodeURIComponent(params.id);
 
     const endpoint = versions === "true"
-      ? `${API_URL}/api/v1/hiring-plans/${params.id}/jd/versions`
-      : `${API_URL}/api/v1/hiring-plans/${params.id}/jd/latest`;
+      ? `${getApiUrl()}/api/v1/hiring-plans/${planId}/jd/versions`
+      : `${getApiUrl()}/api/v1/hiring-plans/${planId}/jd/latest`;
 
     const res = await fetch(endpoint, {
       headers: getProxyHeaders(req, accessToken),
+      cache: "no-store",
     });
 
-    if (res.status === 404 || res.status === 204) {
+    if (res.status === 204) {
+      return NextResponse.json(null, { status: 200 });
+    }
+    if (res.status === 404) {
       return NextResponse.json(null, { status: 200 });
     }
 
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
+    return forwardUpstreamResponse(res, "Failed to fetch JD");
   } catch {
     return NextResponse.json({ error: "Failed to fetch JD" }, { status: 500 });
   }
@@ -44,6 +56,9 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    if (!isValidId(params.id)) {
+      return NextResponse.json({ error: "Invalid plan ID" }, { status: 400 });
+    }
     const session = await auth0.getSession();
     if (!session) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -53,7 +68,7 @@ export async function POST(
     const body = await req.json();
 
     const res = await fetch(
-      `${API_URL}/api/v1/hiring-plans/${params.id}/jd/generate`,
+      `${getApiUrl()}/api/v1/hiring-plans/${encodeURIComponent(params.id)}/jd/generate`,
       {
         method: "POST",
         headers: getProxyHeaders(req, accessToken, "application/json"),
@@ -61,8 +76,7 @@ export async function POST(
       }
     );
 
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
+    return forwardUpstreamResponse(res, "Failed to generate JD");
   } catch {
     return NextResponse.json({ error: "Failed to generate JD" }, { status: 500 });
   }
@@ -74,6 +88,9 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    if (!isValidId(params.id)) {
+      return NextResponse.json({ error: "Invalid plan ID" }, { status: 400 });
+    }
     const session = await auth0.getSession();
     if (!session) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -82,9 +99,12 @@ export async function PATCH(
     const { token: accessToken } = await auth0.getAccessToken();
     const body = await req.json();
     const { jdId, ...updateData } = body;
+    if (!isValidId(jdId)) {
+      return NextResponse.json({ error: "Invalid jdId" }, { status: 400 });
+    }
 
     const res = await fetch(
-      `${API_URL}/api/v1/hiring-plans/${params.id}/jd/${jdId}`,
+      `${getApiUrl()}/api/v1/hiring-plans/${encodeURIComponent(params.id)}/jd/${encodeURIComponent(jdId)}`,
       {
         method: "PATCH",
         headers: getProxyHeaders(req, accessToken, "application/json"),
@@ -92,8 +112,7 @@ export async function PATCH(
       }
     );
 
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
+    return forwardUpstreamResponse(res, "Failed to update JD");
   } catch {
     return NextResponse.json({ error: "Failed to update JD" }, { status: 500 });
   }
@@ -105,6 +124,9 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    if (!isValidId(params.id)) {
+      return NextResponse.json({ error: "Invalid plan ID" }, { status: 400 });
+    }
     const session = await auth0.getSession();
     if (!session) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -113,17 +135,19 @@ export async function PUT(
     const { token: accessToken } = await auth0.getAccessToken();
     const body = await req.json();
     const { jdId } = body;
+    if (!isValidId(jdId)) {
+      return NextResponse.json({ error: "Invalid jdId" }, { status: 400 });
+    }
 
     const res = await fetch(
-      `${API_URL}/api/v1/hiring-plans/${params.id}/jd/${jdId}/approve`,
+      `${getApiUrl()}/api/v1/hiring-plans/${encodeURIComponent(params.id)}/jd/${encodeURIComponent(jdId)}/approve`,
       {
         method: "POST",
-        headers: getProxyHeaders(req, accessToken, "application/json"),
+        headers: getProxyHeaders(req, accessToken),
       }
     );
 
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
+    return forwardUpstreamResponse(res, "Failed to approve JD");
   } catch {
     return NextResponse.json({ error: "Failed to approve JD" }, { status: 500 });
   }

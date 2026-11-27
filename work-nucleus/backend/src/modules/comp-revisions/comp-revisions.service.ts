@@ -4,10 +4,13 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { CompLetterStatus, Prisma, RevisionStatus, Role } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EmailService } from '../email/email.service';
 import { OfferRenderService } from '../offers/services/offer-render.service';
+import { buildOfferHtml } from '../offers/services/template-renderer';
 import { OverrideRevisionDto } from './dto/revision.dto';
 
 const APPROVAL_CHAIN: RevisionStatus[] = [
@@ -32,7 +35,60 @@ export class CompRevisionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly offerRender: OfferRenderService,
+    @Optional() private readonly email?: EmailService,
   ) {}
+
+  private async getManagedEmployeeIds(
+    orgId: string,
+    cycleId: string | undefined,
+    managerUserId: string,
+  ): Promise<string[]> {
+    const [goals, assessments] = await Promise.all([
+      this.prisma.goal.findMany({
+        where: {
+          managerId: managerUserId,
+          cycle: { orgId, ...(cycleId ? { id: cycleId } : {}) },
+        },
+        select: { employeeId: true },
+        distinct: ['employeeId'],
+      }),
+      this.prisma.appraisalAssessment.findMany({
+        where: {
+          managerId: managerUserId,
+          cycle: { orgId, ...(cycleId ? { id: cycleId } : {}) },
+        },
+        select: { employeeId: true },
+        distinct: ['employeeId'],
+      }),
+    ]);
+    return Array.from(
+      new Set([
+        ...goals.map((g) => g.employeeId),
+        ...assessments.map((a) => a.employeeId),
+      ]),
+    );
+  }
+
+  private async assertCanAccessEmployee(
+    orgId: string,
+    cycleId: string,
+    employeeId: string,
+    actorUserId?: string,
+    actorRole?: Role,
+  ) {
+    if (!actorRole || actorRole === Role.ADMIN || actorRole === Role.HR) {
+      return;
+    }
+    if (!actorUserId || employeeId === actorUserId) {
+      throw new ForbiddenException('You cannot modify or approve your own compensation');
+    }
+    const managed = await this.getManagedEmployeeIds(orgId, cycleId, actorUserId);
+    if (!managed.includes(employeeId)) {
+      throw new ForbiddenException(
+        'Managers may only view or modify compensation for their direct reports',
+      );
+    }
+  }
 
   async list(
     orgId: string,
@@ -42,11 +98,22 @@ export class CompRevisionsService {
       status?: RevisionStatus;
     } = {},
   ) {
+    let managedFilter: { employeeId: { in: string[] } } | undefined;
+    if (opts.managerUserId) {
+      const managedIds = await this.getManagedEmployeeIds(
+        orgId,
+        opts.cycleId,
+        opts.managerUserId,
+      );
+      if (managedIds.length === 0) return [];
+      managedFilter = { employeeId: { in: managedIds } };
+    }
     return this.prisma.compensationRevision.findMany({
       where: {
         orgId,
         ...(opts.cycleId && { cycleId: opts.cycleId }),
         ...(opts.status && { status: opts.status }),
+        ...managedFilter,
       },
       include: { employee: { select: { id: true, name: true, email: true } } },
       orderBy: { updatedAt: 'desc' },
@@ -62,6 +129,17 @@ export class CompRevisionsService {
     return r;
   }
 
+  async findOneForActor(
+    orgId: string,
+    id: string,
+    userId: string,
+    userRole: Role,
+  ) {
+    const r = await this.findOne(orgId, id);
+    await this.assertCanAccessEmployee(orgId, r.cycleId, r.employeeId, userId, userRole);
+    return r;
+  }
+
   /**
    * Manager override: edit final hike/bonus values with required reason.
    * Conservative — locks revisions can't be overridden.
@@ -71,8 +149,10 @@ export class CompRevisionsService {
     id: string,
     userId: string,
     dto: OverrideRevisionDto,
+    userRole?: Role,
   ) {
     const r = await this.findOne(orgId, id);
+    await this.assertCanAccessEmployee(orgId, r.cycleId, r.employeeId, userId, userRole);
     if (
       r.status === RevisionStatus.LOCKED ||
       r.status === RevisionStatus.COMMUNICATED
@@ -112,8 +192,9 @@ export class CompRevisionsService {
 
   // ── Approval chain ────────────────────────────────────────────
 
-  async submitToApproval(orgId: string, id: string) {
+  async submitToApproval(orgId: string, id: string, userId?: string, userRole?: Role) {
     const r = await this.findOne(orgId, id);
+    await this.assertCanAccessEmployee(orgId, r.cycleId, r.employeeId, userId, userRole);
     if (r.status !== RevisionStatus.DRAFT)
       throw new BadRequestException('Only DRAFT revisions can be submitted');
     return this.prisma.compensationRevision.update({
@@ -131,6 +212,7 @@ export class CompRevisionsService {
     comment?: string,
   ) {
     const r = await this.findOne(orgId, id);
+    await this.assertCanAccessEmployee(orgId, r.cycleId, r.employeeId, userId, userRole);
     if (!APPROVAL_CHAIN.includes(r.status)) {
       throw new BadRequestException(
         `Revision is ${r.status}; not in an approval state`,
@@ -194,20 +276,61 @@ export class CompRevisionsService {
     ) {
       throw new BadRequestException('Only LOCKED revisions get letters');
     }
-    // Phase 1 OfferRender produces HTML for any S3 path; we reuse that pipeline
-    // by writing the comp letter to the same offers bucket under a comp/ prefix.
-    // Manager-first communication gating is enforced at the markCommunicated step.
+    const org = await this.prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { name: true },
+    });
+    const empName = escapeCompHtml(r.employee?.name ?? 'Team Member');
+    const orgName = org?.name ?? 'Your Organization';
+    const effDate = r.effectiveDate.toISOString().slice(0, 10);
+    const bodyHtml = `
+      <p>Dear ${empName},</p>
+      <p>We are pleased to share your updated compensation revision summary, effective <strong>${escapeCompHtml(effDate)}</strong>.</p>
+      <ul>
+        <li><strong>Previous Fixed Annual:</strong> INR ${Number(r.currentFixed).toLocaleString('en-IN')}</li>
+        <li><strong>Revised Fixed Annual:</strong> INR ${Number(r.newFixed).toLocaleString('en-IN')} (${Number(r.finalHikePct)}% increment)</li>
+        <li><strong>Revised Variable Annual:</strong> INR ${Number(r.newVariable).toLocaleString('en-IN')}</li>
+        ${Number(r.finalBonusINR) > 0 ? `<li><strong>One-time Performance Bonus:</strong> INR ${Number(r.finalBonusINR).toLocaleString('en-IN')}</li>` : ''}
+      </ul>
+      ${r.managerComment ? `<p><strong>Manager Note:</strong> ${escapeCompHtml(r.managerComment)}</p>` : ''}
+      <p>Please sign in to QuestEdge to review and acknowledge your compensation letter.</p>
+    `;
+    const html = buildOfferHtml({
+      bodyHtml,
+      candidateName: r.employee?.name ?? 'Team Member',
+      orgName,
+    });
+    const s3Key = `comp/${orgId}/${id}/letter.html`;
+    await this.offerRender.uploadHtml(s3Key, html);
+
     return this.prisma.compensationRevision.update({
       where: { id },
       data: {
         letterStatus: CompLetterStatus.RENDERED,
-        letterUrl: `comp/${orgId}/${id}/letter.html`,
+        letterUrl: s3Key,
       },
     });
   }
 
-  async markOneOnOne(orgId: string, id: string, userId: string) {
+  async getLetterUrl(
+    orgId: string,
+    id: string,
+    userId: string,
+    userRole: Role,
+  ) {
     const r = await this.findOne(orgId, id);
+    if (r.employeeId !== userId) {
+      await this.assertCanAccessEmployee(orgId, r.cycleId, r.employeeId, userId, userRole);
+    }
+    if (!r.letterUrl) {
+      throw new NotFoundException('Compensation letter has not been generated yet');
+    }
+    return { url: await this.offerRender.signedUrl(r.letterUrl) };
+  }
+
+  async markOneOnOne(orgId: string, id: string, userId: string, userRole?: Role) {
+    const r = await this.findOne(orgId, id);
+    await this.assertCanAccessEmployee(orgId, r.cycleId, r.employeeId, userId, userRole);
     return this.prisma.compensationRevision.update({
       where: { id },
       data: { oneOnOneAt: new Date() },
@@ -224,7 +347,7 @@ export class CompRevisionsService {
     if (r.letterStatus !== CompLetterStatus.RENDERED) {
       throw new BadRequestException('Letter not yet rendered');
     }
-    return this.prisma.compensationRevision.update({
+    const updated = await this.prisma.compensationRevision.update({
       where: { id },
       data: {
         letterStatus: CompLetterStatus.DELIVERED,
@@ -232,6 +355,15 @@ export class CompRevisionsService {
         status: RevisionStatus.COMMUNICATED,
       },
     });
+    if (this.email && r.employee?.email) {
+      await this.email.sendNotificationEmail(
+        r.employee.email,
+        'Your Compensation Revision Letter is Available',
+        `Your compensation revision summary effective ${r.effectiveDate.toISOString().slice(0, 10)} has been issued after your 1-on-1 review.`,
+        '/appraisal',
+      );
+    }
+    return updated;
   }
 
   async acknowledge(orgId: string, id: string, userId: string) {
@@ -395,4 +527,13 @@ function simpleHash(s: string): string {
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+function escapeCompHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }

@@ -13,8 +13,13 @@ import {
   ShieldAlert,
   Sparkles,
   Loader2,
+  Lock,
 } from "lucide-react";
-import { createAssessment, AssessmentType } from "@/lib/assessment-api";
+import {
+  createAssessment,
+  fetchCodingExecutionStatus,
+  AssessmentType,
+} from "@/lib/assessment-api";
 import { Mandate } from "@/lib/marketplace-api";
 
 export default function CreateAssessmentPage() {
@@ -22,9 +27,10 @@ export default function CreateAssessmentPage() {
   const [mandates, setMandates] = useState<Mandate[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [codingEnabled, setCodingEnabled] = useState(false);
 
   // Form State
-  const [type, setType] = useState<AssessmentType>("CODING");
+  const [type, setType] = useState<AssessmentType>("QUIZ");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [durationMinutes, setDurationMinutes] = useState(60);
@@ -38,6 +44,11 @@ export default function CreateAssessmentPage() {
   );
 
   useEffect(() => {
+    fetchCodingExecutionStatus().then(({ enabled }) => {
+      setCodingEnabled(enabled);
+      setType((prev) => (enabled && prev === "QUIZ" ? "CODING" : !enabled && prev === "CODING" ? "QUIZ" : prev));
+    });
+
     fetch("/api/mandates?limit=100")
       .then((res) => res.json())
       .then((res) => {
@@ -108,20 +119,32 @@ export default function CreateAssessmentPage() {
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div
-              onClick={() => setType("CODING")}
-              className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between ${
-                type === "CODING"
-                  ? "border-indigo-600 bg-indigo-50/50 shadow-sm"
-                  : "border-slate-200 hover:border-slate-300 bg-white"
+              onClick={() => codingEnabled && setType("CODING")}
+              aria-disabled={!codingEnabled}
+              className={`p-4 rounded-xl border-2 transition-all flex flex-col justify-between ${
+                !codingEnabled
+                  ? "border-slate-200 bg-slate-50/80 opacity-65 cursor-not-allowed"
+                  : type === "CODING"
+                  ? "border-indigo-600 bg-indigo-50/50 shadow-sm cursor-pointer"
+                  : "border-slate-200 hover:border-slate-300 bg-white cursor-pointer"
               }`}
             >
-              <div className="h-8 w-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center mb-3">
-                <Code2 className="h-4 w-4" />
+              <div className="flex items-center justify-between mb-3">
+                <div className="h-8 w-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                  <Code2 className="h-4 w-4" />
+                </div>
+                {!codingEnabled && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                    <Lock className="h-2.5 w-2.5" /> Post-Launch
+                  </span>
+                )}
               </div>
               <div>
                 <h4 className="font-bold text-slate-900 text-sm">Coding Challenge</h4>
                 <p className="text-[11px] text-slate-500 mt-1">
-                  Monaco IDE + Judge0 compiler. Ideal for engineering & developer roles.
+                  {codingEnabled
+                    ? "Monaco IDE + Judge0 compiler. Ideal for engineering & developer roles."
+                    : "Compiler API offline until post-launch activation. Use MCQ Quiz or Video Interview."}
                 </p>
               </div>
             </div>

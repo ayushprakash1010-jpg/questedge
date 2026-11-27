@@ -1085,22 +1085,23 @@ export class HireDetectionService {
   }
 
   /** Get bypass flags summary stats */
-  async getBypassStats() {
+  async getBypassStats(orgId?: string) {
+    const baseWhere = orgId ? { orgId } : {};
     const [total, unresolved, critical, high, medium, confirmedHires] =
       await Promise.all([
-        this.prisma.hireBypassFlag.count(),
-        this.prisma.hireBypassFlag.count({ where: { isResolved: false } }),
+        this.prisma.hireBypassFlag.count({ where: baseWhere }),
+        this.prisma.hireBypassFlag.count({ where: { ...baseWhere, isResolved: false } }),
         this.prisma.hireBypassFlag.count({
-          where: { riskLevel: 'CRITICAL', isResolved: false },
+          where: { ...baseWhere, riskLevel: 'CRITICAL', isResolved: false },
         }),
         this.prisma.hireBypassFlag.count({
-          where: { riskLevel: 'HIGH', isResolved: false },
+          where: { ...baseWhere, riskLevel: 'HIGH', isResolved: false },
         }),
         this.prisma.hireBypassFlag.count({
-          where: { riskLevel: 'MEDIUM', isResolved: false },
+          where: { ...baseWhere, riskLevel: 'MEDIUM', isResolved: false },
         }),
         this.prisma.hireBypassFlag.count({
-          where: { resolution: 'CONFIRMED_HIRE' },
+          where: { ...baseWhere, resolution: 'CONFIRMED_HIRE' },
         }),
       ]);
 
@@ -1135,7 +1136,7 @@ export class HireDetectionService {
               body: `Potential hire bypass detected for "${referral.mandate?.title || 'Unknown'}". Please investigate.`,
               entityType: 'REFERRAL',
               entityId: referral.id,
-              actionUrl: `/support/bypass-flags`,
+              actionUrl: `/marketplace/bypass-detection`,
             })
             .catch(() => null);
         }

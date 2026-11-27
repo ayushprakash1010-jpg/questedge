@@ -181,6 +181,67 @@ export class FileUploadService implements OnModuleInit {
     return key;
   }
 
+  async uploadOnboardingDoc(
+    file: Express.Multer.File,
+    token: string,
+  ): Promise<string> {
+    if (!file || !file.buffer) {
+      throw new BadRequestException('No file content provided.');
+    }
+    const allowedMimes = ['application/pdf', 'image/png', 'image/jpeg'];
+    if (!allowedMimes.includes(file.mimetype)) {
+      throw new BadRequestException(
+        'Invalid file type. Only PDF, PNG, and JPEG files are allowed.',
+      );
+    }
+    if (file.size > MAX_FILE_SIZE || file.buffer.length > MAX_FILE_SIZE) {
+      throw new BadRequestException('File size must not exceed 10 MB.');
+    }
+
+    const buf = file.buffer;
+    const isPdf =
+      buf.length >= 4 &&
+      buf[0] === 0x25 &&
+      buf[1] === 0x50 &&
+      buf[2] === 0x44 &&
+      buf[3] === 0x46;
+    const isPng =
+      buf.length >= 4 &&
+      buf[0] === 0x89 &&
+      buf[1] === 0x50 &&
+      buf[2] === 0x4e &&
+      buf[3] === 0x47;
+    const isJpeg =
+      buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+
+    const valid =
+      (file.mimetype === 'application/pdf' && isPdf) ||
+      (file.mimetype === 'image/png' && isPng) ||
+      (file.mimetype === 'image/jpeg' && isJpeg);
+
+    if (!valid) {
+      throw new BadRequestException(
+        'File contents do not match the expected document format.',
+      );
+    }
+
+    const safeToken = token.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 32) || 'doc';
+    const rawFilename = path.basename(file.originalname || 'document');
+    const safeFilename = rawFilename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const key = `joining/${safeToken}/${Date.now()}-${safeFilename}`;
+
+    await this.s3.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      }),
+    );
+
+    return key;
+  }
+
   async getPresignedUrl(key: string, filename?: string): Promise<string> {
     const cleanFilename = filename
       ? filename.trim().replace(/[^a-zA-Z0-9._-]/g, '_')

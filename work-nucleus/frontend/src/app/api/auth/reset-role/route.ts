@@ -1,8 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
-import { getApiUrl } from "@/lib/api-url";
+import { forwardUpstreamResponse, getApiUrl, getProxyHeaders } from "@/lib/api-url";
 
-export async function POST() {
+export const dynamic = "force-dynamic";
+
+export async function POST(req: NextRequest) {
   try {
     const session = await auth0.getSession();
     if (!session) {
@@ -10,23 +12,18 @@ export async function POST() {
     }
 
     const { token: accessToken } = await auth0.getAccessToken();
-    const apiUrl = getApiUrl();
 
-    const res = await fetch(`${apiUrl}/api/v1/auth/reset-role`, {
+    const res = await fetch(`${getApiUrl()}/api/v1/auth/reset-role`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: getProxyHeaders(req, accessToken),
     });
 
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      return NextResponse.json(
-        { error: data.message || "Failed to reset role" },
-        { status: res.status }
-      );
+      return forwardUpstreamResponse(res, "Failed to reset role");
     }
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

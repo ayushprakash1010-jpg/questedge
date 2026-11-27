@@ -294,6 +294,10 @@ export class NotificationsService {
           );
         } else if (cat === 'REWARDS' || cat === 'REWARD') {
           filtered = filtered.filter((i) => i.type === 'REWARD');
+        } else if (cat === 'MANDATES' || cat === 'MANDATE') {
+          filtered = filtered.filter((i) => i.type === 'MANDATE');
+        } else {
+          filtered = filtered.filter((i) => i.type === cat);
         }
       }
 
@@ -311,20 +315,15 @@ export class NotificationsService {
       const candidateProfileId = user.id;
       const items: NotificationItem[] = [];
 
+      const demoEmailEnv = process.env.DEMO_EMAIL?.trim().toLowerCase();
       const isDemo =
         user.isDemoAccount ||
-        user.email?.toLowerCase().includes('growytvercel');
+        Boolean(demoEmailEnv && user.email?.toLowerCase() === demoEmailEnv);
 
       let candidateIds = [candidateProfileId];
       if (isDemo) {
         const otherProfiles = await this.prisma.candidateProfile.findMany({
-          where: {
-            OR: [
-              { email: 'growytvercel@gmail.com' },
-              { email: 'growytvercel+candidate@gmail.com' },
-              { isDemoAccount: true },
-            ],
-          },
+          where: { isDemoAccount: true },
           select: { id: true },
         });
         candidateIds = Array.from(
@@ -375,6 +374,14 @@ export class NotificationsService {
         (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
       );
       if (unreadOnly) filtered = filtered.filter((item) => !item.read);
+      if (type && type !== 'ALL') {
+        const cat = type.toUpperCase();
+        if (cat === 'CONSENTS' || cat === 'CONSENT') {
+          filtered = filtered.filter((i) => i.type === 'CONSENT');
+        } else {
+          filtered = filtered.filter((i) => i.type === cat);
+        }
+      }
       const total = filtered.length;
       const data = filtered.slice((page - 1) * limit, page * limit);
 
@@ -399,6 +406,9 @@ export class NotificationsService {
         data: { read: true },
       });
     }
+    if (this.readItemIds.size > 10000) {
+      this.readItemIds.clear();
+    }
     for (const id of ids) {
       this.readItemIds.add(id);
     }
@@ -411,6 +421,9 @@ export class NotificationsService {
         where: { userId: user.id, read: false },
         data: { read: true },
       });
+    }
+    if (this.readItemIds.size > 10000) {
+      this.readItemIds.clear();
     }
     const unread = await this.findAll(user, { unreadOnly: true, limit: 100 });
     for (const item of unread.data) {

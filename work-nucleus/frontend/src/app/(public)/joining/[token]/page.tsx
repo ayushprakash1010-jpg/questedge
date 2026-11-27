@@ -70,14 +70,19 @@ export default function PublicJoiningPage() {
         body: fd,
       }).catch(() => null);
 
-      // Fallback: ask the server for a presign or accept the local filename — for the
-      // first cut we treat the response.fileUrl as the S3 key.
-      let fileUrl = "";
-      if (upRes && upRes.ok) {
-        const j = await upRes.json();
-        fileUrl = j.fileUrl ?? j.key ?? file.name;
-      } else {
-        fileUrl = `pending-upload://${file.name}`;
+      if (!upRes || !upRes.ok) {
+        let msg = "Document upload failed. Please check the file format and try again.";
+        if (upRes) {
+          const errBody = await upRes.json().catch(() => null);
+          msg = errBody?.error?.message || errBody?.message || msg;
+        }
+        throw new Error(msg);
+      }
+
+      const j = await upRes.json();
+      const fileUrl = j.key ?? j.fileUrl;
+      if (!fileUrl) {
+        throw new Error("Document upload succeeded without a storage key");
       }
 
       const res = await fetch(`${API_BASE}/api/v2/public/joining/${token}/submit`, {

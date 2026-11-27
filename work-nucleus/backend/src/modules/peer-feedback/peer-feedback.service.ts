@@ -1,12 +1,13 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
   Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { FeedbackRequestStatus, Prisma } from '@prisma/client';
+import { FeedbackRequestStatus, Prisma, Role } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AiCostService } from '../ai-cost/ai-cost.service';
@@ -39,8 +40,27 @@ export class PeerFeedbackService {
     );
   }
 
-  async nominate(orgId: string, userId: string, dto: NominatePeersDto) {
+  async nominate(orgId: string, userId: string, dto: NominatePeersDto, userRole?: Role) {
     await this.assertCycleInOrg(orgId, dto.cycleId);
+    if (
+      dto.subjectUserId !== userId &&
+      userRole !== Role.ADMIN &&
+      userRole !== Role.HR &&
+      userRole !== Role.HIRING_MANAGER
+    ) {
+      throw new ForbiddenException(
+        'Only ADMIN, HR, or HIRING_MANAGER can nominate peer reviewers for another employee',
+      );
+    }
+    const memberIds = Array.from(
+      new Set([dto.subjectUserId, ...dto.nominations.map((n) => n.reviewerUserId)]),
+    );
+    const memberCount = await this.prisma.user.count({
+      where: { id: { in: memberIds }, orgId, isActive: true },
+    });
+    if (memberCount !== memberIds.length) {
+      throw new NotFoundException('Subject or reviewer user not found in organization');
+    }
     if (dto.nominations.length > 10) {
       throw new BadRequestException('Cap nominations at 10 per cycle');
     }
@@ -151,12 +171,25 @@ export class PeerFeedbackService {
   async findByToken(token: string) {
     const r = await this.prisma.peerFeedbackRequest.findUnique({
       where: { reviewerToken: token },
-      include: {
+      select: {
+        id: true,
+        status: true,
+        isAnonymous: true,
+        relationship: true,
+        expiresAt: true,
+        submittedAt: true,
         cycle: { select: { id: true, name: true, status: true } },
         subject: { select: { id: true, name: true } },
       },
     });
     if (!r) throw new NotFoundException('Feedback request not found');
+    if (r.expiresAt && r.expiresAt < new Date()) {
+      await this.prisma.peerFeedbackRequest.update({
+        where: { id: r.id },
+        data: { status: FeedbackRequestStatus.EXPIRED },
+      });
+      throw new BadRequestException('Feedback request has expired');
+    }
     return r;
   }
 

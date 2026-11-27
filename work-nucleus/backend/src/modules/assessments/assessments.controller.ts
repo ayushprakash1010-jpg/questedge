@@ -24,7 +24,7 @@ import {
 @Controller('api/v2/appraisal/assessments')
 @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER, Role.INTERVIEWER, Role.VIEWER)
 export class AssessmentsController {
-  constructor(private readonly service: AssessmentsService) {}
+  constructor(private readonly service: AssessmentsService) { }
 
   @Get('home')
   @ApiOperation({
@@ -77,10 +77,11 @@ export class AssessmentsController {
   finalise(
     @CurrentUser('orgId') orgId: string,
     @CurrentUser('id') userId: string,
+    @CurrentUser('role') userRole: Role,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: FinaliseAssessmentDto,
   ) {
-    return this.service.finalise(orgId, id, userId, dto);
+    return this.service.finalise(orgId, id, userId, dto, userRole);
   }
 
   @Post(':id/acknowledge')
