@@ -11,6 +11,7 @@ import React, {
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { QuestEdgeLogo } from "@/components/QuestEdgeLogo";
 import {
   LayoutDashboard,
@@ -360,7 +361,82 @@ export function SearchQuerySync({
   return null;
 }
 
-// ── Tooltip state for collapsed icon-rail mode ───────────────────────────
+// ── Section-aware color gradients for collapsed sliding hover pill ────────
+
+interface SectionPillColors {
+  bgColor: string;
+  shadow: string;
+}
+
+function getSectionPillColors(
+  role: PortalRole,
+  sectionTitle?: string,
+  isPortal = false
+): SectionPillColors {
+  if (role === "recruiter") {
+    if (isPortal) {
+      return {
+        bgColor: "#0369a1",
+        shadow: "0 12px 28px -6px rgba(3, 105, 161, 0.45)",
+      };
+    }
+    if (sectionTitle === "Account") {
+      return {
+        bgColor: "#4f46e5",
+        shadow: "0 12px 28px -6px rgba(79, 70, 229, 0.45)",
+      };
+    }
+    return {
+      bgColor: "#0284c7",
+      shadow: "0 12px 28px -6px rgba(2, 132, 199, 0.45)",
+    };
+  }
+
+  if (role === "candidate") {
+    if (isPortal) {
+      return {
+        bgColor: "#047857",
+        shadow: "0 12px 28px -6px rgba(4, 120, 87, 0.45)",
+      };
+    }
+    if (sectionTitle === "Account") {
+      return {
+        bgColor: "#0d9488",
+        shadow: "0 12px 28px -6px rgba(13, 148, 136, 0.45)",
+      };
+    }
+    return {
+      bgColor: "#059669",
+      shadow: "0 12px 28px -6px rgba(5, 150, 105, 0.45)",
+    };
+  }
+
+  // Company
+  if (isPortal) {
+    return {
+      bgColor: "#4338ca",
+      shadow: "0 12px 28px -6px rgba(67, 56, 202, 0.45)",
+    };
+  }
+  if (sectionTitle === "HR & Operations") {
+    return {
+      bgColor: "#0891b2",
+      shadow: "0 12px 28px -6px rgba(8, 145, 178, 0.45)",
+    };
+  }
+  if (sectionTitle === "Organization") {
+    return {
+      bgColor: "#7c3aed",
+      shadow: "0 12px 28px -6px rgba(124, 58, 237, 0.45)",
+    };
+  }
+  return {
+    bgColor: "#4f46e5",
+    shadow: "0 12px 28px -6px rgba(79, 70, 229, 0.45)",
+  };
+}
+
+// ── Tooltip & sliding hover pill state for collapsed icon-rail mode ──────
 
 interface FloatingTooltipState {
   label: string;
@@ -371,6 +447,20 @@ interface FloatingTooltipState {
   left: number;
 }
 
+interface HoverPillState {
+  label: string;
+  section?: string;
+  icon: React.ElementType;
+  badge?: number;
+  bgColor: string;
+  shadow: string;
+  isActive?: boolean;
+  isPortal?: boolean;
+  top: number;
+  left: number;
+  height: number;
+}
+
 interface SidebarProps {
   userType?: PortalRole;
 }
@@ -379,14 +469,17 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
   const pathname = usePathname();
   const { resolvedTheme } = useTheme();
   const shell = useOptionalWorkspaceShell();
+  const prefersReducedMotion = useReducedMotion();
 
   const [fallbackCollapsed, setFallbackCollapsed] = useState(false);
   const [fallbackSections, setFallbackSections] = useState<Record<string, boolean>>({});
   const [searchString, setSearchString] = useState("");
   const [tooltip, setTooltip] = useState<FloatingTooltipState | null>(null);
+  const [hoveredNav, setHoveredNav] = useState<HoverPillState | null>(null);
   const [isPeeking, setIsPeeking] = useState(false);
   const peekEnterRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const peekLeaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hoverHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const effectiveRole: PortalRole = shell?.userType ?? userType;
   const config = roleConfig[effectiveRole] ?? roleConfig.company;
@@ -490,10 +583,17 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
     [shell]
   );
 
-  // Clear floating tooltip whenever collapsed state, peek state, or route changes
+  // Clear floating tooltip & hover pill whenever collapsed state, peek state, or route changes
   useEffect(() => {
     setTooltip(null);
+    setHoveredNav(null);
   }, [effectiveCollapsed, pathname, searchString]);
+
+  useEffect(() => {
+    return () => {
+      if (hoverHideTimerRef.current) clearTimeout(hoverHideTimerRef.current);
+    };
+  }, []);
 
   const showFloatingTooltip = useCallback(
     (
@@ -512,6 +612,42 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
 
   const hideFloatingTooltip = useCallback(() => {
     setTooltip(null);
+  }, []);
+
+  const showNavHover = useCallback(
+    (
+      e: React.MouseEvent<HTMLElement> | React.FocusEvent<HTMLElement>,
+      data: Omit<HoverPillState, "top" | "left" | "height" | "bgColor" | "shadow">
+    ) => {
+      if (hoverHideTimerRef.current) {
+        clearTimeout(hoverHideTimerRef.current);
+        hoverHideTimerRef.current = null;
+      }
+      const rect = e.currentTarget.getBoundingClientRect();
+      const colors = getSectionPillColors(
+        effectiveRole,
+        data.section,
+        Boolean(data.isPortal)
+      );
+      setHoveredNav({
+        ...data,
+        ...colors,
+        top: rect.top - 2,
+        left: rect.left - 2,
+        height: rect.height + 4,
+      });
+    },
+    [effectiveRole]
+  );
+
+  const scheduleHideNavHover = useCallback(() => {
+    if (hoverHideTimerRef.current) {
+      clearTimeout(hoverHideTimerRef.current);
+    }
+    hoverHideTimerRef.current = setTimeout(() => {
+      setHoveredNav(null);
+      hoverHideTimerRef.current = null;
+    }, 95);
   }, []);
 
   const logoTheme = hydrated && resolvedTheme === "dark" ? "dark" : "light";
@@ -613,8 +749,10 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
       {/* Scrollable Nav */}
       <nav
         aria-label="Sidebar navigation"
+        onMouseLeave={collapsed ? scheduleHideNavHover : undefined}
         onScroll={() => {
           if (tooltip) setTooltip(null);
+          if (hoveredNav) setHoveredNav(null);
         }}
         className={cn(
           "scrollbar-thin flex-1 overflow-y-auto overflow-x-hidden",
@@ -692,25 +830,29 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
                           onMouseEnter={
                             collapsed
                               ? (e) =>
-                                  showFloatingTooltip(e, {
+                                  showNavHover(e, {
                                     label: item.label,
                                     section: title,
+                                    icon: item.icon,
+                                    isActive,
                                     badge: badge.count > 0 ? badge.count : undefined,
                                   })
                               : undefined
                           }
-                          onMouseLeave={collapsed ? hideFloatingTooltip : undefined}
+                          onMouseLeave={collapsed ? scheduleHideNavHover : undefined}
                           onFocus={
                             collapsed
                               ? (e) =>
-                                  showFloatingTooltip(e, {
+                                  showNavHover(e, {
                                     label: item.label,
                                     section: title,
+                                    icon: item.icon,
+                                    isActive,
                                     badge: badge.count > 0 ? badge.count : undefined,
                                   })
                               : undefined
                           }
-                          onBlur={collapsed ? hideFloatingTooltip : undefined}
+                          onBlur={collapsed ? scheduleHideNavHover : undefined}
                           aria-label={collapsed ? item.label : undefined}
                           aria-current={isActive ? "page" : undefined}
                           className={cn(
@@ -720,7 +862,11 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
                               : "gap-2.5 px-2.5 py-[7px]",
                             isActive
                               ? config.activeBg
-                              : "text-slate-600 hover:bg-slate-100/75 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white"
+                              : cn(
+                                  "text-slate-600 dark:text-slate-300",
+                                  !collapsed &&
+                                    "hover:bg-slate-100/75 hover:text-slate-900 dark:hover:bg-slate-800/70 dark:hover:text-white"
+                                )
                           )}
                         >
                           {/* Active left indicator bar */}
@@ -793,23 +939,27 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
           onMouseEnter={
             collapsed
               ? (e) =>
-                  showFloatingTooltip(e, {
+                  showNavHover(e, {
                     label: config.portalTitle,
                     section: config.portalSubtitle,
+                    icon: PortalIcon,
+                    isPortal: true,
                   })
               : undefined
           }
-          onMouseLeave={collapsed ? hideFloatingTooltip : undefined}
+          onMouseLeave={collapsed ? scheduleHideNavHover : undefined}
           onFocus={
             collapsed
               ? (e) =>
-                  showFloatingTooltip(e, {
+                  showNavHover(e, {
                     label: config.portalTitle,
                     section: config.portalSubtitle,
+                    icon: PortalIcon,
+                    isPortal: true,
                   })
               : undefined
           }
-          onBlur={collapsed ? hideFloatingTooltip : undefined}
+          onBlur={collapsed ? scheduleHideNavHover : undefined}
           aria-label={
             collapsed
               ? `${config.portalTitle} — ${config.portalSubtitle}`
@@ -990,7 +1140,111 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
         </div>
       )}
 
-      {/* Floating Portal Tooltip (never clipped by overflow-y-auto) */}
+      {/* Sliding Colored Pop-Out Hover Capsule for Collapsed Icon Rail */}
+      <AnimatePresence>
+        {hoveredNav && effectiveCollapsed && (
+          <motion.div
+            key="rail-hover-pill"
+            role="tooltip"
+            initial={
+              prefersReducedMotion
+                ? {
+                    opacity: 0,
+                    y: hoveredNav.top,
+                    height: hoveredNav.height,
+                    backgroundColor: hoveredNav.bgColor,
+                    boxShadow: hoveredNav.shadow,
+                  }
+                : {
+                    opacity: 0,
+                    scale: 0.94,
+                    x: -8,
+                    y: hoveredNav.top,
+                    height: hoveredNav.height,
+                    backgroundColor: hoveredNav.bgColor,
+                    boxShadow: hoveredNav.shadow,
+                  }
+            }
+            animate={
+              prefersReducedMotion
+                ? {
+                    opacity: 1,
+                    y: hoveredNav.top,
+                    height: hoveredNav.height,
+                    backgroundColor: hoveredNav.bgColor,
+                    boxShadow: hoveredNav.shadow,
+                  }
+                : {
+                    opacity: 1,
+                    scale: 1.02,
+                    x: 0,
+                    y: hoveredNav.top,
+                    height: hoveredNav.height,
+                    backgroundColor: hoveredNav.bgColor,
+                    boxShadow: hoveredNav.shadow,
+                  }
+            }
+            exit={{ opacity: 0, scale: 0.94, x: -6 }}
+            transition={
+              prefersReducedMotion
+                ? { duration: 0.12 }
+                : {
+                    y: { type: "spring", stiffness: 520, damping: 36, mass: 0.65 },
+                    height: { type: "spring", stiffness: 520, damping: 36 },
+                    backgroundColor: { duration: 0.2, ease: "easeOut" },
+                    boxShadow: { duration: 0.2, ease: "easeOut" },
+                    opacity: { duration: 0.14 },
+                    scale: { duration: 0.14 },
+                    x: { duration: 0.16, ease: "easeOut" },
+                  }
+            }
+            style={{
+              top: 0,
+              left: hoveredNav.left,
+              backgroundImage:
+                "linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(15,23,42,0.12) 100%)",
+            }}
+            className="pointer-events-none fixed z-[60] hidden lg:flex items-center overflow-hidden rounded-xl pr-3.5 text-white ring-1 ring-white/25 select-none"
+          >
+            <span
+              className={cn(
+                "flex shrink-0 items-center justify-center",
+                hoveredNav.isPortal ? "h-11 w-11" : "h-10 w-10"
+              )}
+            >
+              <hoveredNav.icon className="h-[18px] w-[18px] text-white drop-shadow-2xs" />
+            </span>
+
+            <div className="flex flex-col justify-center pr-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="whitespace-nowrap text-[13px] font-bold leading-tight tracking-tight text-white">
+                  {hoveredNav.label}
+                </span>
+                {hoveredNav.isActive && (
+                  <span className="rounded bg-white/20 px-1 py-[1px] text-[9px] font-semibold uppercase tracking-wider text-white/95">
+                    Active
+                  </span>
+                )}
+                {hoveredNav.isPortal && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-2xs" />
+                )}
+                {hoveredNav.badge && hoveredNav.badge > 0 && (
+                  <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-white/25 px-1.5 text-[10px] font-bold text-white">
+                    {hoveredNav.badge > 99 ? "99+" : hoveredNav.badge}
+                  </span>
+                )}
+              </div>
+              {hoveredNav.section && (
+                <span className="whitespace-nowrap text-[10px] font-medium leading-tight text-white/80">
+                  {hoveredNav.section}
+                </span>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Compact Utility Tooltip (for header collapse / peek buttons) */}
       {tooltip && (
         <div
           role="tooltip"
