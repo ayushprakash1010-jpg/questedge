@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
 import {
   GripVertical, Plus, Pencil, Trash2, Zap, Users, X,
@@ -48,6 +50,9 @@ export function PipelineSetup({ planId }: { planId: string }) {
   const [formDescription, setFormDescription] = useState("");
   const [saving, setSaving] = useState(false);
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  const [deleteStageId, setDeleteStageId] = useState<string | null>(null);
+  const [confirmDefaultOpen, setConfirmDefaultOpen] = useState(false);
+  const [acting, setActing] = useState(false);
 
   const fetchStages = useCallback(async () => {
     try {
@@ -125,31 +130,54 @@ export function PipelineSetup({ planId }: { planId: string }) {
     }
   };
 
-  const handleDelete = async (stageId: string) => {
-    if (!confirm("Delete this stage?")) return;
+  const handleDelete = (stageId: string) => {
+    setDeleteStageId(stageId);
+  };
+
+  const confirmDeleteStage = async () => {
+    if (!deleteStageId) return;
+    setActing(true);
     try {
-      await fetch(`/api/hiring-plans/${planId}/stages`, {
+      const res = await fetch(`/api/hiring-plans/${planId}/stages`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stageId }),
+        body: JSON.stringify({ stageId: deleteStageId }),
       });
+      if (!res.ok) throw new Error("Failed to delete stage");
+      toast.success("Stage deleted");
+      setDeleteStageId(null);
       fetchStages();
-    } catch {
-      // ignore
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete stage");
+    } finally {
+      setActing(false);
     }
   };
 
-  const handleDefaultTemplate = async () => {
-    if (stages.length > 0 && !confirm("This will only work if there are no existing stages. Continue?")) return;
+  const handleDefaultTemplate = () => {
+    if (stages.length > 0) {
+      setConfirmDefaultOpen(true);
+      return;
+    }
+    void applyDefaultTemplate();
+  };
+
+  const applyDefaultTemplate = async () => {
+    setActing(true);
     try {
-      await fetch(`/api/hiring-plans/${planId}/stages?action=default-template`, {
+      const res = await fetch(`/api/hiring-plans/${planId}/stages?action=default-template`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
+      if (!res.ok) throw new Error("Could not apply default template");
+      toast.success("Default stages added");
+      setConfirmDefaultOpen(false);
       fetchStages();
-    } catch {
-      // ignore
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to apply default template");
+    } finally {
+      setActing(false);
     }
   };
 
@@ -321,6 +349,25 @@ export function PipelineSetup({ planId }: { planId: string }) {
           </div>
         </div>
       )}
+      <ConfirmDialog
+        open={Boolean(deleteStageId)}
+        onClose={() => setDeleteStageId(null)}
+        onConfirm={confirmDeleteStage}
+        variant="danger"
+        title="Delete pipeline stage?"
+        description="This removes the stage from the hiring plan pipeline."
+        confirmLabel="Delete Stage"
+        loading={acting}
+      />
+      <ConfirmDialog
+        open={confirmDefaultOpen}
+        onClose={() => setConfirmDefaultOpen(false)}
+        onConfirm={applyDefaultTemplate}
+        title="Apply default stage template?"
+        description="Default templates can only be applied cleanly when no stages exist yet. Continue?"
+        confirmLabel="Continue"
+        loading={acting}
+      />
     </div>
   );
 }

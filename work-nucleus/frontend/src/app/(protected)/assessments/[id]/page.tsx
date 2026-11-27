@@ -31,6 +31,8 @@ import {
 } from "@/lib/assessment-api";
 import { InviteModal } from "@/components/assessments/invite-modal";
 import { AiQuestionGeneratorModal } from "@/components/assessments/ai-question-generator-modal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "@/components/ui/toaster";
 
 export default function AssessmentDetailPage() {
   const params = useParams();
@@ -41,6 +43,8 @@ export default function AssessmentDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [showAiModal, setShowAiModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ kind: "question" | "challenge"; itemId: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // New Question Form state
   const [showQuestionModal, setShowQuestionModal] = useState(false);
@@ -103,18 +107,12 @@ export default function AssessmentDetailPage() {
       setExplanation("");
       await loadAssessment();
     } catch (err: any) {
-      alert(err.message || "Failed to add question");
+      toast.error(err.message || "Failed to add question");
     }
   };
 
-  const handleDeleteQuestion = async (qId: string) => {
-    if (!confirm("Delete this question?")) return;
-    try {
-      await deleteAssessmentQuestion(id, qId);
-      await loadAssessment();
-    } catch (err: any) {
-      alert(err.message || "Failed to delete question");
-    }
+  const handleDeleteQuestion = (qId: string) => {
+    setDeleteTarget({ kind: "question", itemId: qId });
   };
 
   const handleAddChallenge = async (e: React.FormEvent) => {
@@ -145,17 +143,31 @@ export default function AssessmentDetailPage() {
       setConstraints("");
       await loadAssessment();
     } catch (err: any) {
-      alert(err.message || "Failed to add coding challenge");
+      toast.error(err.message || "Failed to add coding challenge");
     }
   };
 
-  const handleDeleteChallenge = async (cId: string) => {
-    if (!confirm("Delete this coding challenge?")) return;
+  const handleDeleteChallenge = (cId: string) => {
+    setDeleteTarget({ kind: "challenge", itemId: cId });
+  };
+
+  const confirmDeleteItem = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await deleteCodingChallenge(id, cId);
+      if (deleteTarget.kind === "question") {
+        await deleteAssessmentQuestion(id, deleteTarget.itemId);
+        toast.success("Question deleted");
+      } else {
+        await deleteCodingChallenge(id, deleteTarget.itemId);
+        toast.success("Coding challenge deleted");
+      }
+      setDeleteTarget(null);
       await loadAssessment();
     } catch (err: any) {
-      alert(err.message || "Failed to delete challenge");
+      toast.error(err.message || "Failed to delete item");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -724,6 +736,16 @@ export default function AssessmentDetailPage() {
           }}
         />
       )}
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDeleteItem}
+        variant="danger"
+        title={deleteTarget?.kind === "challenge" ? "Delete coding challenge?" : "Delete question?"}
+        description="This item will be permanently removed from the assessment."
+        confirmLabel="Delete"
+        loading={deleting}
+      />
     </div>
   );
 }

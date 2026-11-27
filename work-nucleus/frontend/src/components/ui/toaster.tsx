@@ -11,12 +11,12 @@ import { Toaster as SonnerToaster, type ToasterProps } from "sonner";
 export { toast } from "sonner";
 
 const baseToast =
-  "rounded-xl border border-slate-200/60 bg-white p-3.5 shadow-[var(--shadow-dropdown)] text-sm text-slate-700";
+  "rounded-xl border border-slate-200/60 bg-white p-3.5 shadow-[var(--shadow-dropdown)] text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200";
 
-const baseTitle = "text-sm font-semibold text-slate-900";
-const baseDescription = "text-xs text-slate-500";
+const baseTitle = "text-sm font-semibold text-slate-900 dark:text-slate-100";
+const baseDescription = "text-xs text-slate-500 dark:text-slate-400";
 const baseAction = "rounded-md bg-indigo-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-indigo-700";
-const baseCancel = "rounded-md text-xs font-medium text-slate-500 hover:text-slate-900";
+const baseCancel = "rounded-md text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100";
 
 export function Toaster(props: ToasterProps) {
   return (

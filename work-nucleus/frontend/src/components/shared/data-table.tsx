@@ -26,7 +26,7 @@ export const DataTable = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "overflow-hidden rounded-xl border border-slate-200/70 bg-white shadow-sm",
+      "overflow-hidden rounded-xl border border-slate-200/70 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900",
       className
     )}
     {...props}
@@ -44,7 +44,7 @@ export const DataTableHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <thead
     ref={ref}
-    className={cn("border-b border-slate-200 bg-slate-50", className)}
+    className={cn("border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/60", className)}
     {...props}
   />
 ));
@@ -57,7 +57,7 @@ export const DataTableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400",
+      "px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400",
       className
     )}
     {...props}
@@ -71,7 +71,7 @@ export const DataTableBody = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <tbody
     ref={ref}
-    className={cn("divide-y divide-slate-50", className)}
+    className={cn("divide-y divide-slate-50 dark:divide-slate-800/80", className)}
     {...props}
   />
 ));
@@ -90,7 +90,7 @@ export const DataTableRow = React.forwardRef<HTMLTableRowElement, DataTableRowPr
       className={cn(
         "transition-colors",
         onClick && "cursor-pointer",
-        selected ? "bg-indigo-50/60" : onClick ? "hover:bg-slate-50" : undefined,
+        selected ? "bg-indigo-50/60 dark:bg-indigo-950/40" : onClick ? "hover:bg-slate-50 dark:hover:bg-slate-800/50" : undefined,
         className
       )}
       {...props}
@@ -105,7 +105,7 @@ export const DataTableCell = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <td
     ref={ref}
-    className={cn("px-4 py-3 align-middle text-slate-700", className)}
+    className={cn("px-4 py-3 align-middle text-slate-700 dark:text-slate-200", className)}
     {...props}
   />
 ));

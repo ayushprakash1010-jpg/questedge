@@ -38,6 +38,7 @@ import {
   DataTableRow,
 } from "@/components/shared/data-table";
 import { PlanDetailPanel } from "@/components/hiring-plans/plan-detail-panel";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/components/ui/toaster";
 
 interface HiringPlanSkill {
@@ -81,6 +82,8 @@ export default function HiringPlansPage() {
   const [meta, setMeta] = useState({ total: 0, page: 1, totalPages: 1 });
   const [loading, setLoading] = useState(true);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [cancelPlanId, setCancelPlanId] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
 
   // Filters
   const [statusFilter, setStatusFilter] = useState("");
@@ -134,19 +137,27 @@ export default function HiringPlansPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Cancel this hiring plan?")) return;
+  const handleDelete = (id: string) => {
+    setCancelPlanId(id);
+  };
+
+  const confirmCancelPlan = async () => {
+    if (!cancelPlanId) return;
+    setCancelling(true);
     try {
-      const res = await fetch(`/api/hiring-plans/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/hiring-plans/${cancelPlanId}`, { method: "DELETE" });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.message || "Failed to cancel hiring plan");
       }
       toast.success("Hiring plan cancelled");
-      if (selectedPlanId === id) setSelectedPlanId(null);
+      if (selectedPlanId === cancelPlanId) setSelectedPlanId(null);
+      setCancelPlanId(null);
       fetchPlans(meta.page);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to cancel hiring plan");
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -354,6 +365,16 @@ export default function HiringPlansPage() {
           onUpdated={() => fetchPlans(meta.page)}
         />
       )}
+      <ConfirmDialog
+        open={Boolean(cancelPlanId)}
+        onClose={() => setCancelPlanId(null)}
+        onConfirm={confirmCancelPlan}
+        variant="danger"
+        title="Cancel this hiring plan?"
+        description="This will mark the hiring plan as cancelled and stop new pipeline activity."
+        confirmLabel="Cancel Plan"
+        loading={cancelling}
+      />
     </div>
   );
 }

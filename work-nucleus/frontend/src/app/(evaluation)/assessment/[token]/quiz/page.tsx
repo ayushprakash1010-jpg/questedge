@@ -12,6 +12,7 @@ import {
 import { AntiCheatWrapper } from "@/components/assessments/anti-cheat-wrapper";
 import { TimerBar } from "@/components/assessments/timer-bar";
 import { QuizPlayer } from "@/components/assessments/quiz-player";
+import { toast } from "@/components/ui/toaster";
 
 export default function CandidateQuizPage() {
   const params = useParams();
@@ -35,7 +36,7 @@ export default function CandidateQuizPage() {
         }
       })
       .catch((err) => {
-        alert(err.message || "Failed to load attempt");
+        toast.error(err.message || "Failed to load attempt");
         router.push(`/assessment/${token}`);
       })
       .finally(() => setIsLoading(false));
@@ -55,7 +56,7 @@ export default function CandidateQuizPage() {
         await submitCandidateQuiz(token, responses);
         router.push(`/assessment/${token}/complete`);
       } catch (err: any) {
-        alert(err.message || "Failed to submit answers");
+        toast.error(err.message || "Failed to submit answers");
         setIsSubmitting(false);
       }
     },
@@ -65,7 +66,7 @@ export default function CandidateQuizPage() {
   const handleTimerExpire = useCallback(() => {
     // Automatically submit with empty/current answers when timer hits 0
     if (!isSubmitting) {
-      alert("Time limit reached! Submitting your answers now.");
+      toast.warning("Time limit reached! Submitting your answers now.");
       handleSubmit([]);
     }
   }, [handleSubmit, isSubmitting]);

@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BrandLoader } from "@/components/ui/brand-loader";
 import { Textarea } from "@/components/ui/textarea";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/components/ui/toaster";
 import { readResponseError } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -170,9 +171,9 @@ export default function OfferDetailPage() {
   const candidateUrl = offer.candidateToken ? `/offer/${offer.candidateToken}` : null;
 
   return (
-    // Break out of the protected layout's p-6 so the two panes stretch to
-    // the viewport edges per the mockup.
-    <div className="-m-6 flex h-[calc(100vh-4rem)] flex-col overflow-hidden lg:flex-row">
+    // Break out of the protected layout's p-4/p-6 so the two panes stretch to
+    // the viewport edges on desktop while scrolling cleanly on mobile.
+    <div className="-m-4 sm:-m-6 flex min-h-[calc(100vh-4rem)] lg:h-[calc(100vh-4rem)] flex-col lg:overflow-hidden lg:flex-row">
       {/* ── Form column ─────────────────────────────────────────── */}
       <FormColumn
         offer={offer}
@@ -508,12 +509,15 @@ function ApprovalChain({
     comment?: string
   ) => void;
 }) {
+  const [promptDecision, setPromptDecision] = useState<"CHANGES_REQUESTED" | "REJECTED" | null>(null);
+
   if (chain.length === 0) {
     return <p className="text-xs text-slate-400">No approval chain.</p>;
   }
 
   return (
-    <ol className="space-y-0">
+    <>
+      <ol className="space-y-0">
       {chain.map((step, idx) => {
         const isDone = step.status === "APPROVED";
         const isReject =
@@ -592,10 +596,7 @@ function ApprovalChain({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                const c = window.prompt("Comment for changes requested?");
-                if (c) onApprove("CHANGES_REQUESTED", c);
-              }}
+              onClick={() => setPromptDecision("CHANGES_REQUESTED")}
               disabled={busy}
               className="flex-1 justify-center"
             >
@@ -604,10 +605,7 @@ function ApprovalChain({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                const c = window.prompt("Reason for rejection?");
-                if (c) onApprove("REJECTED", c);
-              }}
+              onClick={() => setPromptDecision("REJECTED")}
               disabled={busy}
               className="flex-1 justify-center"
             >
@@ -617,6 +615,33 @@ function ApprovalChain({
         </li>
       )}
     </ol>
+    <ConfirmDialog
+      open={Boolean(promptDecision)}
+      onClose={() => setPromptDecision(null)}
+      onConfirm={async (comment) => {
+        if (!promptDecision) return;
+        await onApprove(promptDecision, comment);
+        setPromptDecision(null);
+      }}
+      variant={promptDecision === "REJECTED" ? "danger" : "default"}
+      title={
+        promptDecision === "REJECTED"
+          ? "Reject offer?"
+          : "Request changes to offer?"
+      }
+      confirmLabel={promptDecision === "REJECTED" ? "Reject Offer" : "Request Changes"}
+      loading={busy}
+      input={{
+        label:
+          promptDecision === "REJECTED"
+            ? "Reason for rejection"
+            : "Comment for changes requested",
+        type: "textarea",
+        required: true,
+        placeholder: "Add explanation for the approval log...",
+      }}
+    />
+    </>
   );
 }
 

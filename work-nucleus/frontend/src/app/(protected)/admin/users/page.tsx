@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "@/components/ui/toaster";
 import { readResponseError } from "@/lib/api";
 import { PageHeader } from "@/components/shared/page-header";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   DataTable,
   DataTableBody,
@@ -52,6 +53,8 @@ export default function AdminUsersPage() {
   const [formRole, setFormRole] = useState("VIEWER");
   const [formError, setFormError] = useState("");
   const [formLoading, setFormLoading] = useState(false);
+  const [deactivatingUser, setDeactivatingUser] = useState<User | null>(null);
+  const [deactivating, setDeactivating] = useState(false);
 
   const fetchUsers = useCallback(async (page = 1) => {
     setLoading(true);
@@ -127,15 +130,23 @@ export default function AdminUsersPage() {
     }
   }
 
-  async function handleDelete(user: User) {
-    if (!confirm(`Deactivate ${user.name}?`)) return;
+  function handleDelete(user: User) {
+    setDeactivatingUser(user);
+  }
+
+  async function confirmDeactivate() {
+    if (!deactivatingUser) return;
+    setDeactivating(true);
     try {
-      const res = await fetch(`/api/admin/users/${user.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/users/${deactivatingUser.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error(await readResponseError(res, "Delete failed"));
+      toast.success(`${deactivatingUser.name} deactivated`);
+      setDeactivatingUser(null);
       fetchUsers(meta.page);
-      toast.success(`${user.name} deactivated`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setDeactivating(false);
     }
   }
 
@@ -195,8 +206,8 @@ export default function AdminUsersPage() {
                           user.role === "ADMIN"
                             ? "default"
                             : user.role === "HR"
-                            ? "secondary"
-                            : "outline"
+                              ? "secondary"
+                              : "outline"
                         }
                       >
                         {user.role}
@@ -312,8 +323,8 @@ export default function AdminUsersPage() {
                     {formLoading
                       ? "Saving..."
                       : editingUser
-                      ? "Update"
-                      : "Invite"}
+                        ? "Update"
+                        : "Invite"}
                   </Button>
                 </div>
               </form>
@@ -321,6 +332,16 @@ export default function AdminUsersPage() {
           </Card>
         </div>
       )}
+      <ConfirmDialog
+        open={Boolean(deactivatingUser)}
+        onClose={() => setDeactivatingUser(null)}
+        onConfirm={confirmDeactivate}
+        variant="danger"
+        title={deactivatingUser ? `Deactivate ${deactivatingUser.name}?` : "Deactivate user?"}
+        description="Their Auth0 login access will be blocked and their account will become inactive."
+        confirmLabel="Deactivate"
+        loading={deactivating}
+      />
     </div>
   );
 }

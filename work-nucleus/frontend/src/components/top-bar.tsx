@@ -50,9 +50,9 @@ export function TopBar() {
   const { user } = useUser();
   const { profile } = useProfile();
 
-  const displayName = IS_MOCK ? "Priya Sharma" : user?.name;
+  const displayName = IS_MOCK ? "Priya Sharma" : profile?.name || user?.name;
   const displayPicture = IS_MOCK ? undefined : user?.picture || undefined;
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const pathname = usePathname();
   const [searchString, setSearchString] = useState("");
   const shell = useOptionalWorkspaceShell();
@@ -242,8 +242,8 @@ export function TopBar() {
         )}
 
         <button
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+          className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           aria-label="Toggle theme"
         >
           <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
@@ -297,35 +297,6 @@ export function TopBar() {
               </>
             )}
 
-            <DropdownMenuSeparator />
-            {/* Change Role is disabled in production — role switching via reset-role API
-                can create duplicate accounts when a user's Auth0 identity gets re-provisioned
-                under a new role. The onboarding flow creates a fresh user record each time,
-                so repeated role changes (candidate → recruiter → company → recruiter) lead to
-                orphaned accounts and data loss. Keep this hidden until a proper role-migration
-                backend endpoint is built that updates the existing user record in-place. */}
-            {/* <DropdownMenuItem 
-              onClick={async () => {
-                if (IS_MOCK) return window.location.href = "/onboarding";
-                const confirm = window.confirm("Are you sure you want to reset your account role? You will be redirected to onboarding.");
-                if (!confirm) return;
-                
-                try {
-                  const res = await fetch("/api/auth/reset-role", { method: "POST" });
-                  if (!res.ok) {
-                    const data = await res.json();
-                    alert(data.error || "Cannot change role right now. You might have active associations.");
-                    return;
-                  }
-                  document.cookie = "demo_role=; path=/; max-age=0";
-                  window.location.href = "/onboarding";
-                } catch (err) {
-                  alert("Failed to reset role.");
-                }
-              }}
-            >
-              <RefreshCw className="h-4 w-4" /> Change Role
-            </DropdownMenuItem> */}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               variant="danger"

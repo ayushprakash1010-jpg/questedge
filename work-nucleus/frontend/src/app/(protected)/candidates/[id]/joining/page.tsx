@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toaster";
 import { readResponseError } from "@/lib/api";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
 
 interface ChecklistItem {
@@ -35,6 +36,7 @@ export default function HRCandidateJoiningPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [reviseItemKey, setReviseItemKey] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -60,10 +62,19 @@ export default function HRCandidateJoiningPage() {
 
   async function review(itemKey: string, decision: "APPROVED" | "NEEDS_REVISION") {
     if (!data) return;
-    const notes =
-      decision === "NEEDS_REVISION"
-        ? window.prompt("What revision is needed?") ?? undefined
-        : undefined;
+    if (decision === "NEEDS_REVISION") {
+      setReviseItemKey(itemKey);
+      return;
+    }
+    await submitReview(itemKey, decision);
+  }
+
+  async function submitReview(
+    itemKey: string,
+    decision: "APPROVED" | "NEEDS_REVISION",
+    notes?: string
+  ) {
+    if (!data) return;
     setBusy(true);
     try {
       const res = await fetch(`/api/v2/joining/${data.id}/review`, {
@@ -73,6 +84,7 @@ export default function HRCandidateJoiningPage() {
       });
       if (!res.ok) throw new Error(await readResponseError(res, "Review failed"));
       toast.success(decision === "APPROVED" ? "Document approved" : "Revision requested");
+      setReviseItemKey(null);
       await load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Review failed");
@@ -174,6 +186,25 @@ export default function HRCandidateJoiningPage() {
             })}
         </CardContent>
       </Card>
+      <ConfirmDialog
+        open={Boolean(reviseItemKey)}
+        onClose={() => setReviseItemKey(null)}
+        onConfirm={async (notes) => {
+          if (reviseItemKey) {
+            await submitReview(reviseItemKey, "NEEDS_REVISION", notes);
+          }
+        }}
+        title="Request Document Revision"
+        description="Specify what needs to be updated so the candidate can re-upload the document."
+        confirmLabel="Request Revision"
+        loading={busy}
+        input={{
+          label: "Revision notes",
+          type: "textarea",
+          required: true,
+          placeholder: "Describe the issue or requested update...",
+        }}
+      />
     </div>
   );
 }

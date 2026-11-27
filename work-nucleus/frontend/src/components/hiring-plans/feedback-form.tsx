@@ -396,10 +396,6 @@ export function FeedbackForm({
             {interviewDate ? ` · ${interviewDate}` : ""}
           </p>
         </div>
-        <Button variant="ai" size="sm" disabled title="Coming soon">
-          <Sparkles className="h-3.5 w-3.5" />
-          Draft with AI
-        </Button>
       </div>
 
       {/* Interview Summary */}

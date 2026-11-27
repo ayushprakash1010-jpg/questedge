@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { useProfile } from "@/hooks/use-profile";
@@ -9,6 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PageHeader } from "@/components/shared/page-header";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "@/components/ui/toaster";
+import { readResponseError } from "@/lib/api";
 import {
   User,
   Building2,
@@ -28,6 +31,8 @@ export default function UnifiedProfilePage() {
   const router = useRouter();
   const { user } = useUser();
   const { profile, isLoading } = useProfile();
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   // Role-based auto-redirection for Candidate and Recruiter personas
   useEffect(() => {
@@ -285,48 +290,20 @@ export default function UnifiedProfilePage() {
               variant="outline"
               size="sm"
               className="text-xs shrink-0"
-              onClick={async () => {
-                const confirmed = window.confirm(
-                  "Are you sure you want to reset your account role? You will be redirected to onboarding to choose a new persona."
-                );
-                if (!confirmed) return;
-                try {
-                  const res = await fetch("/api/auth/reset-role", { method: "POST" });
-                  if (!res.ok) {
-                    const msg = await res
-                      .json()
-                      .then((d) =>
-                        typeof d?.error?.message === "string"
-                          ? d.error.message
-                          : typeof d?.message === "string"
-                            ? d.message
-                            : typeof d?.error === "string"
-                              ? d.error
-                              : "Cannot change role right now.",
-                      )
-                      .catch(() => "Cannot change role right now.");
-                    alert(msg);
-                    return;
-                  }
-                  document.cookie = "demo_role=; path=/; max-age=0";
-                  window.location.href = "/onboarding";
-                } catch {
-                  alert("Failed to reset role.");
-                }
-              }}
+              onClick={() => setResetOpen(true)}
             >
               Reset Role
             </Button>
           </div>
           )}
 
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl border border-slate-200 bg-slate-50/60">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl border border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-800/40">
             <div className="space-y-1">
-              <h4 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-                <Key className="h-4 w-4 text-indigo-600" />
+              <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <Key className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                 Authentication Provider
               </h4>
-              <p className="text-xs text-slate-500 max-w-xl">
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xl">
                 Your session is secured using Auth0 SSO. Password resets and multi-factor authentication are managed through your identity provider.
               </p>
             </div>
@@ -336,6 +313,32 @@ export default function UnifiedProfilePage() {
           </div>
         </CardContent>
       </Card>
+      <ConfirmDialog
+        open={resetOpen}
+        onClose={() => setResetOpen(false)}
+        variant="danger"
+        title="Reset account persona?"
+        description="Are you sure you want to reset your account role? You will be redirected to onboarding to choose a new persona."
+        confirmLabel="Reset Role"
+        loading={resetting}
+        onConfirm={async () => {
+          setResetting(true);
+          try {
+            const res = await fetch("/api/auth/reset-role", { method: "POST" });
+            if (!res.ok) {
+              toast.error(await readResponseError(res, "Cannot change role right now."));
+              return;
+            }
+            document.cookie = "demo_role=; path=/; max-age=0";
+            setResetOpen(false);
+            window.location.href = "/onboarding";
+          } catch {
+            toast.error("Failed to reset role.");
+          } finally {
+            setResetting(false);
+          }
+        }}
+      />
     </div>
   );
 }

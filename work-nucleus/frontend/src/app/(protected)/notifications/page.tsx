@@ -132,13 +132,17 @@ export default function NotificationsPage() {
     }
   };
 
-  const handleItemClick = (n: NotificationItem) => {
+  const handleItemClick = async (n: NotificationItem) => {
     if (!n.read) {
-      fetch("/api/notifications?action=mark-read", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: [n.id] }),
-      });
+      try {
+        await fetch("/api/notifications?action=mark-read", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: [n.id] }),
+        });
+      } catch {
+        // Proceed with navigation even if mark-read fails transiently
+      }
       setNotifications((prev) =>
         prev.map((item) => (item.id === n.id ? { ...item, read: true } : item))
       );
@@ -327,11 +331,19 @@ export default function NotificationsPage() {
             return (
               <div
                 key={n.id}
+                role={n.actionUrl ? "button" : undefined}
+                tabIndex={n.actionUrl ? 0 : undefined}
                 onClick={() => handleItemClick(n)}
+                onKeyDown={(e) => {
+                  if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+                    e.preventDefault();
+                    void handleItemClick(n);
+                  }
+                }}
                 className={cn(
-                  "group relative flex items-start gap-4 p-5 rounded-2xl border transition-all cursor-pointer shadow-xs",
+                  "group relative flex items-start gap-4 p-5 rounded-2xl border transition-all cursor-pointer shadow-xs dark:border-slate-800 dark:bg-slate-900",
                   !n.read
-                    ? "bg-white border-indigo-200 hover:border-indigo-300 hover:shadow-md ring-1 ring-indigo-50"
+                    ? "bg-white border-indigo-200 hover:border-indigo-300 hover:shadow-md ring-1 ring-indigo-50 dark:border-indigo-800 dark:ring-indigo-950/60"
                     : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm"
                 )}
               >

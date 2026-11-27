@@ -231,6 +231,38 @@ export default function AppraisalHomePage() {
   const cycleProgressPct =
     activeIdx >= 0 ? ((activeIdx + 1) / PHASES.length) * 100 : 0;
 
+  const exportAppraisalCsv = () => {
+    if (!data) return;
+    const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const header = ["RecordType", "Cycle", "TitleOrAssessment", "Status", "SelfOrRating", "Weight"];
+    const goalRows = data.goals.map((g) =>
+      ["GOAL", g.cycle.name, g.title, g.status, g.selfRating ?? g.managerRating ?? "", `${g.weight}%`]
+        .map(esc)
+        .join(",")
+    );
+    const assessRows = data.assessments.map((a) =>
+      [
+        "ASSESSMENT",
+        data.cycles.find((c) => c.id === a.cycleId)?.name ?? a.cycleId,
+        a.type,
+        a.status,
+        a.ratingLabel ?? a.finalRating ?? "",
+        "",
+      ]
+        .map(esc)
+        .join(",")
+    );
+    const csv = [header.join(","), ...goalRows, ...assessRows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `appraisal-summary-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Appraisal report exported");
+  };
+
   if (error) {
     return (
       <div className="mx-auto max-w-2xl py-12">
@@ -286,13 +318,14 @@ export default function AppraisalHomePage() {
                 Add Goal
               </Button>
             )}
-            <Button variant="outline" size="sm" disabled>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={exportAppraisalCsv}
+              disabled={!data || (data.goals.length === 0 && data.assessments.length === 0)}
+            >
               <Download className="h-4 w-4" />
               Export Report
-            </Button>
-            <Button variant="ai" size="sm" disabled>
-              <Sparkles className="h-4 w-4" />
-              AI Insights
             </Button>
           </div>
         }
@@ -392,41 +425,57 @@ export default function AppraisalHomePage() {
 
       {/* Quick action cards */}
       <div className="grid gap-3 sm:grid-cols-3">
-        <ActionCard
-          icon={Mail}
-          iconBg="bg-indigo-50"
-          iconColor="text-indigo-600"
-          title="Send Reminders"
-          subtitle={
-            data.peerFeedbackPending > 0
-              ? `${data.peerFeedbackPending} pending peer review${data.peerFeedbackPending === 1 ? "" : "s"}`
-              : "Nudge teammates on their pending tasks"
-          }
-          badge={data.peerFeedbackPending > 0 ? "Action needed" : undefined}
-          badgeClass="bg-amber-50 text-amber-700"
-        />
-        <ActionCard
+        {cycle ? (
+          <LinkCard
+            href={`/appraisal/cycles/${cycle.id}/assessment`}
+            icon={ListChecks}
+            iconBg="bg-indigo-50 dark:bg-indigo-950/60"
+            iconColor="text-indigo-600 dark:text-indigo-400"
+            title="Open Self-Assessment"
+            subtitle={`Review or submit assessment for ${cycle.name}`}
+            badge={stats.selfAssessmentsPending > 0 ? "Action needed" : undefined}
+            badgeClass="bg-amber-50 text-amber-700"
+          />
+        ) : (
+          <LinkCard
+            href="/appraisal/cycles/new"
+            icon={Plus}
+            iconBg="bg-indigo-50 dark:bg-indigo-950/60"
+            iconColor="text-indigo-600 dark:text-indigo-400"
+            title="Start New Cycle"
+            subtitle="Set timeline and launch goal setting"
+          />
+        )}
+        <LinkCard
+          href={profile?.role === "ADMIN" || profile?.role === "HR" ? "/admin/appraisal/cycles" : "#my-goals"}
           icon={Users}
-          iconBg="bg-emerald-50"
-          iconColor="text-emerald-600"
-          title="Schedule Calibration"
-          subtitle="Set up the committee session"
-          badge="Recommended"
+          iconBg="bg-emerald-50 dark:bg-emerald-950/60"
+          iconColor="text-emerald-600 dark:text-emerald-400"
+          title={profile?.role === "ADMIN" || profile?.role === "HR" ? "Cycle Governance" : "Manage My Goals"}
+          subtitle={
+            profile?.role === "ADMIN" || profile?.role === "HR"
+              ? "Advance phases and track team completion"
+              : `${data.goals.length} goal${data.goals.length === 1 ? "" : "s"} tracked in cycle`
+          }
+          badge={profile?.role === "ADMIN" || profile?.role === "HR" ? "Admin / HR" : undefined}
           badgeClass="bg-emerald-50 text-emerald-700"
         />
-        <ActionCard
+        <LinkCard
+          href={
+            cycle && (profile?.role === "ADMIN" || profile?.role === "HR")
+              ? `/admin/compensation/cycles/${cycle.id}`
+              : "/compensation/team"
+          }
           icon={Sparkles}
-          iconBg="bg-purple-50"
-          iconColor="text-purple-600"
-          title="Generate Review Summaries"
-          subtitle="AI drafts for your reports"
-          badge="AI Powered"
-          badgeClass="bg-purple-50 text-purple-700"
+          iconBg="bg-purple-50 dark:bg-purple-950/60"
+          iconColor="text-purple-600 dark:text-purple-400"
+          title="Compensation & Revisions"
+          subtitle="Connect appraisal ratings to hike & bonus planning"
         />
       </div>
 
       {/* My goals */}
-      <Card>
+      <Card id="my-goals">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-sm">
             <ListChecks className="h-4 w-4 text-indigo-600" />
@@ -853,7 +902,8 @@ function RatingDistribution({
   );
 }
 
-function ActionCard({
+function LinkCard({
+  href,
   icon: Icon,
   iconBg,
   iconColor,
@@ -862,6 +912,7 @@ function ActionCard({
   badge,
   badgeClass,
 }: {
+  href: string;
   icon: React.ComponentType<{ className?: string }>;
   iconBg: string;
   iconColor: string;
@@ -871,11 +922,9 @@ function ActionCard({
   badgeClass?: string;
 }) {
   return (
-    <button
-      type="button"
-      disabled
-      title="Coming soon"
-      className="flex items-start gap-3 rounded-xl border border-slate-200/70 bg-white px-4 py-3.5 text-left shadow-sm transition-all hover:-translate-y-px hover:shadow-md disabled:opacity-90 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
+    <Link
+      href={href}
+      className="flex items-start gap-3 rounded-xl border border-slate-200/70 bg-white px-4 py-3.5 text-left shadow-sm transition-all hover:-translate-y-px hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
     >
       <span
         className={cn(
@@ -886,8 +935,8 @@ function ActionCard({
         <Icon className={cn("h-4 w-4", iconColor)} />
       </span>
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-slate-900">{title}</p>
-        <p className="mt-0.5 text-xs text-slate-400">{subtitle}</p>
+        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</p>
+        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{subtitle}</p>
         {badge && (
           <span
             className={cn(
@@ -899,7 +948,7 @@ function ActionCard({
           </span>
         )}
       </div>
-    </button>
+    </Link>
   );
 }
 

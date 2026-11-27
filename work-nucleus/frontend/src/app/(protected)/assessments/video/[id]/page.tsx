@@ -25,6 +25,7 @@ import {
   VideoInterview,
 } from "@/lib/assessment-api";
 import { NativeWebRtcRoom } from "@/components/assessments/native-webrtc-room";
+import { toast } from "@/components/ui/toaster";
 
 export default function InterviewerVideoRoomPage() {
   const params = useParams();
@@ -105,10 +106,10 @@ export default function InterviewerVideoRoomPage() {
       if (interview?.status !== "COMPLETED") {
         await endVideoInterview(id);
       }
-      alert("Interview feedback saved successfully!");
+      toast.success("Interview feedback saved successfully!");
       router.push("/assessments");
     } catch (err: any) {
-      alert(err.message || "Failed to submit feedback");
+      toast.error(err.message || "Failed to submit feedback");
     } finally {
       setIsSubmitting(false);
     }

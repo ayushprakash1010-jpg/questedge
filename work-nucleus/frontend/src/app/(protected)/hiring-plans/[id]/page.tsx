@@ -545,17 +545,66 @@ export default function HiringPlanDetailPage() {
         </TabsContent>
 
         <TabsContent value="analytics">
-          <Card className="border-slate-200">
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <BarChart3 className="h-12 w-12 text-slate-300" />
-              <h3 className="mt-4 text-lg font-semibold text-slate-900">
-                Analytics
-              </h3>
-              <p className="mt-1 text-sm text-slate-500">
-                Coming soon — Hiring analytics and insights
-              </p>
-            </CardContent>
-          </Card>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Roles Progress
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                  {plan.filledRoles} / {plan.totalRoles}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {plan.totalRoles > 0
+                    ? `${Math.round((plan.filledRoles / plan.totalRoles) * 100)}% filled`
+                    : "No openings target"}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Remaining Openings
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+                  {Math.max(0, plan.totalRoles - plan.filledRoles)}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">Active headcount target</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Required Skills
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                  {plan.skills.length}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">Tracked competencies</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Portal Reports
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <p className="text-xs text-slate-500">Run deeper hiring &amp; funnel analytics across mandates.</p>
+                <Link href="/dashboard">
+                  <Button size="sm" variant="outline">
+                    Open Analytics Dashboard
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

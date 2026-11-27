@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getOrgMandates, publishMandate, pauseMandate, deleteMandate, Mandate } from "@/lib/marketplace-api";
 import { MandateCard } from "@/components/marketplace/MandateCard";
+import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -39,7 +41,7 @@ function StatCard({
   sub?: string;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5 flex items-start gap-4">
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 flex items-start gap-4">
       <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${color}`}>
         <Icon className="h-5 w-5 text-white" />
       </div>
@@ -122,36 +124,31 @@ export default function MandatesPage() {
   const totalApplications = mandates.reduce((acc, m) => acc + (m._count?.applications ?? 0), 0);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Page header */}
-      <div className="bg-white border-b border-slate-200 px-6 py-5">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Mandates</h1>
-            <p className="text-sm text-slate-500 mt-0.5">
-              Manage job postings, track referrals, and monitor your hiring pipeline.
-              {activeCount > 0 && (
-                <a
-                  href="/candidates"
-                  className="ml-2 inline-flex items-center gap-0.5 font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
-                >
-                  View pipeline →
-                </a>
-              )}
-            </p>
-          </div>
-          <Button
-            className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm gap-2"
-            onClick={() => router.push("/mandates/create")}
-          >
+    <div className="max-w-7xl mx-auto space-y-6 pb-8">
+      <PageHeader
+        title="Mandates"
+        subtitle={
+          <>
+            Manage job postings, track referrals, and monitor your hiring pipeline.
+            {activeCount > 0 && (
+              <Link
+                href="/candidates"
+                className="ml-2 inline-flex items-center gap-0.5 font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
+              >
+                View pipeline →
+              </Link>
+            )}
+          </>
+        }
+        actions={
+          <Button onClick={() => router.push("/mandates/create")}>
             <Plus className="h-4 w-4" />
             New Mandate
           </Button>
-        </div>
-      </div>
+        }
+      />
 
-
-      <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+      <div className="space-y-6">
         {/* Stats row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
@@ -159,25 +156,28 @@ export default function MandatesPage() {
             value={activeCount}
             icon={TrendingUp}
             color="bg-indigo-500"
-            sub={`of ${total} total`}
+            sub={`of ${total} matching`}
           />
           <StatCard
             label="Total Referrals"
             value={totalReferrals}
             icon={Users}
             color="bg-sky-500"
+            sub="across visible mandates"
           />
           <StatCard
             label="Direct Applications"
             value={totalApplications}
             icon={FileText}
             color="bg-violet-500"
+            sub="across visible mandates"
           />
           <StatCard
             label="Positions Filled"
             value={mandates.filter((m) => m.status === "FILLED").length}
             icon={CheckCircle2}
             color="bg-emerald-500"
+            sub="in current view"
           />
         </div>
 
@@ -186,7 +186,7 @@ export default function MandatesPage() {
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
-              className="pl-9 bg-white border-slate-200"
+              className="pl-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700"
               placeholder="Search mandates..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -200,7 +200,7 @@ export default function MandatesPage() {
                 className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
                   statusFilter === opt.value
                     ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                    : "bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:text-indigo-600"
+                    : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-indigo-300 hover:text-indigo-600"
                 }`}
               >
                 {opt.label}
@@ -286,17 +286,17 @@ export default function MandatesPage() {
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-40 hover:bg-slate-50 transition-colors shadow-sm"
+                  className="flex items-center gap-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
                 >
                   <ChevronLeft className="h-4 w-4" /> Previous
                 </button>
-                <span className="text-sm text-slate-600">
+                <span className="text-sm text-slate-600 dark:text-slate-400">
                   Page <strong>{page}</strong> of <strong>{totalPages}</strong>
                 </span>
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
-                  className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-40 hover:bg-slate-50 transition-colors shadow-sm"
+                  className="flex items-center gap-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
                 >
                   Next <ChevronRight className="h-4 w-4" />
                 </button>

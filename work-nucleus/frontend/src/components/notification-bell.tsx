@@ -81,13 +81,17 @@ export function NotificationBell() {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
-  const handleClick = (n: Notification) => {
+  const handleClick = async (n: Notification) => {
     if (!n.read) {
-      fetch("/api/notifications?action=mark-read", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: [n.id] }),
-      });
+      try {
+        await fetch("/api/notifications?action=mark-read", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: [n.id] }),
+        });
+      } catch {
+        // Proceed with navigation even if mark-read fails transiently
+      }
       setNotifications((prev) =>
         prev.map((item) => (item.id === n.id ? { ...item, read: true } : item))
       );
@@ -249,11 +253,12 @@ export function NotificationBell() {
                 </div>
               ) : (
                 notifications.map((n) => (
-                  <div
+                  <button
                     key={n.id}
+                    type="button"
                     onClick={() => handleClick(n)}
                     className={cn(
-                      "flex items-start gap-3 p-3.5 text-left transition-colors cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-800/70",
+                      "flex w-full items-start gap-3 p-3.5 text-left transition-colors cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-800/70 focus:outline-none focus-visible:bg-slate-50 dark:focus-visible:bg-slate-800/70",
                       !n.read ? "bg-indigo-50/30 dark:bg-indigo-950/30" : "bg-white dark:bg-slate-900"
                     )}
                   >
@@ -279,7 +284,7 @@ export function NotificationBell() {
                     {!n.read && (
                       <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-indigo-600 dark:bg-indigo-400" />
                     )}
-                  </div>
+                  </button>
                 ))
               )}
             </div>

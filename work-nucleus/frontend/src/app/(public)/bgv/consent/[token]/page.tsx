@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { BrandLoader } from "@/components/ui/brand-loader";
 import { CheckCircle2, ShieldCheck, AlertCircle } from "lucide-react";
 import { readResponseError } from "@/lib/api";
+import { toast } from "@/components/ui/toaster";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -56,7 +57,7 @@ export default function BgvConsentPage() {
       if (!res.ok) throw new Error("Failed to send OTP");
       setStep("otp-sent");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error");
+      toast.error(err instanceof Error ? err.message : "Error");
     } finally {
       setBusy(false);
     }
@@ -76,7 +77,7 @@ export default function BgvConsentPage() {
       }
       setStep("verified");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error");
+      toast.error(err instanceof Error ? err.message : "Error");
     } finally {
       setBusy(false);
     }

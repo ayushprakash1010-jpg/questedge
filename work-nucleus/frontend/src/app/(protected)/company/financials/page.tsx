@@ -3,16 +3,17 @@
 import { useState, useEffect } from "react";
 import { getCompanyRewards, approveReward } from "@/lib/marketplace-api";
 import {
-  IndianRupee,
   Loader2,
-  Building,
   ShieldCheck,
   FileCheck,
   History,
   AlertTriangle,
   Scale,
+  Download,
 } from "lucide-react";
 import { toast } from "@/components/ui/toaster";
+import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/shared/page-header";
 import { RewardAuditModal } from "@/components/rewards/reward-audit-modal";
 import { RewardDisputeModal } from "@/components/rewards/reward-dispute-modal";
 
@@ -21,58 +22,32 @@ export default function CompanyFinancialsPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [addingFunds, setAddingFunds] = useState(false);
   const [auditRewardId, setAuditRewardId] = useState<string | null>(null);
   const [disputeReward, setDisputeReward] = useState<any | null>(null);
 
-
-  const loadRazorpayScript = () => {
-    return new Promise((resolve) => {
-      const script = document.createElement("script");
-      script.src = "https://checkout.razorpay.com/v1/checkout.js";
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
+  const exportLedgerCsv = () => {
+    const header = ["Date", "Candidate", "Mandate", "Recruiter", "AmountINR", "Status"];
+    const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const rows = rewards.map((r) => {
+      const raw = r.paidAt || r.approvedAt || r.eligibleAt || r.createdAt;
+      const dateStr = raw && !isNaN(new Date(raw).getTime()) ? new Date(raw).toISOString().slice(0, 10) : "";
+      return [
+        dateStr,
+        r.referral?.candidateProfile?.name ?? "",
+        r.referral?.mandate?.title ?? "",
+        r.recruiter?.name ?? "",
+        Number(r.rewardAmount || 0),
+        r.status ?? "",
+      ].map(esc).join(",");
     });
-  };
-
-  const handleAddFunds = async () => {
-    setAddingFunds(true);
-    try {
-      const res = await loadRazorpayScript();
-      if (!res) {
-        toast.error("Failed to load Razorpay SDK. Check your connection.");
-        return;
-      }
-
-      // Mock options for demo purposes
-      const options = {
-        key: "rzp_test_dummy_key", 
-        amount: 5000000, // 50,000 INR in paise
-        currency: "INR",
-        name: "QuestEdge Escrow",
-        description: "Add funds to your escrow account",
-        handler: function (response: any) {
-          toast.success(`Successfully added funds! Payment ID: ${response.razorpay_payment_id}`);
-          // Here we would typically hit our backend to record the transaction
-        },
-        prefill: {
-          name: "Company Admin",
-          email: "admin@company.com",
-        },
-        theme: {
-          color: "#4f46e5", // Indigo-600
-        },
-      };
-
-      const paymentObject = new (window as any).Razorpay(options);
-      paymentObject.open();
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to initiate payment");
-    } finally {
-      setAddingFunds(false);
-    }
+    const blob = new Blob([[header.join(","), ...rows].join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `escrow-ledger-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Ledger exported");
   };
 
   useEffect(() => {
@@ -138,40 +113,34 @@ export default function CompanyFinancialsPage() {
     .reduce((sum, r) => sum + Number(r.rewardAmount || 0), 0);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Demo / Sandbox Banner (P0-10) */}
-      <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 text-amber-800 text-sm flex items-center justify-between">
-        <div className="flex items-center gap-2 max-w-5xl">
-          <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
-          <span><strong>Sandbox Demo Mode:</strong> Escrow deposits and bounty settlements are simulated for preview purposes. Real payment gateway ledger integration is in active development.</span>
+    <div className="max-w-6xl mx-auto space-y-6 pb-8">
+      <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/30 px-4 py-2.5 text-amber-800 dark:text-amber-200 text-xs sm:text-sm flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+          <span><strong>Ledger Preview Mode:</strong> Rewards release tracks recruiter bounty approvals directly from the Rewards Ledger.</span>
         </div>
-        <span className="text-xs font-semibold uppercase tracking-wider bg-amber-200 text-amber-900 px-2 py-0.5 rounded">Preview</span>
+        <span className="text-[10px] font-semibold uppercase tracking-wider bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-100 px-2 py-0.5 rounded shrink-0">Preview</span>
       </div>
 
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-6 py-10">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
-              <Building className="h-8 w-8 text-indigo-600" />
-              Billing & Escrow
-            </h1>
-            <p className="text-slate-500 mt-2">Manage your deposited bounties and release funds to recruiters.</p>
-          </div>
-          <button 
-            onClick={handleAddFunds}
-            disabled={addingFunds}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg font-semibold flex items-center gap-2 transition-colors disabled:opacity-70"
+      <PageHeader
+        title="Billing & Escrow"
+        subtitle="Manage committed referral bounties and release approved payouts to recruiters."
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={exportLedgerCsv}
+            disabled={rewards.length === 0}
           >
-            {addingFunds ? <Loader2 className="h-5 w-5 animate-spin" /> : <IndianRupee className="h-5 w-5" />}
-            {addingFunds ? "Processing..." : "Simulate Escrow Deposit (Demo)"}
-          </button>
-        </div>
-      </div>
+            <Download className="h-4 w-4" />
+            Export Ledger CSV
+          </Button>
+        }
+      />
 
-      <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
+      <div className="space-y-6">
         {loadError && (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 flex items-center justify-between gap-4">
+          <div className="rounded-xl border border-rose-200 bg-rose-50 dark:border-rose-900/60 dark:bg-rose-950/40 px-4 py-3 text-sm text-rose-800 dark:text-rose-200 flex items-center justify-between gap-4">
             <span>{loadError}</span>
             <button
               type="button"
@@ -179,7 +148,7 @@ export default function CompanyFinancialsPage() {
                 setLoading(true);
                 fetchData();
               }}
-              className="rounded-lg border border-rose-300 bg-white px-3 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50"
+              className="rounded-lg border border-rose-300 bg-white dark:bg-slate-900 dark:border-rose-800 dark:text-rose-300 px-3 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50"
             >
               Retry
             </button>
@@ -187,44 +156,44 @@ export default function CompanyFinancialsPage() {
         )}
         {/* Balances */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex items-start gap-4">
-            <div className="bg-indigo-50 p-4 rounded-full">
-              <ShieldCheck className="h-8 w-8 text-indigo-600" />
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex items-start gap-4">
+            <div className="bg-indigo-50 dark:bg-indigo-950/60 p-4 rounded-full">
+              <ShieldCheck className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
             </div>
             <div>
-              <p className="text-slate-500 font-medium mb-1">Funds in Escrow</p>
-              <h2 className="text-4xl font-bold text-slate-900">₹{(totalInEscrow / 1000).toFixed(0)}K</h2>
+              <p className="text-slate-500 dark:text-slate-400 font-medium mb-1">Funds in Escrow</p>
+              <h2 className="text-4xl font-bold text-slate-900 dark:text-slate-100">₹{(totalInEscrow / 1000).toFixed(0)}K</h2>
               <p className="text-sm text-slate-400 mt-1">Locked for pending hires</p>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex items-start gap-4">
-            <div className="bg-emerald-50 p-4 rounded-full">
-              <FileCheck className="h-8 w-8 text-emerald-600" />
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex items-start gap-4">
+            <div className="bg-emerald-50 dark:bg-emerald-950/60 p-4 rounded-full">
+              <FileCheck className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <p className="text-slate-500 font-medium mb-1">Total Payouts Released</p>
-              <h2 className="text-4xl font-bold text-slate-900">₹{(totalPaid / 1000).toFixed(0)}K</h2>
+              <p className="text-slate-500 dark:text-slate-400 font-medium mb-1">Total Payouts Released</p>
+              <h2 className="text-4xl font-bold text-slate-900 dark:text-slate-100">₹{(totalPaid / 1000).toFixed(0)}K</h2>
               <p className="text-sm text-slate-400 mt-1">Successfully transferred to recruiters</p>
             </div>
           </div>
         </div>
 
         {/* Ledger */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b border-slate-200 bg-slate-50 flex items-center gap-2">
-            <History className="h-5 w-5 text-slate-500" />
-            <h3 className="font-bold text-slate-800">Escrow Ledger</h3>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+          <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 flex items-center gap-2">
+            <History className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+            <h3 className="font-bold text-slate-800 dark:text-slate-100">Escrow Ledger</h3>
           </div>
           
           {rewards.length === 0 ? (
-            <div className="p-12 text-center text-slate-500">
+            <div className="p-12 text-center text-slate-500 dark:text-slate-400">
               No escrow transactions yet. Hire a candidate to see funds move!
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
-                <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+                <thead className="text-xs text-slate-500 dark:text-slate-400 uppercase bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800">
                   <tr>
                     <th className="px-6 py-4 font-semibold">Date</th>
                     <th className="px-6 py-4 font-semibold">Hire Details</th>
@@ -233,10 +202,10 @@ export default function CompanyFinancialsPage() {
                     <th className="px-6 py-4 font-semibold">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {rewards.map((reward) => (
-                    <tr key={reward.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4 text-slate-500">
+                    <tr key={reward.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="px-6 py-4 text-slate-500 dark:text-slate-400">
                         {(() => {
                           const raw = reward.paidAt || reward.approvedAt || reward.eligibleAt || reward.createdAt;
                           return raw && !isNaN(new Date(raw).getTime())
@@ -245,13 +214,13 @@ export default function CompanyFinancialsPage() {
                         })()}
                       </td>
                       <td className="px-6 py-4">
-                        <p className="font-medium text-slate-900">{reward.referral?.candidateProfile?.name}</p>
-                        <p className="text-slate-500 text-xs">For {reward.referral?.mandate?.title}</p>
+                        <p className="font-medium text-slate-900 dark:text-slate-100">{reward.referral?.candidateProfile?.name}</p>
+                        <p className="text-slate-500 dark:text-slate-400 text-xs">For {reward.referral?.mandate?.title}</p>
                       </td>
-                      <td className="px-6 py-4 text-slate-700">
+                      <td className="px-6 py-4 text-slate-700 dark:text-slate-200">
                         {reward.recruiter?.name}
                       </td>
-                      <td className="px-6 py-4 font-bold text-slate-900">
+                      <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100">
                         ₹{Number(reward.rewardAmount || 0).toLocaleString("en-IN")}
                       </td>
                       <td className="px-6 py-4">

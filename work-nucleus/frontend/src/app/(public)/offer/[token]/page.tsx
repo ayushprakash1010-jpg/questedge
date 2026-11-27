@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { BrandLoader } from "@/components/ui/brand-loader";
+import { toast } from "@/components/ui/toaster";
 import { CheckCircle2, FileText, XCircle, MessageSquare } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -83,7 +84,7 @@ export default function PublicOfferPage() {
       setOffer((prev) => (prev ? { ...prev, status: data.status, declinedAt: data.declinedAt } : prev));
       setAction("idle");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error");
+      toast.error(err instanceof Error ? err.message : "Error");
     } finally {
       setBusy(false);
     }
@@ -101,9 +102,9 @@ export default function PublicOfferPage() {
       if (!res.ok) throw new Error("Failed to send counter-proposal");
       setNegotiateMsg("");
       setAction("idle");
-      alert("Your counter has been sent to the HR team.");
+      toast.success("Your counter has been sent to the HR team.");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error");
+      toast.error(err instanceof Error ? err.message : "Error");
     } finally {
       setBusy(false);
     }

@@ -33,17 +33,24 @@ import {
 } from "@/lib/assessment-api";
 import { InviteModal } from "@/components/assessments/invite-modal";
 import { ScheduleVideoModal } from "@/components/assessments/schedule-video-modal";
+import { PageHeader } from "@/components/shared/page-header";
+import { ErrorBanner } from "@/components/ui/error-state";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "@/components/ui/toaster";
 
 export default function AssessmentsPage() {
   const router = useRouter();
   const [assessments, setAssessments] = useState<HiringAssessment[]>([]);
   const [interviews, setInterviews] = useState<VideoInterview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"ALL" | "QUIZ" | "CODING" | "VIDEO">("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedForInvite, setSelectedForInvite] = useState<HiringAssessment | null>(null);
   const [isScheduleVideoOpen, setIsScheduleVideoOpen] = useState(false);
   const [copiedVideoToken, setCopiedVideoToken] = useState<string | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const copyCandidateLink = (token: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -55,6 +62,7 @@ export default function AssessmentsPage() {
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const [assessList, videoList] = await Promise.all([
         fetchAssessments(),
@@ -62,8 +70,8 @@ export default function AssessmentsPage() {
       ]);
       setAssessments(assessList);
       setInterviews(videoList);
-    } catch (err) {
-      console.error("Failed to load assessments:", err);
+    } catch (err: any) {
+      setLoadError(err?.message || "Failed to load assessments");
     } finally {
       setIsLoading(false);
     }
@@ -73,14 +81,23 @@ export default function AssessmentsPage() {
     loadData();
   }, [loadData]);
 
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
+  const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm("Are you sure you want to delete this assessment?")) return;
+    setDeleteTargetId(id);
+  };
+
+  const confirmDeleteAssessment = async () => {
+    if (!deleteTargetId) return;
+    setDeleting(true);
     try {
-      await deleteAssessment(id);
-      setAssessments((prev) => prev.filter((a) => a.id !== id));
+      await deleteAssessment(deleteTargetId);
+      setAssessments((prev) => prev.filter((a) => a.id !== deleteTargetId));
+      setDeleteTargetId(null);
+      toast.success("Assessment deleted");
     } catch (err: any) {
-      alert(err.message || "Failed to delete assessment");
+      toast.error(err.message || "Failed to delete assessment");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -97,93 +114,91 @@ export default function AssessmentsPage() {
   });
 
   const totalAttempts = assessments.reduce((sum, a) => sum + (a._count?.attempts || 0), 0);
+  const codingCount = assessments.filter((a) => a.type === "CODING").length;
+  const quizCount = assessments.filter((a) => a.type === "QUIZ").length;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            In-Platform Assessment & Interview Suite
-            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-              Zero Bypass Proctoring
-            </span>
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Evaluate engineering, MBA, and general candidates directly within QuestEdge to track full pipeline progress.
-          </p>
-        </div>
+      <PageHeader
+        title="In-Platform Assessment & Interview Suite"
+        eyebrow="Zero Bypass Proctoring"
+        subtitle="Evaluate engineering, MBA, and general candidates directly within QuestEdge to track full pipeline progress."
+        actions={
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              onClick={() => setIsScheduleVideoOpen(true)}
+              className="flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white font-semibold px-4 py-2 rounded-xl text-sm shadow-sm transition-colors"
+            >
+              <Video className="h-4 w-4" />
+              Schedule Video Room
+            </button>
+            <Link
+              href="/assessments/create"
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-xl text-sm shadow-sm transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              Create Assessment
+            </Link>
+          </div>
+        }
+      />
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setIsScheduleVideoOpen(true)}
-            className="flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm shadow-sm transition-colors"
-          >
-            <Video className="h-4 w-4" />
-            Schedule Video Room
-          </button>
-          <Link
-            href="/assessments/create"
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm shadow-sm transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            Create Assessment
-          </Link>
-        </div>
-      </div>
+      {loadError && <ErrorBanner message={loadError} onRetry={loadData} />}
 
       {/* Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Total Assessments
             </span>
-            <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400 flex items-center justify-center">
               <Code2 className="h-4 w-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-slate-900 mt-2">{assessments.length}</div>
-          <div className="text-xs text-slate-400 mt-1">Quizzes, Coding & Interviews</div>
+          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-2">{assessments.length}</div>
+          <div className="text-xs text-slate-400 mt-1">Quizzes, Coding &amp; Interviews</div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Candidate Attempts
             </span>
-            <div className="h-8 w-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 flex items-center justify-center">
               <Users className="h-4 w-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-slate-900 mt-2">{totalAttempts}</div>
-          <div className="text-xs text-emerald-600 mt-1">Tracked in-platform</div>
+          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-2">{totalAttempts}</div>
+          <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">Tracked in-platform</div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Video Interviews
             </span>
-            <div className="h-8 w-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-lg bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 flex items-center justify-center">
               <Video className="h-4 w-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-slate-900 mt-2">{interviews.length}</div>
+          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-2">{interviews.length}</div>
           <div className="text-xs text-slate-400 mt-1">Embedded HD Video Interview rooms</div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Platform Retention
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Coding &amp; Quizzes
             </span>
-            <div className="h-8 w-8 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-lg bg-violet-50 text-violet-600 dark:bg-violet-950/60 dark:text-violet-400 flex items-center justify-center">
               <Award className="h-4 w-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-slate-900 mt-2">100%</div>
-          <div className="text-xs text-violet-600 mt-1">Zero bypass / leak prevention</div>
+          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-2">{codingCount + quizCount}</div>
+          <div className="text-xs text-violet-600 dark:text-violet-400 mt-1">
+            {codingCount} coding · {quizCount} quiz modules
+          </div>
         </div>
       </div>
 
@@ -510,6 +525,16 @@ export default function AssessmentsPage() {
         isOpen={isScheduleVideoOpen}
         onClose={() => setIsScheduleVideoOpen(false)}
         onCreated={(newIv) => setInterviews((prev) => [newIv, ...prev])}
+      />
+      <ConfirmDialog
+        open={Boolean(deleteTargetId)}
+        onClose={() => setDeleteTargetId(null)}
+        onConfirm={confirmDeleteAssessment}
+        variant="danger"
+        title="Delete assessment?"
+        description="Are you sure you want to delete this assessment? Candidate attempt history tied to it will be removed."
+        confirmLabel="Delete"
+        loading={deleting}
       />
     </div>
   );

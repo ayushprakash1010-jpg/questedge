@@ -44,6 +44,7 @@ export function GlobalSearch({ userType = "company" }: { userType?: PortalRole }
   const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
@@ -211,7 +212,8 @@ export function GlobalSearch({ userType = "company" }: { userType?: PortalRole }
           label: c.name,
           subtitle: `${c.email}${c.currentRole ? ` · ${c.currentRole}` : ""}`,
           icon: Users,
-          action: () => navigate("/candidates"),
+          action: () =>
+            navigate(`/candidates?q=${encodeURIComponent(c.email || c.name)}`),
         });
       });
       results.hiringPlans.forEach((p) => {
@@ -256,6 +258,27 @@ export function GlobalSearch({ userType = "company" }: { userType?: PortalRole }
   }, [allSelectableEntries]);
 
   const handleModalKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Tab" && modalRef.current) {
+      const focusables = Array.from(
+        modalRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      );
+      if (focusables.length > 0) {
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+          return;
+        }
+        if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+          return;
+        }
+      }
+    }
     if (allSelectableEntries.length === 0) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -306,6 +329,7 @@ export function GlobalSearch({ userType = "company" }: { userType?: PortalRole }
             onClick={closeModal}
           />
           <div
+            ref={modalRef}
             role="dialog"
             aria-modal="true"
             aria-label="Quick command palette"
@@ -317,6 +341,10 @@ export function GlobalSearch({ userType = "company" }: { userType?: PortalRole }
               <Search className="h-4 w-4 text-slate-400 shrink-0" />
               <input
                 ref={inputRef}
+                role="combobox"
+                aria-expanded="true"
+                aria-controls="global-search-listbox"
+                aria-activedescendant={allSelectableEntries[activeIndex] ? `gs-opt-${allSelectableEntries[activeIndex].id}` : undefined}
                 value={query}
                 onChange={(e) => handleInput(e.target.value)}
                 placeholder={inputPlaceholder}
@@ -333,7 +361,12 @@ export function GlobalSearch({ userType = "company" }: { userType?: PortalRole }
             </div>
 
             {/* Results */}
-            <div className="max-h-80 overflow-y-auto p-2 scrollbar-thin">
+            <div
+              id="global-search-listbox"
+              role="listbox"
+              aria-label="Search results"
+              className="max-h-80 overflow-y-auto p-2 scrollbar-thin"
+            >
               {loading && (
                 <div className="py-4 text-center text-xs text-slate-400">
                   Searching workspace...
@@ -356,6 +389,9 @@ export function GlobalSearch({ userType = "company" }: { userType?: PortalRole }
                     return (
                       <button
                         key={item.id}
+                        id={`gs-opt-${item.id}`}
+                        role="option"
+                        aria-selected={isSelected}
                         type="button"
                         onMouseEnter={() => setActiveIndex(flatIdx)}
                         onClick={item.action}

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { getExternalJobClickHistory, reportExternalJobApplied } from "@/lib/external-jobs-api";
 import { CompanyLogo } from "./CompanyLogo";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toaster";
 import {
   Loader2,
   ExternalLink,

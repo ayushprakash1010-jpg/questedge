@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { getCandidateProfile, upsertCandidateProfile, parseResumeText, exportCandidateData, eraseCandidateData } from "@/lib/marketplace-api";
 import { getClientApiUrl, getDemoRole } from "@/lib/api";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toaster";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Loader2, Save, CheckCircle2, User, Briefcase, GraduationCap,
   MapPin, ChevronRight, ChevronLeft, Plus, X, ArrowRight, Sparkles,
@@ -463,18 +464,16 @@ export default function CandidateProfilePage() {
     }
   };
 
-  const handleEraseData = async () => {
-    const confirmed = window.confirm(
-      "Are you sure you want to erase your personal data? This will scrub your name, phone, email, resume, and profile links. This action cannot be undone."
-    );
-    if (!confirmed) return;
+  const [confirmEraseOpen, setConfirmEraseOpen] = useState(false);
 
+  const handleEraseData = async () => {
     try {
       setIsErasing(true);
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
       await eraseCandidateData(accessToken);
       toast.success("Personal data has been securely scrubbed.");
+      setConfirmEraseOpen(false);
       router.push("/auth/logout");
     } catch (err: any) {
       toast.error(err?.message || "Failed to erase data");
@@ -557,7 +556,7 @@ export default function CandidateProfilePage() {
     } catch (err) {
       console.error('Unified resume upload/parse failed', err);
       setResumeUploadStatus('error');
-      alert('Upload failed or could not extract data. You can still fill it manually.');
+      toast.error('Upload failed or could not extract data. You can still fill it manually.');
       setTimeout(() => setResumeUploadStatus('idle'), 4000);
     } finally {
       setIsParsing(false);
@@ -1106,7 +1105,7 @@ export default function CandidateProfilePage() {
               </div>
               <button
                 type="button"
-                onClick={handleEraseData}
+                onClick={() => setConfirmEraseOpen(true)}
                 disabled={isErasing}
                 className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-xs font-medium transition-colors"
               >
@@ -1117,6 +1116,16 @@ export default function CandidateProfilePage() {
           </div>
         )}
       </div>
+      <ConfirmDialog
+        open={confirmEraseOpen}
+        onClose={() => setConfirmEraseOpen(false)}
+        onConfirm={handleEraseData}
+        variant="danger"
+        title="Erase personal data?"
+        description="This will scrub your name, phone, email, resume, and profile links. This action cannot be undone."
+        confirmLabel="Erase Data"
+        loading={isErasing}
+      />
     </div>
   );
 }

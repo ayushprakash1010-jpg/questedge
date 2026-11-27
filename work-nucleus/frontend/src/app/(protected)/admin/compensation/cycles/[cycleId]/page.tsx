@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toaster";
 import { PageHeader } from "@/components/shared/page-header";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface Budget {
   id: string;
@@ -92,8 +93,13 @@ export default function CompCyclePage() {
     }
   }
 
+  const [confirmAllocateOpen, setConfirmAllocateOpen] = useState(false);
+
   async function allocate() {
-    if (!window.confirm("Run allocator? This writes one revision per finalised assessment.")) return;
+    setConfirmAllocateOpen(true);
+  }
+
+  async function runAllocate() {
     setBusy(true);
     try {
       const res = await fetch(`/api/v2/compensation/revisions/allocate`, {
@@ -105,6 +111,7 @@ export default function CompCyclePage() {
         const e = await res.json().catch(() => ({}));
         throw new Error(e.message ?? "Allocator failed");
       }
+      setConfirmAllocateOpen(false);
       await load();
       toast.success("Allocator complete");
     } catch (err) {
@@ -252,6 +259,15 @@ export default function CompCyclePage() {
           </CardContent>
         </Card>
       )}
+      <ConfirmDialog
+        open={confirmAllocateOpen}
+        onClose={() => setConfirmAllocateOpen(false)}
+        onConfirm={runAllocate}
+        title="Run compensation allocator?"
+        description="This writes one compensation revision per finalised assessment in this cycle."
+        confirmLabel="Run Allocator"
+        loading={busy}
+      />
     </div>
   );
 }

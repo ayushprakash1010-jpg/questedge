@@ -188,7 +188,10 @@ export default function CandidatesPage() {
   const [meta, setMeta] = useState<Meta | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("q") || "";
+  });
   const [page, setPage] = useState(1);
   const [topN, setTopN] = useState<number | null>(null);
   const [hiringPlanId, setHiringPlanId] = useState<string>("");

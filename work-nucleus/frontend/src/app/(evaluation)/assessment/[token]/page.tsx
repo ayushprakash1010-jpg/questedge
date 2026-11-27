@@ -16,6 +16,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { fetchCandidateAttempt, startCandidateAttempt, AssessmentAttempt } from "@/lib/assessment-api";
+import { toast } from "@/components/ui/toaster";
 
 export default function CandidateAssessmentLandingPage() {
   const params = useParams();
@@ -37,7 +38,7 @@ export default function CandidateAssessmentLandingPage() {
 
   const handleStart = async () => {
     if (!acknowledged) {
-      alert("Please check the box acknowledging the evaluation integrity policy.");
+      toast.error("Please check the box acknowledging the evaluation integrity policy.");
       return;
     }
 

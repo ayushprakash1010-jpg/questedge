@@ -29,15 +29,15 @@ export function PageHeader({
     >
       <div className="min-w-0">
         {eyebrow ? (
-          <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-indigo-600">
+          <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
             {eyebrow}
           </p>
         ) : null}
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
           {title}
         </h1>
         {subtitle ? (
-          <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
         ) : null}
       </div>
       {actions ? (

@@ -859,6 +859,8 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
 
               {/* Accordion items container */}
               <div
+                aria-hidden={sectionCollapsed || undefined}
+                {...(sectionCollapsed ? ({ inert: true } as Record<string, unknown>) : {})}
                 className={cn(
                   "grid transition-[grid-template-rows,opacity] duration-200 ease-out",
                   sectionCollapsed
@@ -881,6 +883,7 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
                         <Link
                           key={item.href}
                           href={item.href}
+                          tabIndex={sectionCollapsed ? -1 : undefined}
                           onClick={mobile ? closeMobile : undefined}
                           onMouseEnter={
                             collapsed

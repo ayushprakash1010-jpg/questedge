@@ -10,6 +10,7 @@ import { BrandLoader } from "@/components/ui/brand-loader";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "@/components/ui/toaster";
 import { readResponseError } from "@/lib/api";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface Board {
   session: {
@@ -38,6 +39,8 @@ export default function CalibrationBoardPage() {
   const [board, setBoard] = useState<Board | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [moveTarget, setMoveTarget] = useState<{ employeeId: string; currentRating: number } | null>(null);
+  const [lockConfirmOpen, setLockConfirmOpen] = useState(false);
 
   async function refresh() {
     setError(null);
@@ -57,20 +60,23 @@ export default function CalibrationBoardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
-  async function move(employeeId: string, currentRating: number) {
-    const newRatingStr = window.prompt("Move to which rating? (1-5)");
+  function move(employeeId: string, currentRating: number) {
+    setMoveTarget({ employeeId, currentRating });
+  }
+
+  async function submitMove(newRatingStr?: string, reason?: string) {
+    if (!moveTarget) return;
     const newRating = Number(newRatingStr);
-    if (!newRating || newRating < 1 || newRating > 5 || newRating === currentRating) return;
-    const reason = window.prompt("Reason for the move (audit-logged):");
-    if (!reason || reason.length < 5) return;
+    if (!newRating || newRating < 1 || newRating > 5 || !reason) return;
     setBusy(true);
     try {
       const res = await fetch(`/api/v2/appraisal/calibration/${sessionId}/move`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ employeeId, newRating, reason }),
+        body: JSON.stringify({ employeeId: moveTarget.employeeId, newRating, reason }),
       });
       if (!res.ok) throw new Error(await readResponseError(res, "Move failed"));
+      setMoveTarget(null);
       await refresh();
       toast.success("Rating moved");
     } catch (err) {
@@ -80,14 +86,18 @@ export default function CalibrationBoardPage() {
     }
   }
 
-  async function lock() {
-    if (!window.confirm("Lock the session? This freezes all ratings.")) return;
+  function lock() {
+    setLockConfirmOpen(true);
+  }
+
+  async function confirmLock() {
     setBusy(true);
     try {
       const res = await fetch(`/api/v2/appraisal/calibration/${sessionId}/lock`, {
         method: "POST",
       });
       if (!res.ok) throw new Error(await readResponseError(res, "Lock failed"));
+      setLockConfirmOpen(false);
       await refresh();
       toast.success("Session locked");
     } catch (err) {
@@ -249,6 +259,49 @@ export default function CalibrationBoardPage() {
           )}
         </CardContent>
       </Card>
+      <ConfirmDialog
+        open={Boolean(moveTarget)}
+        onClose={() => setMoveTarget(null)}
+        onConfirm={submitMove}
+        title="Move employee rating"
+        description={
+          moveTarget
+            ? `Select a new calibration bucket (current rating: ${moveTarget.currentRating}).`
+            : undefined
+        }
+        confirmLabel="Move Rating"
+        loading={busy}
+        input={{
+          label: "New rating",
+          type: "select",
+          required: true,
+          defaultValue: String(
+            moveTarget?.currentRating === 5 ? 4 : (moveTarget?.currentRating ?? 3) + 1
+          ),
+          options: BUCKETS.map((r) => ({ value: String(r), label: `Rating ${r}` })),
+          validate: (v) =>
+            moveTarget && Number(v) === moveTarget.currentRating
+              ? "Please pick a different rating than the current one."
+              : null,
+        }}
+        secondInput={{
+          label: "Reason (audit-logged)",
+          type: "textarea",
+          required: true,
+          minLength: 5,
+          placeholder: "Explain the calibration adjustment (min 5 characters)...",
+        }}
+      />
+      <ConfirmDialog
+        open={lockConfirmOpen}
+        onClose={() => setLockConfirmOpen(false)}
+        onConfirm={confirmLock}
+        variant="danger"
+        title="Lock calibration session?"
+        description="Freezes all ratings in this calibration session. Further moves will not be allowed."
+        confirmLabel="Lock Session"
+        loading={busy}
+      />
     </div>
   );
 }

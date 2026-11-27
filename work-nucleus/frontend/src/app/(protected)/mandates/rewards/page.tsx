@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { CheckCircle2, DollarSign, Clock, AlertCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toaster";
 import { apiClient } from "@/lib/api";
 
 export default function CompanyRewardsDashboard() {

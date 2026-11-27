@@ -17,6 +17,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { CodingChallenge, runCandidateCode, submitCandidateCode, CodeSubmissionStatus } from "@/lib/assessment-api";
+import { toast } from "@/components/ui/toaster";
 
 // Dynamically import Monaco Editor to avoid SSR window errors
 const Editor = dynamic(() => import("@monaco-editor/react"), { ssr: false });
@@ -172,7 +173,7 @@ export function CodingWorkspace({ token, challenges, onComplete }: CodingWorkspa
       setSubmitResults(res);
       setRunResults(null);
     } catch (err: any) {
-      alert(err.message || "Failed to submit code");
+      toast.error(err.message || "Failed to submit code");
     } finally {
       setIsSubmitting(false);
     }

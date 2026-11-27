@@ -10,12 +10,12 @@ const cardVariants = cva(
   {
     variants: {
       variant: {
-        default: "border border-slate-200/60 bg-white shadow-sm",
-        sunken: "border border-slate-200/60 bg-slate-50",
+        default: "border border-slate-200/60 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900",
+        sunken: "border border-slate-200/60 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/60",
         highlighted:
-          "border border-indigo-600 bg-white shadow-[0_0_0_1px_var(--color-indigo-600),var(--shadow-xl)]",
+          "border border-indigo-600 bg-white dark:bg-slate-900 shadow-[0_0_0_1px_var(--color-indigo-600),var(--shadow-xl)]",
         glass:
-          "border border-white/60 bg-white/80 backdrop-blur-md backdrop-saturate-150",
+          "border border-white/60 bg-white/80 dark:border-slate-800/80 dark:bg-slate-900/80 backdrop-blur-md backdrop-saturate-150",
         dark:
           "border border-slate-700/50 bg-slate-800/50 text-white",
       },
@@ -66,7 +66,7 @@ const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HT
   ({ className, ...props }, ref) => (
     <h3
       ref={ref}
-      className={cn("text-base font-semibold leading-none tracking-tight text-slate-900", className)}
+      className={cn("text-base font-semibold leading-none tracking-tight text-slate-900 dark:text-slate-100", className)}
       {...props}
     />
   )
@@ -75,7 +75,7 @@ CardTitle.displayName = "CardTitle";
 
 const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
   ({ className, ...props }, ref) => (
-    <p ref={ref} className={cn("text-sm text-slate-500", className)} {...props} />
+    <p ref={ref} className={cn("text-sm text-slate-500 dark:text-slate-400", className)} {...props} />
   )
 );
 CardDescription.displayName = "CardDescription";

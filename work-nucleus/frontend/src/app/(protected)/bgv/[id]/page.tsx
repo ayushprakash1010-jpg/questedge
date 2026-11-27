@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BrandLoader } from "@/components/ui/brand-loader";
 import { toast } from "@/components/ui/toaster";
 import { readResponseError } from "@/lib/api";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   DataTable,
   DataTableBody,
@@ -84,6 +85,7 @@ export default function BgvDetailPage() {
   const [data, setData] = useState<ProfileDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [overrideCheckId, setOverrideCheckId] = useState<string | null>(null);
 
   async function refresh() {
     setError(null);
@@ -117,21 +119,21 @@ export default function BgvDetailPage() {
     }
   }
 
-  async function override(checkId: string) {
-    const finding = window.prompt(
-      "Override finding (CLEAR | DISCREPANCY | UNABLE_TO_VERIFY)"
-    );
-    if (!finding) return;
-    const justification = window.prompt("Justification (audit-logged):");
-    if (!justification || justification.length < 5) return;
+  function override(checkId: string) {
+    setOverrideCheckId(checkId);
+  }
+
+  async function submitOverride(finding?: string, justification?: string) {
+    if (!overrideCheckId || !finding || !justification) return;
     setBusy(true);
     try {
-      const res = await fetch(`/api/v2/bgv/checks/${checkId}/override`, {
+      const res = await fetch(`/api/v2/bgv/checks/${overrideCheckId}/override`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ finding, justification }),
       });
       if (!res.ok) throw new Error(await readResponseError(res, "Override failed"));
+      setOverrideCheckId(null);
       await refresh();
       toast.success("Finding overridden");
     } catch (err) {
@@ -422,6 +424,33 @@ export default function BgvDetailPage() {
           </Card>
         </TabsContent>
       </Tabs>
+      <ConfirmDialog
+        open={Boolean(overrideCheckId)}
+        onClose={() => setOverrideCheckId(null)}
+        onConfirm={submitOverride}
+        title="Override BGV Check Finding"
+        description="This manual override is permanently recorded in the audit log."
+        confirmLabel="Apply Override"
+        loading={busy}
+        input={{
+          label: "Override Finding",
+          type: "select",
+          required: true,
+          defaultValue: "CLEAR",
+          options: [
+            { value: "CLEAR", label: "CLEAR" },
+            { value: "DISCREPANCY", label: "DISCREPANCY" },
+            { value: "UNABLE_TO_VERIFY", label: "UNABLE_TO_VERIFY" },
+          ],
+        }}
+        secondInput={{
+          label: "Justification (audit-logged)",
+          type: "textarea",
+          required: true,
+          minLength: 5,
+          placeholder: "Provide evidence or reason for manual override (min 5 characters)...",
+        }}
+      />
     </div>
   );
 }

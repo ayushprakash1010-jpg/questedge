@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { BrandLoader } from "@/components/ui/brand-loader";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "@/components/ui/toaster";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -59,21 +61,23 @@ export default function PeerFeedbackPage() {
       if (!res.ok) throw new Error("Submission failed");
       setSubmitted(true);
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Error");
+      toast.error(e instanceof Error ? e.message : "Error");
     } finally {
       setBusy(false);
     }
   }
 
-  async function decline() {
-    const reason = window.prompt("Brief reason for declining (optional but helpful):") ?? "no reason given";
+  const [declineOpen, setDeclineOpen] = useState(false);
+
+  async function decline(reason?: string) {
     setBusy(true);
     try {
       await fetch(`${API_BASE}/api/v2/public/peer-feedback/${token}/decline`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify({ reason: reason?.trim() || "no reason given" }),
       });
+      setDeclineOpen(false);
       setSubmitted(true);
     } finally {
       setBusy(false);
@@ -144,11 +148,25 @@ export default function PeerFeedbackPage() {
           <Button onClick={submit} disabled={busy || Object.values(answers).filter((v) => v.trim().length > 5).length < 1}>
             Submit feedback
           </Button>
-          <Button variant="outline" onClick={decline} disabled={busy}>
+          <Button variant="outline" onClick={() => setDeclineOpen(true)} disabled={busy}>
             Decline
           </Button>
         </div>
       </div>
+      <ConfirmDialog
+        open={declineOpen}
+        onClose={() => setDeclineOpen(false)}
+        onConfirm={(reason) => decline(reason)}
+        title="Decline feedback request?"
+        description="Optionally let the requester know why you're declining."
+        confirmLabel="Decline"
+        loading={busy}
+        input={{
+          label: "Reason (optional)",
+          type: "textarea",
+          placeholder: "Brief reason for declining...",
+        }}
+      />
     </div>
   );
 }
