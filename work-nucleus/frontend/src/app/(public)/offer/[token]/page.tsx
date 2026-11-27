@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { BrandLoader } from "@/components/ui/brand-loader";
@@ -42,6 +43,8 @@ export default function PublicOfferPage() {
   const [docUrl, setDocUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [action, setAction] = useState<Action>("idle");
+  const [signerName, setSignerName] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
   const [negotiateMsg, setNegotiateMsg] = useState("");
   const [busy, setBusy] = useState(false);
@@ -69,6 +72,30 @@ export default function PublicOfferPage() {
       cancelled = true;
     };
   }, [token]);
+
+  async function submitAccept() {
+    if (signerName.trim().length < 2 || !agreedToTerms) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/v2/public/offers/${token}/accept`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          signerName: signerName.trim(),
+          agreedToTerms: true,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to accept offer");
+      const data = await res.json();
+      setOffer((prev) => (prev ? { ...prev, status: data.status, acceptedAt: data.acceptedAt } : prev));
+      setAction("idle");
+      toast.success("Offer accepted and signed!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error accepting offer");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function submitDecline() {
     if (declineReason.trim().length < 2) return;
@@ -212,20 +239,68 @@ export default function PublicOfferPage() {
                 </div>
               )}
               {action === "accepting" && (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {offer.signatureRequest ? (
                     <p className="text-sm text-slate-600">
                       To accept, sign the letter electronically via the signature invitation sent to{" "}
                       <strong>{offer.application.candidate.email}</strong> (status:{" "}
                       <span className="font-medium">{offer.signatureRequest.status}</span>). Once signed, this offer is binding.
                     </p>
+                  ) : offer.status === "SENT" || offer.status === "VIEWED" ? (
+                    <div className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50/40 p-4">
+                      <p className="text-sm font-medium text-slate-800">
+                        Electronic Signature &amp; Offer Acceptance
+                      </p>
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-slate-600">
+                          Type Full Legal Name *
+                        </label>
+                        <Input
+                          placeholder={offer.application.candidate.name}
+                          value={signerName}
+                          onChange={(e) => setSignerName(e.target.value)}
+                        />
+                      </div>
+                      <label className="flex items-start gap-2 text-xs text-slate-700 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-600"
+                          checked={agreedToTerms}
+                          onChange={(e) => setAgreedToTerms(e.target.checked)}
+                        />
+                        <span>
+                          I confirm that I have reviewed the compensation and terms and electronically sign to accept this offer of employment.
+                        </span>
+                      </label>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={submitAccept}
+                          disabled={busy || signerName.trim().length < 2 || !agreedToTerms}
+                          className="bg-emerald-600 hover:bg-emerald-700"
+                        >
+                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                          {busy ? "Signing..." : "Confirm & Accept Offer"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => setAction("idle")}
+                          disabled={busy}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
                   ) : (
-                    <p className="text-sm text-amber-700">
-                      This offer has not been dispatched for e-signature yet. Please ask the HR team to send the e-sign request to{" "}
-                      <strong>{offer.application.candidate.email}</strong>.
-                    </p>
+                    <>
+                      <p className="text-sm text-amber-700">
+                        This offer has not been dispatched to the candidate yet. Please click <strong>Send Offer</strong> on the offer page first.
+                      </p>
+                      <Button variant="outline" onClick={() => setAction("idle")}>Back</Button>
+                    </>
                   )}
-                  <Button variant="outline" onClick={() => setAction("idle")}>Back</Button>
+                  {offer.signatureRequest && (
+                    <Button variant="outline" onClick={() => setAction("idle")}>Back</Button>
+                  )}
                 </div>
               )}
               {action === "declining" && (

@@ -1,5 +1,17 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, MinLength } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, MinLength } from 'class-validator';
+
+export class AcceptOfferDto {
+  @ApiProperty({ description: 'Full legal name typed as electronic signature' })
+  @IsString()
+  @MinLength(2)
+  signerName!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  agreedToTerms?: boolean;
+}
 
 export class DeclineOfferDto {
   @ApiProperty()

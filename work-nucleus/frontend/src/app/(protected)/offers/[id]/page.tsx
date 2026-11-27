@@ -126,6 +126,10 @@ export default function OfferDetailPage() {
         body: body ? JSON.stringify(body) : undefined,
       });
       if (!res.ok) throw new Error(await readResponseError(res, "Action failed"));
+      const data = await res.json().catch(() => null);
+      if (path === "/send") {
+        toast.success(data?.message || "Offer sent to candidate");
+      }
       await refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Action failed");
@@ -459,7 +463,7 @@ function FormColumn({
               className="flex-1 justify-center"
             >
               <Send className="h-3.5 w-3.5" />
-              Send via e-sign
+              Send Offer
             </Button>
           )}
           {offer.status !== "DRAFT" && offer.status !== "APPROVED" && (

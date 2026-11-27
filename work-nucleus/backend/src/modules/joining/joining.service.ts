@@ -228,28 +228,43 @@ export class JoiningService implements OnModuleInit {
   }
 
   async findByCandidateApp(orgId: string, applicationId: string) {
-    return this.prisma.candidateJoining.findFirst({
-      where: { offer: { orgId, applicationId } },
-      include: {
-        checklist: true,
-        offer: {
-          include: {
-            application: {
-              include: {
-                candidate: { select: { id: true, name: true, email: true } },
-                hiringPlan: {
-                  select: {
-                    id: true,
-                    title: true,
-                    designation: true,
-                    department: true,
-                  },
+    const include = {
+      checklist: true,
+      offer: {
+        include: {
+          application: {
+            include: {
+              candidate: { select: { id: true, name: true, email: true } },
+              hiringPlan: {
+                select: {
+                  id: true,
+                  title: true,
+                  designation: true,
+                  department: true,
                 },
               },
             },
           },
         },
       },
+    };
+
+    const existing = await this.prisma.candidateJoining.findFirst({
+      where: { offer: { orgId, applicationId } },
+      include,
+    });
+    if (existing) return existing;
+
+    const acceptedOffer = await this.prisma.offer.findFirst({
+      where: { orgId, applicationId, status: OfferStatus.ACCEPTED },
+      select: { id: true },
+    });
+    if (!acceptedOffer) return null;
+
+    await this.autoCreateForOffer(acceptedOffer.id).catch(() => null);
+    return this.prisma.candidateJoining.findFirst({
+      where: { offer: { orgId, applicationId } },
+      include,
     });
   }
 

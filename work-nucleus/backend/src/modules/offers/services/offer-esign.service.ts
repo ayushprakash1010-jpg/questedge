@@ -74,24 +74,52 @@ export class OfferESignService {
       pdfBuffer = Buffer.from(`Offer ${offerId}`, 'utf-8');
     }
 
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 14);
+
     const provider = await this.esign.getProviderForOrg(orgId);
-    const result = await provider.createSignRequest({
-      pdfBuffer,
-      fileName: `offer-${offerId}.pdf`,
-      signers: [
-        {
-          name: offer.application.candidate.name,
-          email: offer.application.candidate.email,
-          phone: offer.application.candidate.phone ?? undefined,
+    let result: Awaited<ReturnType<typeof provider.createSignRequest>>;
+    try {
+      result = await provider.createSignRequest({
+        pdfBuffer,
+        fileName: `offer-${offerId}.pdf`,
+        signers: [
+          {
+            name: offer.application.candidate.name,
+            email: offer.application.candidate.email,
+            phone: offer.application.candidate.phone ?? undefined,
+          },
+        ],
+        expireInDays: 14,
+      });
+    } catch (err: any) {
+      const msg = String(err?.message || '').toLowerCase();
+      const isUnconfigured =
+        msg.includes('not configured') || msg.includes('not yet implemented');
+      if (!isUnconfigured) {
+        throw err;
+      }
+
+      this.logger.warn(
+        `External e-sign unavailable (${err.message}); dispatching offer ${offerId} via QuestEdge Candidate Portal`,
+      );
+      await this.prisma.offer.update({
+        where: { id: offerId },
+        data: {
+          status: OfferStatus.SENT,
+          expiresAt: offer.expiresAt ?? expiresAt,
         },
-      ],
-      expireInDays: 14,
-    });
+      });
+      return {
+        mode: 'PORTAL',
+        eSignRequest: null,
+        signUrl: offer.candidateToken ? `/offer/${offer.candidateToken}` : null,
+        message: 'Offer sent via QuestEdge Candidate Portal',
+      };
+    }
 
     const providerEnum: ESignProvider =
       provider.name === 'leegality' ? 'LEEGALITY' : 'DIGIO';
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 14);
 
     const upserted = await this.prisma.eSignRequest.upsert({
       where: { offerId },
@@ -124,7 +152,99 @@ export class OfferESignService {
       },
     });
 
-    return { eSignRequest: upserted, signUrl: result.signUrl };
+    return {
+      mode: providerEnum,
+      eSignRequest: upserted,
+      signUrl: result.signUrl,
+      message: 'Offer sent via e-sign',
+    };
+  }
+
+  async acceptViaPortal(token: string, signerName: string) {
+    const offer = await this.prisma.offer.findFirst({
+      where: { candidateToken: token },
+      include: { application: true },
+    });
+    if (!offer) throw new NotFoundException('Offer not found');
+
+    if (
+      offer.status !== OfferStatus.SENT &&
+      offer.status !== OfferStatus.VIEWED
+    ) {
+      throw new BadRequestException(
+        `Offer cannot be accepted in status ${offer.status}`,
+      );
+    }
+
+    const acceptedAt = new Date();
+    const log = (offer.negotiationLog as unknown as any[]) ?? [];
+    log.push({
+      type: 'ACCEPT_PORTAL',
+      signerName: signerName.trim(),
+      at: acceptedAt.toISOString(),
+    });
+
+    const updated = await this.finalizeAcceptedOffer(
+      {
+        id: offer.id,
+        orgId: offer.orgId,
+        application: { candidateId: offer.application.candidateId },
+      },
+      acceptedAt,
+      log,
+    );
+    return updated;
+  }
+
+  private async finalizeAcceptedOffer(
+    offer: {
+      id: string;
+      orgId: string;
+      application: { candidateId: string };
+    },
+    acceptedAt: Date,
+    negotiationLog?: any[],
+  ) {
+    const updated = await this.prisma.offer.update({
+      where: { id: offer.id },
+      data: {
+        status: OfferStatus.ACCEPTED,
+        acceptedAt,
+        ...(negotiationLog ? { negotiationLog: negotiationLog as any } : {}),
+      },
+    });
+
+    try {
+      await this.queue.enqueue(JOINING_AUTO_CREATE_QUEUE, {
+        offerId: offer.id,
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to enqueue joining auto-create: ${err}`);
+    }
+
+    // Auto-trigger BGV if configured
+    try {
+      const orgSettings = await this.prisma.orgSettings.findUnique({
+        where: { orgId: offer.orgId },
+      });
+      const settings = (orgSettings?.settings as Record<string, any>) || {};
+      if (settings.autoTriggerBgvOnOfferAccept) {
+        await this.bgvService.initiate(offer.orgId, {
+          candidateId: offer.application.candidateId,
+          offerId: offer.id,
+          checkTypes: [
+            'PAN',
+            'AADHAAR',
+            'EMPLOYMENT_HISTORY',
+            'EDUCATION',
+          ] as any[],
+        });
+      }
+    } catch (err) {
+      this.logger.warn(`Failed to auto-trigger BGV: ${err}`);
+    }
+
+    return updated;
   }
 
   async refreshStatus(offerId: string) {
@@ -180,42 +300,7 @@ export class OfferESignService {
     });
 
     if (newStatus === ESignStatus.SIGNED) {
-      await this.prisma.offer.update({
-        where: { id: req.offerId },
-        data: {
-          status: OfferStatus.ACCEPTED,
-          acceptedAt: signedAt ?? new Date(),
-        },
-      });
-      try {
-        await this.queue.enqueue(JOINING_AUTO_CREATE_QUEUE, {
-          offerId: req.offerId,
-        });
-      } catch (err) {
-        this.logger.warn(`Failed to enqueue joining auto-create: ${err}`);
-      }
-
-      // Auto-trigger BGV if configured
-      try {
-        const orgSettings = await this.prisma.orgSettings.findUnique({
-          where: { orgId: req.offer.orgId },
-        });
-        const settings = (orgSettings?.settings as Record<string, any>) || {};
-        if (settings.autoTriggerBgvOnOfferAccept) {
-          await this.bgvService.initiate(req.offer.orgId, {
-            candidateId: req.offer.application.candidateId,
-            offerId: req.offerId,
-            checkTypes: [
-              'PAN',
-              'AADHAAR',
-              'EMPLOYMENT_HISTORY',
-              'EDUCATION',
-            ] as any[],
-          });
-        }
-      } catch (err) {
-        this.logger.warn(`Failed to auto-trigger BGV: ${err}`);
-      }
+      await this.finalizeAcceptedOffer(req.offer, signedAt ?? new Date());
     } else if (newStatus === ESignStatus.EXPIRED) {
       await this.prisma.offer.update({
         where: { id: req.offerId },

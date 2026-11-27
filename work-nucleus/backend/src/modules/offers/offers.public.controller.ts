@@ -1,8 +1,13 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from '../../auth/decorators/public.decorator';
-import { DeclineOfferDto, NegotiateOfferDto } from './dto/decline-offer.dto';
+import {
+  AcceptOfferDto,
+  DeclineOfferDto,
+  NegotiateOfferDto,
+} from './dto/decline-offer.dto';
 import { OffersService } from './offers.service';
+import { OfferESignService } from './services/offer-esign.service';
 import { OfferRenderService } from './services/offer-render.service';
 
 @ApiTags('Public Offer Portal (v2)')
@@ -12,6 +17,7 @@ export class OffersPublicController {
   constructor(
     private readonly service: OffersService,
     private readonly render: OfferRenderService,
+    private readonly offerESign: OfferESignService,
   ) {}
 
   @Get(':token')
@@ -32,6 +38,14 @@ export class OffersPublicController {
   @ApiOperation({ summary: 'Track that the candidate has viewed the offer' })
   viewed(@Param('token') token: string) {
     return this.service.markViewed(token);
+  }
+
+  @Post(':token/accept')
+  @ApiOperation({
+    summary: 'Candidate accepts and electronically signs the offer via portal',
+  })
+  accept(@Param('token') token: string, @Body() dto: AcceptOfferDto) {
+    return this.offerESign.acceptViaPortal(token, dto.signerName);
   }
 
   @Post(':token/decline')
