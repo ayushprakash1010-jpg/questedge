@@ -32,10 +32,20 @@ interface Cycle {
 export default function AdminAppraisalCyclesPage() {
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function load() {
-    const res = await fetch("/api/v2/appraisal/cycles");
-    if (res.ok) setCycles(await res.json());
+    setError(null);
+    try {
+      const res = await fetch("/api/v2/appraisal/cycles");
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(body?.message || "Failed to load appraisal cycles");
+      }
+      setCycles(Array.isArray(body) ? body : []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load appraisal cycles");
+    }
   }
   useEffect(() => {
     load();
@@ -65,7 +75,22 @@ export default function AdminAppraisalCyclesPage() {
       <PageHeader
         title="Appraisal cycles"
         subtitle="Configure cycles, advance stages, and oversee calibration sessions."
+        actions={
+          <Link href="/appraisal/cycles/new">
+            <Button size="sm">New Cycle</Button>
+          </Link>
+        }
       />
+      {error && (
+        <Card className="mb-4 border-rose-200 bg-rose-50/50">
+          <CardContent className="flex items-center justify-between py-3 text-sm text-rose-700">
+            <span>{error}</span>
+            <Button size="sm" variant="outline" onClick={load}>
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

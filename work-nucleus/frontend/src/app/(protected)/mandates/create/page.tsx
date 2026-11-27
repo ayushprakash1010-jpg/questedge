@@ -420,14 +420,12 @@ export default function CreateMandatePage() {
   const generateMandateFromPrompt = async (prompt: string, sourceDescription?: string) => {
     setIsGenerating(true);
     try {
-      const token = await getToken();
-      const res = await fetch(process.env.NEXT_PUBLIC_API_URL + "/api/v1/mandates/generate", {
+      const res = await fetch("/api/mandates/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ prompt })
+        body: JSON.stringify({ prompt }),
       });
       if (!res.ok) {
         let errStr = "Failed to generate mandate";

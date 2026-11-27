@@ -10,6 +10,7 @@ import {
   upsertCandidateProfile,
   parseResumeText,
 } from "@/lib/marketplace-api";
+import { getClientApiUrl, getDemoRole } from "@/lib/api";
 import {
   User,
   Briefcase,
@@ -178,7 +179,8 @@ export default function RecruiterProfilePage() {
       toast.info("Extracting resume text and uploading...");
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+      const API_URL = getClientApiUrl();
+      const demoRole = getDemoRole();
 
       // 1. Upload to storage
       const formData = new FormData();
@@ -187,7 +189,10 @@ export default function RecruiterProfilePage() {
         `${API_URL}/api/v1/candidate/profile/upload-resume`,
         {
           method: "POST",
-          headers: { Authorization: `Bearer ${accessToken}` },
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            ...(demoRole ? { "X-Demo-Role": demoRole } : {}),
+          },
           body: formData,
         }
       );

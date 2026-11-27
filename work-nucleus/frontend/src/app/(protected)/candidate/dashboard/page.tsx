@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getCandidateProfile, getPendingConsents, getSavedJobs } from "@/lib/marketplace-api";
+import { getCandidateProfile, getPendingConsents, getSavedJobs, respondToConsent } from "@/lib/marketplace-api";
 import {
   AlertCircle, FileText, Bookmark, Users, ArrowRight,
   CheckCircle2, XCircle, Clock, MapPin, Building2, Briefcase,
@@ -135,22 +135,7 @@ export default function CandidateDashboardPage() {
   const handleConsentResponse = async (consentToken: string, accepted: boolean) => {
     setRespondingTo(consentToken);
     try {
-      const tokenRes = await fetch("/api/auth/token");
-      const { accessToken } = await tokenRes.json();
-
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-      const demoRole = typeof document !== "undefined"
-        ? (document.cookie.match(/(?:^|;\s*)demo_role=([^;]+)/)?.[1] || "CANDIDATE")
-        : "CANDIDATE";
-      await fetch(`${apiUrl}/api/v1/candidate/consents/${consentToken}/respond`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-          "X-Demo-Role": demoRole,
-        },
-        body: JSON.stringify({ accepted }),
-      });
+      await respondToConsent(consentToken, accepted);
 
       // Remove from list
       setConsents((prev) => prev.filter((c) => c.consentToken !== consentToken));

@@ -5,6 +5,7 @@ import { CheckCircle2, DollarSign, Clock, AlertCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { apiClient } from "@/lib/api";
 
 export default function CompanyRewardsDashboard() {
   const [rewards, setRewards] = useState<any[]>([]);
@@ -19,14 +20,13 @@ export default function CompanyRewardsDashboard() {
     try {
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
-      
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetch(`${apiUrl}/api/v1/rewards/company`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
+
+      const data = await apiClient<any[]>("/api/v1/rewards/company", {
+        token: accessToken,
       });
-      const data = await res.json();
-      setRewards(data);
+      setRewards(Array.isArray(data) ? data : []);
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to load rewards");
       console.error(err);
     } finally {
       setLoading(false);
@@ -38,18 +38,15 @@ export default function CompanyRewardsDashboard() {
     try {
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetch(`${apiUrl}/api/v1/rewards/company/${rewardId}/approve`, {
+      await apiClient(`/api/v1/rewards/company/${rewardId}/approve`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}` },
+        token: accessToken,
       });
-      
-      if (!res.ok) throw new Error("Failed to approve reward");
-      
+
       toast.success("Reward approved successfully");
       fetchRewards();
     } catch (err) {
-      toast.error("Failed to approve payout");
+      toast.error(err instanceof Error ? err.message : "Failed to approve payout");
       console.error(err);
     } finally {
       setProcessing(null);

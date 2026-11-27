@@ -56,11 +56,15 @@ export default function AdminUsersPage() {
     setLoading(true);
     try {
       const res = await fetch(`/api/admin/users?page=${page}`);
-      const data: UsersResponse = await res.json();
-      setUsers(data.data);
-      setMeta(data.meta);
-    } catch {
-      // ignore
+      const data: Partial<UsersResponse> & { message?: string } = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to load team users");
+      }
+      setUsers(Array.isArray(data.data) ? data.data : []);
+      if (data.meta) setMeta(data.meta);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to load team users");
+      setUsers([]);
     } finally {
       setLoading(false);
     }

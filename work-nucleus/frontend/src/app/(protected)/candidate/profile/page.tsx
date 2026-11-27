@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getCandidateProfile, upsertCandidateProfile, parseResumeText, exportCandidateData, eraseCandidateData } from "@/lib/marketplace-api";
+import { getClientApiUrl, getDemoRole } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -493,14 +494,18 @@ export default function CandidateProfilePage() {
 
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+      const API_URL = getClientApiUrl();
+      const demoRole = getDemoRole();
 
       // 1. Upload to S3/DB first
       const formData = new FormData();
       formData.append('resume', file);
       const uploadRes = await fetch(`${API_URL}/api/v1/candidate/profile/upload-resume`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          ...(demoRole ? { "X-Demo-Role": demoRole } : {}),
+        },
         body: formData,
       });
 

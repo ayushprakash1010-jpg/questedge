@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
-import { getApiUrl } from "@/lib/api-url";
+import { getApiUrl, getDemoRoleHeader } from "@/lib/api-url";
 
 const API_URL = getApiUrl();
 
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 
     const res = await fetch(
       `${API_URL}/api/v1/admin/users?page=${page}`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
+      { headers: { Authorization: `Bearer ${accessToken}`, ...getDemoRoleHeader(req) } }
     );
 
     const data = await res.json();
@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
+        ...getDemoRoleHeader(req),
       },
       body: JSON.stringify(body),
     });

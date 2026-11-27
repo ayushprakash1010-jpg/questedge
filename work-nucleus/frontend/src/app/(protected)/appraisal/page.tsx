@@ -134,20 +134,48 @@ const statusPill: Record<string, string> = {
 
 export default function AppraisalHomePage() {
   const [data, setData] = useState<HomeData | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/v2/appraisal/assessments/home")
-      .then((r) => r.json())
-      .then(setData);
+      .then(async (r) => {
+        const body = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          throw new Error(body?.message || "Failed to load appraisal workspace");
+        }
+        return body;
+      })
+      .then(setData)
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Failed to load appraisal data");
+      });
   }, []);
 
   const stats = useMemo(() => computeStats(data), [data]);
   const ratingDist = useMemo(() => computeRatingDist(data), [data]);
-  const cycle = data?.cycles[0] ?? null;
+  const cycle = data?.cycles?.[0] ?? null;
   const activePhase = cycle ? activePhaseFor(cycle.status) : null;
   const activeIdx = PHASES.findIndex((p) => p.key === activePhase);
   const cycleProgressPct =
     activeIdx >= 0 ? ((activeIdx + 1) / PHASES.length) * 100 : 0;
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-2xl py-12">
+        <Card className="border-rose-200 bg-rose-50/40">
+          <CardHeader>
+            <CardTitle className="text-rose-900">Could not load Appraisals</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-rose-700">{error}</p>
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (!data) {
     return <BrandLoader fullscreen={false} message="Loading appraisal cycles..." />;

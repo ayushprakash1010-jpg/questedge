@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
-import { getApiUrl } from "@/lib/api-url";
+import { getApiUrl, getDemoRoleHeader } from "@/lib/api-url";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     const endpoint = `${apiUrl}/api/v1/analytics/${type}${params.toString() ? `?${params}` : ""}`;
 
     const res = await fetch(endpoint, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { Authorization: `Bearer ${accessToken}`, ...getDemoRoleHeader(req) },
       cache: "no-store",
     });
 
@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/analytics — generate and persist AI insights
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
     const session = await auth0.getSession();
     if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -56,7 +56,11 @@ export async function POST() {
 
     const res = await fetch(`${apiUrl}/api/v1/analytics/insights`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+        ...getDemoRoleHeader(req),
+      },
     });
     const data = await res.json().catch(() => ({}));
     return NextResponse.json(data, { status: res.status });

@@ -38,6 +38,7 @@ import {
   DataTableRow,
 } from "@/components/shared/data-table";
 import { PlanDetailPanel } from "@/components/hiring-plans/plan-detail-panel";
+import { toast } from "@/components/ui/toaster";
 
 interface HiringPlanSkill {
   id: string;
@@ -99,10 +100,14 @@ export default function HiringPlansPage() {
         if (departmentFilter) params.set("department", departmentFilter);
 
         const res = await fetch(`/api/hiring-plans?${params}`);
-        const data: PlansResponse = await res.json();
-        setPlans(data.data || []);
+        const data: Partial<PlansResponse> & { message?: string } = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data?.message || "Failed to load hiring plans");
+        }
+        setPlans(Array.isArray(data.data) ? data.data : []);
         setMeta(data.meta || { total: 0, page: 1, totalPages: 1 });
-      } catch {
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Failed to load hiring plans");
         setPlans([]);
       } finally {
         setLoading(false);
@@ -116,15 +121,33 @@ export default function HiringPlansPage() {
   }, [fetchPlans]);
 
   const handleClone = async (id: string) => {
-    await fetch(`/api/hiring-plans/${id}/clone`, { method: "POST" });
-    fetchPlans(meta.page);
+    try {
+      const res = await fetch(`/api/hiring-plans/${id}/clone`, { method: "POST" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.message || "Failed to clone hiring plan");
+      }
+      toast.success("Hiring plan cloned");
+      fetchPlans(meta.page);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to clone hiring plan");
+    }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Cancel this hiring plan?")) return;
-    await fetch(`/api/hiring-plans/${id}`, { method: "DELETE" });
-    if (selectedPlanId === id) setSelectedPlanId(null);
-    fetchPlans(meta.page);
+    try {
+      const res = await fetch(`/api/hiring-plans/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.message || "Failed to cancel hiring plan");
+      }
+      toast.success("Hiring plan cancelled");
+      if (selectedPlanId === id) setSelectedPlanId(null);
+      fetchPlans(meta.page);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to cancel hiring plan");
+    }
   };
 
   const formatBudget = (min: string, max: string, currency: string) => {

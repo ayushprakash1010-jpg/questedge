@@ -32,29 +32,47 @@ const COMPETENCIES = [
 export default function SelfAssessmentPage() {
   const { cycleId } = useParams<{ cycleId: string }>();
   const [a, setA] = useState<Assessment | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState("");
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    fetch("/api/v2/profile")
-      .then((r) => r.json())
-      .then((profile) => {
+    setError(null);
+    fetch("/api/profile")
+      .then(async (r) => {
+        const body = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          throw new Error(body?.message || "Failed to load user profile");
+        }
+        return body;
+      })
+      .then(async (profile) => {
         const managerId = profile?.managerId ?? profile?.id;
         const employeeId = profile?.id;
-        if (!employeeId) return;
-        return fetch("/api/v2/appraisal/assessments", {
+        if (!employeeId) {
+          throw new Error("Profile ID is unavailable for this account.");
+        }
+        const res = await fetch("/api/v2/appraisal/assessments", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ cycleId, employeeId, managerId, type: "SELF" }),
-        }).then((r) => r.json());
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data?.message || "Failed to load self-assessment");
+        }
+        return data;
       })
       .then((data) => {
         if (!data) return;
         setA(data);
         setSummary(data.selfSummary ?? "");
         setRatings(data.competencyRatings ?? {});
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Could not initialize self-assessment");
       });
   }, [cycleId]);
 
@@ -87,6 +105,24 @@ export default function SelfAssessmentPage() {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Submit failed");
     }
+  }
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-2xl py-12">
+        <Card className="border-rose-200 bg-rose-50/40">
+          <CardHeader>
+            <CardTitle className="text-rose-900">Unable to load self-assessment</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-rose-700">{error}</p>
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   if (!a) {

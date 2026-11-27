@@ -28,12 +28,37 @@ interface Dashboard {
 
 export default function AiCostPage() {
   const [data, setData] = useState<Dashboard | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/v2/ai-cost/dashboard")
-      .then((r) => r.json())
-      .then(setData);
+      .then(async (r) => {
+        const body = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          throw new Error(body?.message || "Failed to load AI cost metrics");
+        }
+        return body;
+      })
+      .then(setData)
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Failed to load AI cost metrics");
+      });
   }, []);
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-5xl py-6">
+        <PageHeader
+          title="AI cost dashboard"
+          subtitle="Gemini AI spend across all agents in the last 30 days."
+        />
+        <Alert variant="destructive">
+          <AlertTriangle />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   if (!data) {
     return <BrandLoader fullscreen={false} message="Loading AI cost metrics..." />;
@@ -58,12 +83,12 @@ export default function AiCostPage() {
       <div className="mb-4 grid gap-3 sm:grid-cols-3">
         <Stat
           label="Total spend (30d)"
-          value={`₹${data.totalRupees.toLocaleString("en-IN")}`}
+          value={`₹${(data.totalRupees ?? 0).toLocaleString("en-IN")}`}
         />
-        <Stat label="Total calls" value={data.totalCalls.toLocaleString("en-IN")} />
+        <Stat label="Total calls" value={(data.totalCalls ?? 0).toLocaleString("en-IN")} />
         <Stat
           label="Cache hit rate"
-          value={`${(data.cacheHitRate * 100).toFixed(1)}%`}
+          value={`${((data.cacheHitRate ?? 0) * 100).toFixed(1)}%`}
         />
       </div>
 
@@ -72,7 +97,7 @@ export default function AiCostPage() {
           <CardTitle>By agent</CardTitle>
         </CardHeader>
         <CardContent className="px-0 pb-0">
-          {Object.keys(data.byAgent).length === 0 ? (
+          {Object.keys(data.byAgent ?? {}).length === 0 ? (
             <p className="px-5 pb-5 text-sm text-slate-500">No AI calls logged yet.</p>
           ) : (
             <DataTable className="rounded-none border-0 shadow-none">

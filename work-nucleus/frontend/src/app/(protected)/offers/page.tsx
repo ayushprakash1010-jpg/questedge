@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
+import { toast } from "@/components/ui/toaster";
 import {
   DataTable,
   DataTableBody,
@@ -58,8 +59,18 @@ export default function OffersListPage() {
     setLoading(true);
     const qs = statusFilter ? `?status=${statusFilter}` : "";
     fetch(`/api/v2/offers${qs}`)
-      .then((r) => r.json())
-      .then((j) => setData(j.data ?? []))
+      .then(async (r) => {
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          throw new Error(j?.message || "Failed to load offers");
+        }
+        return j;
+      })
+      .then((j) => setData(Array.isArray(j?.data) ? j.data : []))
+      .catch((err) => {
+        toast.error(err instanceof Error ? err.message : "Failed to load offers");
+        setData([]);
+      })
       .finally(() => setLoading(false));
   }, [statusFilter]);
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
-import { getApiUrl } from "@/lib/api-url";
+import { getApiUrl, getDemoRoleHeader } from "@/lib/api-url";
 
 const API_URL = getApiUrl();
 
@@ -22,6 +22,7 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
     }
     const { token } = await auth0.getAccessToken();
     headers.authorization = `Bearer ${token}`;
+    Object.assign(headers, getDemoRoleHeader(req));
   }
 
   const init: RequestInit = { method: req.method, headers };

@@ -50,14 +50,17 @@ export default function ReportsPage() {
   const [activeReportResult, setActiveReportResult] = useState<any>(null);
 
   async function load() {
-    const tokenRes = await fetch("/api/auth/token");
-    const { accessToken } = await tokenRes.json();
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-    
-    const res = await fetch(`${API_URL}/api/v2/reports`, {
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
-    if (res.ok) setReports(await res.json());
+    try {
+      const res = await fetch("/api/v2/reports");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data?.message || "Failed to load saved reports");
+        return;
+      }
+      setReports(Array.isArray(data) ? data : []);
+    } catch {
+      toast.error("Failed to load saved reports");
+    }
   }
   useEffect(() => {
     load();
@@ -67,16 +70,9 @@ export default function ReportsPage() {
     if (!draft.name) return;
     setBusy(true);
     try {
-      const tokenRes = await fetch("/api/auth/token");
-      const { accessToken } = await tokenRes.json();
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-
-      const res = await fetch(`${API_URL}/api/v2/reports`, {
+      const res = await fetch("/api/v2/reports", {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(draft),
       });
       if (!res.ok) throw new Error("Save failed");
@@ -95,23 +91,20 @@ export default function ReportsPage() {
     if (prompt.trim().length < 5) return;
     setBusy(true);
     try {
-      const tokenRes = await fetch("/api/auth/token");
-      const { accessToken } = await tokenRes.json();
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-
-      const res = await fetch(`${API_URL}/api/v2/reports/natural-language`, {
+      const res = await fetch("/api/v2/reports/natural-language", {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setAiResult(data);
-        setDraft((prev: any) => ({ ...prev, ...data }));
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data?.message || "Could not draft report with AI");
+        return;
       }
+      setAiResult(data);
+      setDraft((prev: any) => ({ ...prev, ...data }));
+    } catch {
+      toast.error("Could not draft report with AI");
     } finally {
       setBusy(false);
     }
@@ -119,18 +112,14 @@ export default function ReportsPage() {
 
   async function runReport(id: string) {
     try {
-      const tokenRes = await fetch("/api/auth/token");
-      const { accessToken } = await tokenRes.json();
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-
-      const res = await fetch(`${API_URL}/api/v2/reports/${id}/run`, { 
+      const res = await fetch(`/api/v2/reports/${id}/run`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}` }
       });
       if (!res.ok) throw new Error("Run failed");
       const data = await res.json();
-      
-      const flattenedRows = data.rows.map((row: any) => ({
+
+      const rows = Array.isArray(data?.rows) ? data.rows : [];
+      const flattenedRows = rows.map((row: any) => ({
         ...row.group,
         ...row.metrics
       }));

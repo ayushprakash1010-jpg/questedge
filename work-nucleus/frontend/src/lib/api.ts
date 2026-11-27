@@ -4,7 +4,11 @@ const API_BASE =
     ? "https://questedge.onrender.com"
     : "http://localhost:3000");
 
-function getDemoRole(): string | null {
+export function getClientApiUrl(): string {
+  return API_BASE;
+}
+
+export function getDemoRole(): string | null {
   if (typeof document !== "undefined") {
     const match = document.cookie.match(/(?:^|;\s*)demo_role=([^;]+)/);
     if (match) return decodeURIComponent(match[1]);
@@ -28,10 +32,12 @@ export async function apiClient<T = unknown>(
 ): Promise<T> {
   const { token, headers, ...rest } = options;
   const demoRole = getDemoRole();
+  const isFormData =
+    typeof FormData !== "undefined" && rest.body instanceof FormData;
 
   const res = await fetch(`${API_BASE}${path}`, {
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(demoRole ? { "X-Demo-Role": demoRole } : {}),
       ...headers,

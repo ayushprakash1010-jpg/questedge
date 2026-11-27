@@ -52,6 +52,8 @@ export default function UnifiedProfilePage() {
   const role = profile?.role || "USER";
   const org = profile?.organization;
   const isSuperAdmin = role === "SUPPORT_ADMIN" || uType === "PLATFORM_ADMIN";
+  const isAdmin = role === "ADMIN" || isSuperAdmin;
+  const isDemo = Boolean((profile as any)?.isDemoAccount);
 
   const displayName = profile?.name || user?.name || "User";
   const displayEmail = profile?.email || user?.email || "";
@@ -215,24 +217,30 @@ export default function UnifiedProfilePage() {
                     {org.id}
                   </span>
                 </div>
-                <div className="pt-2 flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full text-xs"
-                    onClick={() => router.push("/admin/settings")}
-                  >
-                    Organization Settings
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full text-xs"
-                    onClick={() => router.push("/admin/users")}
-                  >
-                    Manage Team
-                  </Button>
-                </div>
+                {isAdmin ? (
+                  <div className="pt-2 flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-xs"
+                      onClick={() => router.push("/admin/settings")}
+                    >
+                      Organization Settings
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-xs"
+                      onClick={() => router.push("/admin/users")}
+                    >
+                      Manage Team
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="pt-2 text-xs text-slate-400">
+                    Contact your workspace admin to change team or org settings.
+                  </p>
+                )}
               </>
             ) : (
               <div className="py-8 text-center text-slate-500 text-sm">
@@ -262,6 +270,7 @@ export default function UnifiedProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {!isDemo && (
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl border border-slate-200 bg-slate-50/60">
             <div className="space-y-1">
               <h4 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
@@ -288,6 +297,7 @@ export default function UnifiedProfilePage() {
                     alert(data.error || "Cannot change role right now.");
                     return;
                   }
+                  document.cookie = "demo_role=; path=/; max-age=0";
                   window.location.href = "/onboarding";
                 } catch {
                   alert("Failed to reset role.");
@@ -297,6 +307,7 @@ export default function UnifiedProfilePage() {
               Reset Role
             </Button>
           </div>
+          )}
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl border border-slate-200 bg-slate-50/60">
             <div className="space-y-1">
