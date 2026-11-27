@@ -458,6 +458,24 @@ export class ApplicationsService {
       },
       include: {
         candidate: true,
+        candidateProfile: {
+          select: {
+            skills: true,
+            currentDesignation: true,
+            currentCompany: true,
+            experienceYears: true,
+            headline: true,
+          },
+        },
+        mandate: {
+          select: {
+            title: true,
+            department: true,
+            mandatorySkills: true,
+            requiredExperience: true,
+            description: true,
+          },
+        },
         hiringPlan: {
           include: {
             jobDescriptions: {
@@ -475,34 +493,55 @@ export class ApplicationsService {
     }
 
     const candidateName = app.candidate.name;
-    const roleTitle = app.hiringPlan.title;
-    const department = app.hiringPlan.department;
-    const currentRole = app.candidate.currentRole || 'Software Professional';
-    const currentCompany = app.candidate.currentCompany || 'Previous Organization';
-    const expYears = app.candidate.experienceYears || '3-5';
+    const roleTitle = (app as any).mandate?.title || app.hiringPlan.title;
+    const department =
+      (app as any).mandate?.department || app.hiringPlan.department;
+    const currentRole =
+      app.candidate.currentRole ||
+      (app as any).candidateProfile?.currentDesignation ||
+      'Software Professional';
+    const currentCompany =
+      app.candidate.currentCompany ||
+      (app as any).candidateProfile?.currentCompany ||
+      'Previous Organization';
+    const expYears =
+      app.candidate.experienceYears ||
+      (app as any).candidateProfile?.experienceYears ||
+      '3-5';
     const stageName = app.currentStage?.name || 'Technical Round';
     const stageType = app.currentStage?.stageType || 'TECHNICAL';
     const matchSummary = app.aiMatchSummary || '';
+    const candidateSkills = Array.isArray((app as any).candidateProfile?.skills)
+      ? (app as any).candidateProfile.skills.slice(0, 12).join(', ')
+      : '';
+    const roleSkills = Array.isArray((app as any).mandate?.mandatorySkills)
+      ? (app as any).mandate.mandatorySkills.slice(0, 12).join(', ')
+      : '';
 
     const rawKey = this.config.get<string>('GEMINI_API_KEY');
     const trimmedKey = rawKey ? rawKey.trim() : null;
 
     if (trimmedKey) {
-      const model =
-        this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
-      const startedAtMs = Date.now();
-      try {
-        const { GoogleGenAI } = require('@google/genai');
-        const ai = new GoogleGenAI({ apiKey: trimmedKey });
-        const prompt = `You are a Principal Technical Interviewer and Hiring Lead.
+      const candidateModels = [
+        'gemini-flash-lite-latest',
+        this.config.get<string>('GEMINI_MODEL'),
+        'gemini-3.1-flash-lite',
+        'gemini-flash-latest',
+      ].filter((m, idx, arr): m is string => Boolean(m) && arr.indexOf(m) === idx);
+
+      const { GoogleGenAI } = require('@google/genai');
+      const ai = new GoogleGenAI({ apiKey: trimmedKey });
+      const prompt = `You are a Principal Technical Interviewer and Hiring Lead.
 Role: ${roleTitle} (${department})
+Required Skills: ${roleSkills || 'Core engineering & problem solving'}
 Candidate: ${candidateName}
 Current Role: ${currentRole} at ${currentCompany} (${expYears} years experience)
+Candidate Skills: ${candidateSkills || 'See role context'}
 Interview Stage: ${stageName} (${stageType})
 AI Match Summary: ${matchSummary}
 
 Generate exactly 5 highly relevant, role-specific interview questions for this specific round.
-3 questions should test technical/architectural depth and hands-on decision making based on their background.
+3 questions should test technical/architectural depth and hands-on decision making based on their background and any skill gaps vs the role.
 2 questions should test behavioral competencies, conflict resolution, or team leadership.
 
 Return a JSON array of 5 objects strictly matching this structure:
@@ -517,45 +556,59 @@ Return a JSON array of 5 objects strictly matching this structure:
   }
 ]`;
 
-        const response = await ai.models.generateContent({
-          model,
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          config: { responseMimeType: 'application/json', temperature: 0.6 },
-        });
+      for (const model of candidateModels.slice(0, 2)) {
+        const startedAtMs = Date.now();
+        try {
+          let timer: NodeJS.Timeout | undefined;
+          const response: any = await Promise.race([
+            ai.models.generateContent({
+              model,
+              contents: [{ role: 'user', parts: [{ text: prompt }] }],
+              config: { responseMimeType: 'application/json', temperature: 0.6 },
+            }),
+            new Promise<never>((_, reject) => {
+              timer = setTimeout(
+                () => reject(new Error(`Gemini timeout on ${model} after 12s`)),
+                12_000,
+              );
+            }),
+          ]).finally(() => {
+            if (timer) clearTimeout(timer);
+          });
 
-        await this.aiCost?.logGeminiCall({
-          orgId: app.hiringPlan.orgId,
-          agentName: 'applications.interview_questions',
-          modelUsed: model,
-          startedAtMs,
-          response,
-        });
+          await this.aiCost?.logGeminiCall({
+            orgId: app.hiringPlan.orgId,
+            agentName: 'applications.interview_questions',
+            modelUsed: model,
+            startedAtMs,
+            response,
+          });
 
-        const parsed = JSON.parse(
-          (response.text || '[]')
-            .replace(/```json/g, '')
-            .replace(/```/g, '')
-            .trim(),
-        );
+          const parsed = JSON.parse(
+            (response.text || '[]')
+              .replace(/```json/gi, '')
+              .replace(/```/g, '')
+              .trim(),
+          );
 
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return {
-            source: 'gemini-ai',
-            candidateName,
-            roleTitle,
-            stageName,
-            questions: parsed,
-          };
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return {
+              source: 'gemini-ai',
+              candidateName,
+              roleTitle,
+              stageName,
+              questions: parsed,
+            };
+          }
+        } catch (err) {
+          await this.aiCost?.logGeminiCall({
+            orgId: app.hiringPlan.orgId,
+            agentName: 'applications.interview_questions',
+            modelUsed: model,
+            startedAtMs,
+            error: err,
+          });
         }
-      } catch (err) {
-        await this.aiCost?.logGeminiCall({
-          orgId: app.hiringPlan.orgId,
-          agentName: 'applications.interview_questions',
-          modelUsed: model,
-          startedAtMs,
-          error: err,
-        });
-        // Fall back to curated evaluator
       }
     }
 

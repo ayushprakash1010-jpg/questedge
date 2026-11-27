@@ -42,6 +42,8 @@ import { CreateOfferDialog } from "@/components/offers/create-offer-dialog";
 import { InviteModal } from "@/components/assessments/invite-modal";
 import { ScheduleVideoModal } from "@/components/assessments/schedule-video-modal";
 import { fetchAssessments, type HiringAssessment } from "@/lib/assessment-api";
+import { toast } from "@/components/ui/toaster";
+import { readResponseError } from "@/lib/api";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
 
 // Candidate detail surface — design-system-v2/ui-kit/04-Candidate-Detail.html.
@@ -442,13 +444,20 @@ export function CandidateSheet({
     try {
       const res = await fetch(`/api/applications/${applicationId}/interview-questions`, {
         method: "POST",
+        signal: AbortSignal.timeout(30_000),
       });
       if (res.ok) {
         const data = await res.json();
         setQuestionsData(data);
+      } else {
+        toast.error(await readResponseError(res, "Failed to generate interview questions"));
       }
-    } catch {
-      // ignore
+    } catch (err: any) {
+      toast.error(
+        err?.name === "TimeoutError"
+          ? "Question generation timed out. Please click Generate again."
+          : "Failed to generate interview questions"
+      );
     } finally {
       setLoadingQuestions(false);
     }

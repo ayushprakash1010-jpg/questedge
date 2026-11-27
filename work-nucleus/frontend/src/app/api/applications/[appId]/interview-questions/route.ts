@@ -8,6 +8,7 @@ import {
 } from "@/lib/api-url";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 30;
 
 export async function POST(
   req: NextRequest,
@@ -26,6 +27,7 @@ export async function POST(
       {
         method: "POST",
         headers: getProxyHeaders(req, accessToken),
+        signal: AbortSignal.timeout(25_000),
       }
     );
 
