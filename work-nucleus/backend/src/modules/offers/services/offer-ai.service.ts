@@ -1,6 +1,7 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { AiCostService } from '../../ai-cost/ai-cost.service';
 
 export interface OfferBodyDraft {
   body: string;
@@ -29,6 +30,7 @@ export class OfferAiService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    @Optional() private readonly aiCost?: AiCostService,
   ) {
     this.aiServiceUrl = this.config.get<string>(
       'AI_SERVICE_URL',
@@ -108,6 +110,9 @@ export class OfferAiService {
       return this.fallback(candidateName, roleTitle);
     }
 
+    const model =
+      this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
+    const startedAtMs = Date.now();
     try {
       const { GoogleGenAI } = require('@google/genai');
       const ai = new GoogleGenAI({ apiKey: trimmedKey });
@@ -148,9 +153,17 @@ Output ONLY valid JSON with this exact structure:
 `;
 
       const response = await this.generateWithTimeout(ai, {
-        model: this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest',
+        model,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: { responseMimeType: 'application/json', temperature: 0.7 },
+      });
+
+      await this.aiCost?.logGeminiCall({
+        orgId: offer.orgId,
+        agentName: 'offers.draft_body',
+        modelUsed: model,
+        startedAtMs,
+        response,
       });
 
       const rawResponse = response?.text || '{}';
@@ -176,6 +189,13 @@ Output ONLY valid JSON with this exact structure:
 
       return { body };
     } catch (err: any) {
+      await this.aiCost?.logGeminiCall({
+        orgId: offer.orgId,
+        agentName: 'offers.draft_body',
+        modelUsed: model,
+        startedAtMs,
+        error: err,
+      });
       this.logger.error(`Offer AI generation failed: ${err?.message || err}`);
       return this.fallback(candidateName, roleTitle);
     }

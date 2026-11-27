@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
@@ -11,12 +12,16 @@ import {
   UpdateCommunicationDto,
 } from './dto/make-decision.dto';
 import { DecisionType, ApplicationStatus, Prisma } from '@prisma/client';
+import { AiCostService } from '../ai-cost/ai-cost.service';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class DecisionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    @Optional() private readonly aiCost?: AiCostService,
+    @Optional() private readonly audit?: AuditService,
   ) {}
 
   async makeDecision(
@@ -110,6 +115,15 @@ export class DecisionsService {
     // Draft communication via AI (non-blocking)
     this.draftCommunication(decision.id, application, dto).catch(() => {});
 
+    await this.audit?.logSafe({
+      orgId: application.hiringPlan?.orgId || orgId,
+      userId,
+      action: 'DECISION_MADE',
+      entityType: 'SELECTION_DECISION',
+      entityId: decision.id,
+      changes: { applicationId, decision: dto.decision },
+    });
+
     return this.getDecision(applicationId, orgId);
   }
 
@@ -157,6 +171,11 @@ export class DecisionsService {
       };
     }
 
+    const model =
+      this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
+    const resolvedOrgId = application.hiringPlan?.orgId;
+    let startedAtMs = 0;
+    let aiAttempted = false;
     try {
       const rawKey = this.config.get<string>('GEMINI_API_KEY');
       const trimmedKey = rawKey ? rawKey.trim() : null;
@@ -164,10 +183,19 @@ export class DecisionsService {
       const { GoogleGenAI } = require('@google/genai');
       const ai = new GoogleGenAI({ apiKey: trimmedKey });
       const prompt = `Draft a communication email for a candidate based on this decision context: ${JSON.stringify(payload)}. Return JSON with "subject" and "body".`;
+      aiAttempted = true;
+      startedAtMs = Date.now();
       const response = await ai.models.generateContent({
-        model: this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest',
+        model,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: { responseMimeType: 'application/json', temperature: 0.7 },
+      });
+      await this.aiCost?.logGeminiCall({
+        orgId: resolvedOrgId,
+        agentName: 'decisions.draft_communication',
+        modelUsed: model,
+        startedAtMs,
+        response,
       });
       const draft = JSON.parse(
         (response.text || '{}')
@@ -179,7 +207,16 @@ export class DecisionsService {
         where: { id: decisionId },
         data: { communicationDraft: draft },
       });
-    } catch {
+    } catch (err) {
+      if (aiAttempted) {
+        await this.aiCost?.logGeminiCall({
+          orgId: resolvedOrgId,
+          agentName: 'decisions.draft_communication',
+          modelUsed: model,
+          startedAtMs,
+          error: err,
+        });
+      }
       // AI service unavailable — draft can be added manually
     }
   }
@@ -190,12 +227,17 @@ export class DecisionsService {
         applicationId,
         ...(orgId ? { application: { hiringPlan: { orgId } } } : {}),
       },
+      include: {
+        application: {
+          select: { hiringPlan: { select: { orgId: true } } },
+        },
+      },
     });
     if (!decision) throw new NotFoundException('Decision not found');
     if (decision.approvedById)
       throw new BadRequestException('Decision already approved');
 
-    return this.prisma.selectionDecision.update({
+    const updated = await this.prisma.selectionDecision.update({
       where: { id: decision.id },
       data: { approvedById: userId, approvedAt: new Date() },
       include: {
@@ -203,6 +245,17 @@ export class DecisionsService {
         approvedBy: { select: { id: true, name: true } },
       },
     });
+
+    await this.audit?.logSafe({
+      orgId: orgId || decision.application?.hiringPlan?.orgId,
+      userId,
+      action: 'DECISION_APPROVED',
+      entityType: 'SELECTION_DECISION',
+      entityId: decision.id,
+      changes: { applicationId },
+    });
+
+    return updated;
   }
 
   async updateCommunication(
@@ -230,8 +283,28 @@ export class DecisionsService {
         applicationId,
         ...(orgId ? { application: { hiringPlan: { orgId } } } : {}),
       },
+      include: {
+        application: {
+          select: { hiringPlan: { select: { orgId: true } } },
+        },
+      },
     });
     if (!decision) throw new NotFoundException('Decision not found');
+
+    const resolvedOrgId = orgId || decision.application?.hiringPlan?.orgId;
+    if (resolvedOrgId) {
+      const orgSettings = await this.prisma.orgSettings.findUnique({
+        where: { orgId: resolvedOrgId },
+      });
+      if (
+        (orgSettings?.settings as any)?.approvalWorkflowEnabled === true &&
+        !decision.approvedById
+      ) {
+        throw new BadRequestException(
+          'Decision approval by ADMIN or HR is required before sending communication (OrgSettings approval workflow enabled).',
+        );
+      }
+    }
 
     return this.prisma.selectionDecision.update({
       where: { id: decision.id },
@@ -252,7 +325,7 @@ export class DecisionsService {
           include: {
             candidate: { select: { id: true, name: true, email: true } },
             hiringPlan: {
-              select: { id: true, title: true, designation: true },
+              select: { id: true, orgId: true, title: true, designation: true },
             },
           },
         },
@@ -260,7 +333,22 @@ export class DecisionsService {
     });
     if (!decision)
       throw new NotFoundException('No decision found for this application');
-    return decision;
+
+    const resolvedOrgId = orgId || decision.application?.hiringPlan?.orgId;
+    const orgSettings = resolvedOrgId
+      ? await this.prisma.orgSettings.findUnique({
+          where: { orgId: resolvedOrgId },
+        })
+      : null;
+    const approvalWorkflowEnabled = Boolean(
+      (orgSettings?.settings as any)?.approvalWorkflowEnabled,
+    );
+
+    return {
+      ...decision,
+      approvalWorkflowEnabled,
+      approvalRequired: approvalWorkflowEnabled && !decision.approvedById,
+    };
   }
 
   async getTimeline(applicationId: string, orgId?: string) {

@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  Optional,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -12,6 +14,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ReportSource, Role } from '@prisma/client';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
+import { AuditService } from '../audit/audit.service';
 import {
   CreateReportDefinitionDto,
   NaturalLanguageReportDto,
@@ -24,16 +27,28 @@ import { ReportsService } from './reports.service';
 @Controller('api/v2/reports')
 @Roles(Role.ADMIN, Role.HR)
 export class ReportsController {
-  constructor(private readonly service: ReportsService) {}
+  constructor(
+    private readonly service: ReportsService,
+    @Optional() private readonly audit?: AuditService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a saved report definition' })
-  create(
+  async create(
     @CurrentUser('orgId') orgId: string,
     @CurrentUser('id') userId: string,
     @Body() dto: CreateReportDefinitionDto,
   ) {
-    return this.service.create(orgId, userId, dto);
+    const created = await this.service.create(orgId, userId, dto);
+    await this.audit?.logSafe({
+      orgId,
+      userId,
+      action: 'REPORT_CREATED',
+      entityType: 'REPORT_DEFINITION',
+      entityId: created?.id,
+      changes: { name: dto.name, dataSource: dto.dataSource },
+    });
+    return created;
   }
 
   @Get()
@@ -59,12 +74,40 @@ export class ReportsController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update report definition' })
-  update(
+  async update(
     @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateReportDefinitionDto,
   ) {
-    return this.service.update(orgId, id, dto);
+    const updated = await this.service.update(orgId, id, dto);
+    await this.audit?.logSafe({
+      orgId,
+      userId,
+      action: 'REPORT_UPDATED',
+      entityType: 'REPORT_DEFINITION',
+      entityId: id,
+      changes: dto,
+    });
+    return updated;
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a saved report definition' })
+  async remove(
+    @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    const result = await this.service.remove(orgId, id);
+    await this.audit?.logSafe({
+      orgId,
+      userId,
+      action: 'REPORT_DELETED',
+      entityType: 'REPORT_DEFINITION',
+      entityId: id,
+    });
+    return result;
   }
 
   @Post(':id/run')
@@ -100,7 +143,10 @@ export class ReportsController {
   @ApiOperation({
     summary: 'AI: prompt → ReportDefinition draft (review-then-save)',
   })
-  natural(@Body() dto: NaturalLanguageReportDto) {
-    return this.service.naturalLanguageDraft(dto.prompt);
+  natural(
+    @CurrentUser('orgId') orgId: string,
+    @Body() dto: NaturalLanguageReportDto,
+  ) {
+    return this.service.naturalLanguageDraft(dto.prompt, orgId);
   }
 }

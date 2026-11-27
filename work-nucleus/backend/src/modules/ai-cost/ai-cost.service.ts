@@ -22,6 +22,59 @@ export class AiCostService {
   }
 
   /**
+   * Non-throwing telemetry helper for Gemini / AI SDK responses.
+   * Converts token usage into integer paise (approx ₹0.01/1K in, ₹0.03/1K out -> min 1 paise per successful call).
+   */
+  async logGeminiCall(params: {
+    orgId?: string;
+    agentName: string;
+    modelUsed: string;
+    startedAtMs: number;
+    response?: any;
+    error?: unknown;
+    cacheHit?: boolean;
+  }) {
+    try {
+      const usage = params.response?.usageMetadata;
+      const tokensInput =
+        typeof usage?.promptTokenCount === 'number'
+          ? usage.promptTokenCount
+          : undefined;
+      const tokensOutput =
+        typeof usage?.candidatesTokenCount === 'number'
+          ? usage.candidatesTokenCount
+          : undefined;
+      const estimatedPaise =
+        tokensInput !== undefined || tokensOutput !== undefined
+          ? Math.max(
+              1,
+              Math.round(
+                ((tokensInput ?? 0) * 0.001 + (tokensOutput ?? 0) * 0.004),
+              ),
+            )
+          : params.error
+            ? 0
+            : 2;
+
+      await this.prisma.aiCallLog.create({
+        data: {
+          orgId: params.orgId,
+          agentName: params.agentName,
+          modelUsed: params.modelUsed,
+          tokensInput,
+          tokensOutput,
+          costInPaise: params.cacheHit ? 0 : estimatedPaise,
+          cacheHit: params.cacheHit ?? false,
+          status: params.error ? 'ERROR' : 'SUCCESS',
+          latencyMs: Math.max(0, Date.now() - params.startedAtMs),
+        },
+      });
+    } catch {
+      // Telemetry must never break primary workflows
+    }
+  }
+
+  /**
    * Daily AI cost dashboard for an org with anomaly flag (today > 2× rolling avg).
    */
   async dashboard(orgId: string, days = 30) {

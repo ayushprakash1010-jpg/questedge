@@ -3,17 +3,20 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { CreateOrUpdateFeedbackDto } from './dto/create-feedback.dto';
 import { Role, Prisma } from '@prisma/client';
+import { AiCostService } from '../ai-cost/ai-cost.service';
 
 @Injectable()
 export class FeedbackService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    @Optional() private readonly aiCost?: AiCostService,
   ) {}
 
   async createOrUpdateDraft(
@@ -233,7 +236,12 @@ export class FeedbackService {
       include: {
         candidate: true,
         hiringPlan: {
-          select: { title: true, department: true, designation: true },
+          select: {
+            orgId: true,
+            title: true,
+            department: true,
+            designation: true,
+          },
         },
       },
     });
@@ -294,12 +302,21 @@ export class FeedbackService {
       };
 
       const prompt = `Summarize this interview feedback into a structured JSON candidate scorecard. Context: ${JSON.stringify(payload)}`;
+      const model =
+        this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
+      const startedAtMs = Date.now();
       try {
         const response = await ai.models.generateContent({
-          model:
-            this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest',
+          model,
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           config: { responseMimeType: 'application/json', temperature: 0.2 },
+        });
+        await this.aiCost?.logGeminiCall({
+          orgId: (application.hiringPlan as any)?.orgId || orgId,
+          agentName: 'feedback.summarize',
+          modelUsed: model,
+          startedAtMs,
+          response,
         });
         summary = JSON.parse(
           (response.text || '{}')
@@ -308,6 +325,13 @@ export class FeedbackService {
             .trim(),
         );
       } catch (err: any) {
+        await this.aiCost?.logGeminiCall({
+          orgId: (application.hiringPlan as any)?.orgId || orgId,
+          agentName: 'feedback.summarize',
+          modelUsed: model,
+          startedAtMs,
+          error: err,
+        });
         throw new BadRequestException(
           `AI summarization failed: ${err.message}`,
         );
@@ -332,7 +356,12 @@ export class FeedbackService {
       include: {
         candidate: true,
         hiringPlan: {
-          select: { title: true, department: true, designation: true },
+          select: {
+            orgId: true,
+            title: true,
+            department: true,
+            designation: true,
+          },
         },
       },
     });
@@ -362,6 +391,19 @@ export class FeedbackService {
       const { GoogleGenAI } = require('@google/genai');
       const ai = new GoogleGenAI({ apiKey: trimmedKey });
 
+      const resolvedOrgId = (application.hiringPlan as any)?.orgId || orgId;
+      const orgSettings = resolvedOrgId
+        ? await this.prisma.orgSettings.findUnique({
+            where: { orgId: resolvedOrgId },
+          })
+        : null;
+      const scoringWeights = (orgSettings?.settings as any)?.scoringWeights || {
+        technical: 40,
+        leadership: 25,
+        behavioural: 20,
+        communication: 15,
+      };
+
       const payload = {
         applicationContext: {
           candidateName: application.candidate.name,
@@ -385,21 +427,25 @@ export class FeedbackService {
             notes: sr.notes,
           })),
         })),
-        scoringWeights: {
-          technical: 40,
-          leadership: 25,
-          behavioural: 20,
-          communication: 15,
-        },
+        scoringWeights,
       };
 
       const prompt = `Calculate a final objective score (0-100) for this candidate based on the feedback and scoring weights. Return JSON with a "score" number and "reasoning" string. Context: ${JSON.stringify(payload)}`;
+      const model =
+        this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
+      const startedAtMs = Date.now();
       try {
         const response = await ai.models.generateContent({
-          model:
-            this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest',
+          model,
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           config: { responseMimeType: 'application/json', temperature: 0.2 },
+        });
+        await this.aiCost?.logGeminiCall({
+          orgId: resolvedOrgId,
+          agentName: 'feedback.score',
+          modelUsed: model,
+          startedAtMs,
+          response,
         });
         scoreResult = JSON.parse(
           (response.text || '{}')
@@ -408,6 +454,13 @@ export class FeedbackService {
             .trim(),
         );
       } catch (err: any) {
+        await this.aiCost?.logGeminiCall({
+          orgId: resolvedOrgId,
+          agentName: 'feedback.score',
+          modelUsed: model,
+          startedAtMs,
+          error: err,
+        });
         throw new BadRequestException(`AI scoring failed: ${err.message}`);
       }
     }

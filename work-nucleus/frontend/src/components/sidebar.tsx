@@ -36,8 +36,12 @@ import {
   ChevronDown,
   X,
   Eye,
+  BookOpen,
+  ClipboardList,
+  Receipt,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useProfile } from "@/hooks/use-profile";
 import {
   PortalRole,
   SIDEBAR_COLLAPSED_WIDTH,
@@ -50,6 +54,7 @@ export interface NavItem {
   href: string;
   icon: React.ElementType;
   keywords?: string[];
+  roles?: string[];
 }
 
 export interface NavSection {
@@ -65,26 +70,29 @@ const companyNavSections: NavSection[] = [
     items: [
       { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, keywords: ["overview", "analytics", "home"] },
       { label: "Mandates", href: "/mandates", icon: Briefcase, keywords: ["jobs", "roles", "openings", "bounty"] },
+      { label: "Hiring Plans", href: "/hiring-plans", icon: ClipboardList, keywords: ["plans", "headcount", "stages", "pipeline"] },
       { label: "Candidates", href: "/candidates", icon: Users, keywords: ["pipeline", "applicants", "talent"] },
-      { label: "Assessments", href: "/assessments", icon: Code2, keywords: ["tests", "coding", "evaluation"] },
-      { label: "Resume Ranker", href: "/resume-ranker", icon: Trophy, keywords: ["ai", "scoring", "rank", "match"] },
+      { label: "Offers", href: "/offers", icon: Receipt, keywords: ["offer letter", "esign", "compensation"], roles: ["ADMIN", "HR", "HIRING_MANAGER"] },
+      { label: "Assessments", href: "/assessments", icon: Code2, keywords: ["tests", "coding", "evaluation"], roles: ["ADMIN", "HR", "HIRING_MANAGER", "INTERVIEWER"] },
+      { label: "Resume Ranker", href: "/resume-ranker", icon: Trophy, keywords: ["ai", "scoring", "rank", "match"], roles: ["ADMIN", "HR", "HIRING_MANAGER", "INTERVIEWER"] },
+      { label: "Training", href: "/training", icon: BookOpen, keywords: ["interviewer training", "onboarding", "modules"] },
     ],
   },
   {
     title: "HR & Operations",
     items: [
-      { label: "Appraisals", href: "/appraisal", icon: Star, keywords: ["reviews", "performance", "cycles"] },
-      { label: "BGV Verification", href: "/bgv", icon: ShieldCheck, keywords: ["background check", "identity"] },
-      { label: "Compensation", href: "/compensation/team", icon: Wallet, keywords: ["salary", "payroll", "increments"] },
-      { label: "Billing & Escrow", href: "/company/financials", icon: IndianRupee, keywords: ["invoices", "payments", "rewards"] },
+      { label: "Appraisals", href: "/appraisal", icon: Star, keywords: ["reviews", "performance", "cycles", "goals"] },
+      { label: "BGV Verification", href: "/bgv", icon: ShieldCheck, keywords: ["background check", "identity"], roles: ["ADMIN", "HR"] },
+      { label: "Compensation", href: "/compensation/team", icon: Wallet, keywords: ["salary", "payroll", "increments"], roles: ["ADMIN", "HR", "HIRING_MANAGER"] },
+      { label: "Billing & Escrow", href: "/company/financials", icon: IndianRupee, keywords: ["invoices", "payments", "rewards"], roles: ["ADMIN", "HR"] },
     ],
   },
   {
     title: "Organization",
     items: [
       { label: "Notifications", href: "/notifications", icon: Bell, keywords: ["alerts", "inbox", "updates"] },
-      { label: "Reports", href: "/admin/reports", icon: BarChart3, keywords: ["exports", "metrics", "charts"] },
-      { label: "Admin Settings", href: "/admin", icon: Shield, keywords: ["users", "permissions", "roles", "organization", "audit"] },
+      { label: "Reports", href: "/admin/reports", icon: BarChart3, keywords: ["exports", "metrics", "charts"], roles: ["ADMIN", "HR"] },
+      { label: "Admin Settings", href: "/admin", icon: Shield, keywords: ["users", "permissions", "roles", "organization", "audit", "ai cost"], roles: ["ADMIN", "HR"] },
       { label: "Support", href: "/support", icon: LifeBuoy, keywords: ["help", "ticket", "contact"] },
     ],
   },
@@ -276,10 +284,29 @@ function getSubPageLabel(pathname: string): string | undefined {
   if (/^\/mandates\/[^/]+\/referrals/.test(pathname)) return "Referrals";
   if (/^\/mandates\/[^/]+$/.test(pathname)) return "Mandate Details";
   if (/^\/candidates\/[^/]+\/joining/.test(pathname)) return "Joining";
+  if (pathname === "/hiring-plans/new") return "New Plan";
+  if (/^\/hiring-plans\/[^/]+\/edit/.test(pathname)) return "Edit Plan";
+  if (/^\/hiring-plans\/[^/]+/.test(pathname)) return "Plan Workspace";
+  if (pathname === "/offers/templates") return "Templates";
+  if (/^\/offers\/[^/]+/.test(pathname)) return "Offer Details";
+  if (pathname === "/assessments/create") return "Create Assessment";
+  if (/^\/assessments\/video\//.test(pathname)) return "Video Interview";
+  if (/^\/assessments\/[^/]+\/analytics/.test(pathname)) return "Analytics";
+  if (/^\/assessments\/[^/]+/.test(pathname)) return "Assessment Builder";
+  if (pathname === "/appraisal/cycles/new") return "New Cycle";
+  if (/^\/appraisal\/cycles\/[^/]+\/assessment/.test(pathname)) return "Self Assessment";
+  if (/^\/appraisal\/calibration\//.test(pathname)) return "Calibration";
+  if (pathname === "/bgv/cost") return "Cost Report";
+  if (/^\/bgv\/[^/]+/.test(pathname)) return "Verification Details";
   if (pathname === "/admin/settings") return "Organization Settings";
   if (pathname === "/admin/users") return "User Management";
   if (pathname === "/admin/audit-log") return "Audit Log";
   if (pathname === "/admin/ai-cost") return "AI Cost";
+  if (pathname === "/admin/reports") return "Reports";
+  if (pathname === "/admin/appraisal/cycles") return "Appraisal Cycles";
+  if (/^\/admin\/appraisal\/cycles\/[^/]+/.test(pathname)) return "Cycle Management";
+  if (/^\/admin\/compensation\/cycles\/[^/]+\/simulator/.test(pathname)) return "What-If Simulator";
+  if (/^\/admin\/compensation\/cycles\/[^/]+/.test(pathname)) return "Cycle Budget";
   return undefined;
 }
 
@@ -479,6 +506,7 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
   const pathname = usePathname();
   const { resolvedTheme } = useTheme();
   const shell = useOptionalWorkspaceShell();
+  const { profile } = useProfile();
   const prefersReducedMotion = useReducedMotion();
 
   const [fallbackCollapsed, setFallbackCollapsed] = useState(false);
@@ -493,7 +521,20 @@ export function Sidebar({ userType = "company" }: SidebarProps) {
 
   const effectiveRole: PortalRole = shell?.userType ?? userType;
   const config = roleConfig[effectiveRole] ?? roleConfig.company;
-  const { sections, homeHref, PortalIcon } = config;
+  const { sections: rawSections, homeHref, PortalIcon } = config;
+  const sections = useMemo(() => {
+    if (effectiveRole !== "company" || !profile?.role) {
+      return rawSections;
+    }
+    return rawSections
+      .map((sec) => ({
+        ...sec,
+        items: sec.items.filter(
+          (item) => !item.roles || item.roles.includes(profile.role!)
+        ),
+      }))
+      .filter((sec) => sec.items.length > 0);
+  }, [rawSections, effectiveRole, profile?.role]);
   const allItems = useMemo(
     () => sections.flatMap((section) => section.items),
     [sections]

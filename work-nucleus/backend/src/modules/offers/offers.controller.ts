@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Optional,
   Param,
   ParseUUIDPipe,
   Post,
@@ -11,6 +12,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
+import { AuditService } from '../audit/audit.service';
 import { ApproveOfferDto } from './dto/approve-offer.dto';
 import { CreateOfferDto } from './dto/create-offer.dto';
 import { OfferAiService } from './services/offer-ai.service';
@@ -30,16 +32,26 @@ export class OffersController {
     private readonly render: OfferRenderService,
     private readonly esign: OfferESignService,
     private readonly ai: OfferAiService,
+    @Optional() private readonly audit?: AuditService,
   ) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a draft offer for a SELECTED application' })
-  create(
+  async create(
     @CurrentUser('orgId') orgId: string,
     @CurrentUser('id') userId: string,
     @Body() dto: CreateOfferDto,
   ) {
-    return this.service.create(orgId, userId, dto);
+    const created = await this.service.create(orgId, userId, dto);
+    await this.audit?.logSafe({
+      orgId,
+      userId,
+      action: 'OFFER_CREATED',
+      entityType: 'OFFER',
+      entityId: created?.id,
+      changes: { applicationId: dto.applicationId, templateId: dto.templateId },
+    });
+    return created;
   }
 
   @Get()
@@ -76,11 +88,20 @@ export class OffersController {
 
   @Post(':id/submit')
   @ApiOperation({ summary: 'Submit a DRAFT offer into the approval chain' })
-  submit(
+  async submit(
     @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.approval.submitForApproval(orgId, id);
+    const result = await this.approval.submitForApproval(orgId, id);
+    await this.audit?.logSafe({
+      orgId,
+      userId,
+      action: 'OFFER_SUBMITTED',
+      entityType: 'OFFER',
+      entityId: id,
+    });
+    return result;
   }
 
   @Post(':id/approve')
@@ -88,13 +109,28 @@ export class OffersController {
     summary:
       'Act on the current pending approval step (approve / changes / reject)',
   })
-  approve(
+  async approve(
     @CurrentUser('orgId') orgId: string,
     @CurrentUser('id') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ApproveOfferDto,
   ) {
-    return this.approval.act(orgId, id, userId, dto.decision, dto.comment);
+    const result = await this.approval.act(
+      orgId,
+      id,
+      userId,
+      dto.decision,
+      dto.comment,
+    );
+    await this.audit?.logSafe({
+      orgId,
+      userId,
+      action: 'OFFER_APPROVAL_ACTION',
+      entityType: 'OFFER',
+      entityId: id,
+      changes: { decision: dto.decision },
+    });
+    return result;
   }
 
   @Post(':id/render')
@@ -126,11 +162,20 @@ export class OffersController {
   @ApiOperation({
     summary: 'Send the approved offer to the candidate via e-sign',
   })
-  send(
+  async send(
     @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.esign.initiate(orgId, id);
+    const result = await this.esign.initiate(orgId, id);
+    await this.audit?.logSafe({
+      orgId,
+      userId,
+      action: 'OFFER_SENT',
+      entityType: 'OFFER',
+      entityId: id,
+    });
+    return result;
   }
 
   @Post(':id/refresh-esign')
@@ -147,10 +192,19 @@ export class OffersController {
 
   @Post(':id/revoke')
   @ApiOperation({ summary: 'Revoke an offer that has not yet been accepted' })
-  revoke(
+  async revoke(
     @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.service.revoke(orgId, id);
+    const result = await this.service.revoke(orgId, id);
+    await this.audit?.logSafe({
+      orgId,
+      userId,
+      action: 'OFFER_REVOKED',
+      entityType: 'OFFER',
+      entityId: id,
+    });
+    return result;
   }
 }

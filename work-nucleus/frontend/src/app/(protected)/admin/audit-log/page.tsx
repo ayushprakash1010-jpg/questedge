@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Shield } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
+import { readResponseError } from "@/lib/api";
 import {
   DataTable,
   DataTableBody,
@@ -32,34 +35,53 @@ const PAGE_SIZE = 25;
 export default function AuditLogPage() {
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [actionInput, setActionInput] = useState("");
   const [actionFilter, setActionFilter] = useState("");
+  const [entityTypeFilter, setEntityTypeFilter] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   useEffect(() => {
-    async function fetch_() {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams({
-          page: String(page),
-          limit: String(PAGE_SIZE),
-        });
-        if (actionFilter) params.set("action", actionFilter);
+    const t = setTimeout(() => {
+      setActionFilter(actionInput.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [actionInput]);
 
-        const res = await fetch(`/api/admin/audit-log?${params}`);
-        if (res.ok) {
-          const data = await res.json();
-          setEntries(data.data || []);
-          setTotal(data.meta?.total || 0);
-        }
-      } catch {
-        // ignore
-      } finally {
-        setLoading(false);
+  const loadEntries = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(PAGE_SIZE),
+      });
+      if (actionFilter) params.set("action", actionFilter);
+      if (entityTypeFilter) params.set("entityType", entityTypeFilter);
+      if (fromDate) params.set("from", fromDate);
+      if (toDate) params.set("to", toDate);
+
+      const res = await fetch(`/api/admin/audit-log?${params}`);
+      if (!res.ok) {
+        throw new Error(await readResponseError(res, "Failed to load audit log"));
       }
+      const data = await res.json();
+      setEntries(data.data || []);
+      setTotal(data.meta?.total || 0);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load audit log");
+    } finally {
+      setLoading(false);
     }
-    fetch_();
-  }, [page, actionFilter]);
+  }, [page, actionFilter, entityTypeFilter, fromDate, toDate]);
+
+  useEffect(() => {
+    loadEntries();
+  }, [loadEntries]);
 
   return (
     <div>
@@ -68,18 +90,62 @@ export default function AuditLogPage() {
         subtitle="Track all system activity and changes."
       />
 
-      <div className="mb-4 flex items-center gap-3">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         <Input
           placeholder="Filter by action..."
-          value={actionFilter}
+          value={actionInput}
+          onChange={(e) => setActionInput(e.target.value)}
+          className="w-48"
+        />
+        <Select
+          value={entityTypeFilter}
           onChange={(e) => {
-            setActionFilter(e.target.value);
+            setEntityTypeFilter(e.target.value);
             setPage(1);
           }}
-          className="w-48"
+          className="w-44"
+        >
+          <option value="">All Entities</option>
+          <option value="USER">User</option>
+          <option value="ORG_SETTINGS">Org Settings</option>
+          <option value="MANDATE">Mandate</option>
+          <option value="OFFER">Offer</option>
+          <option value="BGV_PROFILE">BGV Profile</option>
+          <option value="TRAINING_MODULE">Training</option>
+          <option value="REPORT">Report</option>
+          <option value="REWARD">Reward</option>
+        </Select>
+        <Input
+          type="date"
+          value={fromDate}
+          onChange={(e) => {
+            setFromDate(e.target.value);
+            setPage(1);
+          }}
+          className="w-40"
+          title="From date"
+        />
+        <Input
+          type="date"
+          value={toDate}
+          onChange={(e) => {
+            setToDate(e.target.value);
+            setPage(1);
+          }}
+          className="w-40"
+          title="To date"
         />
         <span className="text-xs text-slate-400">{total} entries</span>
       </div>
+
+      {error && (
+        <div className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          <span>{error}</span>
+          <Button variant="outline" size="sm" onClick={loadEntries}>
+            Retry
+          </Button>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex h-32 items-center justify-center">

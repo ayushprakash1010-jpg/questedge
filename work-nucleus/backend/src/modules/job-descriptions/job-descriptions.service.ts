@@ -3,12 +3,14 @@ import {
   NotFoundException,
   BadRequestException,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GenerateJdDto } from './dto/generate-jd.dto';
 import { UpdateJdDto } from './dto/update-jd.dto';
 import { JdStatus } from '@prisma/client';
+import { AiCostService } from '../ai-cost/ai-cost.service';
 
 @Injectable()
 export class JobDescriptionsService {
@@ -19,6 +21,7 @@ export class JobDescriptionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    @Optional() private readonly aiCost?: AiCostService,
   ) {
     this.aiServiceUrl = this.config.get<string>(
       'AI_SERVICE_URL',
@@ -86,6 +89,10 @@ export class JobDescriptionsService {
     };
 
     let aiResponse: any;
+    let aiAttempted = false;
+    let startedAtMs = 0;
+    const model =
+      this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
     try {
       const rawKey = this.config.get<string>('GEMINI_API_KEY');
       const trimmedKey = rawKey ? rawKey.trim() : null;
@@ -97,9 +104,10 @@ export class JobDescriptionsService {
       } else {
         const { GoogleGenAI } = require('@google/genai');
         const ai = new GoogleGenAI({ apiKey: trimmedKey });
+        aiAttempted = true;
+        startedAtMs = Date.now();
         const response = await ai.models.generateContent({
-          model:
-            this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest',
+          model,
           contents: [
             {
               role: 'user',
@@ -112,6 +120,13 @@ export class JobDescriptionsService {
           ],
           config: { responseMimeType: 'application/json', temperature: 0.3 },
         });
+        await this.aiCost?.logGeminiCall({
+          orgId,
+          agentName: 'jd.generate',
+          modelUsed: model,
+          startedAtMs,
+          response,
+        });
         aiResponse = JSON.parse(
           (response.text || '{}')
             .replace(/```json/g, '')
@@ -120,6 +135,15 @@ export class JobDescriptionsService {
         );
       }
     } catch (err: any) {
+      if (aiAttempted) {
+        await this.aiCost?.logGeminiCall({
+          orgId,
+          agentName: 'jd.generate',
+          modelUsed: model,
+          startedAtMs,
+          error: err,
+        });
+      }
       this.logger.error(`AI generation failed: ${err.message}`);
       aiResponse = {
         content: `<h1>${plan.title}</h1><p>Department: ${plan.department}</p><p>Role description generation failed. Please edit manually.</p>`,

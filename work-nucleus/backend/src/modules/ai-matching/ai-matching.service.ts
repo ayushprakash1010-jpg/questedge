@@ -4,9 +4,11 @@ import {
   Logger,
   NotFoundException,
   BadRequestException,
+  Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AiCostService } from '../ai-cost/ai-cost.service';
 import {
   MatchEvaluationResult,
   MatchScoreBreakdown,
@@ -32,6 +34,7 @@ export class AiMatchingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    @Optional() private readonly aiCost?: AiCostService,
   ) {
     const rawKey = this.config.get<string>('GEMINI_API_KEY');
     this.hasApiKey = !!(rawKey && rawKey.trim().length > 0);
@@ -50,6 +53,13 @@ export class AiMatchingService {
 
     const cached = this.cache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
+      await this.aiCost?.logGeminiCall({
+        orgId: mandate?.orgId || mandate?.organization?.id,
+        agentName: 'ai_matching.evaluate',
+        modelUsed: this.modelName,
+        startedAtMs: Date.now(),
+        cacheHit: true,
+      });
       return cached.result;
     }
 
@@ -584,8 +594,17 @@ Output ONLY valid JSON with this exact schema:
       );
     });
 
+    const orgId = mandate?.orgId || mandate?.organization?.id;
+    const startedAtMs = Date.now();
     try {
       const response: any = await Promise.race([generatePromise, timeoutPromise]);
+      await this.aiCost?.logGeminiCall({
+        orgId,
+        agentName: 'ai_matching.evaluate',
+        modelUsed: this.modelName,
+        startedAtMs,
+        response,
+      });
       const rawText = response?.text || '{}';
       const cleanJson = rawText
         .replace(/```json/gi, '')
@@ -629,6 +648,15 @@ Output ONLY valid JSON with this exact schema:
         evaluatedAt: new Date().toISOString(),
         isAiGenerated: true,
       };
+    } catch (err) {
+      await this.aiCost?.logGeminiCall({
+        orgId,
+        agentName: 'ai_matching.evaluate',
+        modelUsed: this.modelName,
+        startedAtMs,
+        error: err,
+      });
+      throw err;
     } finally {
       clearTimeout(timer!);
     }

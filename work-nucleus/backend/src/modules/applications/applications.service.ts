@@ -4,6 +4,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AddToPipelineDto } from './dto/add-to-pipeline.dto';
@@ -13,6 +14,7 @@ import { ApplicationStatus } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 
 import { RewardsService } from '../rewards/rewards.service';
+import { AiCostService } from '../ai-cost/ai-cost.service';
 
 @Injectable()
 export class ApplicationsService {
@@ -20,6 +22,7 @@ export class ApplicationsService {
     private readonly prisma: PrismaService,
     private readonly rewardsService: RewardsService,
     private readonly config: ConfigService,
+    @Optional() private readonly aiCost?: AiCostService,
   ) {}
 
   async addToPipeline(hiringPlanId: string, dto: AddToPipelineDto, orgId?: string) {
@@ -429,6 +432,9 @@ export class ApplicationsService {
     const trimmedKey = rawKey ? rawKey.trim() : null;
 
     if (trimmedKey) {
+      const model =
+        this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
+      const startedAtMs = Date.now();
       try {
         const { GoogleGenAI } = require('@google/genai');
         const ai = new GoogleGenAI({ apiKey: trimmedKey });
@@ -456,9 +462,17 @@ Return a JSON array of 5 objects strictly matching this structure:
 ]`;
 
         const response = await ai.models.generateContent({
-          model: this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest',
+          model,
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           config: { responseMimeType: 'application/json', temperature: 0.6 },
+        });
+
+        await this.aiCost?.logGeminiCall({
+          orgId: app.hiringPlan.orgId,
+          agentName: 'applications.interview_questions',
+          modelUsed: model,
+          startedAtMs,
+          response,
         });
 
         const parsed = JSON.parse(
@@ -477,7 +491,14 @@ Return a JSON array of 5 objects strictly matching this structure:
             questions: parsed,
           };
         }
-      } catch {
+      } catch (err) {
+        await this.aiCost?.logGeminiCall({
+          orgId: app.hiringPlan.orgId,
+          agentName: 'applications.interview_questions',
+          modelUsed: model,
+          startedAtMs,
+          error: err,
+        });
         // Fall back to curated evaluator
       }
     }

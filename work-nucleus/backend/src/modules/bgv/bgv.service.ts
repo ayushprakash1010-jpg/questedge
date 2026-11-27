@@ -391,6 +391,7 @@ export class BgvService {
     let aiSummary: BgvAiSummary | null = null;
     try {
       aiSummary = await this.ai.summarise({
+        orgId: profile.orgId,
         candidate: profile.candidate,
         profile: { riskScore: risk, vendor: profile.vendor },
         checks: profile.checks.map((c) => ({

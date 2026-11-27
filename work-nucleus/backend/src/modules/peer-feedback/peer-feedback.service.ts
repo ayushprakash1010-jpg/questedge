@@ -3,11 +3,13 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { FeedbackRequestStatus, Prisma } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AiCostService } from '../ai-cost/ai-cost.service';
 import {
   DeclinePeerFeedbackDto,
   NominatePeersDto,
@@ -25,6 +27,7 @@ export class PeerFeedbackService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    @Optional() private readonly aiCost?: AiCostService,
   ) {
     this.aiServiceUrl = this.config.get<string>(
       'AI_SERVICE_URL',
@@ -129,7 +132,10 @@ export class PeerFeedbackService {
       };
     }
 
-    const themes = await this.summariseThemes(submitted.map((s) => s.formData));
+    const themes = await this.summariseThemes(
+      submitted.map((s) => s.formData),
+      orgId,
+    );
     return {
       responseCount: submitted.length,
       thresholdMet: true,
@@ -205,7 +211,12 @@ export class PeerFeedbackService {
 
   private async summariseThemes(
     forms: any[],
+    orgId?: string,
   ): Promise<{ themes: string[]; quotes: string[] }> {
+    const model =
+      this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
+    let aiAttempted = false;
+    let startedAtMs = 0;
     try {
       const rawKey = this.config.get<string>('GEMINI_API_KEY');
       const trimmedKey = rawKey ? rawKey.trim() : null;
@@ -215,10 +226,20 @@ export class PeerFeedbackService {
       const ai = new GoogleGenAI({ apiKey: trimmedKey });
 
       const prompt = `Summarize the following peer feedback responses into key themes and extract a few notable quotes. Return exactly a JSON object with "themes" (array of strings) and "quotes" (array of strings). Responses: ${JSON.stringify(forms)}`;
+      aiAttempted = true;
+      startedAtMs = Date.now();
       const response = await ai.models.generateContent({
-        model: this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest',
+        model,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: { responseMimeType: 'application/json', temperature: 0.2 },
+      });
+
+      await this.aiCost?.logGeminiCall({
+        orgId,
+        agentName: 'peer_feedback.summarise_themes',
+        modelUsed: model,
+        startedAtMs,
+        response,
       });
 
       const rawResponse = response.text || '{}';
@@ -230,6 +251,15 @@ export class PeerFeedbackService {
       );
       return { themes: data.themes ?? [], quotes: data.quotes ?? [] };
     } catch (err) {
+      if (aiAttempted) {
+        await this.aiCost?.logGeminiCall({
+          orgId,
+          agentName: 'peer_feedback.summarise_themes',
+          modelUsed: model,
+          startedAtMs,
+          error: err,
+        });
+      }
       this.logger.warn(
         `Peer feedback theme AI failed: ${err}; using rule-based`,
       );

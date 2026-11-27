@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Optional,
   Param,
   ParseUUIDPipe,
   Post,
@@ -11,6 +12,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { BgvFinding, BgvProfileStatus, Role } from '@prisma/client';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
+import { AuditService } from '../audit/audit.service';
 import { BgvService } from './bgv.service';
 import { OverrideFindingDto } from './dto/consent.dto';
 import { InitiateBgvDto } from './dto/initiate-bgv.dto';
@@ -20,12 +22,28 @@ import { InitiateBgvDto } from './dto/initiate-bgv.dto';
 @Controller('api/v2/bgv')
 @Roles(Role.ADMIN, Role.HR)
 export class BgvController {
-  constructor(private readonly service: BgvService) {}
+  constructor(
+    private readonly service: BgvService,
+    @Optional() private readonly audit?: AuditService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Initiate a BGV profile for a candidate' })
-  initiate(@CurrentUser('orgId') orgId: string, @Body() dto: InitiateBgvDto) {
-    return this.service.initiate(orgId, dto);
+  async initiate(
+    @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: InitiateBgvDto,
+  ) {
+    const profile = await this.service.initiate(orgId, dto);
+    await this.audit?.logSafe({
+      orgId,
+      userId,
+      action: 'BGV_INITIATED',
+      entityType: 'BGV_PROFILE',
+      entityId: profile?.id,
+      changes: { candidateId: dto.candidateId, packageType: (dto as any).packageType },
+    });
+    return profile;
   }
 
   @Get()
@@ -69,12 +87,22 @@ export class BgvController {
 
   @Post(':id/cancel')
   @ApiOperation({ summary: 'Cancel a BGV profile with a reason' })
-  cancel(
+  async cancel(
     @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: { reason: string },
   ) {
-    return this.service.cancelProfile(orgId, id, body.reason);
+    const result = await this.service.cancelProfile(orgId, id, body.reason);
+    await this.audit?.logSafe({
+      orgId,
+      userId,
+      action: 'BGV_CANCELLED',
+      entityType: 'BGV_PROFILE',
+      entityId: id,
+      changes: { reason: body.reason },
+    });
+    return result;
   }
 
   @Post('checks/:checkId/override')
@@ -82,19 +110,28 @@ export class BgvController {
     summary: 'Override a check finding with justification (HR_LEAD)',
   })
   @Roles(Role.ADMIN, Role.HR)
-  override(
+  async override(
     @CurrentUser('orgId') orgId: string,
     @CurrentUser('id') userId: string,
     @Param('checkId', ParseUUIDPipe) checkId: string,
     @Body() dto: OverrideFindingDto,
   ) {
-    return this.service.overrideFinding(
+    const result = await this.service.overrideFinding(
       orgId,
       checkId,
       userId,
       dto.finding as BgvFinding,
       dto.justification,
     );
+    await this.audit?.logSafe({
+      orgId,
+      userId,
+      action: 'BGV_CHECK_OVERRIDDEN',
+      entityType: 'BGV_CHECK',
+      entityId: checkId,
+      changes: { finding: dto.finding },
+    });
+    return result;
   }
 
   @Post('checks/:checkId/retry')

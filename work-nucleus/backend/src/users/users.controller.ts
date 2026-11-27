@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   ParseUUIDPipe,
+  Optional,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -22,13 +23,17 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { AuditService } from '../modules/audit/audit.service';
 
 @ApiTags('Users (Admin)')
 @ApiBearerAuth()
 @Controller('api/v1/admin/users')
 @Roles(Role.ADMIN)
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    @Optional() private readonly audit?: AuditService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List users in organization (paginated)' })
@@ -41,8 +46,21 @@ export class UsersController {
   @ApiOperation({ summary: 'Invite a new user to the organization' })
   @ApiResponse({ status: 201, description: 'User created and invited' })
   @ApiResponse({ status: 409, description: 'Email already exists' })
-  create(@CurrentUser('orgId') orgId: string, @Body() dto: CreateUserDto) {
-    return this.usersService.create(orgId, dto);
+  async create(
+    @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') callerId: string,
+    @Body() dto: CreateUserDto,
+  ) {
+    const created = await this.usersService.create(orgId, dto);
+    await this.audit?.logSafe({
+      orgId,
+      userId: callerId,
+      action: 'USER_INVITED',
+      entityType: 'USER',
+      entityId: created?.id,
+      changes: { email: dto.email, role: dto.role },
+    });
+    return created;
   }
 
   @Get(':id')
@@ -60,24 +78,41 @@ export class UsersController {
   @ApiOperation({ summary: 'Update user role or status' })
   @ApiResponse({ status: 200, description: 'User updated' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  update(
+  async update(
     @CurrentUser('orgId') orgId: string,
     @CurrentUser('id') callerId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateUserDto,
   ) {
-    return this.usersService.update(orgId, id, dto, callerId);
+    const updated = await this.usersService.update(orgId, id, dto, callerId);
+    await this.audit?.logSafe({
+      orgId,
+      userId: callerId,
+      action: 'USER_UPDATED',
+      entityType: 'USER',
+      entityId: id,
+      changes: dto,
+    });
+    return updated;
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Deactivate user (soft delete + Auth0 block)' })
   @ApiResponse({ status: 200, description: 'User deactivated' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  remove(
+  async remove(
     @CurrentUser('orgId') orgId: string,
     @CurrentUser('id') callerId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.usersService.remove(orgId, id, callerId);
+    const result = await this.usersService.remove(orgId, id, callerId);
+    await this.audit?.logSafe({
+      orgId,
+      userId: callerId,
+      action: 'USER_DEACTIVATED',
+      entityType: 'USER',
+      entityId: id,
+    });
+    return result;
   }
 }

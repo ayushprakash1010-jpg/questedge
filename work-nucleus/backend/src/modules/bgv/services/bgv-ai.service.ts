@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { AiCostService } from '../../ai-cost/ai-cost.service';
 
 export interface BgvAiSummary {
   overall_recommendation: 'PROCEED' | 'PROCEED_WITH_CAUTION' | 'BLOCK';
@@ -32,7 +33,10 @@ export class BgvAiService {
   private readonly aiServiceUrl: string;
   private readonly internalApiKey: string;
 
-  constructor(private readonly config: ConfigService) {
+  constructor(
+    private readonly config: ConfigService,
+    @Optional() private readonly aiCost?: AiCostService,
+  ) {
     this.aiServiceUrl = this.config.get<string>(
       'AI_SERVICE_URL',
       'http://localhost:8000',
@@ -71,6 +75,7 @@ export class BgvAiService {
   }
 
   async summarise(payload: {
+    orgId?: string;
     candidate: { name: string; email: string };
     profile: { riskScore?: string | null; vendor: string };
     checks: Array<{
@@ -90,6 +95,9 @@ export class BgvAiService {
       return this.fallback(payload.checks);
     }
 
+    const model =
+      this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
+    const startedAtMs = Date.now();
     try {
       const { GoogleGenAI } = require('@google/genai');
       const ai = new GoogleGenAI({ apiKey: trimmedKey });
@@ -136,9 +144,17 @@ Output ONLY valid JSON with this exact structure:
 `;
 
       const response = await this.generateWithTimeout(ai, {
-        model: this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest',
+        model,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: { responseMimeType: 'application/json', temperature: 0.2 },
+      });
+
+      await this.aiCost?.logGeminiCall({
+        orgId: payload.orgId,
+        agentName: 'bgv.summarise',
+        modelUsed: model,
+        startedAtMs,
+        response,
       });
 
       const rawResponse = response?.text || '{}';
@@ -179,6 +195,13 @@ Output ONLY valid JSON with this exact structure:
             : `BGV evaluation complete. Overall outcome: ${validRec}.`,
       };
     } catch (err: any) {
+      await this.aiCost?.logGeminiCall({
+        orgId: payload.orgId,
+        agentName: 'bgv.summarise',
+        modelUsed: model,
+        startedAtMs,
+        error: err,
+      });
       this.logger.error(`BGV AI service call failed: ${err?.message || err}`);
       return this.fallback(payload.checks);
     }

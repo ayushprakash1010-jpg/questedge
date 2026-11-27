@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BrandLoader } from "@/components/ui/brand-loader";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PageHeader } from "@/components/shared/page-header";
+import { readResponseError } from "@/lib/api";
 import {
   DataTable,
   DataTableBody,
@@ -33,11 +35,10 @@ export default function AiCostPage() {
   useEffect(() => {
     fetch("/api/v2/ai-cost/dashboard")
       .then(async (r) => {
-        const body = await r.json().catch(() => ({}));
         if (!r.ok) {
-          throw new Error(body?.message || "Failed to load AI cost metrics");
+          throw new Error(await readResponseError(r, "Failed to load AI cost metrics"));
         }
-        return body;
+        return r.json();
       })
       .then(setData)
       .catch((err) => {
@@ -91,6 +92,33 @@ export default function AiCostPage() {
           value={`${((data.cacheHitRate ?? 0) * 100).toFixed(1)}%`}
         />
       </div>
+
+      {Object.keys(data.byDay ?? {}).length > 0 && (
+        <Card className="mb-4">
+          <CardHeader>
+            <CardTitle>Daily AI Spend (₹) &amp; Calls</CardTitle>
+          </CardHeader>
+          <CardContent className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={Object.entries(data.byDay)
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([day, row]) => ({
+                    day: day.slice(5),
+                    rupees: Number(((row.paise ?? 0) / 100).toFixed(2)),
+                    calls: row.calls ?? 0,
+                  }))}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis dataKey="day" tick={{ fill: "#64748b", fontSize: 11 }} />
+                <YAxis tick={{ fill: "#64748b", fontSize: 11 }} />
+                <Tooltip />
+                <Bar dataKey="rupees" name="Spend (₹)" fill="#6366f1" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

@@ -6,7 +6,7 @@ import { Role } from '@prisma/client';
 
 @ApiTags('Analytics')
 @ApiBearerAuth()
-@Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER, Role.VIEWER)
+@Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER, Role.INTERVIEWER, Role.VIEWER)
 @Controller('api/v1/analytics')
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}

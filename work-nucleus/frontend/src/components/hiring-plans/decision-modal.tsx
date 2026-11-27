@@ -10,9 +10,10 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toaster";
 import { readResponseError } from "@/lib/api";
+import { useProfile } from "@/hooks/use-profile";
 import { cn } from "@/lib/utils";
 import {
-  X, Check, Ban, Mail, Loader2, Send, Edit3, Eye, FileCheck, ExternalLink,
+  X, Check, Ban, Mail, Loader2, Send, Edit3, Eye, FileCheck, ExternalLink, ShieldCheck,
 } from "lucide-react";
 
 interface DecisionModalProps {
@@ -35,6 +36,8 @@ export function DecisionModal({
   onDecisionMade,
   onClose,
 }: DecisionModalProps) {
+  const { profile } = useProfile();
+  const canApprove = profile?.role === "ADMIN" || profile?.role === "HR";
   const [decision, setDecision] = useState<"SELECTED" | "REJECTED" | null>(null);
   const [offerCtc, setOfferCtc] = useState("");
   const [offerDesignation, setOfferDesignation] = useState("");
@@ -45,6 +48,8 @@ export function DecisionModal({
   const [commDraft, setCommDraft] = useState<CommDraft | null>(null);
   const [editingComm, setEditingComm] = useState(false);
   const [decisionMade, setDecisionMade] = useState(false);
+  const [approvalRequired, setApprovalRequired] = useState(false);
+  const [approving, setApproving] = useState(false);
   const [markingSent, setMarkingSent] = useState(false);
   const [templates, setTemplates] = useState<Array<{ id: string; name: string; version: number }>>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
@@ -92,6 +97,7 @@ export function DecisionModal({
       if (data.communicationDraft) {
         setCommDraft(data.communicationDraft as CommDraft);
       }
+      setApprovalRequired(Boolean(data.approvalRequired));
       setDecisionMade(true);
       toast.success(`Decision recorded (${decision})`);
 
@@ -104,6 +110,7 @@ export function DecisionModal({
             if (decData.communicationDraft) {
               setCommDraft(decData.communicationDraft as CommDraft);
             }
+            setApprovalRequired(Boolean(decData.approvalRequired));
           }
         }, 3000);
       }
@@ -167,6 +174,26 @@ export function DecisionModal({
       toast.success("Communication draft saved");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save communication draft");
+    }
+  };
+
+  const handleApproveDecision = async () => {
+    setApproving(true);
+    try {
+      const res = await fetch(
+        `/api/applications/${applicationId}/decision?action=approve`,
+        { method: "POST" },
+      );
+      if (!res.ok) {
+        throw new Error(await readResponseError(res, "Failed to approve decision"));
+      }
+      setApprovalRequired(false);
+      toast.success("Decision approved");
+      onDecisionMade();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to approve decision");
+    } finally {
+      setApproving(false);
     }
   };
 
@@ -447,13 +474,39 @@ export function DecisionModal({
                 </div>
               )}
 
+              {approvalRequired && (
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-800">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 shrink-0 text-amber-600" />
+                    <span>
+                      Approval workflow is enabled. An ADMIN or HR user must approve this decision before sending communication.
+                    </span>
+                  </div>
+                  {canApprove && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleApproveDecision}
+                      disabled={approving}
+                      className="shrink-0 border-amber-300 bg-white text-amber-900 hover:bg-amber-100"
+                    >
+                      {approving ? "Approving..." : "Approve"}
+                    </Button>
+                  )}
+                </div>
+              )}
+
               {/* Actions */}
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={onClose}>
                   Close
                 </Button>
                 {commDraft && (
-                  <Button onClick={handleMarkSent} disabled={markingSent}>
+                  <Button
+                    onClick={handleMarkSent}
+                    disabled={markingSent || approvalRequired}
+                    title={approvalRequired ? "Approval required before sending" : undefined}
+                  >
                     <Send className="mr-2 h-4 w-4" />
                     {markingSent ? "Sending..." : "Mark as Sent"}
                   </Button>

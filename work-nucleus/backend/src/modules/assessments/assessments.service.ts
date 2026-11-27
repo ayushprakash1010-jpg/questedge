@@ -4,6 +4,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -14,6 +15,7 @@ import {
   Role,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AiCostService } from '../ai-cost/ai-cost.service';
 import {
   AutosaveAssessmentDto,
   FinaliseAssessmentDto,
@@ -29,6 +31,7 @@ export class AssessmentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    @Optional() private readonly aiCost?: AiCostService,
   ) {
     this.aiServiceUrl = this.config.get<string>(
       'AI_SERVICE_URL',
@@ -323,6 +326,10 @@ export class AssessmentsService {
       userId,
       userRole,
     );
+    const model =
+      this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
+    let startedAtMs = 0;
+    let aiAttempted = false;
     try {
       const rawKey = this.config.get<string>('GEMINI_API_KEY');
       const trimmedKey = rawKey ? rawKey.trim() : null;
@@ -330,10 +337,19 @@ export class AssessmentsService {
       const { GoogleGenAI } = require('@google/genai');
       const ai = new GoogleGenAI({ apiKey: trimmedKey });
       const prompt = `Provide an appraisal summary based on self and manager reviews. Return exactly JSON with "strengths" (string array), "growth_areas" (string array), "suggested_rating_range" (number array like [3, 4]), and "suggested_comment". Context: ${JSON.stringify({ self: data.self, manager: data.manager, goals: data.goals, peerFeedbackCount: data.peerFeedbackCount })}`;
+      aiAttempted = true;
+      startedAtMs = Date.now();
       const response = await ai.models.generateContent({
-        model: this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest',
+        model,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: { responseMimeType: 'application/json', temperature: 0.2 },
+      });
+      await this.aiCost?.logGeminiCall({
+        orgId,
+        agentName: 'appraisal.ai_suggest',
+        modelUsed: model,
+        startedAtMs,
+        response,
       });
       return JSON.parse(
         (response.text || '{}')
@@ -342,6 +358,15 @@ export class AssessmentsService {
           .trim(),
       );
     } catch (err) {
+      if (aiAttempted) {
+        await this.aiCost?.logGeminiCall({
+          orgId,
+          agentName: 'appraisal.ai_suggest',
+          modelUsed: model,
+          startedAtMs,
+          error: err,
+        });
+      }
       this.logger.warn(
         `Appraisal AI suggest failed (${err}); returning rule-based summary`,
       );

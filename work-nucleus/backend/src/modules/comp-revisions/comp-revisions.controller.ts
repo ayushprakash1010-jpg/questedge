@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Optional,
   Param,
   ParseUUIDPipe,
   Post,
@@ -12,6 +13,7 @@ import { Role, RevisionStatus } from '@prisma/client';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { CompAllocatorService } from '../comp-allocator/comp-allocator.service';
+import { AuditService } from '../audit/audit.service';
 import { CompRevisionsService } from './comp-revisions.service';
 import {
   ApprovalActionDto,
@@ -27,6 +29,7 @@ export class CompRevisionsController {
   constructor(
     private readonly service: CompRevisionsService,
     private readonly allocator: CompAllocatorService,
+    @Optional() private readonly audit?: AuditService,
   ) {}
 
   @Post('allocate')
@@ -35,15 +38,24 @@ export class CompRevisionsController {
       'Run the allocator across all manager-finalised assessments in a cycle',
   })
   @Roles(Role.ADMIN, Role.HR)
-  allocate(
+  async allocate(
     @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') userId: string,
     @Body() body: { cycleId: string; effectiveDate?: string },
   ) {
-    return this.allocator.allocate(orgId, body.cycleId, {
+    const result = await this.allocator.allocate(orgId, body.cycleId, {
       effectiveDate: body.effectiveDate
         ? new Date(body.effectiveDate)
         : undefined,
     });
+    await this.audit?.logSafe({
+      orgId,
+      userId,
+      action: 'COMP_ALLOCATED',
+      entityType: 'COMP_REVISION',
+      changes: { cycleId: body.cycleId },
+    });
+    return result;
   }
 
   @Post('reallocate')
@@ -51,11 +63,20 @@ export class CompRevisionsController {
     summary: 'Re-run allocator (preserves any LOCKED revisions)',
   })
   @Roles(Role.ADMIN, Role.HR)
-  reallocate(
+  async reallocate(
     @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') userId: string,
     @Body() body: { cycleId: string },
   ) {
-    return this.allocator.allocate(orgId, body.cycleId);
+    const result = await this.allocator.allocate(orgId, body.cycleId);
+    await this.audit?.logSafe({
+      orgId,
+      userId,
+      action: 'COMP_REALLOCATED',
+      entityType: 'COMP_REVISION',
+      changes: { cycleId: body.cycleId },
+    });
+    return result;
   }
 
   @Post('simulate')
@@ -98,13 +119,22 @@ export class CompRevisionsController {
 
   @Post(':id/override')
   @ApiOperation({ summary: 'Manager override (requires reason)' })
-  override(
+  async override(
     @CurrentUser('orgId') orgId: string,
     @CurrentUser('id') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: OverrideRevisionDto,
   ) {
-    return this.service.override(orgId, id, userId, dto);
+    const result = await this.service.override(orgId, id, userId, dto);
+    await this.audit?.logSafe({
+      orgId,
+      userId,
+      action: 'COMP_OVERRIDDEN',
+      entityType: 'COMP_REVISION',
+      entityId: id,
+      changes: { reason: dto.overrideReason },
+    });
+    return result;
   }
 
   @Post(':id/submit')
@@ -133,11 +163,20 @@ export class CompRevisionsController {
   @Post(':id/lock')
   @Roles(Role.ADMIN, Role.HR)
   @ApiOperation({ summary: 'Lock revision (post-CEO approval)' })
-  lock(
+  async lock(
     @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.service.lock(orgId, id);
+    const result = await this.service.lock(orgId, id);
+    await this.audit?.logSafe({
+      orgId,
+      userId,
+      action: 'COMP_LOCKED',
+      entityType: 'COMP_REVISION',
+      entityId: id,
+    });
+    return result;
   }
 
   @Post(':id/letter')
@@ -165,11 +204,20 @@ export class CompRevisionsController {
   @Post(':id/deliver')
   @Roles(Role.ADMIN, Role.HR)
   @ApiOperation({ summary: 'Deliver the letter to employee (gated on 1-on-1)' })
-  deliver(
+  async deliver(
     @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.service.deliver(orgId, id);
+    const result = await this.service.deliver(orgId, id);
+    await this.audit?.logSafe({
+      orgId,
+      userId,
+      action: 'COMP_DELIVERED',
+      entityType: 'COMP_REVISION',
+      entityId: id,
+    });
+    return result;
   }
 
   @Post(':id/acknowledge')

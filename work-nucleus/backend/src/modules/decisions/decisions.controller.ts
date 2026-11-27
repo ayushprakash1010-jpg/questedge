@@ -46,6 +46,7 @@ export class DecisionsController {
   }
 
   @Post('api/v1/applications/:appId/decision/approve')
+  @Roles(Role.ADMIN, Role.HR)
   @ApiOperation({ summary: 'Approve a decision' })
   approveDecision(
     @Param('appId', ParseUUIDPipe) appId: string,

@@ -1,8 +1,9 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FileUploadService } from '../file-upload/file-upload.service';
 import { JobQueueService } from './job-queue.service';
+import { AiCostService } from '../ai-cost/ai-cost.service';
 
 /**
  * Worker that processes AI resume scoring.
@@ -25,6 +26,7 @@ export class ResumeScoringWorker implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly fileUpload: FileUploadService,
     private readonly config: ConfigService,
+    @Optional() private readonly aiCost?: AiCostService,
   ) {
     this.aiServiceUrl = this.config.get<string>(
       'AI_SERVICE_URL',
@@ -145,6 +147,9 @@ export class ResumeScoringWorker implements OnModuleInit {
     };
 
     if (trimmedKey) {
+      const model =
+        this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
+      const startedAtMs = Date.now();
       try {
         const { GoogleGenAI } = require('@google/genai');
         const ai = new GoogleGenAI({ apiKey: trimmedKey });
@@ -153,8 +158,7 @@ export class ResumeScoringWorker implements OnModuleInit {
         const prompt = `Score this candidate's resume against the Job Description. Return exactly JSON with "matchScore" (number 0-100) and "summary" (string). JD: ${jd.content}, Skills: ${JSON.stringify(plan.skills)}`;
 
         const response = await ai.models.generateContent({
-          model:
-            this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest',
+          model,
           contents: [
             {
               role: 'user',
@@ -165,6 +169,14 @@ export class ResumeScoringWorker implements OnModuleInit {
             },
           ],
           config: { responseMimeType: 'application/json', temperature: 0.1 },
+        });
+
+        await this.aiCost?.logGeminiCall({
+          orgId: plan.orgId,
+          agentName: 'job_queue.resume_score',
+          modelUsed: model,
+          startedAtMs,
+          response,
         });
 
         const data = JSON.parse(
@@ -178,6 +190,13 @@ export class ResumeScoringWorker implements OnModuleInit {
           summary: data.summary || '',
         };
       } catch (err) {
+        await this.aiCost?.logGeminiCall({
+          orgId: plan.orgId,
+          agentName: 'job_queue.resume_score',
+          modelUsed: model,
+          startedAtMs,
+          error: err,
+        });
         this.logger.error(`Resume scoring failed for ${applicationId}: ${err}`);
       }
     }

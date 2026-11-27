@@ -1,7 +1,8 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ApplicationStatus, HiringPlanStatus } from '@prisma/client';
+import { AiCostService } from '../ai-cost/ai-cost.service';
 
 const TTL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -13,6 +14,7 @@ export class AnalyticsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    @Optional() private readonly aiCost?: AiCostService,
   ) {}
 
   private async cached<T>(key: string, fn: () => Promise<T>): Promise<T> {
@@ -958,6 +960,7 @@ Do not return any markdown formatting outside of the JSON block.`;
         ].filter(Boolean);
 
         for (const model of modelCandidates) {
+          const startedAtMs = Date.now();
           try {
             const response = await ai.models.generateContent({
               model,
@@ -976,6 +979,14 @@ Do not return any markdown formatting outside of the JSON block.`;
               },
             });
 
+            await this.aiCost?.logGeminiCall({
+              orgId,
+              agentName: 'analytics.insights',
+              modelUsed: model,
+              startedAtMs,
+              response,
+            });
+
             const rawResponse = response.text || '[]';
             const cleaned = rawResponse
               .replace(/```json/g, '')
@@ -987,6 +998,13 @@ Do not return any markdown formatting outside of the JSON block.`;
               break;
             }
           } catch (modelErr: any) {
+            await this.aiCost?.logGeminiCall({
+              orgId,
+              agentName: 'analytics.insights',
+              modelUsed: model,
+              startedAtMs,
+              error: modelErr,
+            });
             this.logger.warn(
               `Gemini generation with ${model} failed: ${modelErr?.message || modelErr}`,
             );

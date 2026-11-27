@@ -12,6 +12,7 @@ import {
   HttpStatus,
   UseGuards,
   BadRequestException,
+  Optional,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -34,6 +35,7 @@ import { RolesGuard } from '../../auth/guards/roles.guard';
 
 import { AiScreeningService } from '../ai-screening/ai-screening.service';
 import { WhatsappService } from '../notifications/whatsapp.service';
+import { AuditService } from '../audit/audit.service';
 
 @ApiTags('Mandates')
 @ApiBearerAuth()
@@ -44,6 +46,7 @@ export class MandatesController {
     private readonly mandatesService: MandatesService,
     private readonly aiScreening: AiScreeningService,
     private readonly whatsappService: WhatsappService,
+    @Optional() private readonly audit?: AuditService,
   ) {}
 
   // ── Public: Browse active mandates (no auth required) ─────────
@@ -83,7 +86,16 @@ export class MandatesController {
   @ApiResponse({ status: 201, description: 'Mandate created successfully' })
   @ApiResponse({ status: 403, description: 'Not a company user' })
   async create(@CurrentUser() user: any, @Body() dto: CreateMandateDto) {
-    return this.mandatesService.create(user.orgId, dto);
+    const created = await this.mandatesService.create(user.orgId, dto);
+    await this.audit?.logSafe({
+      orgId: user.orgId,
+      userId: user.id,
+      action: 'MANDATE_CREATED',
+      entityType: 'MANDATE',
+      entityId: created?.id,
+      changes: { title: dto.title },
+    });
+    return created;
   }
 
   // ── Company: Get own mandates ────────────────────────────────
@@ -166,7 +178,16 @@ export class MandatesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateMandateDto,
   ) {
-    return this.mandatesService.update(user.orgId, id, dto);
+    const updated = await this.mandatesService.update(user.orgId, id, dto);
+    await this.audit?.logSafe({
+      orgId: user.orgId,
+      userId: user.id,
+      action: 'MANDATE_UPDATED',
+      entityType: 'MANDATE',
+      entityId: id,
+      changes: dto,
+    });
+    return updated;
   }
 
   // ── Company: Publish ─────────────────────────────────────────
@@ -184,7 +205,15 @@ export class MandatesController {
     @CurrentUser() user: any,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.mandatesService.publish(user.orgId, id);
+    const result = await this.mandatesService.publish(user.orgId, id);
+    await this.audit?.logSafe({
+      orgId: user.orgId,
+      userId: user.id,
+      action: 'MANDATE_PUBLISHED',
+      entityType: 'MANDATE',
+      entityId: id,
+    });
+    return result;
   }
 
   // ── Company: Pause ───────────────────────────────────────────
@@ -199,7 +228,15 @@ export class MandatesController {
     @CurrentUser() user: any,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.mandatesService.pause(user.orgId, id);
+    const result = await this.mandatesService.pause(user.orgId, id);
+    await this.audit?.logSafe({
+      orgId: user.orgId,
+      userId: user.id,
+      action: 'MANDATE_PAUSED',
+      entityType: 'MANDATE',
+      entityId: id,
+    });
+    return result;
   }
 
   // ── Company: Close ───────────────────────────────────────────
@@ -214,7 +251,15 @@ export class MandatesController {
     @CurrentUser() user: any,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.mandatesService.close(user.orgId, id);
+    const result = await this.mandatesService.close(user.orgId, id);
+    await this.audit?.logSafe({
+      orgId: user.orgId,
+      userId: user.id,
+      action: 'MANDATE_CLOSED',
+      entityType: 'MANDATE',
+      entityId: id,
+    });
+    return result;
   }
 
   // ── Company: Mark mandate as filled ───────────────────────────
@@ -229,7 +274,15 @@ export class MandatesController {
     @CurrentUser() user: any,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.mandatesService.fill(user.orgId, id);
+    const result = await this.mandatesService.fill(user.orgId, id);
+    await this.audit?.logSafe({
+      orgId: user.orgId,
+      userId: user.id,
+      action: 'MANDATE_FILLED',
+      entityType: 'MANDATE',
+      entityId: id,
+    });
+    return result;
   }
 
   // ── Company: Delete ──────────────────────────────────────────
@@ -246,7 +299,15 @@ export class MandatesController {
     @CurrentUser() user: any,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.mandatesService.remove(user.orgId, id);
+    const result = await this.mandatesService.remove(user.orgId, id);
+    await this.audit?.logSafe({
+      orgId: user.orgId,
+      userId: user.id,
+      action: 'MANDATE_DELETED',
+      entityType: 'MANDATE',
+      entityId: id,
+    });
+    return result;
   }
 
   // ── Recruiter: Join mandate ──────────────────────────────────

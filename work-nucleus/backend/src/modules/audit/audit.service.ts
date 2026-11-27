@@ -18,6 +18,33 @@ export class AuditService {
     return this.prisma.auditLog.create({ data });
   }
 
+  async logSafe(data: {
+    orgId?: string;
+    userId?: string;
+    action: string;
+    entityType: string;
+    entityId?: string;
+    changes?: any;
+    ipAddress?: string;
+    userAgent?: string;
+  }) {
+    try {
+      if (!data.orgId || !data.userId) return null;
+      return await this.log({
+        orgId: data.orgId,
+        userId: data.userId,
+        action: data.action,
+        entityType: data.entityType,
+        entityId: data.entityId,
+        changes: data.changes,
+        ipAddress: data.ipAddress,
+        userAgent: data.userAgent,
+      });
+    } catch {
+      return null;
+    }
+  }
+
   async findAll(
     orgId: string,
     opts: {

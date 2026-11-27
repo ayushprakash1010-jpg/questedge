@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,7 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toaster";
 import { PageHeader } from "@/components/shared/page-header";
-import { Wallet, Calendar, ArrowRight } from "lucide-react";
+import { useProfile } from "@/hooks/use-profile";
+import { readResponseError } from "@/lib/api";
+import { Wallet, Calendar, Settings } from "lucide-react";
 import {
   DataTable,
   DataTableBody,
@@ -42,6 +45,8 @@ interface AppraisalCycle {
 
 export default function CompTeamPage() {
   const router = useRouter();
+  const { profile } = useProfile();
+  const isAdminOrHr = profile?.role === "ADMIN" || profile?.role === "HR";
   const searchParams = useSearchParams();
   const cycleIdParam = searchParams.get("cycleId") ?? "";
   const [cycles, setCycles] = useState<AppraisalCycle[]>([]);
@@ -115,7 +120,7 @@ export default function CompTeamPage() {
           overrideReason: e.reason,
         }),
       });
-      if (!res.ok) throw new Error("Override failed");
+      if (!res.ok) throw new Error(await readResponseError(res, "Override failed"));
       if (activeCycleId) await loadRevisions(activeCycleId);
       setEdits((prev) => {
         const n = { ...prev };
@@ -131,7 +136,10 @@ export default function CompTeamPage() {
   }
 
   const totalProposed = rows.reduce(
-    (s, r) => s + Number(edits[r.id]?.hikeINR ?? r.finalHikeINR),
+    (s, r) =>
+      s +
+      Number(edits[r.id]?.hikeINR ?? r.finalHikeINR) +
+      Number(edits[r.id]?.bonusINR ?? r.finalBonusINR),
     0
   );
 
@@ -141,9 +149,19 @@ export default function CompTeamPage() {
         title="My team's compensation"
         subtitle={
           <>
-            Override hike/bonus per report (with reason). Total proposed: ₹
+            Override hike/bonus per report (with reason). Total proposed (hike + bonus): ₹
             {totalProposed.toLocaleString("en-IN")}
           </>
+        }
+        actions={
+          isAdminOrHr && activeCycleId ? (
+            <Link href={`/admin/compensation/cycles/${activeCycleId}`}>
+              <Button variant="outline" size="sm">
+                <Settings className="h-4 w-4" />
+                Cycle Budget &amp; Simulator
+              </Button>
+            </Link>
+          ) : null
         }
       />
 

@@ -5,12 +5,14 @@ import {
   BadRequestException,
   InternalServerErrorException,
   ServiceUnavailableException,
+  Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RankResumesDto, ScoringWeightsDto } from './dto/rank-resumes.dto';
 import { RankingResponse } from './interfaces/ranking-result.interface';
 import { Prisma } from '@prisma/client';
+import { AiCostService } from '../ai-cost/ai-cost.service';
 
 /** Default scoring dimensions and weights */
 const DEFAULT_DIMENSION_WEIGHTS: Record<string, number> = {
@@ -36,6 +38,7 @@ export class ResumeRankingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    @Optional() private readonly aiCost?: AiCostService,
   ) {
     this.geminiApiKey = this.config.get<string>('GEMINI_API_KEY', '');
     this.modelName =
@@ -72,7 +75,10 @@ export class ResumeRankingService {
     }
 
     // 3. Extract resume text for each candidate (with caching)
-    const candidatesWithText = await this.extractResumeTexts(candidateData);
+    const candidatesWithText = await this.extractResumeTexts(
+      candidateData,
+      orgId,
+    );
 
     const candidatesReady = candidatesWithText.filter((c) => c.resumeText);
     if (candidatesReady.length === 0) {
@@ -103,6 +109,7 @@ export class ResumeRankingService {
 
     // 7. Build AI request payload
     const aiPayload = {
+      orgId,
       jobDescription,
       skills,
       candidates: candidatesReady.map((c) => ({
@@ -750,6 +757,7 @@ export class ResumeRankingService {
       education: string | null;
       profileText?: string | null;
     }>,
+    orgId?: string,
   ): Promise<
     Array<{
       id: string;
@@ -785,7 +793,10 @@ export class ResumeRankingService {
             resumeText = cached;
           } else {
             try {
-              resumeText = await this.extractSingleResume(candidate.resumeUrl);
+              resumeText = await this.extractSingleResume(
+                candidate.resumeUrl,
+                orgId,
+              );
               // Store in cache
               if (resumeText && resumeText.trim().length > 50) {
                 await this.cacheResumeText(candidate.id, resumeText);
@@ -988,7 +999,10 @@ export class ResumeRankingService {
     return text.length > 80 ? text : null;
   }
 
-  private async extractSingleResume(resumeUrl: string): Promise<string> {
+  private async extractSingleResume(
+    resumeUrl: string,
+    orgId?: string,
+  ): Promise<string> {
     // Feature 5: Validate URL before downloading
     if (
       !resumeUrl ||
@@ -1045,34 +1059,54 @@ Include all sections: contact info, summary, experience, education, skills, proj
 Preserve the original structure with line breaks between sections.
 If the document appears to be a scanned image with no selectable text, extract whatever text you can see in the image.`;
 
-    const response: any = await Promise.race([
-      ai.models.generateContent({
-        model: this.modelName,
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              {
-                inlineData: {
-                  mimeType: contentType,
-                  data: base64Data,
+    const startedAtMs = Date.now();
+    let response: any;
+    try {
+      response = await Promise.race([
+        ai.models.generateContent({
+          model: this.modelName,
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: contentType,
+                    data: base64Data,
+                  },
                 },
-              },
-              { text: extractionPrompt },
-            ],
+                { text: extractionPrompt },
+              ],
+            },
+          ],
+          config: {
+            temperature: 0.1,
           },
-        ],
-        config: {
-          temperature: 0.1,
-        },
-      }),
-      new Promise<never>((_, reject) =>
-        setTimeout(
-          () => reject(new Error('Resume extraction timed out after 30s')),
-          30_000,
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error('Resume extraction timed out after 30s')),
+            30_000,
+          ),
         ),
-      ),
-    ]);
+      ]);
+      await this.aiCost?.logGeminiCall({
+        orgId,
+        agentName: 'resume_ranking.extract_resume',
+        modelUsed: this.modelName,
+        startedAtMs,
+        response,
+      });
+    } catch (err) {
+      await this.aiCost?.logGeminiCall({
+        orgId,
+        agentName: 'resume_ranking.extract_resume',
+        modelUsed: this.modelName,
+        startedAtMs,
+        error: err,
+      });
+      throw err;
+    }
 
     const text = response?.text || '';
     if (!text || text.trim().length < 20) {
@@ -1568,13 +1602,31 @@ Output ONLY valid JSON with this exact schema:
       );
     });
 
+    const startedAtMs = Date.now();
+    let response: any;
     try {
-      const response: any = await Promise.race([
-        generatePromise,
-        timeoutPromise,
-      ]);
+      response = await Promise.race([generatePromise, timeoutPromise]);
       clearTimeout(timer!);
+      await this.aiCost?.logGeminiCall({
+        orgId: payload.orgId,
+        agentName: 'resume_ranking.rank',
+        modelUsed: modelToUse,
+        startedAtMs,
+        response,
+      });
+    } catch (err) {
+      clearTimeout(timer!);
+      await this.aiCost?.logGeminiCall({
+        orgId: payload.orgId,
+        agentName: 'resume_ranking.rank',
+        modelUsed: modelToUse,
+        startedAtMs,
+        error: err,
+      });
+      throw err;
+    }
 
+    try {
       const rawText = response?.text || '{}';
       const cleanJson = rawText
         .replace(/```json/gi, '')

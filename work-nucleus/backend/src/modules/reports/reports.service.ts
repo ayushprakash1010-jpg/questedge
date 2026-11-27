@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma, ReportSource, ReportVisualization } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -8,6 +8,7 @@ import {
 } from './dto/report.dto';
 import { listAvailableFields, ReportRunner, ReportPlan } from './report-runner';
 import { GoogleGenAI } from '@google/genai';
+import { AiCostService } from '../ai-cost/ai-cost.service';
 
 @Injectable()
 export class ReportsService {
@@ -20,6 +21,7 @@ export class ReportsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    @Optional() private readonly aiCost?: AiCostService,
   ) {
     this.runner = new ReportRunner(prisma);
 
@@ -115,32 +117,39 @@ export class ReportsService {
     return this.runner.run(orgId, plan);
   }
 
+  async remove(orgId: string, id: string) {
+    await this.findOne(orgId, id);
+    await this.prisma.reportDefinition.delete({ where: { id } });
+    return { deleted: true, id };
+  }
+
   fields(source: ReportSource) {
     return listAvailableFields(source);
   }
 
-  async naturalLanguageDraft(prompt: string) {
+  async naturalLanguageDraft(prompt: string, orgId?: string) {
     if (!this.hasApiKey) {
       this.logger.warn('GEMINI_API_KEY not set. Using fallback plan.');
       return this.fallbackPlan(prompt);
     }
 
+    const startedAtMs = Date.now();
     try {
       const systemPrompt = `
         You are an expert HR data analyst assistant. 
         Your task is to take a natural language prompt from an HR manager and convert it into a JSON report configuration.
         
         Valid Data Sources (ReportSource enum): HIRING, APPRAISAL, COMPENSATION, BGV, ATTRITION.
-        Valid Visualizations (ReportVisualization enum): TABLE, BAR, LINE, PIE.
+        Valid Visualizations (ReportVisualization enum): TABLE, BAR, LINE, FUNNEL, HEATMAP.
         
         Output valid JSON with exactly the following structure:
         {
           "name": "A short, clear name for the report",
-          "dataSource": "HIRING", // Choose the best fitting data source
-          "filters": [], // Array of filter objects (leave empty if none)
-          "groupBy": ["department"], // Array of strings representing fields to group by
-          "metrics": [{"field": "count", "agg": "count"}], // Array of metric objects
-          "visualization": "BAR" // Choose the best fitting visualization
+          "dataSource": "HIRING",
+          "filters": [],
+          "groupBy": ["department"],
+          "metrics": [{"field": "count", "agg": "count"}],
+          "visualization": "BAR"
         }
       `;
 
@@ -153,23 +162,69 @@ export class ReportsService {
         },
       });
 
+      await this.aiCost?.logGeminiCall({
+        orgId,
+        agentName: 'reports.nl_draft',
+        modelUsed: this.model,
+        startedAtMs,
+        response,
+      });
+
       const content = response.text;
       if (content) {
         const cleaned = content
           .replace(/```json/gi, '')
           .replace(/```/g, '')
           .trim();
-        return JSON.parse(cleaned);
+        const parsed = JSON.parse(cleaned);
+        return this.sanitizeDraftPlan(parsed, prompt);
       }
       throw new Error('AI returned an empty response.');
     } catch (err) {
+      await this.aiCost?.logGeminiCall({
+        orgId,
+        agentName: 'reports.nl_draft',
+        modelUsed: this.model,
+        startedAtMs,
+        error: err,
+      });
       this.logger.warn(`NL→Report fallback (${err})`);
       return this.fallbackPlan(prompt);
     }
   }
 
+  private sanitizeDraftPlan(parsed: Record<string, any>, prompt: string) {
+    const validSources = Object.values(ReportSource) as string[];
+    const validViz = Object.values(ReportVisualization) as string[];
+    const dataSource = validSources.includes(parsed?.dataSource)
+      ? (parsed.dataSource as ReportSource)
+      : ReportSource.HIRING;
+    const visualization = validViz.includes(parsed?.visualization)
+      ? (parsed.visualization as ReportVisualization)
+      : ReportVisualization.BAR;
+
+    return {
+      name:
+        typeof parsed?.name === 'string' && parsed.name.trim().length >= 2
+          ? parsed.name.trim().slice(0, 120)
+          : prompt.slice(0, 80),
+      ...(typeof parsed?.description === 'string' && parsed.description.trim()
+        ? { description: parsed.description.trim() }
+        : {}),
+      dataSource,
+      filters: Array.isArray(parsed?.filters) ? parsed.filters : [],
+      groupBy: Array.isArray(parsed?.groupBy)
+        ? parsed.groupBy.filter((g: unknown) => typeof g === 'string')
+        : [],
+      metrics: Array.isArray(parsed?.metrics)
+        ? parsed.metrics
+        : [{ field: 'count', agg: 'count' }],
+      visualization,
+    };
+  }
+
   /**
-   * Trivial keyword-based fallback so the feature still works without AI.
+   * Keyword-based fallback without extra properties so DTO validation stays strict.
    */
   private fallbackPlan(prompt: string) {
     const lower = prompt.toLowerCase();
@@ -189,7 +244,6 @@ export class ReportsService {
       groupBy: source === ReportSource.HIRING ? ['department'] : [],
       metrics: [{ field: 'count', agg: 'count' }],
       visualization: ReportVisualization.BAR,
-      _fallback: true,
     };
   }
 }

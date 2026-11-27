@@ -1,8 +1,9 @@
-import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, Logger, HttpException, HttpStatus, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FileUploadService } from '../file-upload/file-upload.service';
 import { GoogleGenAI } from '@google/genai';
+import { AiCostService } from '../ai-cost/ai-cost.service';
 
 @Injectable()
 export class AiScreeningService {
@@ -15,6 +16,7 @@ export class AiScreeningService {
     private prisma: PrismaService,
     private configService: ConfigService,
     private fileUpload: FileUploadService,
+    @Optional() private readonly aiCost?: AiCostService,
   ) {
     const rawKey = this.configService.get<string>('GEMINI_API_KEY');
     const trimmedKey = rawKey ? rawKey.trim() : null;
@@ -71,8 +73,10 @@ export class AiScreeningService {
       config?: any;
     },
     timeoutMs = 12000,
+    telemetry?: { orgId?: string; agentName: string },
   ): Promise<any> {
     let timer: NodeJS.Timeout;
+    const startedAtMs = Date.now();
     const generatePromise = this.ai.models.generateContent(params);
     const timeoutPromise = new Promise<never>((_, reject) => {
       timer = setTimeout(
@@ -83,7 +87,27 @@ export class AiScreeningService {
 
     try {
       const result = await Promise.race([generatePromise, timeoutPromise]);
+      if (telemetry) {
+        await this.aiCost?.logGeminiCall({
+          orgId: telemetry.orgId,
+          agentName: telemetry.agentName,
+          modelUsed: params.model,
+          startedAtMs,
+          response: result,
+        });
+      }
       return result;
+    } catch (err) {
+      if (telemetry) {
+        await this.aiCost?.logGeminiCall({
+          orgId: telemetry.orgId,
+          agentName: telemetry.agentName,
+          modelUsed: params.model,
+          startedAtMs,
+          error: err,
+        });
+      }
+      throw err;
     } finally {
       clearTimeout(timer!);
     }
@@ -229,14 +253,21 @@ export class AiScreeningService {
       let parsed: any = null;
       for (const modelName of modelsToTry) {
         try {
-          const response = await this.generateWithTimeout({
-            model: modelName,
-            contents,
-            config: {
-              responseMimeType: 'application/json',
-              temperature: 0.1,
+          const response = await this.generateWithTimeout(
+            {
+              model: modelName,
+              contents,
+              config: {
+                responseMimeType: 'application/json',
+                temperature: 0.1,
+              },
             },
-          });
+            12000,
+            {
+              orgId: mandate.orgId,
+              agentName: 'ai_screening.evaluate_referral',
+            },
+          );
 
           const content = response.text;
           if (content) {
@@ -523,14 +554,18 @@ export class AiScreeningService {
     for (const modelName of modelsToTry) {
       try {
         this.logger.log(`Attempting generateMandate with model: ${modelName}`);
-        const response = await this.generateWithTimeout({
-          model: modelName,
-          contents: prompt,
-          config: {
-            systemInstruction: systemPrompt,
-            responseMimeType: 'application/json',
+        const response = await this.generateWithTimeout(
+          {
+            model: modelName,
+            contents: prompt,
+            config: {
+              systemInstruction: systemPrompt,
+              responseMimeType: 'application/json',
+            },
           },
-        });
+          12000,
+          { agentName: 'ai_screening.generate_mandate' },
+        );
 
         const content = response.text;
         if (content) {
@@ -616,14 +651,18 @@ export class AiScreeningService {
           this.logger.log(
             `Attempting parseResumeToProfile with model: ${modelName}`,
           );
-          const response = await this.generateWithTimeout({
-            model: modelName,
-            contents: resumeText,
-            config: {
-              systemInstruction: systemPrompt,
-              responseMimeType: 'application/json',
+          const response = await this.generateWithTimeout(
+            {
+              model: modelName,
+              contents: resumeText,
+              config: {
+                systemInstruction: systemPrompt,
+                responseMimeType: 'application/json',
+              },
             },
-          });
+            12000,
+            { agentName: 'ai_screening.parse_resume' },
+          );
 
           const content = response.text;
           if (content) {
@@ -952,14 +991,18 @@ Return ONLY a valid JSON array of question objects with this exact structure:
       for (const modelName of modelsToTry) {
         try {
           this.logger.log(`Attempting generateAssessmentQuestions with model: ${modelName}`);
-          const response = await this.generateWithTimeout({
-            model: modelName,
-            contents: userPrompt,
-            config: {
-              systemInstruction: systemPrompt,
-              responseMimeType: 'application/json',
+          const response = await this.generateWithTimeout(
+            {
+              model: modelName,
+              contents: userPrompt,
+              config: {
+                systemInstruction: systemPrompt,
+                responseMimeType: 'application/json',
+              },
             },
-          });
+            12000,
+            { agentName: 'ai_screening.assessment_questions' },
+          );
 
           const content = response.text;
           if (content) {

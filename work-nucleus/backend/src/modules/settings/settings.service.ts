@@ -1,5 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
+
+const ALLOWED_SETTING_KEYS = new Set([
+  'scoringWeights',
+  'defaultPipelineStages',
+  'notificationPreferences',
+  'approvalWorkflowEnabled',
+  'maxInterviewRounds',
+  'autoTriggerBgvOnOfferAccept',
+  'bgvProvider',
+]);
 
 const DEFAULT_SETTINGS = {
   scoringWeights: {
@@ -26,12 +37,16 @@ const DEFAULT_SETTINGS = {
     planCompleted: true,
   },
   approvalWorkflowEnabled: false,
+  autoTriggerBgvOnOfferAccept: false,
   maxInterviewRounds: 6,
 };
 
 @Injectable()
 export class SettingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly audit?: AuditService,
+  ) {}
 
   async get(orgId: string) {
     let settings = await this.prisma.orgSettings.findUnique({
@@ -47,13 +62,107 @@ export class SettingsService {
     return settings;
   }
 
-  async update(orgId: string, updates: Record<string, any>) {
-    const current = await this.get(orgId);
-    const merged = { ...(current.settings as any), ...updates };
+  async update(
+    orgId: string,
+    updates: Record<string, any>,
+    actorUserId?: string,
+  ) {
+    if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+      throw new BadRequestException('Settings payload must be a JSON object');
+    }
 
-    return this.prisma.orgSettings.update({
+    const filtered: Record<string, any> = {};
+    for (const key of Object.keys(updates)) {
+      if (!ALLOWED_SETTING_KEYS.has(key)) {
+        throw new BadRequestException(`Unsupported setting key: ${key}`);
+      }
+      filtered[key] = updates[key];
+    }
+
+    if (filtered.scoringWeights !== undefined) {
+      const w = filtered.scoringWeights;
+      if (!w || typeof w !== 'object' || Array.isArray(w)) {
+        throw new BadRequestException('scoringWeights must be an object');
+      }
+      const vals = Object.values(w);
+      if (
+        vals.length === 0 ||
+        vals.some((v) => typeof v !== 'number' || !Number.isFinite(v) || v < 0)
+      ) {
+        throw new BadRequestException(
+          'scoringWeights values must be non-negative numbers',
+        );
+      }
+      const sum = vals.reduce<number>(
+        (acc, v) => acc + Number(v),
+        0,
+      );
+      if (Math.round(sum) !== 100) {
+        throw new BadRequestException(
+          `scoringWeights must sum to 100 (received ${sum})`,
+        );
+      }
+    }
+
+    if (filtered.maxInterviewRounds !== undefined) {
+      const rounds = Number(filtered.maxInterviewRounds);
+      if (!Number.isInteger(rounds) || rounds < 1 || rounds > 20) {
+        throw new BadRequestException(
+          'maxInterviewRounds must be an integer between 1 and 20',
+        );
+      }
+      filtered.maxInterviewRounds = rounds;
+    }
+
+    if (
+      filtered.approvalWorkflowEnabled !== undefined &&
+      typeof filtered.approvalWorkflowEnabled !== 'boolean'
+    ) {
+      throw new BadRequestException(
+        'approvalWorkflowEnabled must be a boolean',
+      );
+    }
+
+    if (
+      filtered.autoTriggerBgvOnOfferAccept !== undefined &&
+      typeof filtered.autoTriggerBgvOnOfferAccept !== 'boolean'
+    ) {
+      throw new BadRequestException(
+        'autoTriggerBgvOnOfferAccept must be a boolean',
+      );
+    }
+
+    if (filtered.defaultPipelineStages !== undefined) {
+      if (
+        !Array.isArray(filtered.defaultPipelineStages) ||
+        filtered.defaultPipelineStages.length === 0 ||
+        filtered.defaultPipelineStages.some(
+          (s: unknown) => typeof s !== 'string' || !s.trim(),
+        )
+      ) {
+        throw new BadRequestException(
+          'defaultPipelineStages must be a non-empty array of strings',
+        );
+      }
+    }
+
+    const current = await this.get(orgId);
+    const merged = { ...(current.settings as any), ...filtered };
+
+    const updated = await this.prisma.orgSettings.update({
       where: { orgId },
       data: { settings: merged },
     });
+
+    await this.audit?.logSafe({
+      orgId,
+      userId: actorUserId,
+      action: 'SETTINGS_UPDATED',
+      entityType: 'ORG_SETTINGS',
+      entityId: updated.id,
+      changes: filtered,
+    });
+
+    return updated;
   }
 }

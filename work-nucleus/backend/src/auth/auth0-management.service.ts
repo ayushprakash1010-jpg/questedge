@@ -1,15 +1,19 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ManagementClient } from 'auth0';
 import { randomBytes } from 'crypto';
 import { normalizeAuth0Domain } from './auth0-domain.util';
+import { EmailService } from '../modules/email/email.service';
 
 @Injectable()
 export class Auth0ManagementService implements OnModuleInit {
   private management: ManagementClient;
   private readonly logger = new Logger(Auth0ManagementService.name);
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    @Optional() private readonly emailService?: EmailService,
+  ) {}
 
   onModuleInit() {
     const primaryDomain = normalizeAuth0Domain(
@@ -62,15 +66,29 @@ export class Auth0ManagementService implements OnModuleInit {
     const auth0Sub = response.data.user_id;
     this.logger.log(`Created Auth0 user for ${email} (${auth0Sub})`);
 
-    // Send password reset email so user can set their own password
-    await this.management.tickets.changePassword({
-      user_id: auth0Sub,
-      result_url:
-        this.configService.get<string>('FRONTEND_URL') ||
-        'http://localhost:3001',
-    });
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3001';
 
-    this.logger.log(`Sent password reset email to ${email}`);
+    // Generate password setup ticket and dispatch invite email
+    const ticketRes = await this.management.tickets.changePassword({
+      user_id: auth0Sub,
+      result_url: frontendUrl,
+    });
+    const inviteUrl = (ticketRes as any)?.data?.ticket || frontendUrl;
+
+    try {
+      await this.emailService?.sendNotificationEmail(
+        email,
+        'You have been invited to QuestEdge',
+        `Hi ${name}, you have been invited to join your organization on QuestEdge. Use the link below to set your password and sign in.`,
+        inviteUrl,
+      );
+      this.logger.log(`Dispatched invite setup email to ${email}`);
+    } catch (err: any) {
+      this.logger.warn(
+        `Auth0 ticket generated for ${email}, but invite email delivery failed: ${err?.message || err}`,
+      );
+    }
 
     return auth0Sub;
   }

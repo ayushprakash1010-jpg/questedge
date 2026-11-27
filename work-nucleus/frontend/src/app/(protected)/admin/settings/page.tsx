@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { BrandLoader } from "@/components/ui/brand-loader";
 import { toast } from "@/components/ui/toaster";
 import { PageHeader } from "@/components/shared/page-header";
+import { readResponseError } from "@/lib/api";
 
 interface Settings {
   scoringWeights?: Record<string, number>;
@@ -47,7 +48,9 @@ export default function OrgSettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),
       });
-      if (!res.ok) throw new Error("Save failed");
+      if (!res.ok) {
+        throw new Error(await readResponseError(res, "Save failed"));
+      }
       toast.success("Settings saved");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Save failed");

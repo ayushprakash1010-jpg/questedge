@@ -14,11 +14,30 @@ export class PipelineService {
   constructor(private readonly prisma: PrismaService) {}
 
   async createStage(hiringPlanId: string, dto: CreateStageDto, orgId?: string) {
-    if (orgId) {
-      const plan = await this.prisma.hiringPlan.findFirst({
-        where: { id: hiringPlanId, orgId },
+    const plan = await this.prisma.hiringPlan.findFirst({
+      where: orgId ? { id: hiringPlanId, orgId } : { id: hiringPlanId },
+      select: { id: true, orgId: true },
+    });
+    if (!plan) throw new NotFoundException('Hiring plan not found');
+
+    const resolvedOrgId = orgId || plan.orgId;
+    if (resolvedOrgId) {
+      const orgSettings = await this.prisma.orgSettings.findUnique({
+        where: { orgId: resolvedOrgId },
       });
-      if (!plan) throw new NotFoundException('Hiring plan not found');
+      const maxRounds = Number(
+        (orgSettings?.settings as any)?.maxInterviewRounds ?? 0,
+      );
+      if (maxRounds > 0) {
+        const existingCount = await this.prisma.pipelineStage.count({
+          where: { hiringPlanId },
+        });
+        if (existingCount >= maxRounds) {
+          throw new BadRequestException(
+            `Maximum interview rounds (${maxRounds}) configured in organization settings has been reached.`,
+          );
+        }
+      }
     }
 
     const { interviewers, skillsToEvaluate, ...stageData } = dto;
