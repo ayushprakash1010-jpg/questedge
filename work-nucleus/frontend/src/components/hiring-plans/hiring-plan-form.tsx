@@ -10,7 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
-import { ArrowLeft, ArrowRight, Check, X, Search, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, X, Search, Loader2, Plus } from "lucide-react";
+import { toast } from "@/components/ui/toaster";
+import { readResponseError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 interface Skill {
@@ -118,10 +120,13 @@ export function HiringPlanForm({ initialData, planId }: HiringPlanFormProps) {
     }
   );
 
-  // Skill search
+  // Skill search & custom creation
   const [skillSearch, setSkillSearch] = useState("");
   const [searchResults, setSearchResults] = useState<Skill[]>([]);
+  const [suggestedSkills, setSuggestedSkills] = useState<Skill[]>([]);
   const [searchingSkills, setSearchingSkills] = useState(false);
+  const [creatingSkill, setCreatingSkill] = useState(false);
+  const [customCategory, setCustomCategory] = useState("TECHNICAL");
 
   // User search for hiring manager
   const [userSearch, setUserSearch] = useState("");
@@ -158,6 +163,29 @@ export function HiringPlanForm({ initialData, planId }: HiringPlanFormProps) {
     setErrors((prev) => ({ ...prev, [key]: "" }));
   };
 
+  // Load starter skill suggestions when entering Step 4
+  useEffect(() => {
+    if (step !== 3) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const params = new URLSearchParams();
+        if (form.industry) params.set("industry", form.industry);
+        const res = await fetch(`/api/skills/search?${params}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data)) {
+          setSuggestedSkills(data as Skill[]);
+        }
+      } catch {
+        // ignore suggestion fetch errors
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [step, form.industry]);
+
   // Skill search effect
   useEffect(() => {
     if (!skillSearch.trim()) {
@@ -167,23 +195,74 @@ export function HiringPlanForm({ initialData, planId }: HiringPlanFormProps) {
     const timer = setTimeout(async () => {
       setSearchingSkills(true);
       try {
-        const params = new URLSearchParams({ q: skillSearch });
+        const params = new URLSearchParams({ q: skillSearch.trim() });
         if (form.industry) params.set("industry", form.industry);
         const res = await fetch(`/api/skills/search?${params}`);
-        const data = await res.json();
+        const data = await res.json().catch(() => []);
         setSearchResults(
-          (data as Skill[]).filter(
-            (s: Skill) => !form.skills.some((sel) => sel.skillId === s.id)
-          )
+          Array.isArray(data)
+            ? (data as Skill[]).filter(
+                (s: Skill) => !form.skills.some((sel) => sel.skillId === s.id)
+              )
+            : []
         );
       } catch {
         setSearchResults([]);
       } finally {
         setSearchingSkills(false);
       }
-    }, 300);
+    }, 250);
     return () => clearTimeout(timer);
   }, [skillSearch, form.industry, form.skills]);
+
+  const createAndAddSkill = async (rawName: string) => {
+    const name = rawName.trim();
+    if (!name || creatingSkill) return;
+
+    const alreadySelected = form.skills.some(
+      (s) => s.name.toLowerCase() === name.toLowerCase()
+    );
+    if (alreadySelected) {
+      setSkillSearch("");
+      setSearchResults([]);
+      return;
+    }
+
+    const existingMatch = searchResults.find(
+      (s) => s.name.toLowerCase() === name.toLowerCase()
+    );
+    if (existingMatch) {
+      addSkill(existingMatch);
+      return;
+    }
+
+    setCreatingSkill(true);
+    try {
+      const res = await fetch("/api/skills", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          category: customCategory,
+          industry: form.industry || undefined,
+          isGlobal: true,
+        }),
+      });
+      if (!res.ok) {
+        throw new Error(await readResponseError(res, "Failed to add custom skill"));
+      }
+      const created: Skill = await res.json();
+      addSkill(created);
+      setSuggestedSkills((prev) =>
+        prev.some((s) => s.id === created.id) ? prev : [...prev, created]
+      );
+      toast.success(`Added skill "${created.name}"`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to add skill");
+    } finally {
+      setCreatingSkill(false);
+    }
+  };
 
   // User search effect
   const searchUsers = useCallback(async () => {
@@ -688,16 +767,27 @@ export function HiringPlanForm({ initialData, planId }: HiringPlanFormProps) {
               <Input
                 value={skillSearch}
                 onChange={(e) => setSkillSearch(e.target.value)}
-                placeholder="Search skills..."
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && skillSearch.trim()) {
+                    e.preventDefault();
+                    if (searchResults.length > 0) {
+                      addSkill(searchResults[0]);
+                    } else {
+                      void createAndAddSkill(skillSearch);
+                    }
+                  }
+                }}
+                placeholder="Search skills or type a new skill name..."
                 className="pl-9"
               />
               {searchingSkills && (
                 <Loader2 className="absolute right-3 top-2.5 h-4 w-4 animate-spin text-slate-400" />
               )}
-              {searchResults.length > 0 && (
-                <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+              {skillSearch.trim().length > 0 && !searchingSkills && (
+                <div className="absolute z-10 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
                   {searchResults.map((skill) => (
                     <button
+                      type="button"
                       key={skill.id}
                       className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50"
                       onClick={() => addSkill(skill)}
@@ -711,13 +801,71 @@ export function HiringPlanForm({ initialData, planId }: HiringPlanFormProps) {
                       <span>{skill.name}</span>
                     </button>
                   ))}
+                  {!searchResults.some(
+                    (s) => s.name.toLowerCase() === skillSearch.trim().toLowerCase()
+                  ) &&
+                    !form.skills.some(
+                      (s) => s.name.toLowerCase() === skillSearch.trim().toLowerCase()
+                    ) && (
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-3 py-2.5 bg-slate-50/70">
+                        <div className="flex items-center gap-2 text-sm text-slate-700">
+                          <Plus className="h-4 w-4 text-indigo-600" />
+                          <span>
+                            Add <strong>&quot;{skillSearch.trim()}&quot;</strong>
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Select
+                            value={customCategory}
+                            onChange={(e) => setCustomCategory(e.target.value)}
+                            className="h-8 w-36 text-xs"
+                          >
+                            <option value="TECHNICAL">TECHNICAL</option>
+                            <option value="LEADERSHIP">LEADERSHIP</option>
+                            <option value="BEHAVIOURAL">BEHAVIOURAL</option>
+                            <option value="COMMUNICATION">COMMUNICATION</option>
+                            <option value="DOMAIN">DOMAIN</option>
+                          </Select>
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={creatingSkill}
+                            onClick={() => void createAndAddSkill(skillSearch)}
+                          >
+                            {creatingSkill ? "Adding..." : "Add Skill"}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                 </div>
               )}
             </div>
 
+            {suggestedSkills.filter(
+              (s) => !form.skills.some((sel) => sel.skillId === s.id)
+            ).length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-slate-400 mr-1">Quick add:</span>
+                {suggestedSkills
+                  .filter((s) => !form.skills.some((sel) => sel.skillId === s.id))
+                  .slice(0, 10)
+                  .map((skill) => (
+                    <button
+                      type="button"
+                      key={skill.id}
+                      onClick={() => addSkill(skill)}
+                      className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 transition-colors hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
+                    >
+                      <Plus className="h-3 w-3" />
+                      {skill.name}
+                    </button>
+                  ))}
+              </div>
+            )}
+
             {form.skills.length === 0 ? (
-              <p className="py-8 text-center text-sm text-slate-400">
-                Search and add skills to this hiring plan
+              <p className="py-6 text-center text-sm text-slate-400">
+                Search, pick a quick suggestion, or type a custom skill to add it
               </p>
             ) : (
               <div className="space-y-3">

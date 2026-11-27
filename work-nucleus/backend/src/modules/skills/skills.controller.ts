@@ -28,6 +28,13 @@ export class SkillsController {
     return this.skillsService.search(query);
   }
 
+  @Post('skills')
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER)
+  @ApiOperation({ summary: 'Find or create a skill for hiring plans' })
+  findOrCreate(@Body() dto: CreateSkillDto) {
+    return this.skillsService.findOrCreate(dto);
+  }
+
   @Get('admin/skills')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'List all skills (admin)' })
