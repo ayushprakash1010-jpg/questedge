@@ -84,7 +84,7 @@ const companyNavSections: NavSection[] = [
     items: [
       { label: "Notifications", href: "/notifications", icon: Bell, keywords: ["alerts", "inbox", "updates"] },
       { label: "Reports", href: "/admin/reports", icon: BarChart3, keywords: ["exports", "metrics", "charts"] },
-      { label: "Admin Settings", href: "/admin/users", icon: Shield, keywords: ["users", "permissions", "roles"] },
+      { label: "Admin Settings", href: "/admin", icon: Shield, keywords: ["users", "permissions", "roles", "organization", "audit"] },
       { label: "Support", href: "/support", icon: LifeBuoy, keywords: ["help", "ticket", "contact"] },
     ],
   },
@@ -143,7 +143,7 @@ export const roleConfig = {
   company: {
     sections: companyNavSections,
     homeHref: "/dashboard",
-    portalHref: "/admin/settings",
+    portalHref: "/profile",
     portalShortLabel: "Company",
     portalTitle: "Company Portal",
     portalSubtitle: "Hiring & Talent Pipeline",
@@ -237,13 +237,19 @@ function isNavItemActive(
     return pathname === itemPath && matchesQuery(itemQuery, searchString);
   }
 
-  // Defer base route highlight (e.g. /candidate/jobs) when a query variant (e.g. ?saved=true) matches
-  const siblingQueryMatches = allItems.some((other) => {
-    if (other.href === item.href || !other.href.includes("?")) return false;
+  // Defer parent route highlight (e.g. /admin or /candidate/jobs) when a more specific sibling nav item matches
+  const siblingSpecificMatches = allItems.some((other) => {
+    if (other.href === item.href) return false;
     const [otherPath, otherQuery] = other.href.split("?");
-    return otherPath === itemPath && pathname === otherPath && matchesQuery(otherQuery, searchString);
+    if (otherQuery) {
+      return otherPath === itemPath && pathname === otherPath && matchesQuery(otherQuery, searchString);
+    }
+    return (
+      otherPath.startsWith(itemPath + "/") &&
+      (pathname === otherPath || pathname.startsWith(otherPath + "/"))
+    );
   });
-  if (siblingQueryMatches) return false;
+  if (siblingSpecificMatches) return false;
 
   const isDashboardRoot =
     itemPath === "/dashboard" ||
@@ -270,7 +276,10 @@ function getSubPageLabel(pathname: string): string | undefined {
   if (/^\/mandates\/[^/]+\/referrals/.test(pathname)) return "Referrals";
   if (/^\/mandates\/[^/]+$/.test(pathname)) return "Mandate Details";
   if (/^\/candidates\/[^/]+\/joining/.test(pathname)) return "Joining";
-  if (pathname === "/admin/settings") return "Workspace Settings";
+  if (pathname === "/admin/settings") return "Organization Settings";
+  if (pathname === "/admin/users") return "User Management";
+  if (pathname === "/admin/audit-log") return "Audit Log";
+  if (pathname === "/admin/ai-cost") return "AI Cost";
   return undefined;
 }
 
