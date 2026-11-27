@@ -20,8 +20,12 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
     if (!session) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
-    const { token } = await auth0.getAccessToken();
-    headers.authorization = `Bearer ${token}`;
+    try {
+      const { token } = await auth0.getAccessToken();
+      headers.authorization = `Bearer ${token}`;
+    } catch {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
     Object.assign(headers, getDemoRoleHeader(req));
   }
 

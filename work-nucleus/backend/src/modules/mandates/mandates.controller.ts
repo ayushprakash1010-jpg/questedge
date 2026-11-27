@@ -25,9 +25,10 @@ import { CreateMandateDto } from './dto/create-mandate.dto';
 import { UpdateMandateDto } from './dto/update-mandate.dto';
 import { FilterMandateDto } from './dto/filter-mandate.dto';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import { Roles } from '../../auth/decorators/roles.decorator';
 import { UserTypes } from '../../auth/decorators/user-types.decorator';
 import { Public } from '../../auth/decorators/public.decorator';
-import { UserType } from '@prisma/client';
+import { Role, UserType } from '@prisma/client';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 
@@ -61,6 +62,7 @@ export class MandatesController {
 
   @Post('generate')
   @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER)
   @ApiOperation({ summary: 'Company: Generate a mandate using AI' })
   async generateMandate(@Body() body: { prompt: string }) {
     if (typeof body?.prompt !== 'string' || body.prompt.trim().length === 0) {
@@ -76,6 +78,7 @@ export class MandatesController {
 
   @Post()
   @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER)
   @ApiOperation({ summary: 'Company: Create a new mandate (starts as DRAFT)' })
   @ApiResponse({ status: 201, description: 'Mandate created successfully' })
   @ApiResponse({ status: 403, description: 'Not a company user' })
@@ -153,6 +156,7 @@ export class MandatesController {
 
   @Patch(':id')
   @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER)
   @ApiOperation({
     summary: 'Company: Update a mandate (not allowed when CLOSED/FILLED)',
   })
@@ -169,6 +173,7 @@ export class MandatesController {
 
   @Post(':id/publish')
   @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:
@@ -186,6 +191,7 @@ export class MandatesController {
 
   @Post(':id/pause')
   @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Company Admin: Pause an ACTIVE mandate' })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
@@ -200,6 +206,7 @@ export class MandatesController {
 
   @Post(':id/close')
   @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Company Admin: Close a mandate permanently' })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
@@ -214,6 +221,7 @@ export class MandatesController {
 
   @Post(':id/fill')
   @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Company Admin: Mark a mandate as FILLED (positions have been hired)' })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
@@ -228,6 +236,7 @@ export class MandatesController {
 
   @Delete(':id')
   @UserTypes(UserType.COMPANY_ADMIN)
+  @Roles(Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Company Admin: Delete a DRAFT mandate (cannot delete published)',
@@ -319,6 +328,7 @@ export class MandatesController {
 
   @Patch(':id/referrals/:referralId/status')
   @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Company: Move a referral through the hiring pipeline',
@@ -342,11 +352,21 @@ export class MandatesController {
 
   @Post(':id/referrals/:referralId/trigger-ai')
   @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Company: Retry AI Scoring for a Referral' })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   @ApiParam({ name: 'referralId', type: 'string', format: 'uuid' })
-  async retryAiScoring(@Param('referralId', ParseUUIDPipe) referralId: string) {
+  async retryAiScoring(
+    @CurrentUser() user: any,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('referralId', ParseUUIDPipe) referralId: string,
+  ) {
+    await this.mandatesService.assertReferralInMandateOrg(
+      user.orgId,
+      id,
+      referralId,
+    );
     await this.aiScreening.evaluateReferralFit(referralId);
     return { success: true };
   }

@@ -8,16 +8,34 @@ export function getClientApiUrl(): string {
   return API_BASE;
 }
 
+const COMPANY_PATH_PREFIXES = [
+  "/dashboard",
+  "/mandates",
+  "/candidates",
+  "/assessments",
+  "/resume-ranker",
+  "/appraisal",
+  "/bgv",
+  "/compensation",
+  "/company",
+  "/admin",
+  "/offers",
+  "/hiring-plans",
+  "/training",
+];
+
 export function getDemoRole(): string | null {
   if (typeof document !== "undefined") {
     const match = document.cookie.match(/(?:^|;\s*)demo_role=([^;]+)/);
     if (match) return decodeURIComponent(match[1]);
   }
   if (typeof window !== "undefined") {
-    if (window.location.pathname.startsWith("/recruiter")) return "RECRUITER";
-    if (window.location.pathname === "/candidate" || window.location.pathname.startsWith("/candidate/")) return "CANDIDATE";
-    if (window.location.pathname.startsWith("/candidates")) return "COMPANY";
-    if (window.location.pathname.startsWith("/dashboard") || window.location.pathname.startsWith("/mandates")) return "COMPANY";
+    const p = window.location.pathname;
+    if (p.startsWith("/recruiter")) return "RECRUITER";
+    if (p === "/candidate" || p.startsWith("/candidate/")) return "CANDIDATE";
+    if (COMPANY_PATH_PREFIXES.some((prefix) => p.startsWith(prefix))) {
+      return "COMPANY";
+    }
   }
   return null;
 }
@@ -46,8 +64,12 @@ export async function apiClient<T = unknown>(
   });
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: res.statusText || `Request failed with HTTP ${res.status}` }));
-    const msg = Array.isArray(error.message) ? error.message.join(", ") : error.message;
+    const body = await res.json().catch(() => ({ message: res.statusText || `Request failed with HTTP ${res.status}` }));
+    const rawMsg =
+      body?.error?.message ??
+      (typeof body?.message === "string" || Array.isArray(body?.message) ? body.message : undefined) ??
+      (typeof body?.error === "string" ? body.error : undefined);
+    const msg = Array.isArray(rawMsg) ? rawMsg.join(", ") : rawMsg;
     const err = new Error(msg || `API error: ${res.status}`);
     (err as any).status = res.status;
     throw err;

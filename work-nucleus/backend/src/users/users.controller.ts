@@ -75,8 +75,9 @@ export class UsersController {
   @ApiResponse({ status: 404, description: 'User not found' })
   remove(
     @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') callerId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.usersService.remove(orgId, id);
+    return this.usersService.remove(orgId, id, callerId);
   }
 }

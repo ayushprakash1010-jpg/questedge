@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
-import { getApiUrl } from "@/lib/api-url";
+import { getApiUrl, getProxyHeaders } from "@/lib/api-url";
 
 const API_URL = getApiUrl();
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
     const session = await auth0.getSession();
     if (!session) {
@@ -14,7 +14,7 @@ export async function POST() {
 
     const res = await fetch(`${API_URL}/api/v1/candidates/trigger-scoring`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: getProxyHeaders(req, accessToken),
     });
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });

@@ -72,6 +72,14 @@ export class DemoRoleInterceptor implements NestInterceptor {
       } else if (
         referer.includes('/dashboard') ||
         referer.includes('/mandates') ||
+        referer.includes('/assessments') ||
+        referer.includes('/resume-ranker') ||
+        referer.includes('/appraisal') ||
+        referer.includes('/bgv') ||
+        referer.includes('/compensation') ||
+        referer.includes('/offers') ||
+        referer.includes('/hiring-plans') ||
+        referer.includes('/training') ||
         referer.includes('/admin') ||
         referer.includes('/company')
       ) {
@@ -88,29 +96,58 @@ export class DemoRoleInterceptor implements NestInterceptor {
         path.includes('/rewards/recruiter')
       ) {
         demoRole = 'RECRUITER';
-      } else if (path.startsWith('/api/v1/candidates') || path.startsWith('/api/v1/mandates')) {
+      } else if (
+        path.startsWith('/api/v1/candidates') ||
+        path.startsWith('/api/v1/mandates') ||
+        path.startsWith('/api/v1/hiring-plans') ||
+        path.startsWith('/api/v1/training-modules') ||
+        path.startsWith('/api/v1/analytics') ||
+        path.startsWith('/api/v1/admin') ||
+        path.startsWith('/api/v1/search') ||
+        path.startsWith('/api/v1/resume-ranking') ||
+        path.startsWith('/api/v1/rewards/company') ||
+        path.startsWith('/api/v2/appraisal') ||
+        path.startsWith('/api/v2/bgv') ||
+        path.startsWith('/api/v2/compensation') ||
+        path.startsWith('/api/v2/offers') ||
+        path.startsWith('/api/v2/offer-templates') ||
+        path.startsWith('/api/v2/joining') ||
+        path.startsWith('/api/v2/assessments') ||
+        path.startsWith('/api/v2/reports') ||
+        path.startsWith('/api/v2/ai-cost')
+      ) {
         demoRole = 'COMPANY';
-      } else if (path.includes('/candidate')) {
+      } else if (
+        path.includes('/candidate') &&
+        !/\/api\/v1\/candidate\/profile\/[^/]+\/resume/.test(path)
+      ) {
         demoRole = 'CANDIDATE';
       }
     }
 
-    // 4. In case still not resolved, infer from route @UserTypes() decorator
+    // 4. In case still not resolved, infer from route @UserTypes() decorator (only when unambiguous)
     if (!demoRole && this.reflector) {
       const requiredUserTypes = this.reflector.getAllAndOverride<string[]>(
         USER_TYPES_KEY,
         [context.getHandler(), context.getClass()],
       );
       if (requiredUserTypes?.length) {
-        if (requiredUserTypes.includes('RECRUITER')) {
-          demoRole = 'RECRUITER';
-        } else if (requiredUserTypes.includes('CANDIDATE')) {
-          demoRole = 'CANDIDATE';
-        } else if (
+        const hasCompany =
           requiredUserTypes.includes('COMPANY_USER') ||
-          requiredUserTypes.includes('COMPANY_ADMIN')
-        ) {
-          demoRole = 'COMPANY';
+          requiredUserTypes.includes('COMPANY_ADMIN');
+        const hasRecruiter = requiredUserTypes.includes('RECRUITER');
+        const hasCandidate = requiredUserTypes.includes('CANDIDATE');
+        const personaCount =
+          Number(hasCompany) + Number(hasRecruiter) + Number(hasCandidate);
+
+        if (personaCount === 1) {
+          if (hasRecruiter) {
+            demoRole = 'RECRUITER';
+          } else if (hasCandidate) {
+            demoRole = 'CANDIDATE';
+          } else if (hasCompany) {
+            demoRole = 'COMPANY';
+          }
         }
       }
     }
@@ -128,13 +165,15 @@ export class DemoRoleInterceptor implements NestInterceptor {
         include: { organization: true },
       });
       if (overrideProfile) {
+        const companyUserType =
+          overrideProfile.role === 'ADMIN' ? 'COMPANY_ADMIN' : 'COMPANY_USER';
         req.user = {
           ...overrideProfile,
-          userType: 'COMPANY_USER',
+          userType: companyUserType,
           isProvisioned: true,
           isDemoAccount: true,
         };
-        this.logger.debug(`Demo role override → COMPANY_USER for ${auth0Sub}`);
+        this.logger.debug(`Demo role override → ${companyUserType} for ${auth0Sub}`);
       }
     } else if (demoRole === 'RECRUITER') {
       overrideProfile = await this.prisma.recruiterProfile.findUnique({

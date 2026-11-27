@@ -29,17 +29,20 @@ export class UserTicketsController {
   async createTicket(@Body() dto: CreateTicketDto, @Req() req: any) {
     let orgId = req.user.orgId;
     if (!orgId) {
-      const platformOrg = await this.prisma.organization.findFirst({
+      let platformOrg = await this.prisma.organization.findFirst({
         where: { name: 'QuestEdge Platform' },
       });
-      orgId = platformOrg?.id;
-      if (!orgId) {
-        const anyOrg = await this.prisma.organization.findFirst();
-        orgId = anyOrg?.id;
+      if (!platformOrg) {
+        platformOrg = await this.prisma.organization.create({
+          data: { name: 'QuestEdge Platform', industry: 'Platform Support' },
+        });
       }
+      orgId = platformOrg.id;
     }
     dto.orgId = orgId;
     dto.reportedBy = req.user.email || req.user.id || req.user.name || 'client';
+    dto.assigneeId = undefined;
+    dto.tags = [];
     return this.ticketsService.createTicket(dto, req.user.id);
   }
 

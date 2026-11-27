@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getMandateReferrals, updateReferralStatus } from "@/lib/marketplace-api";
+import { apiClient } from "@/lib/api";
 import {
   ArrowLeft,
   Loader2,
@@ -630,11 +631,10 @@ function ReferralCard({
                       setIsRetrying(true);
                       const tokenRes = await fetch("/api/auth/token");
                       const { accessToken } = await tokenRes.json();
-                      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-                      await fetch(`${API_URL}/api/v1/mandates/${mandateId}/referrals/${referral.id}/trigger-ai`, {
-                        method: "POST",
-                        headers: { Authorization: `Bearer ${accessToken}` },
-                      });
+                      await apiClient(
+                        `/api/v1/mandates/${mandateId}/referrals/${referral.id}/trigger-ai`,
+                        { method: "POST", token: accessToken }
+                      );
                       await onRefresh();
                       setIsRetrying(false);
                     } catch (err) {
@@ -731,11 +731,10 @@ function ReferralCard({
                 setIsRetrying(true);
                 const tokenRes = await fetch("/api/auth/token");
                 const { accessToken } = await tokenRes.json();
-                const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-                await fetch(`${API_URL}/api/v1/mandates/${mandateId}/referrals/${referral.id}/trigger-ai`, {
-                  method: "POST",
-                  headers: { Authorization: `Bearer ${accessToken}` },
-                });
+                await apiClient(
+                  `/api/v1/mandates/${mandateId}/referrals/${referral.id}/trigger-ai`,
+                  { method: "POST", token: accessToken }
+                );
                 await onRefresh();
                 setIsRetrying(false);
               } catch (err) {

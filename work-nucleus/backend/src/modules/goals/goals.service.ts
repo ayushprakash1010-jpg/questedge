@@ -1,9 +1,10 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { GoalStatus } from '@prisma/client';
+import { GoalStatus, Role } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateGoalDto, CreateOrgGoalDto, UpdateGoalDto } from './dto/goal.dto';
 
@@ -13,7 +14,22 @@ export class GoalsService {
 
   // ── Personal goals ────────────────────────────────────────────
 
-  async create(orgId: string, dto: CreateGoalDto) {
+  async create(
+    orgId: string,
+    userId: string,
+    userRole: Role,
+    dto: CreateGoalDto,
+  ) {
+    if (
+      dto.employeeId !== userId &&
+      userRole !== Role.ADMIN &&
+      userRole !== Role.HR &&
+      userRole !== Role.HIRING_MANAGER
+    ) {
+      throw new ForbiddenException(
+        'Only ADMIN, HR, or HIRING_MANAGER can create goals for another employee',
+      );
+    }
     await this.assertCycleInOrg(orgId, dto.cycleId);
     await this.assertWeightCapacity(dto.cycleId, dto.employeeId, dto.weight);
     return this.prisma.goal.create({ data: { ...dto } });
@@ -37,11 +53,36 @@ export class GoalsService {
     });
   }
 
-  async update(orgId: string, id: string, dto: UpdateGoalDto) {
+  async update(
+    orgId: string,
+    id: string,
+    userId: string,
+    userRole: Role,
+    dto: UpdateGoalDto,
+  ) {
     const goal = await this.prisma.goal.findFirst({
       where: { id, cycle: { orgId } },
     });
     if (!goal) throw new NotFoundException('Goal not found');
+    const isHrOrAdmin = userRole === Role.ADMIN || userRole === Role.HR;
+    const isManager = goal.managerId === userId;
+    const isEmployee = goal.employeeId === userId;
+
+    if (!isHrOrAdmin && !isManager && !isEmployee) {
+      throw new ForbiddenException('You are not authorized to update this goal');
+    }
+    if (isEmployee && !isManager && !isHrOrAdmin) {
+      if (
+        dto.managerRating !== undefined ||
+        dto.managerComment !== undefined ||
+        dto.managerId !== undefined ||
+        dto.employeeId !== undefined
+      ) {
+        throw new ForbiddenException(
+          'Employees cannot modify manager ratings, comments, or ownership',
+        );
+      }
+    }
     if (dto.weight !== undefined && dto.weight !== goal.weight) {
       await this.assertWeightCapacity(
         goal.cycleId,
@@ -53,11 +94,20 @@ export class GoalsService {
     return this.prisma.goal.update({ where: { id }, data: { ...dto } });
   }
 
-  async agree(orgId: string, id: string) {
+  async agree(orgId: string, id: string, userId: string, userRole: Role) {
     const g = await this.prisma.goal.findFirst({
       where: { id, cycle: { orgId } },
     });
     if (!g) throw new NotFoundException('Goal not found');
+    if (
+      g.managerId !== userId &&
+      userRole !== Role.ADMIN &&
+      userRole !== Role.HR
+    ) {
+      throw new ForbiddenException(
+        'Only the assigned manager, ADMIN, or HR can agree to a goal',
+      );
+    }
     if (g.status === GoalStatus.AGREED) return g;
     return this.prisma.goal.update({
       where: { id },

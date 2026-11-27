@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
-import { getApiUrl } from "@/lib/api-url";
+import { getApiUrl, getProxyHeaders } from "@/lib/api-url";
 
 const API_URL = getApiUrl();
 
@@ -20,10 +20,7 @@ export async function POST(
       `${API_URL}/api/v1/hiring-plans/${params.id}/publish`,
       {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
+        headers: getProxyHeaders(req, accessToken, "application/json"),
         body: JSON.stringify(body),
       }
     );
@@ -49,7 +46,7 @@ export async function GET(
     const res = await fetch(
       `${API_URL}/api/v1/hiring-plans/${params.id}/publish`,
       {
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: getProxyHeaders(req, accessToken),
       }
     );
 

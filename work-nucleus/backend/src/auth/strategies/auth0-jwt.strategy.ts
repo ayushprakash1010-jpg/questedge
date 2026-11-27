@@ -439,10 +439,17 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('User account is deactivated');
     }
 
+    const resolvedUserType =
+      actualUserType === 'COMPANY_USER' &&
+      'role' in resolvedProfile &&
+      resolvedProfile.role === Role.ADMIN
+        ? 'COMPANY_ADMIN'
+        : actualUserType;
+
     const finalProfile = {
       ...resolvedProfile,
       emailVerified: isEmailVerified,
-      userType: actualUserType,
+      userType: resolvedUserType,
       isProvisioned: true,
     };
 

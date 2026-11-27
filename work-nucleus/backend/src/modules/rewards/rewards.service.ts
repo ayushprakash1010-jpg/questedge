@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -378,16 +379,37 @@ export class RewardsService {
       throw new BadRequestException('Cannot dispute an already cancelled reward.');
     }
 
-    // Ownership check
-    if (actor.orgId && reward.orgId !== actor.orgId) {
-      throw new BadRequestException(
-        'Unauthorized: Reward belongs to a different organisation.',
-      );
-    }
-    if (actor.auth0Sub && reward.recruiter.auth0Sub !== actor.auth0Sub) {
-      throw new BadRequestException(
-        'Unauthorized: Reward belongs to a different recruiter.',
-      );
+    // Ownership check (strictly scoped by caller persona)
+    const isCompanyActor =
+      actor.userType === 'COMPANY_ADMIN' || actor.userType === 'COMPANY_USER';
+    const isRecruiterActor = actor.userType === 'RECRUITER';
+
+    if (isCompanyActor) {
+      if (!actor.orgId || reward.orgId !== actor.orgId) {
+        throw new BadRequestException(
+          'Unauthorized: Reward belongs to a different organisation.',
+        );
+      }
+    } else if (isRecruiterActor) {
+      const ownsById = actor.userId && reward.recruiterId === actor.userId;
+      const ownsBySub =
+        actor.auth0Sub && reward.recruiter?.auth0Sub === actor.auth0Sub;
+      if (!ownsById && !ownsBySub) {
+        throw new BadRequestException(
+          'Unauthorized: Reward belongs to a different recruiter.',
+        );
+      }
+    } else {
+      if (actor.orgId && reward.orgId !== actor.orgId) {
+        throw new BadRequestException(
+          'Unauthorized: Reward belongs to a different organisation.',
+        );
+      }
+      if (actor.auth0Sub && reward.recruiter?.auth0Sub !== actor.auth0Sub) {
+        throw new BadRequestException(
+          'Unauthorized: Reward belongs to a different recruiter.',
+        );
+      }
     }
 
     // Parse previous notes to append dispute metadata
@@ -516,6 +538,14 @@ export class RewardsService {
 
 
     if (!reward) throw new NotFoundException('Reward not found');
+    if (
+      actor.role !== 'SUPPORT_ADMIN' &&
+      (!actor.orgId || reward.orgId !== actor.orgId)
+    ) {
+      throw new ForbiddenException(
+        'Unauthorized: Reward belongs to a different organisation.',
+      );
+    }
     if (reward.status !== RewardStatus.DISPUTED) {
       throw new BadRequestException(
         'Reward is not currently in dispute status.',
@@ -636,7 +666,10 @@ export class RewardsService {
    * Get complete cryptographic and transactional audit trail for a reward.
    * Verifies tamper-evidence SHA-256 hash integrity.
    */
-  async getRewardAuditTrail(rewardId: string) {
+  async getRewardAuditTrail(
+    rewardId: string,
+    actor?: { userId?: string; orgId?: string; role?: string; userType?: string },
+  ) {
     const reward = await this.prisma.rewardTracking.findUnique({
       where: { id: rewardId },
       include: {
@@ -655,6 +688,37 @@ export class RewardsService {
       },
     });
     if (!reward) throw new NotFoundException('Reward not found');
+
+    if (actor) {
+      const isPlatformSupport =
+        actor.userType === 'PLATFORM_ADMIN' ||
+        actor.role === 'SUPPORT_ADMIN' ||
+        actor.role === 'SUPPORT_REP';
+      const isCompanyActor =
+        actor.userType === 'COMPANY_ADMIN' ||
+        actor.userType === 'COMPANY_USER';
+      const isRecruiterActor = actor.userType === 'RECRUITER';
+
+      if (!isPlatformSupport) {
+        if (isRecruiterActor) {
+          if (!actor.userId || reward.recruiterId !== actor.userId) {
+            throw new ForbiddenException(
+              'Unauthorized to access this reward audit trail',
+            );
+          }
+        } else if (isCompanyActor || actor.orgId) {
+          if (!actor.orgId || reward.orgId !== actor.orgId) {
+            throw new ForbiddenException(
+              'Unauthorized to access this reward audit trail',
+            );
+          }
+        } else {
+          throw new ForbiddenException(
+            'Unauthorized to access this reward audit trail',
+          );
+        }
+      }
+    }
 
     const [auditLogs, securityLogs] = await Promise.all([
       this.prisma.auditLog.findMany({

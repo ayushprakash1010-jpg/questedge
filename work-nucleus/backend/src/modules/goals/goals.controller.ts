@@ -24,8 +24,13 @@ export class GoalsController {
 
   @Post()
   @ApiOperation({ summary: 'Create a personal goal in a cycle' })
-  create(@CurrentUser('orgId') orgId: string, @Body() dto: CreateGoalDto) {
-    return this.service.create(orgId, dto);
+  create(
+    @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') userRole: Role,
+    @Body() dto: CreateGoalDto,
+  ) {
+    return this.service.create(orgId, userId, userRole, dto);
   }
 
   @Get('mine')
@@ -54,10 +59,12 @@ export class GoalsController {
   @ApiOperation({ summary: 'Update goal (description, ratings, comments)' })
   update(
     @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') userRole: Role,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateGoalDto,
   ) {
-    return this.service.update(orgId, id, dto);
+    return this.service.update(orgId, id, userId, userRole, dto);
   }
 
   @Post(':id/agree')
@@ -66,12 +73,15 @@ export class GoalsController {
   })
   agree(
     @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') userRole: Role,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.service.agree(orgId, id);
+    return this.service.agree(orgId, id, userId, userRole);
   }
 
   @Post('bulk-copy')
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER)
   @ApiOperation({
     summary: 'Copy goals from previous cycle to current cycle for one employee',
   })
@@ -89,6 +99,7 @@ export class GoalsController {
   }
 
   @Post('cascade')
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER)
   @ApiOperation({ summary: 'Cascade an org goal to direct reports' })
   cascade(
     @CurrentUser('orgId') orgId: string,
@@ -102,6 +113,7 @@ export class GoalsController {
   // ── Org goals ────────────────────────────────────────────────
 
   @Post('org')
+  @Roles(Role.ADMIN, Role.HR)
   @ApiOperation({ summary: 'Create an org goal' })
   createOrgGoal(
     @CurrentUser('orgId') orgId: string,

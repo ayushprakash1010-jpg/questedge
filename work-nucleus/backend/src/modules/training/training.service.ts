@@ -39,29 +39,29 @@ export class TrainingService {
     }));
   }
 
-  async findOne(id: string) {
-    const module = await this.prisma.trainingModule.findUnique({
-      where: { id },
+  async findOne(orgId: string, id: string) {
+    const module = await this.prisma.trainingModule.findFirst({
+      where: { id, orgId },
     });
     if (!module) throw new NotFoundException('Training module not found');
     return module;
   }
 
-  async update(id: string, dto: UpdateTrainingModuleDto) {
-    await this.findOne(id);
+  async update(orgId: string, id: string, dto: UpdateTrainingModuleDto) {
+    await this.findOne(orgId, id);
     return this.prisma.trainingModule.update({
       where: { id },
       data: dto,
     });
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
+  async remove(orgId: string, id: string) {
+    await this.findOne(orgId, id);
     return this.prisma.trainingModule.delete({ where: { id } });
   }
 
-  async markComplete(moduleId: string, userId: string) {
-    await this.findOne(moduleId);
+  async markComplete(orgId: string, moduleId: string, userId: string) {
+    await this.findOne(orgId, moduleId);
     return this.prisma.trainingCompletion.upsert({
       where: { userId_moduleId: { userId, moduleId } },
       create: { userId, moduleId },

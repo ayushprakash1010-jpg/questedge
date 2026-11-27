@@ -38,8 +38,13 @@ export class AssessmentsController {
   @ApiOperation({
     summary: 'Start (or fetch) an assessment for a (cycle, employee, type)',
   })
-  start(@CurrentUser('orgId') orgId: string, @Body() dto: StartAssessmentDto) {
-    return this.service.start(orgId, dto);
+  start(
+    @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') userRole: Role,
+    @Body() dto: StartAssessmentDto,
+  ) {
+    return this.service.start(orgId, userId, userRole, dto);
   }
 
   @Patch(':id/autosave')
@@ -97,10 +102,12 @@ export class AssessmentsController {
   })
   sideBySide(
     @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') userRole: Role,
     @Query('cycleId', ParseUUIDPipe) cycleId: string,
     @Query('employeeId', ParseUUIDPipe) employeeId: string,
   ) {
-    return this.service.sideBySide(orgId, cycleId, employeeId);
+    return this.service.sideBySide(orgId, cycleId, employeeId, userId, userRole);
   }
 
   @Post('ai-suggest')
@@ -109,8 +116,16 @@ export class AssessmentsController {
   })
   aiSuggest(
     @CurrentUser('orgId') orgId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') userRole: Role,
     @Body() body: { cycleId: string; employeeId: string },
   ) {
-    return this.service.aiSuggest(orgId, body.cycleId, body.employeeId);
+    return this.service.aiSuggest(
+      orgId,
+      body.cycleId,
+      body.employeeId,
+      userId,
+      userRole,
+    );
   }
 }

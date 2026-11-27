@@ -123,13 +123,15 @@ export class CompRevisionsController {
   act(
     @CurrentUser('orgId') orgId: string,
     @CurrentUser('id') userId: string,
+    @CurrentUser('role') userRole: Role,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ApprovalActionDto,
   ) {
-    return this.service.act(orgId, id, userId, dto.action, dto.comment);
+    return this.service.act(orgId, id, userId, userRole, dto.action, dto.comment);
   }
 
   @Post(':id/lock')
+  @Roles(Role.ADMIN, Role.HR)
   @ApiOperation({ summary: 'Lock revision (post-CEO approval)' })
   lock(
     @CurrentUser('orgId') orgId: string,
@@ -139,6 +141,7 @@ export class CompRevisionsController {
   }
 
   @Post(':id/letter')
+  @Roles(Role.ADMIN, Role.HR)
   @ApiOperation({ summary: 'Generate the comp revision letter' })
   generateLetter(
     @CurrentUser('orgId') orgId: string,
@@ -160,6 +163,7 @@ export class CompRevisionsController {
   }
 
   @Post(':id/deliver')
+  @Roles(Role.ADMIN, Role.HR)
   @ApiOperation({ summary: 'Deliver the letter to employee (gated on 1-on-1)' })
   deliver(
     @CurrentUser('orgId') orgId: string,
@@ -169,6 +173,7 @@ export class CompRevisionsController {
   }
 
   @Post(':id/acknowledge')
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER, Role.INTERVIEWER, Role.VIEWER)
   @ApiOperation({ summary: 'Employee acknowledges the comp revision' })
   acknowledge(
     @CurrentUser('orgId') orgId: string,
@@ -188,6 +193,7 @@ export class CompRevisionsController {
   }
 
   @Get('cycles/:cycleId/export')
+  @Roles(Role.ADMIN, Role.HR)
   @ApiOperation({ summary: 'Payroll export (keka | darwinbox | zinghr | csv)' })
   payrollExport(
     @CurrentUser('orgId') orgId: string,

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
-import { getApiUrl } from "@/lib/api-url";
+import { getApiUrl, getProxyHeaders } from "@/lib/api-url";
 
 const API_URL = getApiUrl();
 
@@ -14,7 +14,7 @@ export async function GET(
     const { token: accessToken } = await auth0.getAccessToken();
 
     const res = await fetch(`${API_URL}/api/v1/applications/${params.appId}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: getProxyHeaders(req, accessToken),
     });
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
@@ -36,7 +36,7 @@ export async function POST(
     // Move candidate
     const res = await fetch(`${API_URL}/api/v1/applications/${params.appId}/move`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      headers: getProxyHeaders(req, accessToken, "application/json"),
       body: JSON.stringify(body),
     });
     const data = await res.json();
@@ -59,7 +59,7 @@ export async function PATCH(
     // Update status
     const res = await fetch(`${API_URL}/api/v1/applications/${params.appId}/status`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      headers: getProxyHeaders(req, accessToken, "application/json"),
       body: JSON.stringify(body),
     });
     const data = await res.json();

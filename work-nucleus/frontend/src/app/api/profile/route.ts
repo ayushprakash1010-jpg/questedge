@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { auth0 } from "@/lib/auth0";
-import { getApiUrl } from "@/lib/api-url";
+import { getApiUrl, getDemoRoleHeader } from "@/lib/api-url";
 
 export const dynamic = "force-dynamic";
 
@@ -14,13 +14,10 @@ export async function GET(req: NextRequest) {
     const { token: accessToken } = await auth0.getAccessToken();
     const apiUrl = getApiUrl();
 
-    const demoRole = req.cookies.get("demo_role")?.value;
     const headers: Record<string, string> = {
       Authorization: `Bearer ${accessToken}`,
+      ...getDemoRoleHeader(req, { inferReferer: false }),
     };
-    if (demoRole) {
-      headers["X-Demo-Role"] = demoRole;
-    }
     if (session.user?.email) {
       headers["X-User-Email"] = session.user.email;
     }

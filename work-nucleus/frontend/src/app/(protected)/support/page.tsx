@@ -19,6 +19,7 @@ import {
   DataTableRow,
 } from "@/components/shared/data-table";
 import { BrandLoader } from "@/components/ui/brand-loader";
+import { apiClient } from "@/lib/api";
 
 
 export default function SupportPage() {
@@ -38,22 +39,16 @@ export default function SupportPage() {
     setLoading(true);
     try {
       const tokenRes = await fetch("/api/auth/token");
-      const { accessToken } = await tokenRes.json();
-      const API_URL =
-        process.env.NEXT_PUBLIC_API_URL ||
-        (process.env.NODE_ENV === "production"
-          ? "https://questedge.onrender.com"
-          : "http://localhost:3000");
-
-      const res = await fetch(`${API_URL}/api/v1/user/support/tickets`, {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setTickets(data.data || []);
+      if (!tokenRes.ok) {
+        throw new Error("Authentication required");
       }
+      const { accessToken } = await tokenRes.json();
+      const data = await apiClient<{ data?: any[] }>("/api/v1/user/support/tickets", {
+        token: accessToken,
+      });
+      setTickets(Array.isArray(data?.data) ? data.data : []);
     } catch (err) {
-      toast.error("Failed to load tickets");
+      toast.error(err instanceof Error ? err.message : "Failed to load tickets");
     } finally {
       setLoading(false);
     }
@@ -68,27 +63,16 @@ export default function SupportPage() {
     setSaving(true);
     try {
       const tokenRes = await fetch("/api/auth/token");
-      const { accessToken } = await tokenRes.json();
-      const API_URL =
-        process.env.NEXT_PUBLIC_API_URL ||
-        (process.env.NODE_ENV === "production"
-          ? "https://questedge.onrender.com"
-          : "http://localhost:3000");
-
-      const res = await fetch(`${API_URL}/api/v1/user/support/tickets`, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`
-        },
-        body: JSON.stringify(form)
-      });
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        const msg = Array.isArray(errJson.message) ? errJson.message.join(", ") : errJson.message || errJson.error;
-        throw new Error(msg || "Failed to create ticket");
+      if (!tokenRes.ok) {
+        throw new Error("Authentication required");
       }
-      
+      const { accessToken } = await tokenRes.json();
+      await apiClient("/api/v1/user/support/tickets", {
+        method: "POST",
+        token: accessToken,
+        body: JSON.stringify(form),
+      });
+
       toast.success("Support ticket created!");
       setDialogOpen(false);
       setForm({ title: "", description: "", category: "GENERAL", priority: "MEDIUM" });

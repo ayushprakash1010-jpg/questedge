@@ -7,6 +7,7 @@ import {
   Query,
   UseGuards,
   ParseUUIDPipe,
+  ForbiddenException,
 } from '@nestjs/common';
 import { RewardsService } from './rewards.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -91,6 +92,7 @@ export class RewardsController {
   // ── P4-05: Reward Disputes & Immutable Audit Trail ──────────────
 
   @Post(':id/dispute')
+  @UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER, UserType.RECRUITER)
   @ApiOperation({
     summary:
       'Raise a formal dispute on a reward (Company ADMIN/HR or Recruiter)',
@@ -101,6 +103,16 @@ export class RewardsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: RaiseRewardDisputeDto,
   ) {
+    if (
+      (user.userType === UserType.COMPANY_ADMIN ||
+        user.userType === UserType.COMPANY_USER) &&
+      user.role !== Role.ADMIN &&
+      user.role !== Role.HR
+    ) {
+      throw new ForbiddenException(
+        'Only Company ADMIN or HR users can raise reward disputes.',
+      );
+    }
     return this.rewardsService.raiseDispute(
       id,
       {
@@ -136,22 +148,49 @@ export class RewardsController {
   }
 
   @Get(':id/audit-trail')
+  @UserTypes(
+    UserType.COMPANY_ADMIN,
+    UserType.COMPANY_USER,
+    UserType.RECRUITER,
+    UserType.PLATFORM_ADMIN,
+  )
   @ApiOperation({
     summary:
       'Get tamper-evident immutable audit trail & SHA-256 verification for a reward',
   })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
-  async getRewardAuditTrail(@Param('id', ParseUUIDPipe) id: string) {
-    return this.rewardsService.getRewardAuditTrail(id);
+  async getRewardAuditTrail(
+    @CurrentUser() user: any,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.rewardsService.getRewardAuditTrail(id, {
+      userId: user.id,
+      orgId: user.orgId,
+      role: user.role,
+      userType: user.userType,
+    });
   }
 
   @Get('disputes')
+  @UserTypes(
+    UserType.COMPANY_ADMIN,
+    UserType.COMPANY_USER,
+    UserType.RECRUITER,
+    UserType.PLATFORM_ADMIN,
+  )
   @ApiOperation({ summary: 'List all rewards currently under dispute' })
   async getDisputes(
     @CurrentUser() user: any,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
+    if (
+      user.userType === UserType.PLATFORM_ADMIN &&
+      user.role !== Role.SUPPORT_ADMIN &&
+      user.role !== Role.SUPPORT_REP
+    ) {
+      throw new ForbiddenException('Unauthorized to list all disputes.');
+    }
     const isCompany =
       user.userType === UserType.COMPANY_ADMIN ||
       user.userType === UserType.COMPANY_USER;

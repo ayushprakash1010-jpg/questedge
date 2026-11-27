@@ -1,10 +1,11 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { CompLetterStatus, Prisma, RevisionStatus } from '@prisma/client';
+import { CompLetterStatus, Prisma, RevisionStatus, Role } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OfferRenderService } from '../offers/services/offer-render.service';
 import { OverrideRevisionDto } from './dto/revision.dto';
@@ -125,6 +126,7 @@ export class CompRevisionsService {
     orgId: string,
     id: string,
     userId: string,
+    userRole: Role,
     action: 'APPROVE' | 'REJECT',
     comment?: string,
   ) {
@@ -132,6 +134,15 @@ export class CompRevisionsService {
     if (!APPROVAL_CHAIN.includes(r.status)) {
       throw new BadRequestException(
         `Revision is ${r.status}; not in an approval state`,
+      );
+    }
+    if (
+      r.status !== RevisionStatus.MANAGER_REVIEW &&
+      userRole !== Role.ADMIN &&
+      userRole !== Role.HR
+    ) {
+      throw new ForbiddenException(
+        'Only ADMIN or HR can act on approval steps beyond MANAGER_REVIEW',
       );
     }
     const chain = (r.approvalChain as unknown as ApprovalChainEntry[]) ?? [];

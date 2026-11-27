@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader2, Download, ExternalLink, X, FileText, AlertCircle } from "lucide-react";
 import { BrandLoader } from "@/components/ui/brand-loader";
+import { getClientApiUrl, getDemoRole } from "@/lib/api";
 
 function ResumeViewerContent() {
   const searchParams = useSearchParams();
@@ -32,14 +33,18 @@ function ResumeViewerContent() {
         throw new Error("Authentication required. Please sign in.");
       }
       const { accessToken } = await tokenRes.json();
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+      const apiUrl = getClientApiUrl();
+      const demoRole = getDemoRole() || (!isMyResume ? "COMPANY" : "CANDIDATE");
 
       const endpoint = isMyResume
         ? `${apiUrl}/api/v1/candidate/profile/my/resume`
         : `${apiUrl}/api/v1/candidate/profile/${candidateId}/resume`;
 
       const res = await fetch(endpoint, {
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          ...(demoRole ? { "X-Demo-Role": demoRole } : {}),
+        },
       });
 
       if (!res.ok) {

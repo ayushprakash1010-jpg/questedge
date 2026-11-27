@@ -8,6 +8,7 @@ import {
   Body,
   ParseUUIDPipe,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { TrainingService } from './training.service';
@@ -16,10 +17,15 @@ import {
   UpdateTrainingModuleDto,
 } from './dto/training.dto';
 import { Roles } from '../../auth/decorators/roles.decorator';
-import { Role } from '@prisma/client';
+import { UserTypes } from '../../auth/decorators/user-types.decorator';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../auth/guards/roles.guard';
+import { Role, UserType } from '@prisma/client';
 
 @ApiTags('Training')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
+@UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
 @Controller('api/v1/training-modules')
 export class TrainingController {
   constructor(private readonly trainingService: TrainingService) {}
@@ -38,8 +44,8 @@ export class TrainingController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get training module content' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.trainingService.findOne(id);
+  findOne(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    return this.trainingService.findOne(req.user.orgId, id);
   }
 
   @Post()
@@ -62,20 +68,21 @@ export class TrainingController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateTrainingModuleDto,
+    @Req() req: any,
   ) {
-    return this.trainingService.update(id, dto);
+    return this.trainingService.update(req.user.orgId, id, dto);
   }
 
   @Delete(':id')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Delete a training module' })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.trainingService.remove(id);
+  remove(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    return this.trainingService.remove(req.user.orgId, id);
   }
 
   @Post(':id/complete')
   @ApiOperation({ summary: 'Mark a module as completed' })
   markComplete(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
-    return this.trainingService.markComplete(id, req.user.id);
+    return this.trainingService.markComplete(req.user.orgId, id, req.user.id);
   }
 }

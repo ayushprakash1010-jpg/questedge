@@ -1151,4 +1151,23 @@ export class MandatesService {
 
     return updated;
   }
+
+  async assertReferralInMandateOrg(
+    orgId: string,
+    mandateId: string,
+    referralId: string,
+  ) {
+    const referral = await this.prisma.referral.findFirst({
+      where: {
+        id: referralId,
+        mandateId,
+        mandate: { orgId },
+      },
+      select: { id: true },
+    });
+    if (!referral) {
+      throw new NotFoundException('Referral not found in this mandate');
+    }
+    return referral;
+  }
 }

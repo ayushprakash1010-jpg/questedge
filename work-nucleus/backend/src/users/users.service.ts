@@ -165,13 +165,28 @@ export class UsersService {
     return updated;
   }
 
-  async remove(orgId: string, userId: string) {
+  async remove(orgId: string, userId: string, callerId?: string) {
+    if (callerId && userId === callerId) {
+      throw new ForbiddenException('You cannot deactivate your own account.');
+    }
+
     const user = await this.prisma.user.findFirst({
       where: { id: userId, orgId },
     });
 
     if (!user) {
       throw new NotFoundException('User not found');
+    }
+
+    if (user.role === Role.ADMIN && user.isActive) {
+      const activeAdmins = await this.prisma.user.count({
+        where: { orgId, role: Role.ADMIN, isActive: true },
+      });
+      if (activeAdmins <= 1) {
+        throw new ForbiddenException(
+          'Cannot deactivate the last active admin.',
+        );
+      }
     }
 
     // Soft delete: deactivate locally

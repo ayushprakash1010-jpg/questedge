@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -10,6 +11,7 @@ import {
   AssessmentType,
   FeedbackRequestStatus,
   Prisma,
+  Role,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -38,7 +40,22 @@ export class AssessmentsService {
     );
   }
 
-  async start(orgId: string, dto: StartAssessmentDto) {
+  async start(
+    orgId: string,
+    userId: string,
+    userRole: Role,
+    dto: StartAssessmentDto,
+  ) {
+    if (
+      dto.employeeId !== userId &&
+      userRole !== Role.ADMIN &&
+      userRole !== Role.HR &&
+      userRole !== Role.HIRING_MANAGER
+    ) {
+      throw new ForbiddenException(
+        'Only ADMIN, HR, or HIRING_MANAGER can start an assessment for another employee',
+      );
+    }
     await this.assertCycleInOrg(orgId, dto.cycleId);
     return this.prisma.appraisalAssessment.upsert({
       where: {
@@ -190,8 +207,45 @@ export class AssessmentsService {
     };
   }
 
-  async sideBySide(orgId: string, cycleId: string, employeeId: string) {
+  async sideBySide(
+    orgId: string,
+    cycleId: string,
+    employeeId: string,
+    actorUserId?: string,
+    actorRole?: Role,
+  ) {
     await this.assertCycleInOrg(orgId, cycleId);
+    if (
+      actorUserId &&
+      employeeId !== actorUserId &&
+      actorRole !== Role.ADMIN &&
+      actorRole !== Role.HR
+    ) {
+      const isManager =
+        (await this.prisma.appraisalAssessment.findFirst({
+          where: {
+            cycleId,
+            employeeId,
+            managerId: actorUserId,
+            cycle: { orgId },
+          },
+          select: { id: true },
+        })) ||
+        (await this.prisma.goal.findFirst({
+          where: {
+            cycleId,
+            employeeId,
+            managerId: actorUserId,
+            cycle: { orgId },
+          },
+          select: { id: true },
+        }));
+      if (!isManager) {
+        throw new ForbiddenException(
+          'You are not authorized to view this employee assessment breakdown',
+        );
+      }
+    }
     const [self, manager, goals, peerSubmitted] = await Promise.all([
       this.prisma.appraisalAssessment.findUnique({
         where: {
@@ -229,8 +283,46 @@ export class AssessmentsService {
    * AI service routes to feedback_summariser if available; this client just
    * proxies whatever shape comes back).
    */
-  async aiSuggest(orgId: string, cycleId: string, employeeId: string) {
-    const data = await this.sideBySide(orgId, cycleId, employeeId);
+  async aiSuggest(
+    orgId: string,
+    cycleId: string,
+    employeeId: string,
+    userId: string,
+    userRole: Role,
+  ) {
+    if (userRole !== Role.ADMIN && userRole !== Role.HR) {
+      const isManager =
+        (await this.prisma.appraisalAssessment.findFirst({
+          where: {
+            cycleId,
+            employeeId,
+            managerId: userId,
+            cycle: { orgId },
+          },
+          select: { id: true },
+        })) ||
+        (await this.prisma.goal.findFirst({
+          where: {
+            cycleId,
+            employeeId,
+            managerId: userId,
+            cycle: { orgId },
+          },
+          select: { id: true },
+        }));
+      if (!isManager) {
+        throw new ForbiddenException(
+          'Only ADMIN, HR, or the assigned manager can generate AI appraisal suggestions',
+        );
+      }
+    }
+    const data = await this.sideBySide(
+      orgId,
+      cycleId,
+      employeeId,
+      userId,
+      userRole,
+    );
     try {
       const rawKey = this.config.get<string>('GEMINI_API_KEY');
       const trimmedKey = rawKey ? rawKey.trim() : null;

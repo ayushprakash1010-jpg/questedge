@@ -17,7 +17,11 @@ import {
 } from '@nestjs/swagger';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../auth/guards/roles.guard';
+import { Roles } from '../../auth/decorators/roles.decorator';
+import { UserTypes } from '../../auth/decorators/user-types.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import { Role, UserType } from '@prisma/client';
 import { ResumeRankingService } from './resume-ranking.service';
 import {
   RankResumesDto,
@@ -27,12 +31,14 @@ import {
 
 @ApiTags('Resume Ranking')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@UserTypes(UserType.COMPANY_ADMIN, UserType.COMPANY_USER)
 @Controller('api/v1/resume-ranking')
 export class ResumeRankingController {
   constructor(private readonly rankingService: ResumeRankingService) {}
 
   @Post('rank')
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER)
   @ApiOperation({
     summary: 'Rank multiple candidate resumes against a mandate JD',
   })
@@ -43,6 +49,7 @@ export class ResumeRankingController {
   }
 
   @Get('sessions/:mandateId')
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER, Role.INTERVIEWER)
   @ApiOperation({
     summary: 'List past ranking sessions for a mandate',
   })
@@ -64,6 +71,7 @@ export class ResumeRankingController {
   }
 
   @Get('session/:sessionId')
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER, Role.INTERVIEWER)
   @ApiOperation({
     summary: 'Get full ranking results for a session',
   })
@@ -76,6 +84,7 @@ export class ResumeRankingController {
   }
 
   @Post('re-rank/:sessionId')
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER)
   @ApiOperation({
     summary: 'Re-rank a previous session with different scoring weights',
   })
@@ -98,6 +107,7 @@ export class ResumeRankingController {
   // ── Feature 4: CSV Export ───────────────────────────────────────
 
   @Get('session/:sessionId/export/csv')
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER, Role.INTERVIEWER)
   @ApiOperation({
     summary: 'Export ranking session results as CSV',
   })
@@ -123,6 +133,7 @@ export class ResumeRankingController {
   // ── Feature 3: Compare Candidates ─────────────────────────────
 
   @Post('session/:sessionId/compare')
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER, Role.INTERVIEWER)
   @ApiOperation({
     summary: 'Compare 2-4 candidates side by side from a ranking session',
   })
@@ -142,6 +153,7 @@ export class ResumeRankingController {
   // ── Quick Rank: Standalone ad-hoc ranking ─────────────────────
 
   @Post('quick-rank')
+  @Roles(Role.ADMIN, Role.HR, Role.HIRING_MANAGER)
   @ApiOperation({
     summary:
       'Quick rank: upload JD text + resume texts for instant ranking (no mandate needed)',

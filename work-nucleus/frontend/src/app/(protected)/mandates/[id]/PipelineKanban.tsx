@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { Loader2, Mail, Phone, ExternalLink, GraduationCap, Award, MoreVertical, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { apiClient } from "@/lib/api";
+import { toast } from "@/components/ui/toaster";
 
 interface CandidateApplication {
   id: string;
@@ -57,11 +59,10 @@ export function PipelineKanban({ mandateId }: PipelineKanbanProps) {
     try {
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetch(`${apiUrl}/api/v1/mandates/${mandateId}/pipeline`, {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      const data = await res.json();
+      const data = await apiClient<CandidateApplication[]>(
+        `/api/v1/mandates/${mandateId}/pipeline`,
+        { token: accessToken }
+      );
       setApplications(Array.isArray(data) ? data : []);
       
       // Ensure all default stages are always shown, and append any custom stages
@@ -78,6 +79,7 @@ export function PipelineKanban({ mandateId }: PipelineKanbanProps) {
       setStages(sortedStages);
     } catch (err) {
       console.error("Failed to fetch pipeline", err);
+      toast.error(err instanceof Error ? err.message : "Failed to load mandate pipeline");
       setStages(DEFAULT_STAGES);
     } finally {
       setLoading(false);
@@ -110,7 +112,6 @@ export function PipelineKanban({ mandateId }: PipelineKanbanProps) {
     try {
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
 
       if (draggedItem?.isReferral || draggedItem?.referral) {
         // Map targetStageId to Referral status
@@ -124,26 +125,21 @@ export function PipelineKanban({ mandateId }: PipelineKanbanProps) {
         const newStatus = stageToStatusMap[targetStageId] || "UNDER_REVIEW";
         const referralId = draggedItem.referralId || draggedItem.id;
 
-        await fetch(`${apiUrl}/api/v1/mandates/${mandateId}/referrals/${referralId}/status`, {
+        await apiClient(`/api/v1/mandates/${mandateId}/referrals/${referralId}/status`, {
           method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
+          token: accessToken,
           body: JSON.stringify({ status: newStatus }),
         });
       } else {
-        await fetch(`${apiUrl}/api/v1/applications/${draggedAppId}/move`, {
+        await apiClient(`/api/v1/applications/${draggedAppId}/move`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`
-          },
-          body: JSON.stringify({ targetStageId })
+          token: accessToken,
+          body: JSON.stringify({ targetStageId }),
         });
       }
     } catch (err) {
       console.error("Failed to move candidate", err);
+      toast.error(err instanceof Error ? err.message : "Failed to move candidate");
       fetchPipeline(); // Revert on failure
     }
     setDraggedAppId(null);

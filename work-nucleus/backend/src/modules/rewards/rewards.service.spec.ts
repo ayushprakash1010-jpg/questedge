@@ -252,7 +252,7 @@ describe('RewardsService', () => {
 
       const res = await disputeService.resolveDispute(
         'rew-123',
-        { userId: 'admin-1', role: 'ADMIN' },
+        { userId: 'admin-1', orgId: 'org-111', role: 'ADMIN' },
         {
           decision: 'UPHELD' as any,
           resolutionNotes: 'Verified candidate early exit. Reward clawback applied.',
@@ -282,7 +282,7 @@ describe('RewardsService', () => {
 
       await disputeService.resolveDispute(
         'rew-123',
-        { userId: 'admin-1', role: 'ADMIN' },
+        { userId: 'admin-1', orgId: 'org-111', role: 'ADMIN' },
         {
           decision: 'REJECTED' as any,
           resolutionNotes: 'Ownership verified. Dispute dismissed.',
@@ -311,7 +311,7 @@ describe('RewardsService', () => {
 
       await disputeService.resolveDispute(
         'rew-123',
-        { userId: 'admin-1', role: 'ADMIN' },
+        { userId: 'admin-1', orgId: 'org-111', role: 'ADMIN' },
         {
           decision: 'SETTLED' as any,
           resolutionNotes: 'Mutual 60% settlement agreed.',
@@ -353,7 +353,11 @@ describe('RewardsService', () => {
         },
       ]);
 
-      const auditTrail = await disputeService.getRewardAuditTrail('rew-123');
+      const auditTrail = await disputeService.getRewardAuditTrail('rew-123', {
+        userId: 'admin-1',
+        orgId: 'org-111',
+        userType: 'COMPANY_ADMIN',
+      });
 
       expect(auditTrail).toBeDefined();
       expect(auditTrail.securityChain.isTamperEvident).toBe(true);
@@ -361,6 +365,59 @@ describe('RewardsService', () => {
       expect(auditTrail.securityChain.totalOrgBlocksVerified).toBe(5);
       expect(auditTrail.securityChain.entries.length).toBe(1);
       expect(auditTrail.auditLogs.length).toBe(1);
+    });
+
+    it('should allow company ADMIN with their own auth0Sub to raise a dispute on their org reward', async () => {
+      mockPrisma.rewardTracking.findUnique.mockResolvedValue({
+        ...baseReward,
+        recruiter: { auth0Sub: 'auth0|recruiter-sub' },
+      });
+      mockPrisma.rewardTracking.update.mockResolvedValue({
+        ...baseReward,
+        status: 'DISPUTED',
+      });
+
+      const res = await disputeService.raiseDispute(
+        'rew-123',
+        {
+          orgId: 'org-111',
+          userId: 'company-admin-1',
+          auth0Sub: 'auth0|company-admin-sub',
+          userType: 'COMPANY_ADMIN',
+        },
+        {
+          reason: 'CLAWBACK_EARLY_EXIT' as any,
+          details: 'Verified candidate left inside guarantee window.',
+        },
+      );
+
+      expect(res.status).toBe('DISPUTED');
+    });
+
+    it('should reject cross-org resolveDispute and audit-trail access', async () => {
+      mockPrisma.rewardTracking.findUnique.mockResolvedValue({
+        ...baseReward,
+        status: 'DISPUTED',
+      });
+
+      await expect(
+        disputeService.resolveDispute(
+          'rew-123',
+          { userId: 'other-admin', orgId: 'org-999', role: 'ADMIN' },
+          {
+            decision: 'UPHELD' as any,
+            resolutionNotes: 'Cross-tenant attempt.',
+          },
+        ),
+      ).rejects.toThrow('Unauthorized');
+
+      await expect(
+        disputeService.getRewardAuditTrail('rew-123', {
+          userId: 'other-admin',
+          orgId: 'org-999',
+          userType: 'COMPANY_ADMIN',
+        }),
+      ).rejects.toThrow('Unauthorized');
     });
   });
 });

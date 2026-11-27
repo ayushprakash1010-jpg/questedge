@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
-import { getApiUrl } from "@/lib/api-url";
+import { getApiUrl, getProxyHeaders } from "@/lib/api-url";
 
 const API_URL = getApiUrl();
 
@@ -24,7 +24,7 @@ export async function GET(
       : `${API_URL}/api/v1/hiring-plans/${params.id}/jd/latest`;
 
     const res = await fetch(endpoint, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: getProxyHeaders(req, accessToken),
     });
 
     if (res.status === 404 || res.status === 204) {
@@ -56,10 +56,7 @@ export async function POST(
       `${API_URL}/api/v1/hiring-plans/${params.id}/jd/generate`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: getProxyHeaders(req, accessToken, "application/json"),
         body: JSON.stringify(body),
       }
     );
@@ -90,10 +87,7 @@ export async function PATCH(
       `${API_URL}/api/v1/hiring-plans/${params.id}/jd/${jdId}`,
       {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: getProxyHeaders(req, accessToken, "application/json"),
         body: JSON.stringify(updateData),
       }
     );
@@ -124,10 +118,7 @@ export async function PUT(
       `${API_URL}/api/v1/hiring-plans/${params.id}/jd/${jdId}/approve`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: getProxyHeaders(req, accessToken, "application/json"),
       }
     );
 
