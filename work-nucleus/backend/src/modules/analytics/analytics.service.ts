@@ -1087,14 +1087,16 @@ Do not return any markdown formatting outside of the JSON block.`;
       const rolesCount = openRoles || activeMandates;
       const ratio = inPipeline > 0 ? (inPipeline / rolesCount).toFixed(1) : '0';
       const isHealthy = Number(ratio) >= 3;
+      const mandateLabel = activeMandates === 1 ? 'active mandate' : 'active mandates';
+      const roleLabel = rolesCount === 1 ? 'open role' : 'open roles';
       insights.push({
         title: 'Active Mandate Pipeline Coverage',
-        description: `${company} has ${activeMandates} active mandates with ${rolesCount} open openings. Current candidate-to-opening pipeline ratio is ${ratio}:1.`,
+        description: `${company} has ${activeMandates} ${mandateLabel} across ${rolesCount} ${roleLabel} (${ratio}:1 candidate-to-role ratio).`,
         severity: isHealthy ? 'info' : 'warning',
         category: 'sourcing',
         recommendation: isHealthy
           ? 'Pipeline depth is adequate. Maintain focus on stage conversion and interviewer feedback SLA.'
-          : 'Expand sourcing and referral rewards to build a target 4:1 applicant pool per open mandate.',
+          : 'Expand sourcing and referral rewards to build a target 4:1 applicant pool per open role.',
       });
     } else {
       insights.push({
