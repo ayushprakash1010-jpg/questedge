@@ -28,6 +28,11 @@ const PROTECTED_PREFIXES = [
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Bypass middleware for PostHog reverse-proxy rewrites (/ingest/*)
+  if (pathname === "/ingest" || pathname.startsWith("/ingest/")) {
+    return NextResponse.next();
+  }
+
   // ── Mock mode (Development only): intercept API routes and bypass auth ────────
   if (isMockMode()) {
     if (pathname.startsWith("/api/") && !pathname.startsWith("/api/auth")) {
@@ -91,6 +96,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|ingest/).*)",
   ],
 };
